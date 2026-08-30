@@ -1,28 +1,44 @@
-import { createSignal } from "solid-js";
-import { getServerInfo } from "../api.ts";
+import { createSignal } from 'solid-js'
+
+import { getServerInfo } from '../api.ts'
 
 export default function Home() {
-  const [count, setCount] = createSignal(0);
-  const [info, setInfo] = createSignal("");
+  const [count, setCount] = createSignal(0)
+  const [info, setInfo] = createSignal('')
+
+  const handleServerInfoClick = () => {
+    void getServerInfo()
+      .then(setInfo)
+      .catch(error => {
+        setInfo(
+          error instanceof Error ? error.message : 'Erro ao chamar o servidor'
+        )
+      })
+  }
 
   return (
     <section>
       <h1>SolidJS 2 + Vite+</h1>
       <p>
-        Edite <code>src/routes/index.tsx</code> e salve para testar o <code>HMR</code>.
+        Edite <code>src/routes/index.tsx</code> e salve para testar o{' '}
+        <code>HMR</code>.
       </p>
 
       <div class="actions">
-        <button type="button" class="counter" onClick={() => setCount(count() + 1)}>
+        <button
+          type="button"
+          class="counter"
+          onClick={() => setCount(count() + 1)}
+        >
           Count is {count()}
         </button>
 
-        <button type="button" class="counter" onClick={async () => setInfo(await getServerInfo())}>
+        <button type="button" class="counter" onClick={handleServerInfoClick}>
           Chamar o servidor
         </button>
       </div>
 
       <p>{info()}</p>
     </section>
-  );
+  )
 }

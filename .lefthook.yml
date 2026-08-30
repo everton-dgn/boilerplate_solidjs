@@ -1,0 +1,40 @@
+colors: true
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: pnpm commitlint --edit {1}
+
+pre-commit:
+  parallel: false
+  skip:
+    - merge
+    - rebase
+  jobs:
+    - name: check
+      glob: '*.{ts,tsx,mts,cts,js,mjs,cjs,json,css,md,yml,yaml,toml,html}'
+      run: pnpm check:fix {staged_files}
+      stage_fixed: true
+
+    - name: typecheck
+      glob: '*.{ts,tsx,mts,cts,json}'
+      run: pnpm typecheck
+
+pre-push:
+  piped: true
+  jobs:
+    - name: typecheck
+      run: pnpm typecheck
+
+    - name: checks
+      group:
+        parallel: true
+        jobs:
+          - name: check-ci
+            run: pnpm check:ci
+
+          - name: test
+            run: pnpm test
+
+          - name: build
+            run: pnpm build
