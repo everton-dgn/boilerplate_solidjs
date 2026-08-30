@@ -3,11 +3,28 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@12.1.0",
+  "engines": {
+    "node": ">=24.20.0 <25"
+  },
   "scripts": {
     "dev": "vp dev",
-    "build": "tsc && vp build",
+    "build": "vp build",
     "preview": "vp preview",
-    "start": "node --env-file-if-exists=.env server.js"
+    "start": "node --env-file-if-exists=.env server.ts",
+    "typecheck": "tsc --build",
+    "lint": "vp lint",
+    "format": "vp fmt",
+    "check:ci": "vp check",
+    "check:fix": "vp check --fix",
+    "test": "vp test run",
+    "test:unit": "vp test run --project node --project jsdom",
+    "test:watch": "vp test watch",
+    "test:browser": "vp test run --project browser",
+    "test:browser:install": "vp exec playwright install chromium",
+    "validate": "pnpm typecheck && pnpm check:ci && pnpm test && pnpm build",
+    "commitlint": "commitlint",
+    "postinstall": "node scripts/postinstall.mjs"
   },
   "dependencies": {
     "@solidjs/router": "catalog:",
@@ -15,16 +32,29 @@
     "solid-js": "catalog:"
   },
   "devDependencies": {
+    "@commitlint/cli": "catalog:",
+    "@commitlint/config-conventional": "catalog:",
     "@solidjs/vite-plugin": "catalog:",
     "@types/node": "catalog:",
-    "typescript": "7.0.2",
+    "@vitest/browser-playwright": "catalog:",
+    "eslint-plugin-solid": "catalog:",
+    "jsdom": "catalog:",
+    "lefthook": "catalog:",
+    "playwright": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
   },
   "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.20.0",
+      "onFail": "download"
+    },
     "packageManager": {
       "name": "pnpm",
-      "version": "11.22.0",
+      "version": "12.1.0",
       "onFail": "download"
     }
   }

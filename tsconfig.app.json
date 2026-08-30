@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",
+    "jsxImportSource": "@solidjs/web",
+    "types": ["vite/client", "@solidjs/vite-plugin/boundary-modules", "node"],
+    "tsBuildInfoFile": ".tsbuild/app.tsbuildinfo"
+  },
+  "include": ["src"]
+}
