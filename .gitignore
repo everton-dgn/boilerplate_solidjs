@@ -15,8 +15,9 @@ test-results
 .tsbuild
 *.local
 
-.vscode/*
-!.vscode/extensions.json
+.zed/
+.vscode/
+.dea/
 .idea
 .DS_Store
 *.suo
@@ -24,9 +25,6 @@ test-results
 *.njsproj
 *.sln
 *.sw?
-!.vscode/
-!.vscode/settings.json
-!.vscode/extensions.json
 
 .env
 .env.*
