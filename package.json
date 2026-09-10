@@ -23,8 +23,7 @@
     "test:browser": "vp test run --project browser",
     "test:browser:install": "vp exec playwright install chromium",
     "validate": "pnpm typecheck && pnpm check:ci && pnpm test && pnpm build",
-    "commitlint": "commitlint",
-    "postinstall": "node scripts/postinstall.mjs"
+    "commitlint": "commitlint"
   },
   "dependencies": {
     "@solidjs/router": "2.0.0-next.23",
