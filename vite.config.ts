@@ -6,6 +6,9 @@ import { fmt } from './tooling/fmt.ts'
 import { lint } from './tooling/lint.ts'
 
 const config = defineConfig({
+  resolve: {
+    tsconfigPaths: true
+  },
   plugins: [
     solid({
       start: { middleware: './src/middleware.ts' },
@@ -16,11 +19,21 @@ const config = defineConfig({
   fmt,
   lint,
   test: {
+    clearMocks: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.d.ts', 'src/**/*.test.{ts,tsx}', 'src/tests/**']
+    },
+    globals: true,
+    reporters: ['verbose'],
     projects: [
       {
         extends: true,
         test: {
-          name: 'node',
+          name: { label: 'node', color: 'cyan' },
+          pool: 'threads',
           environment: 'node',
           include: ['src/**/*.node.test.ts']
         }
@@ -28,7 +41,8 @@ const config = defineConfig({
       {
         extends: true,
         test: {
-          name: 'jsdom',
+          name: { label: 'jsdom', color: 'magenta' },
+          pool: 'threads',
           environment: 'jsdom',
           include: ['src/**/*.dom.test.tsx']
         }
@@ -39,7 +53,7 @@ const config = defineConfig({
           include: ['@solidjs/web/server-functions']
         },
         test: {
-          name: 'browser',
+          name: { label: 'browser', color: 'yellow' },
           include: ['src/**/*.browser.test.tsx'],
           browser: {
             enabled: true,

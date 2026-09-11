@@ -6,14 +6,14 @@ export default function Home() {
   const [count, setCount] = createSignal(0)
   const [info, setInfo] = createSignal('')
 
-  const handleServerInfoClick = () => {
-    void getServerInfo()
-      .then(setInfo)
-      .catch(error => {
-        setInfo(
-          error instanceof Error ? error.message : 'Erro ao chamar o servidor'
-        )
-      })
+  const handleServerInfoClick = async (): Promise<void> => {
+    try {
+      setInfo(await getServerInfo())
+    } catch (error: unknown) {
+      setInfo(
+        error instanceof Error ? error.message : 'Erro ao chamar o servidor'
+      )
+    }
   }
 
   return (

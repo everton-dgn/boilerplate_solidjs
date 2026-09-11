@@ -1,30 +1,19 @@
-import { render } from '@solidjs/web'
-import { afterEach, expect, it } from 'vite-plus/test'
+import { renderWithProviders } from '@/tests/providers/component'
 
 import Home from './index.tsx'
 
-let dispose: (() => void) | undefined
-let host: HTMLDivElement | undefined
+describe('contador', () => {
+  it('incrementa o contador', async () => {
+    const host = renderWithProviders(() => <Home />)
 
-afterEach(() => {
-  dispose?.()
-  host?.remove()
-  dispose = undefined
-  host = undefined
-})
+    const button = host.querySelector('button.counter')
 
-it('incrementa o contador', async () => {
-  host = document.createElement('div')
-  document.body.append(host)
-  dispose = render(() => <Home />, host)
+    if (!(button instanceof HTMLButtonElement)) {
+      throw new TypeError('Counter button not found')
+    }
 
-  const button = host.querySelector('button.counter')
+    button.click()
 
-  if (!(button instanceof HTMLButtonElement)) {
-    throw new TypeError('Counter button not found')
-  }
-
-  button.click()
-
-  await expect.poll(() => button.textContent).toBe('Count is 1')
+    await expect.poll(() => button.textContent).toBe('Count is 1')
+  })
 })

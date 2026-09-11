@@ -4,11 +4,10 @@
 
 # :memo: Sobre o Projeto
 
-Boilerplate enxuto para iniciar projetos com SolidJS 2, renderização no
-servidor (SSR), server functions e Vite+ como toolchain única. A base traz
-roteamento, middleware, servidor Node de produção e a esteira de qualidade
-(formatação, lint, tipos, testes e hooks de git), sem aplicação de produto
-pronta.
+Boilerplate enxuto para iniciar projetos com SolidJS 2, renderização no servidor
+(SSR), server functions e Vite+ como toolchain única. A base traz roteamento,
+middleware, servidor Node de produção e a esteira de qualidade (formatação,
+lint, tipos, testes e hooks de git), sem aplicação de produto pronta.
 
 <br />
 
@@ -43,8 +42,8 @@ pronta.
 - [x] Roteamento com lazy loading e rota 404 respondendo com status HTTP correto
 - [x] Servidor de produção em Node puro, servindo estáticos com cache imutável
       para `/assets/` e delegando o resto ao handler SSR
-- [x] Três projetos de teste separados por sufixo de arquivo:
-      `*.node.test.ts`, `*.dom.test.tsx` e `*.browser.test.tsx`
+- [x] Três projetos de teste separados por sufixo de arquivo: `*.node.test.ts`,
+      `*.dom.test.tsx` e `*.browser.test.tsx`
 - [x] Lint type-aware com regras de acessibilidade (`jsx-a11y`), promessas,
       imports e regras específicas do Solid 2
 - [x] TypeScript em project references (`app` e `node`) com `tsc --build`
@@ -98,9 +97,9 @@ As versões exatas vivem no `package.json`, não nesta página:
 - **Node**: a linha declarada em `engines.node`. O bloco `devEngines` fixa a
   versão exata e, com `onFail: download`, o pnpm baixa o runtime se a versão
   local não bater.
-- **pnpm**: a versão fixada em `packageManager`. Instale qualquer versão
-  recente (`brew install pnpm`) e o próprio pnpm troca para a versão fixada
-  ao rodar dentro do projeto.
+- **pnpm**: a versão fixada em `packageManager`. Instale qualquer versão recente
+  (`brew install pnpm`) e o próprio pnpm troca para a versão fixada ao rodar
+  dentro do projeto.
 - **Chromium do Playwright**: só para `pnpm test:browser`. Não é baixado no
   `pnpm install`; instale uma vez com `pnpm test:browser:install`.
 
@@ -138,8 +137,8 @@ Para rodar como produção:
 pnpm build && pnpm start
 ```
 
-Disponível em http://localhost:3000. As variáveis `PORT` e `HOST` são lidas
-de `.env` (se existir) ou do ambiente.
+Disponível em http://localhost:3000. As variáveis `PORT` e `HOST` são lidas de
+`.env` (se existir) ou do ambiente.
 
 <br />
 
@@ -167,8 +166,8 @@ de `.env` (se existir) ou do ambiente.
 | `pnpm commitlint`           | Validar mensagem de commit                        |
 
 Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
-comando embutido; `vp run <script>` executa um script do `package.json`. Os
-dois podem divergir, então confira o `package.json` antes de rodar direto.
+comando embutido; `vp run <script>` executa um script do `package.json`. Os dois
+podem divergir, então confira o `package.json` antes de rodar direto.
 
 <br />
 
@@ -186,9 +185,9 @@ arquivo:
 | `*.browser.test.tsx` | Chromium real | Interação, layout e APIs de browser         |
 
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
-`vite-plus/prefer-vite-plus-imports` bloqueia o import direto). Server
-functions são testadas com `provideRequestEvent` de `@solidjs/web/storage`,
-como em `src/api.node.test.ts`.
+`vite-plus/prefer-vite-plus-imports` bloqueia o import direto). Server functions
+são testadas com `provideRequestEvent` de `@solidjs/web/storage`, como em
+`src/api.node.test.ts`.
 
 <br />
 
@@ -205,8 +204,8 @@ Instalados pelo Lefthook no `pnpm install` (habilitado em `allowBuilds` do
 | `commit-msg` | `commitlint` (header até 50 caracteres, corpo até 100)       |
 | `pre-push`   | `check:ci`, `test` e `build` em paralelo                     |
 
-O `pre-commit` é pulado durante `merge` e `rebase`. Em CI o Lefthook não
-instala os hooks.
+O `pre-commit` é pulado durante `merge` e `rebase`. Em CI o Lefthook não instala
+os hooks.
 
 <br />
 
@@ -220,8 +219,8 @@ instala os hooks.
 - `vite` e `vitest` vêm do catálogo em `pnpm-workspace.yaml`; `vite` resolve
   para o core do Vite+. Atualize os dois lá, não no `package.json`.
 - Commits devem seguir Conventional Commits.
-- O lint é type-aware e roda com `typeCheck: true`; erros de tipo aparecem
-  no `pnpm lint` além do `pnpm typecheck`.
+- O lint é type-aware e roda com `typeCheck: true`; erros de tipo aparecem no
+  `pnpm lint` além do `pnpm typecheck`.
 - Use as versões de Node e pnpm definidas em `package.json`.
 
 <br />

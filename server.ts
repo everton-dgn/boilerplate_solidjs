@@ -8,42 +8,34 @@ import {
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-import { fileURLToPath } from 'node:url'
 
-type HandleRequest = (
-  request: Request,
-  options: { event: { nativeEvent: IncomingMessage } }
-) => Promise<Response>
+import { handleRequest } from './dist/server/server.js'
 
 type RequestInitWithDuplex = RequestInit & { duplex?: 'half' }
 
-const root = path.dirname(fileURLToPath(import.meta.url))
-const clientDirectory = path.join(root, 'dist', 'client')
-const port = Number(process.env.PORT) || 3000
-const host = process.env.HOST || 'localhost'
-const serverModuleUrl = new URL('./dist/server/server.js', import.meta.url)
-const serverModule = (await import(serverModuleUrl.href)) as {
-  handleRequest: HandleRequest
-}
-
-const mimeTypes: Readonly<Record<string, string>> = {
-  '.js': 'text/javascript',
-  '.mjs': 'text/javascript',
-  '.css': 'text/css',
-  '.html': 'text/html; charset=utf-8',
-  '.json': 'application/json',
-  '.map': 'application/json',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.avif': 'image/avif',
-  '.ico': 'image/x-icon',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-  '.txt': 'text/plain; charset=utf-8'
-}
+const DEFAULT_PORT = 3000
+const root = import.meta.dirname
+const clientDirectory = path.join(root, 'dist', 'client'),
+  port = Number(process.env.PORT) || DEFAULT_PORT,
+  host = process.env.HOST || 'localhost',
+  mimeTypes: Readonly<Record<string, string>> = {
+    '.avif': 'image/avif',
+    '.css': 'text/css',
+    '.html': 'text/html; charset=utf-8',
+    '.ico': 'image/x-icon',
+    '.jpeg': 'image/jpeg',
+    '.jpg': 'image/jpeg',
+    '.js': 'text/javascript',
+    '.json': 'application/json',
+    '.map': 'application/json',
+    '.mjs': 'text/javascript',
+    '.png': 'image/png',
+    '.svg': 'image/svg+xml',
+    '.txt': 'text/plain; charset=utf-8',
+    '.webp': 'image/webp',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2'
+  }
 
 function resolveAsset(pathname: string): string | null {
   let decodedPath: string
@@ -102,11 +94,11 @@ async function serveStatic(
 
 function toWebRequest(request: IncomingMessage): Request {
   const url = new URL(
-    request.url || '/',
-    `http://${request.headers.host || `${host}:${port}`}`
-  )
-  const method = request.method || 'GET'
-  const headers = new Headers()
+      request.url || '/',
+      `http://${request.headers.host || `${host}:${port}`}`
+    ),
+    method = request.method || 'GET',
+    headers = new Headers()
 
   for (const [name, value] of Object.entries(request.headers)) {
     if (Array.isArray(value)) {
@@ -116,10 +108,10 @@ function toWebRequest(request: IncomingMessage): Request {
     }
   }
 
-  const init: RequestInitWithDuplex = { method, headers }
+  const init: RequestInitWithDuplex = { headers, method }
 
   if (method !== 'GET' && method !== 'HEAD') {
-    init.body = Readable.toWeb(request) as ReadableStream<Uint8Array>
+    init.body = Readable.toWeb(request)
     init.duplex = 'half'
   }
 
@@ -134,10 +126,14 @@ async function writeWebResponse(
 
   const cookies = webResponse.headers.getSetCookie()
   webResponse.headers.forEach((value, key) => {
-    if (key !== 'set-cookie') response.setHeader(key, value)
+    if (key !== 'set-cookie') {
+      response.setHeader(key, value)
+    }
   })
 
-  if (cookies.length > 0) response.setHeader('set-cookie', cookies)
+  if (cookies.length > 0) {
+    response.setHeader('set-cookie', cookies)
+  }
 
   if (webResponse.body) {
     await pipeline(webResponse.body, response)
@@ -151,22 +147,21 @@ async function handleNodeRequest(
   response: ServerResponse
 ): Promise<void> {
   try {
-    const pathname = new URL(request.url || '/', 'http://localhost').pathname
+    const { pathname } = new URL(request.url || '/', 'http://localhost')
 
     if (pathname !== '/' && (await serveStatic(request, response, pathname))) {
       return
     }
 
-    const webResponse = await serverModule.handleRequest(
-      toWebRequest(request),
-      {
-        event: { nativeEvent: request }
-      }
-    )
+    const webResponse = await handleRequest(toWebRequest(request), {
+      event: { nativeEvent: request }
+    })
     await writeWebResponse(response, webResponse)
   } catch (error) {
     console.error(error)
-    if (!response.headersSent) response.statusCode = 500
+    if (!response.headersSent) {
+      response.statusCode = 500
+    }
     response.end('Internal Server Error')
   }
 }
