@@ -58,6 +58,10 @@ const config = defineConfig({
           browser: {
             enabled: true,
             headless: true,
+            trace: {
+              mode: 'retain-on-failure',
+              tracesDir: './test-results/browser-traces'
+            },
             provider: playwright(),
             instances: [{ browser: 'chromium' }]
           }

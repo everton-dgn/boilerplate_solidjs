@@ -193,6 +193,23 @@ são testadas com `provideRequestEvent` de `@solidjs/web/storage`, como em
 
 ---
 
+## Testes da aplicação completa
+
+`pnpm test:e2e` executa os testes em `src/tests/pages/*.e2e.test.ts` com
+Chromium. O Playwright gera o build e inicia o servidor de produção em
+`http://127.0.0.1:4317`, encerrando-o ao terminar. A porta precisa estar livre.
+Os cenários cobrem a página inicial, hidratação do contador, chamada ao servidor
+e resposta 404 com navegação de volta ao início.
+
+O relatório HTML fica em `playwright-report/` e os traces de falhas E2E em
+`test-results/e2e/`. Os testes do Vitest Browser Mode guardam traces de falhas
+em `test-results/browser-traces/`. Esses artefatos são ignorados pelo Git. Os
+E2E têm comando separado e não fazem parte de `pnpm test` ou `pnpm validate`.
+
+Para conferir a interface em um celular na mesma rede, execute `pnpm dev:phone`
+e abra a URL de rede exibida pelo Vite. Esse comando disponibiliza o servidor de
+desenvolvimento nas interfaces de rede da máquina.
+
 # :shield: Hooks de Git
 
 Instalados pelo Lefthook no `pnpm install` (habilitado em `allowBuilds` do
