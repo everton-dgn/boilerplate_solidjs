@@ -6,7 +6,6 @@ commit-msg:
       run: pnpm commitlint --edit {1}
 
 pre-commit:
-  piped: true
   skip:
     - merge
     - rebase
@@ -16,12 +15,7 @@ pre-commit:
       run: pnpm check:fix {staged_files}
       stage_fixed: true
 
-    - name: typecheck
-      glob: '*.{ts,tsx,mts,cts,json}'
-      run: pnpm typecheck
-
 pre-push:
-  piped: true
   jobs:
     - name: checks
       group:
@@ -30,8 +24,11 @@ pre-push:
           - name: check-ci
             run: pnpm check:ci
 
+          - name: typecheck
+            run: pnpm typecheck
+
           - name: test
-            run: pnpm test
+            run: pnpm test:ci
 
           - name: build
             run: pnpm build
