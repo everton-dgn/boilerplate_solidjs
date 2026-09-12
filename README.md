@@ -60,7 +60,8 @@ testes e hooks de git), sem aplicação de produto pronta.
 ```text
 project/
 ├── public/
-│   └── favicon.svg          # Estáticos servidos na raiz
+│   ├── favicon/             # Ícones SVG, ICO e PNG
+│   └── robots.txt           # Regras de rastreamento
 ├── src/
 │   ├── @types/              # Declarações de tipos do Solid e dos ícones
 │   ├── App.tsx              # Componente raiz: Router + layout

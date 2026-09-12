@@ -11,6 +11,7 @@ const TEST_FILES = [
 ]
 
 export const lint: NonNullable<UserConfig['lint']> = {
+  ignorePatterns: ['public/**', 'src/assets/**'],
   categories: {
     correctness: 'off',
     nursery: 'off',

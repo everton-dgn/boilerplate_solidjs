@@ -29,6 +29,8 @@ export const fmt: NonNullable<UserConfig['fmt']> = {
     sortSideEffects: false
   },
   ignorePatterns: [
+    'public/**',
+    'src/assets/**',
     '**/*.svg',
     '*.lock',
     'pnpm-lock.yaml',

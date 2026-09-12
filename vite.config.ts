@@ -64,6 +64,13 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    build: {
+      rolldownOptions: {
+        output: {
+          comments: false
+        }
+      }
+    },
     css,
     resolve,
     server,
