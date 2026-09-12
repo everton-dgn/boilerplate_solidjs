@@ -29,6 +29,4 @@ test-results
 *.sln
 *.sw?
 
-.env.*
-!.env.example
-!.env.test
+!.env*

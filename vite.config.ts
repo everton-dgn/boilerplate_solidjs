@@ -95,8 +95,21 @@ export default defineConfig(({ mode }) => {
       coverage: {
         provider: 'v8',
         reporter: ['text', 'html'],
+        thresholds: {
+          lines: 80,
+          functions: 80,
+          branches: 75,
+          statements: 80
+        },
         include: ['src/**/*.{ts,tsx}'],
-        exclude: ['src/**/*.d.ts', 'src/**/*.test.{ts,tsx}', 'src/tests/**']
+        exclude: [
+          'src/**/*.d.ts',
+          'src/**/*.test.{ts,tsx}',
+          'src/tests/**',
+          'src/App.tsx',
+          'src/Document.tsx',
+          'src/router.ts'
+        ]
       },
       reporters: ['verbose'],
       projects: [
@@ -118,6 +131,7 @@ export default defineConfig(({ mode }) => {
             env: testEnv,
             name: { label: 'dom', color: 'magenta' },
             environment: 'happy-dom',
+            setupFiles: ['./tooling/vitest.setup.ts'],
             include: ['src/**/*.dom.test.{ts,tsx}']
           }
         },
