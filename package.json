@@ -2,17 +2,22 @@
   "name": "boilerplate_solidjs",
   "version": "0.0.0",
   "private": true,
+  "author": "Éverton Toffanetto",
+  "description": "A SolidJS boilerplate with TypeScript, Vite+, server-side rendering, and automated testing.",
+  "repository": "https://github.com/everton-dgn/boilerplate_solidjs",
   "scripts": {
     "dev": "vp dev",
     "dev:phone": "vp dev --host 0.0.0.0",
     "build": "vp build",
     "start": "vp preview",
-    "typecheck": "tsc --build",
+    "typecheck": "tsc --project tsconfig.json && tsc --project tsconfig.node.json",
     "lint": "vp lint",
     "format": "vp fmt",
     "check:ci": "vp check",
     "check:fix": "vp check --fix",
     "test": "vp test run",
+    "test:ui": "vp test --ui --coverage",
+    "test:ci": "vp test run --bail=1",
     "test:coverage": "vp test run --coverage",
     "test:unit": "vp test run --project node --project dom",
     "test:watch": "vp test watch",
@@ -20,6 +25,10 @@
     "test:browser:install": "vp exec playwright install chromium",
     "test:e2e": "playwright test --config tooling/playwright.ts",
     "test:e2e:ui": "playwright test --config tooling/playwright.ts --ui",
+    "test:e2e:codegen": "playwright codegen",
+    "deps:update": "pnpm update --interactive --latest",
+    "pnpm:update": "pnpm self-update && vp install",
+    "detect:duplicates": "pnpm dlx jscpd src --pattern '**/*.{ts,tsx}' --reporters console",
     "validate": "pnpm typecheck && pnpm check:ci && pnpm test && pnpm build",
     "commitlint": "commitlint"
   },
@@ -38,6 +47,7 @@
     "@types/node": "24.13.3",
     "@vitest/browser-playwright": "4.1.11",
     "@vitest/coverage-v8": "4.1.11",
+    "@vitest/ui": "4.1.11",
     "eslint-plugin-solid": "0.18.0",
     "happy-dom": "20.14.5",
     "lefthook": "2.1.12",
@@ -51,7 +61,7 @@
     "vitest": "catalog:"
   },
   "type": "module",
-  "packageManager": "pnpm@12.1.0",
+  "packageManager": "pnpm@12.4.1",
   "engines": {
     "node": ">=24.20.0 <25"
   },
@@ -59,11 +69,6 @@
     "runtime": {
       "name": "node",
       "version": "24.20.0",
-      "onFail": "download"
-    },
-    "packageManager": {
-      "name": "pnpm",
-      "version": "12.1.0",
       "onFail": "download"
     }
   }

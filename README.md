@@ -45,7 +45,8 @@ testes e hooks de git), sem aplicação de produto pronta.
       `*.node.test.{ts,tsx}`, `*.dom.test.{ts,tsx}` e `*.browser.test.{ts,tsx}`
 - [x] Lint type-aware com regras de acessibilidade (`jsx-a11y`), promessas,
       imports e regras específicas do Solid 2
-- [x] TypeScript em project references (`app` e `node`) com `tsc --build`
+- [x] TypeScript com configurações para aplicação e ferramentas Node, com cache
+      incremental
 - [x] Hooks de git: format + lint + typecheck no commit, testes e build no push
 - [x] Conventional Commits validados no `commit-msg`
 - [x] Versões de Node e pnpm fixadas em `package.json` e baixadas
@@ -135,14 +136,14 @@ Disponível em http://127.0.0.1:3000, conforme `HOST` e `PORT` no `.env`.
 Para conferir o build de produção localmente, incluindo SSR e server functions:
 
 ```bash
-pnpm build && pnpm preview
+pnpm build && pnpm start
 ```
 
 O preview usa o Vite+ com a integração do Nitro. O `.env` versionado contém os
 valores locais de `HOST` e `PORT`, usados tanto pelo dev quanto pelo preview.
 Ele também é carregado durante o build; variáveis já definidas no ambiente têm
 prioridade. Para escolher outra porta ou interface no preview, use
-`pnpm preview --port 3001` ou `pnpm preview --host 0.0.0.0`.
+`pnpm start --port 3001` ou `pnpm start --host 0.0.0.0`.
 
 `pnpm start` é um alias do preview local. Em produção, configure as variáveis na
 plataforma de hospedagem; o comando `preview` é destinado à conferência local.
@@ -179,9 +180,8 @@ valide o build Vercel, o preview local e os E2E. Os diretórios gerados
 | --------------------------- | ----------------------------------------------- |
 | `pnpm dev`                  | Servidor de desenvolvimento com HMR             |
 | `pnpm build`                | Build Nitro para Vercel em `.vercel/output/`    |
-| `pnpm preview`              | Pré-visualizar o build pelo Vite                |
-| `pnpm start`                | Alias do preview local                          |
-| `pnpm typecheck`            | Verificação de tipos (`tsc --build`)            |
+| `pnpm start`                | Pré-visualizar o build pelo Vite                |
+| `pnpm typecheck`            | Tipos da aplicação e das ferramentas Node       |
 | `pnpm lint`                 | Lint com Oxlint                                 |
 | `pnpm format`               | Formatar código com Oxfmt                       |
 | `pnpm check:ci`             | Formatação + lint sem alterar arquivos          |

@@ -1,7 +1,45 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
+  "compilerOptions": {
+    "target": "es2024",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noUncheckedSideEffectImports": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "noEmitOnError": true,
+    "allowImportingTsExtensions": true,
+    "allowArbitraryExtensions": true,
+    "erasableSyntaxOnly": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "jsx": "preserve",
+    "jsxImportSource": "@solidjs/web",
+    "types": [
+      "node",
+      "vite/client",
+      "vite-plus/test/globals",
+      "@solidjs/vite-plugin/boundary-modules",
+      "@solidjs/vite-plugin/virtual-solid-manifest"
+    ],
+    "tsBuildInfoFile": ".tsbuild/app.tsbuildinfo",
+    "incremental": true
+  },
+  "include": ["src", "vite.config.ts", "tooling/**/*.ts"]
 }
