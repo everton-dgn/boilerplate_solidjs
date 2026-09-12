@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LEFTHOOK: '0'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read toolchain versions
+        id: toolchain
+        run: |
+          echo "vite-plus=$(jq -er '.devDependencies["vite-plus"]' package.json)" >> "$GITHUB_OUTPUT"
+          echo "node=$(jq -er '.devEngines.runtime.version' package.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@49c3e4e92c52e7f8392712a9267bbe71c5ab30e5 # v1.19.0
+        with:
+          version: ${{ steps.toolchain.outputs.vite-plus }}
+          node-version: ${{ steps.toolchain.outputs.node }}
+          cache: true
+          run-install: false
+
+      - name: Install dependencies
+        run: vp install --frozen-lockfile
+
+      - name: Check formatting and lint
+        run: pnpm check:ci
+
+      - name: Check types
+        run: pnpm typecheck
+
+      - name: Install Chromium for Vitest Browser Mode
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run tests with coverage
+        run: pnpm test:ci
+
+      - name: Build application
+        run: pnpm build
