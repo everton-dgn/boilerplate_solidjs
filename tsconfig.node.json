@@ -1,8 +1,8 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node", "@solidjs/vite-plugin/virtual-solid-manifest"],
+    "types": ["node"],
     "tsBuildInfoFile": ".tsbuild/node.tsbuildinfo"
   },
-  "include": ["server.ts", "vite.config.ts", "tooling/**/*.ts"]
+  "include": ["vite.config.ts", "tooling/**/*.ts"]
 }

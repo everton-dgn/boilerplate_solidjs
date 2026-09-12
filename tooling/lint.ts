@@ -30,21 +30,21 @@ export const lint: NonNullable<UserConfig['lint']> = {
   },
   overrides: [
     {
+      files: ['src/@types/icons.d.ts'],
+      rules: {
+        'import/unambiguous': 'off'
+      }
+    },
+    {
       files: ['src/**/*.tsx'],
       rules: {
         'typescript/explicit-module-boundary-types': 'off'
       }
     },
     {
-      files: ['src/global.d.ts'],
+      files: ['src/@types/solid.d.ts'],
       rules: {
         'import/no-unassigned-import': 'off'
-      }
-    },
-    {
-      files: ['tooling/server-bundle.d.ts'],
-      rules: {
-        'import/unambiguous': 'off'
       }
     },
     {
@@ -69,16 +69,9 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      files: ['server.ts', 'vite.config.ts', 'tooling/**/*.ts'],
+      files: ['vite.config.ts', 'tooling/**/*.ts'],
       rules: {
         'import/no-nodejs-modules': 'off'
-      }
-    },
-    {
-      files: ['server.ts'],
-      rules: {
-        'eslint/no-console': ['warn', { allow: ['log', 'warn', 'error'] }],
-        'node/no-process-env': 'off'
       }
     },
     {
@@ -412,7 +405,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'oxc/no-barrel-file': 'error',
     'oxc/no-const-enum': 'error',
     'oxc/no-map-spread': 'error',
-    'oxc/no-rest-spread-properties': 'error',
+    'oxc/no-rest-spread-properties': 'off',
     'oxc/no-this-in-exported-function': 'error',
     'oxc/number-arg-out-of-range': 'error',
     'oxc/only-used-in-recursion': 'error',

@@ -6,8 +6,8 @@
 
 Boilerplate enxuto para iniciar projetos com SolidJS 2, renderização no servidor
 (SSR), server functions e Vite+ como toolchain única. A base traz roteamento,
-middleware, servidor Node de produção e a esteira de qualidade (formatação,
-lint, tipos, testes e hooks de git), sem aplicação de produto pronta.
+middleware, servidor Nitro e a esteira de qualidade (formatação, lint, tipos,
+testes e hooks de git), sem aplicação de produto pronta.
 
 <br />
 
@@ -15,19 +15,19 @@ lint, tipos, testes e hooks de git), sem aplicação de produto pronta.
 
 # :globe_with_meridians: Tecnologias
 
-| Categoria         | Tecnologia                                          |
-| ----------------- | --------------------------------------------------- |
-| Framework         | SolidJS 2 (`solid-js` + `@solidjs/web`)             |
-| Roteamento        | `@solidjs/router` 2                                 |
-| Renderização      | SSR com hidratação e server functions               |
-| Linguagem         | TypeScript 7 (modo estrito, `erasableSyntaxOnly`)   |
-| Toolchain         | Vite+ (`vp`): Vite, Rolldown, Vitest, Oxlint, Oxfmt |
-| Servidor          | Node.js `http` nativo (`server.ts`)                 |
-| Testes            | Vitest com projetos `node`, `jsdom` e `browser`     |
-| Testes no browser | Vitest Browser Mode + Playwright (Chromium)         |
-| Lint              | Oxlint (type-aware) + `eslint-plugin-solid`         |
-| Formatação        | Oxfmt                                               |
-| Hooks do Git      | Lefthook + Commitlint                               |
+| Categoria         | Tecnologia                                                |
+| ----------------- | --------------------------------------------------------- |
+| Framework         | SolidJS 2 (`solid-js` + `@solidjs/web`)                   |
+| Roteamento        | `@solidjs/router` 2                                       |
+| Renderização      | SSR com hidratação e server functions                     |
+| Linguagem         | TypeScript 7 (modo estrito, `erasableSyntaxOnly`)         |
+| Toolchain         | Vite+ (`vp`): Vite, Rolldown, Vitest, Oxlint, Oxfmt       |
+| Servidor          | Nitro 3, com builds para Node.js e Vercel                 |
+| Testes            | Vitest com projetos `node`, `dom` (happy-dom) e `browser` |
+| Testes no browser | Vitest Browser Mode + Playwright (Chromium)               |
+| Lint              | Oxlint (type-aware) + `eslint-plugin-solid`               |
+| Formatação        | Oxfmt                                                     |
+| Hooks do Git      | Lefthook + Commitlint                                     |
 
 <br />
 
@@ -40,10 +40,9 @@ lint, tipos, testes e hooks de git), sem aplicação de produto pronta.
 - [x] Middleware de servidor: `server-timing`, cabeçalhos de segurança e
       `requestId` por requisição
 - [x] Roteamento com lazy loading e rota 404 respondendo com status HTTP correto
-- [x] Servidor de produção em Node puro, servindo estáticos com cache imutável
-      para `/assets/` e delegando o resto ao handler SSR
-- [x] Três projetos de teste separados por sufixo de arquivo: `*.node.test.ts`,
-      `*.dom.test.tsx` e `*.browser.test.tsx`
+- [x] Nitro para servir estáticos e SSR, com build Node local e preset Vercel
+- [x] Três projetos de teste separados por sufixo de arquivo:
+      `*.node.test.{ts,tsx}`, `*.dom.test.{ts,tsx}` e `*.browser.test.{ts,tsx}`
 - [x] Lint type-aware com regras de acessibilidade (`jsx-a11y`), promessas,
       imports e regras específicas do Solid 2
 - [x] TypeScript em project references (`app` e `node`) com `tsc --build`
@@ -63,6 +62,7 @@ project/
 ├── public/
 │   └── favicon.svg          # Estáticos servidos na raiz
 ├── src/
+│   ├── @types/              # Declarações de tipos do Solid e dos ícones
 │   ├── App.tsx              # Componente raiz: Router + layout
 │   ├── Document.tsx         # Shell HTML do SSR (head, HydrationScript)
 │   ├── api.ts               # Server functions ('use server')
@@ -72,14 +72,14 @@ project/
 │   ├── style.css            # Estilos globais
 │   └── routes/
 │       ├── index.tsx        # Página inicial
-│       ├── index.dom.test.tsx     # Teste em jsdom
+│       ├── index.dom.test.tsx     # Teste em happy-dom
 │       ├── index.browser.test.tsx # Teste em Chromium real
 │       └── not-found.tsx    # Página 404
 ├── tooling/
 │   ├── fmt.ts               # Configuração do Oxfmt
 │   └── lint.ts              # Configuração do Oxlint
-├── server.ts                # Servidor Node de produção
-├── vite.config.ts           # Vite+ (plugin Solid, fmt, lint, test)
+├── vercel.json              # Comando de build e headers da Vercel
+├── vite.config.ts           # Vite+ (Solid, Nitro, fmt, lint, test)
 ├── .lefthook.yml            # Hooks de git
 ├── .commitlintrc            # Regras de Conventional Commits
 ├── pnpm-workspace.yaml      # Catálogo de versões e builds permitidos
@@ -140,30 +140,53 @@ pnpm build && pnpm start
 Disponível em http://localhost:3000. As variáveis `PORT` e `HOST` são lidas de
 `.env` (se existir) ou do ambiente.
 
+O Nitro gera o servidor Node em `.output/server/index.mjs` e os estáticos em
+`.output/public/`. O plugin do Solid gera a entrada SSR, que o Nitro usa
+diretamente. O `@solidjs/web` a partir da versão `2.0.0-rc.8` corrige a
+compatibilidade das requisições de server functions com Nitro/srvx, dispensando
+o adaptador manual.
+
+Para gerar o artefato da Vercel:
+
+```bash
+pnpm build:vercel
+```
+
+Esse comando seleciona o preset `vercel` e gera `.vercel/output/`, incluindo
+estáticos e a função SSR com runtime Node 24. O `vercel.json` define esse
+comando como build do projeto. Na Vercel, importe o repositório e deixe o
+diretório de saída sem override manual para usar a Build Output API. Gerar o
+artefato localmente não publica a aplicação.
+
+O Nitro está fixado na versão beta declarada em `package.json`. Ao atualizá-lo,
+valide o build Node, os E2E e o build Vercel. Os diretórios gerados `.output/`,
+`.nitro/` e `.vercel/` são ignorados pelo Git.
+
 <br />
 
 ---
 
 # :wrench: Scripts
 
-| Script                      | Descrição                                         |
-| --------------------------- | ------------------------------------------------- |
-| `pnpm dev`                  | Servidor de desenvolvimento com HMR               |
-| `pnpm build`                | Build de produção (cliente + servidor em `dist/`) |
-| `pnpm preview`              | Pré-visualizar o build pelo Vite                  |
-| `pnpm start`                | Servidor Node de produção (`server.ts`)           |
-| `pnpm typecheck`            | Verificação de tipos (`tsc --build`)              |
-| `pnpm lint`                 | Lint com Oxlint                                   |
-| `pnpm format`               | Formatar código com Oxfmt                         |
-| `pnpm check:ci`             | Formatação + lint sem alterar arquivos            |
-| `pnpm check:fix`            | Formatação + lint corrigindo o que for possível   |
-| `pnpm test`                 | Todos os projetos de teste                        |
-| `pnpm test:unit`            | Só os projetos `node` e `jsdom`                   |
-| `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)        |
-| `pnpm test:browser:install` | Baixar o Chromium do Playwright                   |
-| `pnpm test:watch`           | Testes em modo de observação                      |
-| `pnpm validate`             | typecheck + check:ci + test + build               |
-| `pnpm commitlint`           | Validar mensagem de commit                        |
+| Script                      | Descrição                                        |
+| --------------------------- | ------------------------------------------------ |
+| `pnpm dev`                  | Servidor de desenvolvimento com HMR              |
+| `pnpm build`                | Build Nitro para Node em `.output/`              |
+| `pnpm build:vercel`         | Build Nitro para Vercel em `.vercel/output/`     |
+| `pnpm preview`              | Pré-visualizar o build pelo Vite                 |
+| `pnpm start`                | Servidor Nitro Node (`.output/server/index.mjs`) |
+| `pnpm typecheck`            | Verificação de tipos (`tsc --build`)             |
+| `pnpm lint`                 | Lint com Oxlint                                  |
+| `pnpm format`               | Formatar código com Oxfmt                        |
+| `pnpm check:ci`             | Formatação + lint sem alterar arquivos           |
+| `pnpm check:fix`            | Formatação + lint corrigindo o que for possível  |
+| `pnpm test`                 | Todos os projetos de teste                       |
+| `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)        |
+| `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)       |
+| `pnpm test:browser:install` | Baixar o Chromium do Playwright                  |
+| `pnpm test:watch`           | Testes em modo de observação                     |
+| `pnpm validate`             | typecheck + check:ci + test + build              |
+| `pnpm commitlint`           | Validar mensagem de commit                       |
 
 Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
 comando embutido; `vp run <script>` executa um script do `package.json`. Os dois
@@ -178,11 +201,23 @@ podem divergir, então confira o `package.json` antes de rodar direto.
 O `vite.config.ts` define três projetos do Vitest, escolhidos pelo sufixo do
 arquivo:
 
-| Sufixo               | Ambiente      | Uso                                         |
-| -------------------- | ------------- | ------------------------------------------- |
-| `*.node.test.ts`     | Node          | Server functions, middleware, utilitários   |
-| `*.dom.test.tsx`     | jsdom         | Componentes sem dependência de browser real |
-| `*.browser.test.tsx` | Chromium real | Interação, layout e APIs de browser         |
+| Sufixo                    | Ambiente      | Uso                                         |
+| ------------------------- | ------------- | ------------------------------------------- |
+| `*.node.test.{ts,tsx}`    | Node          | Server functions, middleware, utilitários   |
+| `*.dom.test.{ts,tsx}`     | happy-dom     | Componentes sem dependência de browser real |
+| `*.browser.test.{ts,tsx}` | Chromium real | Interação, layout e APIs de browser         |
+
+Os projetos `node` e `dom` usam `pool: 'threads'` e `css: false`. O projeto
+`node` não carrega happy-dom nem os plugins de componentes. O projeto `dom`
+carrega happy-dom, Solid e ícones, sem Nitro ou a configuração de SSR. O projeto
+`browser` usa Chromium com CSS habilitado e o mesmo PostCSS da aplicação.
+Importe o CSS no teste quando precisar validar estilos.
+
+A configuração compartilhada limpa o histórico de mocks entre testes e exclui
+arquivos E2E, `node_modules` e `playwright`. `passWithNoTests: false` faz a
+execução falhar quando nenhum teste é encontrado. Os projetos declaram suas
+opções sem `extends`, pois no Vitest 4.1 a herança da configuração raiz exige
+`extends: true`.
 
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
 `vite-plus/prefer-vite-plus-imports` bloqueia o import direto). Server functions
@@ -192,6 +227,37 @@ são testadas com `provideRequestEvent` de `@solidjs/web/storage`, como em
 <br />
 
 ---
+
+## Processamento de CSS
+
+`vite.config.ts` usa `postcss-preset-env` com stage 3, Autoprefixer e custom
+properties habilitados, seguindo as opções do DevInsights. O Vite+ cuida dos
+imports de CSS e da minificação no build. A configuração é carregada em
+`css.postcss` e também se aplica aos builds Nitro para Node e Vercel.
+
+## SVGs locais como componentes
+
+O `unplugin-icons` carrega a coleção `my-images` de `src/assets/images/` com
+`FileSystemIconLoader`. A home demonstra a importação do logo do Solid:
+
+```tsx
+import SolidLogo from '~icons/my-images/solid'
+
+<SolidLogo width="96" height="90" aria-hidden="true" />
+```
+
+Adicione arquivos `.svg` nessa pasta e importe pelo nome, sem extensão. As cores
+originais são preservadas. PNG, JPEG e WebP continuam sendo imagens comuns.
+`src/@types/icons.d.ts` declara os componentes com os tipos de `@solidjs/web`
+para Solid 2, pois os tipos fornecidos pelo plugin ainda usam a API do Solid 1.
+
+O
+[SVG do Solid vem do template oficial do Vite](https://github.com/vitejs/vite/blob/main/packages/create-vite/template-solid/src/assets/solid.svg).
+
+Os ícones prontos usam a coleção `@iconify-json/hugeicons` pelo mesmo plugin. O
+botão "Chamar o servidor" demonstra
+`import IconServer from '~icons/hugeicons/server'`. Apenas os ícones importados
+entram no build.
 
 ## Testes da aplicação completa
 

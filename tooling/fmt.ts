@@ -32,6 +32,9 @@ export const fmt: NonNullable<UserConfig['fmt']> = {
     '*.lock',
     'AGENTS.md',
     'dist/**',
+    '.nitro/**',
+    '.output/**',
+    '.vercel/**',
     'coverage/**',
     'playwright-report/**',
     'test-results/**'

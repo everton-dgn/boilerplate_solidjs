@@ -11,7 +11,8 @@
       "node",
       "vite/client",
       "vite-plus/test/globals",
-      "@solidjs/vite-plugin/boundary-modules"
+      "@solidjs/vite-plugin/boundary-modules",
+      "@solidjs/vite-plugin/virtual-solid-manifest"
     ],
     "tsBuildInfoFile": ".tsbuild/app.tsbuildinfo"
   },
