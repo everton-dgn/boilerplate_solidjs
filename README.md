@@ -201,6 +201,9 @@ Chromium. O Playwright gera o build e inicia o servidor de produção em
 Os cenários cobrem a página inicial, hidratação do contador, chamada ao servidor
 e resposta 404 com navegação de volta ao início.
 
+Use `pnpm test:e2e:ui` para abrir a interface interativa do Playwright. Com
+`CI=true`, os E2E usam um único worker; localmente, mantêm o paralelismo padrão.
+
 O relatório HTML fica em `playwright-report/` e os traces de falhas E2E em
 `test-results/e2e/`. Os testes do Vitest Browser Mode guardam traces de falhas
 em `test-results/browser-traces/`. Esses artefatos são ignorados pelo Git. Os

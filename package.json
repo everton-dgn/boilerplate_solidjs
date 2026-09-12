@@ -25,6 +25,7 @@
     "test:browser": "vp test run --project browser",
     "test:browser:install": "vp exec playwright install chromium",
     "test:e2e": "playwright test --config tooling/playwright.ts",
+    "test:e2e:ui": "playwright test --config tooling/playwright.ts --ui",
     "validate": "pnpm typecheck && pnpm check:ci && pnpm test && pnpm build",
     "commitlint": "commitlint"
   },

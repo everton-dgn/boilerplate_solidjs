@@ -1,3 +1,5 @@
+import { env } from 'node:process'
+
 import { defineConfig, devices } from '@playwright/test'
 
 const BASE_URL = 'http://127.0.0.1:4317'
@@ -9,6 +11,7 @@ const config = defineConfig({
   outputDir: '../test-results/e2e',
   fullyParallel: true,
   forbidOnly: true,
+  workers: env.CI ? 1 : undefined,
   reporter: [
     ['list'],
     ['html', { outputFolder: '../playwright-report', open: 'never' }]
