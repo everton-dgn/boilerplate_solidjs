@@ -29,7 +29,7 @@ const config = defineConfig({
   },
   projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }],
   webServer: {
-    command: 'pnpm build && node --env-file=.env.test .output/server/index.mjs',
+    command: 'pnpm build && pnpm preview --strictPort',
     cwd: '..',
     env: { HOST, PORT },
     url: BASE_URL,

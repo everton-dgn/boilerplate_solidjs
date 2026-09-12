@@ -78,7 +78,7 @@ export default defineConfig(({ mode }) => {
               ssr: true,
               serverFunctions: true
             }),
-            nitro({ serverEntry: false })
+            nitro({ serverEntry: false, preset: 'vercel' })
           ],
     fmt,
     lint,

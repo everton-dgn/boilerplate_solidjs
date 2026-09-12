@@ -7,13 +7,23 @@
   "engines": {
     "node": ">=24.20.0 <25"
   },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.20.0",
+      "onFail": "download"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.1.0",
+      "onFail": "download"
+    }
+  },
   "scripts": {
     "dev": "vp dev",
     "dev:phone": "vp dev --host 0.0.0.0",
     "build": "vp build",
-    "build:vercel": "NITRO_PRESET=vercel vp build",
-    "preview": "vp preview",
-    "start": "node --env-file-if-exists=.env .output/server/index.mjs",
+    "start": "vp preview",
     "typecheck": "tsc --build",
     "lint": "vp lint",
     "format": "vp fmt",
@@ -55,17 +65,5 @@
     "vite": "catalog:",
     "vite-plus": "0.3.1",
     "vitest": "catalog:"
-  },
-  "devEngines": {
-    "runtime": {
-      "name": "node",
-      "version": "24.20.0",
-      "onFail": "download"
-    },
-    "packageManager": {
-      "name": "pnpm",
-      "version": "12.1.0",
-      "onFail": "download"
-    }
   }
 }

@@ -22,7 +22,7 @@ testes e hooks de git), sem aplicação de produto pronta.
 | Renderização      | SSR com hidratação e server functions                     |
 | Linguagem         | TypeScript 7 (modo estrito, `erasableSyntaxOnly`)         |
 | Toolchain         | Vite+ (`vp`): Vite, Rolldown, Vitest, Oxlint, Oxfmt       |
-| Servidor          | Nitro 3, com builds para Node.js e Vercel                 |
+| Servidor          | Nitro 3, com preset Vercel e preview local                |
 | Testes            | Vitest com projetos `node`, `dom` (happy-dom) e `browser` |
 | Testes no browser | Vitest Browser Mode + Playwright (Chromium)               |
 | Lint              | Oxlint (type-aware) + `eslint-plugin-solid`               |
@@ -40,7 +40,7 @@ testes e hooks de git), sem aplicação de produto pronta.
 - [x] Middleware de servidor: `server-timing`, cabeçalhos de segurança e
       `requestId` por requisição
 - [x] Roteamento com lazy loading e rota 404 respondendo com status HTTP correto
-- [x] Nitro para servir estáticos e SSR, com build Node local e preset Vercel
+- [x] Nitro para servir estáticos e SSR, com preset Vercel e preview local
 - [x] Três projetos de teste separados por sufixo de arquivo:
       `*.node.test.{ts,tsx}`, `*.dom.test.{ts,tsx}` e `*.browser.test.{ts,tsx}`
 - [x] Lint type-aware com regras de acessibilidade (`jsx-a11y`), promessas,
@@ -143,37 +143,30 @@ Ele também é carregado durante o build; variáveis já definidas no ambiente t
 prioridade. Para escolher outra porta ou interface no preview, use
 `pnpm preview --port 3001` ou `pnpm preview --host 0.0.0.0`.
 
-Para executar o servidor Node independente:
-
-```bash
-pnpm build && pnpm start
-```
-
-Disponível em http://127.0.0.1:3000. As variáveis `PORT` e `HOST` são lidas de
-`.env` (se existir) ou do ambiente. Em produção, configure as variáveis na
+`pnpm start` é um alias do preview local. Em produção, configure as variáveis na
 plataforma de hospedagem; o comando `preview` é destinado à conferência local.
 
-O Nitro gera o servidor Node em `.output/server/index.mjs` e os estáticos em
-`.output/public/`. O plugin do Solid gera a entrada SSR, que o Nitro usa
-diretamente. O `@solidjs/web` a partir da versão `2.0.0-rc.8` corrige a
-compatibilidade das requisições de server functions com Nitro/srvx, dispensando
-o adaptador manual.
+O Nitro usa `preset: 'vercel'` no `vite.config.ts` e gera a função SSR e os
+estáticos em `.vercel/output/`. O plugin do Solid gera a entrada SSR, que o
+Nitro usa diretamente. O `@solidjs/web` a partir da versão `2.0.0-rc.8` corrige
+a compatibilidade das requisições de server functions com Nitro/srvx,
+dispensando o adaptador manual.
 
 Para gerar o artefato da Vercel:
 
 ```bash
-pnpm build:vercel
+pnpm build
 ```
 
-Esse comando seleciona o preset `vercel` e gera `.vercel/output/`, incluindo
-estáticos e a função SSR com runtime Node 24. O `vercel.json` define esse
-comando como build do projeto. Na Vercel, importe o repositório e deixe o
-diretório de saída sem override manual para usar a Build Output API. Gerar o
-artefato localmente não publica a aplicação.
+Esse comando gera `.vercel/output/`, incluindo estáticos e a função SSR com
+runtime Node 24. O `vercel.json` define esse comando como build do projeto. Na
+Vercel, importe o repositório e deixe o diretório de saída sem override manual
+para usar a Build Output API. Gerar o artefato localmente não publica a
+aplicação.
 
 O Nitro está fixado na versão beta declarada em `package.json`. Ao atualizá-lo,
-valide o build Node, os E2E e o build Vercel. Os diretórios gerados `.output/`,
-`.nitro/` e `.vercel/` são ignorados pelo Git.
+valide o build Vercel, o preview local e os E2E. Os diretórios gerados
+`.output/`, `.nitro/` e `.vercel/` são ignorados pelo Git.
 
 <br />
 
@@ -181,25 +174,24 @@ valide o build Node, os E2E e o build Vercel. Os diretórios gerados `.output/`,
 
 # :wrench: Scripts
 
-| Script                      | Descrição                                        |
-| --------------------------- | ------------------------------------------------ |
-| `pnpm dev`                  | Servidor de desenvolvimento com HMR              |
-| `pnpm build`                | Build Nitro para Node em `.output/`              |
-| `pnpm build:vercel`         | Build Nitro para Vercel em `.vercel/output/`     |
-| `pnpm preview`              | Pré-visualizar o build pelo Vite                 |
-| `pnpm start`                | Servidor Nitro Node (`.output/server/index.mjs`) |
-| `pnpm typecheck`            | Verificação de tipos (`tsc --build`)             |
-| `pnpm lint`                 | Lint com Oxlint                                  |
-| `pnpm format`               | Formatar código com Oxfmt                        |
-| `pnpm check:ci`             | Formatação + lint sem alterar arquivos           |
-| `pnpm check:fix`            | Formatação + lint corrigindo o que for possível  |
-| `pnpm test`                 | Todos os projetos de teste                       |
-| `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)        |
-| `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)       |
-| `pnpm test:browser:install` | Baixar o Chromium do Playwright                  |
-| `pnpm test:watch`           | Testes em modo de observação                     |
-| `pnpm validate`             | typecheck + check:ci + test + build              |
-| `pnpm commitlint`           | Validar mensagem de commit                       |
+| Script                      | Descrição                                       |
+| --------------------------- | ----------------------------------------------- |
+| `pnpm dev`                  | Servidor de desenvolvimento com HMR             |
+| `pnpm build`                | Build Nitro para Vercel em `.vercel/output/`    |
+| `pnpm preview`              | Pré-visualizar o build pelo Vite                |
+| `pnpm start`                | Alias do preview local                          |
+| `pnpm typecheck`            | Verificação de tipos (`tsc --build`)            |
+| `pnpm lint`                 | Lint com Oxlint                                 |
+| `pnpm format`               | Formatar código com Oxfmt                       |
+| `pnpm check:ci`             | Formatação + lint sem alterar arquivos          |
+| `pnpm check:fix`            | Formatação + lint corrigindo o que for possível |
+| `pnpm test`                 | Todos os projetos de teste                      |
+| `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)       |
+| `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)      |
+| `pnpm test:browser:install` | Baixar o Chromium do Playwright                 |
+| `pnpm test:watch`           | Testes em modo de observação                    |
+| `pnpm validate`             | typecheck + check:ci + test + build             |
+| `pnpm commitlint`           | Validar mensagem de commit                      |
 
 Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
 comando embutido; `vp run <script>` executa um script do `package.json`. Os dois
