@@ -129,16 +129,29 @@ pnpm test:browser:install
 pnpm dev
 ```
 
-Disponível em http://localhost:5173
+Disponível em http://127.0.0.1:3000, conforme `HOST` e `PORT` no `.env`.
 
-Para rodar como produção:
+Para conferir o build de produção localmente, incluindo SSR e server functions:
+
+```bash
+pnpm build && pnpm preview
+```
+
+O preview usa o Vite+ com a integração do Nitro. O `.env` versionado contém os
+valores locais de `HOST` e `PORT`, usados tanto pelo dev quanto pelo preview.
+Ele também é carregado durante o build; variáveis já definidas no ambiente têm
+prioridade. Para escolher outra porta ou interface no preview, use
+`pnpm preview --port 3001` ou `pnpm preview --host 0.0.0.0`.
+
+Para executar o servidor Node independente:
 
 ```bash
 pnpm build && pnpm start
 ```
 
-Disponível em http://localhost:3000. As variáveis `PORT` e `HOST` são lidas de
-`.env` (se existir) ou do ambiente.
+Disponível em http://127.0.0.1:3000. As variáveis `PORT` e `HOST` são lidas de
+`.env` (se existir) ou do ambiente. Em produção, configure as variáveis na
+plataforma de hospedagem; o comando `preview` é destinado à conferência local.
 
 O Nitro gera o servidor Node em `.output/server/index.mjs` e os estáticos em
 `.output/public/`. O plugin do Solid gera a entrada SSR, que o Nitro usa

@@ -29,9 +29,12 @@ export const fmt: NonNullable<UserConfig['fmt']> = {
     sortSideEffects: false
   },
   ignorePatterns: [
+    '**/*.svg',
     '*.lock',
+    'pnpm-lock.yaml',
     'AGENTS.md',
     'dist/**',
+    'dist-ssr/**',
     '.nitro/**',
     '.output/**',
     '.vercel/**',

@@ -1,9 +1,11 @@
+import { env, loadEnvFile } from 'node:process'
+
 import solid from '@solidjs/vite-plugin'
 import { nitro } from 'nitro/vite'
 import postcssPresetEnv from 'postcss-preset-env'
 import { FileSystemIconLoader } from 'unplugin-icons/loaders'
 import Icons from 'unplugin-icons/vite'
-import { defineConfig } from 'vite-plus'
+import { defineConfig, loadEnv } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 import { fmt } from './tooling/fmt.ts'
@@ -44,79 +46,100 @@ const css = {
   }
 }
 
-export default defineConfig(({ mode }) => ({
-  css,
-  resolve,
-  server: {
-    port: 5173
-  },
-  plugins:
-    mode === 'test'
-      ? []
-      : [
-          icons(),
-          solid({
-            start: { middleware: './src/middleware.ts' },
-            ssr: true,
-            serverFunctions: true
-          }),
-          nitro({ serverEntry: false })
-        ],
-  fmt,
-  lint,
-  test: {
-    ...shared,
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html'],
-      include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.d.ts', 'src/**/*.test.{ts,tsx}', 'src/tests/**']
-    },
-    reporters: ['verbose'],
-    projects: [
-      {
-        resolve,
-        test: {
-          ...shared,
-          name: { label: 'node', color: 'cyan' },
-          environment: 'node',
-          include: ['src/**/*.node.test.{ts,tsx}']
-        }
+export default defineConfig(({ mode }) => {
+  const localEnv = loadEnv(mode, import.meta.dirname, '')
+  const server = {
+    host: localEnv.HOST,
+    port: localEnv.PORT ? Number(localEnv.PORT) : undefined
+  }
+
+  if (mode === 'test') {
+    loadEnvFile(new URL('.env.test', import.meta.url))
+  }
+
+  const testEnv = {
+    BASE_URL_TEST: env.BASE_URL_TEST,
+    HOST: env.HOST,
+    PORT: env.PORT
+  }
+
+  return {
+    css,
+    resolve,
+    server,
+    preview: server,
+    plugins:
+      mode === 'test'
+        ? []
+        : [
+            icons(),
+            solid({
+              start: { middleware: './src/middleware.ts' },
+              ssr: true,
+              serverFunctions: true
+            }),
+            nitro({ serverEntry: false })
+          ],
+    fmt,
+    lint,
+    test: {
+      ...shared,
+      env: testEnv,
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'html'],
+        include: ['src/**/*.{ts,tsx}'],
+        exclude: ['src/**/*.d.ts', 'src/**/*.test.{ts,tsx}', 'src/tests/**']
       },
-      {
-        resolve,
-        plugins: componentPlugins(),
-        test: {
-          ...shared,
-          name: { label: 'dom', color: 'magenta' },
-          environment: 'happy-dom',
-          include: ['src/**/*.dom.test.{ts,tsx}']
-        }
-      },
-      {
-        css,
-        resolve,
-        plugins: componentPlugins(),
-        optimizeDeps: {
-          include: ['@solidjs/web/server-functions']
+      reporters: ['verbose'],
+      projects: [
+        {
+          resolve,
+          test: {
+            ...shared,
+            env: testEnv,
+            name: { label: 'node', color: 'cyan' },
+            environment: 'node',
+            include: ['src/**/*.node.test.{ts,tsx}']
+          }
         },
-        test: {
-          ...shared,
-          css: true,
-          name: { label: 'browser', color: 'yellow' },
-          include: ['src/**/*.browser.test.{ts,tsx}'],
-          browser: {
-            enabled: true,
-            headless: true,
-            trace: {
-              mode: 'retain-on-failure',
-              tracesDir: './test-results/browser-traces'
-            },
-            provider: playwright(),
-            instances: [{ browser: 'chromium' }]
+        {
+          resolve,
+          plugins: componentPlugins(),
+          test: {
+            ...shared,
+            env: testEnv,
+            name: { label: 'dom', color: 'magenta' },
+            environment: 'happy-dom',
+            include: ['src/**/*.dom.test.{ts,tsx}']
+          }
+        },
+        {
+          css,
+          resolve,
+          plugins: componentPlugins(),
+          optimizeDeps: {
+            include: ['@solidjs/web/server-functions']
+          },
+          test: {
+            ...shared,
+            env: testEnv,
+            css: true,
+            name: { label: 'browser', color: 'yellow' },
+            include: ['src/**/*.browser.test.{ts,tsx}'],
+            browser: {
+              enabled: true,
+              headless: true,
+              trace: {
+                mode: 'retain-on-failure',
+                tracesDir: './test-results/browser-traces'
+              },
+              provider: playwright(),
+              instances: [{ browser: 'chromium' }]
+            }
           }
         }
-      }
-    ]
+      ]
+    }
   }
-}))
+})

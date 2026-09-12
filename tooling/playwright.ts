@@ -1,8 +1,15 @@
-import { env } from 'node:process'
+import { env, loadEnvFile } from 'node:process'
 
 import { defineConfig, devices } from '@playwright/test'
 
-const BASE_URL = 'http://127.0.0.1:4317'
+loadEnvFile(new URL('../.env.test', import.meta.url))
+
+const BASE_URL = env.BASE_URL_TEST
+const { HOST, PORT } = env
+
+if (!BASE_URL || !HOST || !PORT) {
+  throw new Error('.env.test must define BASE_URL_TEST, HOST and PORT')
+}
 const STARTUP_TIMEOUT = 120_000
 
 const config = defineConfig({
@@ -22,9 +29,9 @@ const config = defineConfig({
   },
   projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }],
   webServer: {
-    command: 'pnpm build && pnpm start',
+    command: 'pnpm build && node --env-file=.env.test .output/server/index.mjs',
     cwd: '..',
-    env: { HOST: '127.0.0.1', PORT: '4317' },
+    env: { HOST, PORT },
     url: BASE_URL,
     reuseExistingServer: false,
     timeout: STARTUP_TIMEOUT
