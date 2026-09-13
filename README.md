@@ -74,6 +74,9 @@ project/
 │   ├── __tests__/           # Testes dos módulos da raiz de src
 │   │   ├── api.node.test.ts        # Teste da server function (projeto node)
 │   │   └── middleware.node.test.ts # Teste dos middlewares (projeto node)
+│   ├── components/          # Componentes por atomic design
+│   │   ├── atoms/Provider/  # Provider que envolve a aplicação
+│   │   └── molecules/Nav/   # Menu de navegação (usa Router.paths)
 │   └── routes/
 │       ├── index.tsx        # Página inicial
 │       ├── not-found.tsx    # Página 404

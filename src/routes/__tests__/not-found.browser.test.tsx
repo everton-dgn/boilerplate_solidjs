@@ -1,4 +1,4 @@
-import { renderWithProviders } from '@/tests/providers/component'
+import { renderWithProviders } from '@/tests/providers/component/index.tsx'
 
 import NotFound from '../not-found.tsx'
 
