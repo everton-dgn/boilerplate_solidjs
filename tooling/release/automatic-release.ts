@@ -229,7 +229,7 @@ async function prepare(
       `${ctx.root}/git/commits`,
       'POST',
       {
-        message: `chore(release): v${plan.version}`,
+        message: `chore(release): v${plan.version}\n\n[skip ci]`,
         tree: tree.sha,
         parents: [ctx.source],
         author: identity,
