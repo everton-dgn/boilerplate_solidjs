@@ -120,10 +120,7 @@ export default defineConfig(({ mode }) => {
             env: testEnv,
             name: { label: 'node', color: 'cyan' },
             environment: 'node',
-            include: [
-              'src/**/*.node.test.{ts,tsx}',
-              'tooling/release/**/*.test.ts'
-            ]
+            include: ['src/**/*.node.test.{ts,tsx}']
           }
         },
         {

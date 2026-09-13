@@ -195,7 +195,8 @@ valide o build Vercel, o preview local e os E2E. Os diretórios gerados
 | `pnpm format`               | Formatar código com Oxfmt                       |
 | `pnpm check:ci`             | Formatação + lint sem alterar arquivos          |
 | `pnpm check:fix`            | Formatação + lint corrigindo o que for possível |
-| `pnpm test`                 | Todos os projetos de teste                      |
+| `pnpm test`                 | Todos os projetos de teste da aplicação         |
+| `pnpm test:release`         | Testes dos scripts de release, execução manual  |
 | `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)       |
 | `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)      |
 | `pnpm test:browser:install` | Baixar o Chromium do Playwright                 |
@@ -220,6 +221,11 @@ Vitest.
 
 O `vite.config.ts` define três projetos do Vitest, escolhidos pelo sufixo do
 arquivo:
+
+Os testes de `tooling/release/__tests__/` usam o executor nativo `node:test`,
+sem configuração adicional, e rodam somente com `pnpm test:release`. Execute
+esse comando ao alterar os scripts de release. Essa suíte não participa dos
+comandos gerais de teste, cobertura, UI, watch, `validate`, hooks ou CI.
 
 | Sufixo                    | Ambiente      | Uso                                         |
 | ------------------------- | ------------- | ------------------------------------------- |

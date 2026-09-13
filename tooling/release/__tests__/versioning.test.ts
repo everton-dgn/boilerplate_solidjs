@@ -1,6 +1,6 @@
+/* oxlint-disable vitest/no-import-node-test -- Release tests use the native Node.js runner. */
 import assert from 'node:assert/strict'
-
-import { describe, it } from 'vite-plus/test'
+import { describe, it } from 'node:test'
 
 import {
   assertReleaseFiles,
@@ -72,14 +72,14 @@ describe('release versioning', () => {
     )
   })
 
-  it.each([
+  // oxlint-disable-next-line vitest/prefer-each -- node:test has no it.each API.
+  for (const [open, inner, close] of [
     ['````', '```', '````'],
     ['~~~~', '~~~', '~~~~'],
     ['```', '~~~', '```'],
     ['```', '```text', '````']
-  ])(
-    'preserves examples inside %s fences containing %s',
-    (open, inner, close) => {
+  ]) {
+    it(`preserves examples inside ${open} fences containing ${inner}`, () => {
       const message = [
         'fix: docs',
         '',
@@ -100,8 +100,8 @@ describe('release versioning', () => {
         })?.version,
         '2.0.0'
       )
-    }
-  )
+    })
+  }
 
   it('skips documentation and release commits without a loop', () => {
     assert.equal(

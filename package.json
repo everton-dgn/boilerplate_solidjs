@@ -17,6 +17,7 @@
     "check:ci": "vp check",
     "check:fix": "vp check --fix",
     "test": "vp test run",
+    "test:release": "node --test tooling/release/__tests__/*.test.ts",
     "test:ui": "vp test --ui --coverage",
     "test:ci": "vp test run --bail=1 --coverage",
     "test:coverage": "vp test run --coverage",
