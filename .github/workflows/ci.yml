@@ -115,17 +115,17 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run:
-          pnpm dlx --allow-build esbuild vercel@59.11.7 pull --yes
+          pnpm dlx --allow-build esbuild vercel@latest pull --yes
           --environment=production
 
       - name: Build for production with Vite+
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: pnpm dlx --allow-build esbuild vercel@59.11.7 build --prod --yes
+        run: pnpm dlx --allow-build esbuild vercel@latest build --prod --yes
 
       - name: Deploy production build
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run:
-          pnpm dlx --allow-build esbuild vercel@59.11.7 deploy --prebuilt --prod
+          pnpm dlx --allow-build esbuild vercel@latest deploy --prebuilt --prod
           --yes
