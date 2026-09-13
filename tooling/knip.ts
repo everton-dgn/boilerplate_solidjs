@@ -1,7 +1,9 @@
 import type { KnipConfig } from 'knip'
 
 const config = {
-  entry: ['src/App.tsx!', 'src/Document.tsx!', 'src/middleware.ts!'],
+  // env.ts is read by @solidjs/vite-plugin (start.env) to generate the
+  // virtual:env modules, so nothing imports it directly.
+  entry: ['src/App.tsx!', 'src/Document.tsx!', 'src/middleware.ts!', 'env.ts!'],
   project: [
     'src/**/*.{ts,tsx}!',
     'tooling/**/*.ts',

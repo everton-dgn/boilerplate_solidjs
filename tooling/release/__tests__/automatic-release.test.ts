@@ -1,12 +1,12 @@
+/* oxlint-disable vitest/no-import-node-test -- Release tests use the native Node.js runner. */
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { chmod, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { execPath } from 'node:process'
+import { describe, it } from 'node:test'
 import { promisify } from 'node:util'
-
-import { describe, it } from 'vite-plus/test'
 
 const execute = promisify(execFile)
 const EXECUTABLE_MODE = 0o700
@@ -143,7 +143,7 @@ async function fixture() {
 
 describe(
   'release orchestration with isolated Git and GitHub',
-  { timeout: 30_000 },
+  { timeout: 30_000, concurrency: true },
   () => {
     it('recovers after a release API failure without recreating commit, PR, merge or tag', async () => {
       const f = await fixture()

@@ -68,18 +68,27 @@ project/
 │   ├── App.tsx              # Componente raiz: Router + layout
 │   ├── Document.tsx         # Shell HTML do SSR (head, HydrationScript)
 │   ├── api.ts               # Server functions ('use server')
-│   ├── api.node.test.ts     # Teste da server function (projeto node)
 │   ├── middleware.ts        # Middlewares do servidor
 │   ├── router.ts            # Definição das rotas (createRouter)
 │   ├── style.css            # Estilos globais
+│   ├── __tests__/           # Testes dos módulos da raiz de src
+│   │   ├── api.node.test.ts        # Teste da server function (projeto node)
+│   │   └── middleware.node.test.ts # Teste dos middlewares (projeto node)
+│   ├── components/          # Componentes por atomic design
+│   │   ├── atoms/Provider/  # Provider que envolve a aplicação
+│   │   └── molecules/Nav/   # Menu de navegação (usa Router.paths)
 │   └── routes/
 │       ├── index.tsx        # Página inicial
-│       ├── index.dom.test.tsx     # Teste em happy-dom
-│       ├── index.browser.test.tsx # Teste em Chromium real
-│       └── not-found.tsx    # Página 404
+│       ├── not-found.tsx    # Página 404
+│       └── __tests__/       # Testes das rotas
+│           ├── home.dom.test.tsx      # Teste em happy-dom
+│           ├── home.browser.test.tsx  # Teste em Chromium real
+│           └── not-found.browser.test.tsx
 ├── tooling/
 │   ├── fmt.ts               # Configuração do Oxfmt
-│   └── lint.ts              # Configuração do Oxlint
+│   ├── lint.ts              # Configuração do Oxlint
+│   └── release/
+│       └── __tests__/       # Testes da automação de release (projeto node)
 ├── vercel.json              # Comando de build e headers da Vercel
 ├── vite.config.ts           # Vite+ (Solid, Nitro, fmt, lint, test)
 ├── .lefthook.yml            # Hooks de git
@@ -186,7 +195,8 @@ valide o build Vercel, o preview local e os E2E. Os diretórios gerados
 | `pnpm format`               | Formatar código com Oxfmt                       |
 | `pnpm check:ci`             | Formatação + lint sem alterar arquivos          |
 | `pnpm check:fix`            | Formatação + lint corrigindo o que for possível |
-| `pnpm test`                 | Todos os projetos de teste                      |
+| `pnpm test`                 | Todos os projetos de teste da aplicação         |
+| `pnpm test:release`         | Testes dos scripts de release, execução manual  |
 | `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)       |
 | `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)      |
 | `pnpm test:browser:install` | Baixar o Chromium do Playwright                 |
@@ -204,8 +214,18 @@ podem divergir, então confira o `package.json` antes de rodar direto.
 
 # :test_tube: Testes
 
+Os arquivos de teste ficam em pastas `__tests__` ao lado do código que exercitam
+(`src/__tests__/`, `src/routes/__tests__/`, `tooling/release/__tests__/`). Os
+testes E2E são a exceção e vivem em `src/tests/pages/`, fora dos projetos do
+Vitest.
+
 O `vite.config.ts` define três projetos do Vitest, escolhidos pelo sufixo do
 arquivo:
+
+Os testes de `tooling/release/__tests__/` usam o executor nativo `node:test`,
+sem configuração adicional, e rodam somente com `pnpm test:release`. Execute
+esse comando ao alterar os scripts de release. Essa suíte não participa dos
+comandos gerais de teste, cobertura, UI, watch, `validate`, hooks ou CI.
 
 | Sufixo                    | Ambiente      | Uso                                         |
 | ------------------------- | ------------- | ------------------------------------------- |
@@ -228,7 +248,7 @@ opções sem `extends`, pois no Vitest 4.1 a herança da configuração raiz exi
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
 `vite-plus/prefer-vite-plus-imports` bloqueia o import direto). Server functions
 são testadas com `provideRequestEvent` de `@solidjs/web/storage`, como em
-`src/api.node.test.ts`.
+`src/__tests__/api.node.test.ts`.
 
 <br />
 

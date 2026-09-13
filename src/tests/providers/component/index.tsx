@@ -1,6 +1,6 @@
 import { render, type JSX } from '@solidjs/web'
 
-import { Provider } from '@/components/atoms/Provider'
+import { Provider } from '@/components/atoms/Provider/index.tsx'
 
 export function renderWithProviders(
   component: () => JSX.Element

@@ -1,6 +1,6 @@
 import { provideRequestEvent } from '@solidjs/web/storage'
 
-import { getServerInfo } from './api.ts'
+import { getServerInfo } from '../api.ts'
 
 describe('informações do servidor', () => {
   it('usa o identificador padrão sem contexto de requisição', async () => {

@@ -1,9 +1,9 @@
-import { renderWithProviders } from '@/tests/providers/component'
+import { renderWithProviders } from '@/tests/providers/component/index.tsx'
 
-import { getServerInfo } from '../api.ts'
-import Home from './index.tsx'
+import { getServerInfo } from '../../api.ts'
+import Home from '../index.tsx'
 
-vi.mock(import('../api.ts'), () => ({
+vi.mock(import('../../api.ts'), () => ({
   getServerInfo: vi.fn<typeof getServerInfo>()
 }))
 

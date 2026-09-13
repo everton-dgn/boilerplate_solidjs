@@ -1,6 +1,6 @@
 import { provideRequestEvent } from '@solidjs/web/storage'
 
-import middleware from './middleware.ts'
+import middleware from '../middleware.ts'
 
 const REQUEST_CONTEXT_INDEX = 2
 

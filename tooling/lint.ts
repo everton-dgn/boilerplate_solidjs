@@ -322,7 +322,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'import/default': 'error',
     'import/export': 'error',
     'import/exports-last': 'error',
-    'import/extensions': 'error',
+    'import/extensions': ['error', 'ignorePackages'],
     'import/first': 'error',
     'import/group-exports': 'off',
     'import/max-dependencies': 'error',

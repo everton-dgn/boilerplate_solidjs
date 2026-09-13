@@ -1,10 +1,10 @@
 import { page, userEvent } from 'vite-plus/test/browser/context'
 
-import { renderWithProviders } from '@/tests/providers/component'
+import { renderWithProviders } from '@/tests/providers/component/index.tsx'
 
-import '../style.css'
+import '../../style.css'
 
-import Home from './index.tsx'
+import Home from '../index.tsx'
 
 describe('contador', () => {
   it('incrementa o contador no Chromium', async () => {
