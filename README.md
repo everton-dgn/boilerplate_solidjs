@@ -81,8 +81,8 @@ project/
 │       ├── index.tsx        # Página inicial
 │       ├── not-found.tsx    # Página 404
 │       └── __tests__/       # Testes das rotas
-│           ├── index.dom.test.tsx     # Teste em happy-dom
-│           ├── index.browser.test.tsx # Teste em Chromium real
+│           ├── home.dom.test.tsx      # Teste em happy-dom
+│           ├── home.browser.test.tsx  # Teste em Chromium real
 │           └── not-found.browser.test.tsx
 ├── tooling/
 │   ├── fmt.ts               # Configuração do Oxfmt
