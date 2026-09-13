@@ -1,9 +1,10 @@
 {
-  "extends": "./tsconfig.base.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "lib": ["ES2024"],
+    "paths": {},
     "types": ["node"],
     "tsBuildInfoFile": ".tsbuild/node.tsbuildinfo"
   },
-  "include": ["server.ts", "vite.config.ts", "tooling/**/*.ts"]
+  "include": ["vite.config.ts", "tooling/**/*.ts"]
 }

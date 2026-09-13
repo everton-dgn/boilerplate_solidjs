@@ -1,4 +1,5 @@
 import { Router } from './router.ts'
+
 import './style.css'
 
 export default function App() {

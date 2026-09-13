@@ -1,3 +1,30 @@
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('./assets/fonts/inter-latin-ext-500-normal.woff2?no-inline')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('./assets/fonts/inter-latin-ext-600-normal.woff2?no-inline')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('./assets/fonts/inter-latin-ext-700-normal.woff2?no-inline')
+    format('woff2');
+}
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;
@@ -8,11 +35,11 @@
   --accent-bg: rgba(170, 59, 255, 0.1);
   --accent-border: rgba(170, 59, 255, 0.5);
 
-  --sans: system-ui, 'Segoe UI', roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', roboto, sans-serif;
+  --sans: 'Inter', system-ui, 'Segoe UI', roboto, sans-serif;
+  --heading: var(--sans);
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
+  font: 500 18px/145% var(--sans);
   letter-spacing: 0.18px;
   color-scheme: light dark;
   color: var(--text);
@@ -95,6 +122,8 @@ code {
 }
 
 .counter {
+  align-items: center;
+  gap: 8px;
   font-size: 16px;
   padding: 5px 10px;
   border-radius: 5px;

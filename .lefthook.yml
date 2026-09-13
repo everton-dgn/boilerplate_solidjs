@@ -6,7 +6,6 @@ commit-msg:
       run: pnpm commitlint --edit {1}
 
 pre-commit:
-  parallel: false
   skip:
     - merge
     - rebase
@@ -15,17 +14,18 @@ pre-commit:
       glob: '*.{ts,tsx,mts,cts,js,mjs,cjs,json,css,md,yml,yaml,toml,html}'
       run: pnpm check:fix {staged_files}
       stage_fixed: true
-
-    - name: typecheck
-      glob: '*.{ts,tsx,mts,cts,json}'
-      run: pnpm typecheck
+    - name: secret-scan
+      run: |
+        if ! command -v kingfisher > /dev/null 2>&1; then
+          echo "kingfisher não instalado; varredura de segredos ignorada."
+          echo "Com Homebrew (macOS/Linux): brew install kingfisher"
+          echo "Sem Homebrew (Linux/Windows): baixe o binário para seu sistema e adicione ao PATH: https://github.com/mongodb/kingfisher/releases"
+          exit 0
+        fi
+        pnpm scan:secrets --staged
 
 pre-push:
-  piped: true
   jobs:
-    - name: typecheck
-      run: pnpm typecheck
-
     - name: checks
       group:
         parallel: true
@@ -33,8 +33,11 @@ pre-push:
           - name: check-ci
             run: pnpm check:ci
 
+          - name: typecheck
+            run: pnpm typecheck
+
           - name: test
-            run: pnpm test
+            run: pnpm test:ci
 
           - name: build
             run: pnpm build

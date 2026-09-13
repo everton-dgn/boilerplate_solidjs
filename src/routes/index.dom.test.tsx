@@ -1,30 +1,53 @@
-import { render } from '@solidjs/web'
-import { afterEach, expect, it } from 'vite-plus/test'
+import { renderWithProviders } from '@/tests/providers/component'
 
+import { getServerInfo } from '../api.ts'
 import Home from './index.tsx'
 
-let dispose: (() => void) | undefined
-let host: HTMLDivElement | undefined
+vi.mock(import('../api.ts'), () => ({
+  getServerInfo: vi.fn<typeof getServerInfo>()
+}))
 
-afterEach(() => {
-  dispose?.()
-  host?.remove()
-  dispose = undefined
-  host = undefined
-})
+describe('contador', () => {
+  it.each([
+    { result: 'Node de teste', error: undefined, expected: 'Node de teste' },
+    {
+      result: undefined,
+      error: new Error('Servidor indisponível'),
+      expected: 'Servidor indisponível'
+    },
+    {
+      result: undefined,
+      error: 'falha desconhecida',
+      expected: 'Erro ao chamar o servidor'
+    }
+  ])(
+    'exibe o resultado da chamada: $expected',
+    async ({ result, error, expected }) => {
+      if (result === undefined) {
+        vi.mocked(getServerInfo).mockRejectedValueOnce(error)
+      } else {
+        vi.mocked(getServerInfo).mockResolvedValueOnce(result)
+      }
+      const host = renderWithProviders(() => <Home />)
+      const button = host.querySelectorAll('button').item(1)
+      button.click()
 
-it('incrementa o contador', async () => {
-  host = document.createElement('div')
-  document.body.append(host)
-  dispose = render(() => <Home />, host)
+      await expect.poll(() => host.textContent).toContain(expected)
+      expect(getServerInfo).toHaveBeenCalledExactlyOnceWith()
+    }
+  )
 
-  const button = host.querySelector('button.counter')
+  it('incrementa o contador', async () => {
+    const host = renderWithProviders(() => <Home />)
 
-  if (!(button instanceof HTMLButtonElement)) {
-    throw new TypeError('Counter button not found')
-  }
+    const button = host.querySelector('button.counter')
 
-  button.click()
+    if (!(button instanceof HTMLButtonElement)) {
+      throw new TypeError('Counter button not found')
+    }
 
-  await expect.poll(() => button.textContent).toBe('Count is 1')
+    button.click()
+
+    await expect.poll(() => button.textContent).toBe('Count is 1')
+  })
 })

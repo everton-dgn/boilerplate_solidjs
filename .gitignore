@@ -9,14 +9,19 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.nitro
+.output
+.vercel
 coverage
 playwright-report
 test-results
 .tsbuild
+solid-env.d.ts
 *.local
 
-.vscode/*
-!.vscode/extensions.json
+.zed/
+.vscode/
+.dea/
 .idea
 .DS_Store
 *.suo
@@ -24,10 +29,5 @@ test-results
 *.njsproj
 *.sln
 *.sw?
-!.vscode/
-!.vscode/settings.json
-!.vscode/extensions.json
 
-.env
-.env.*
-!.env.example
+!.env*
