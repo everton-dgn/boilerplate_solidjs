@@ -116,9 +116,14 @@ nova execução reutiliza a branch e o PR existentes, valida novamente o commit 
 retoma após merge ou criação da tag, se necessário. Tags existentes com outro
 SHA e releases com notas divergentes provocam erro; não são sobrescritas.
 
+Após confirmar a publicação, a automação exclui a branch de release somente se
+ela ainda aponta para o SHA validado. A exclusão usa uma comparação atômica de
+SHA; uma atualização concorrente impede a limpeza. Se a branch já foi excluída,
+a recuperação usa o PR integrado e não recria a branch. O PR e a tag permanecem.
+
 Se a `main` avançar antes do merge, a execução para. Aguarde o CI do novo commit
 e use essa execução como origem. O PR antigo permanece para inspeção; não há
-exclusão automática de branches ou PRs.
+exclusão automática de branches ou PRs abandonados antes do merge.
 
 Se a `main` avançar entre a última conferência e a chamada de merge, a exigência
 de branch atualizada do ruleset bloqueia a integração no GitHub. O script mantém

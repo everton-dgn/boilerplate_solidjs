@@ -26,6 +26,12 @@ const save = () => fs.writeFileSync(path, JSON.stringify(s));
 const out = value => { save(); console.log(typeof value === 'string' ? value : JSON.stringify(value)); };
 const fail = () => { save(); console.log('HTTP/2.0 404 Not Found\n\n{}'); process.exitCode = 1; };
 if (process.argv[1].endsWith('/git')) {
+  if (args.includes('push')) {
+    const ref = 'refs/heads/' + s.branch;
+    if (!s.release || !args.includes('--force-with-lease=' + ref + ':' + head) || !args.includes(':' + ref)) throw Error('Unsafe cleanup');
+    if (s.cleanupRace) { save(); process.exitCode = 1; return; }
+    s.ref = null; s.deleted = true; out(''); return;
+  }
   const [command, ...rest] = args;
   if (['fetch', 'merge-base'].includes(command)) out('');
   else if (command === 'rev-parse') out(source);
@@ -50,7 +56,7 @@ if (process.argv[1].endsWith('/git')) {
     if (body.name !== 'CI required' || body.head_sha !== head || body.conclusion !== 'success') throw Error('Wrong validated commit');
     s.checked = true; value = {id:1};
   }
-  else if (endpoint.startsWith(root + '/git/ref/heads/release/')) value = s.ref;
+  else if (endpoint.startsWith(root + '/git/ref/heads/release/')) value = s.ref === null ? undefined : s.release && s.cleanupAdvanced ? {object:{sha:source}} : s.ref;
   else if (endpoint === root + '/git/commits/' + source) value = { sha: source, tree: { sha: 'base-tree' }, parents: [] };
   else if (endpoint === root + '/git/commits/' + head) value = { sha: head, tree: { sha: 'release-tree' }, parents: [{sha: source}] };
   else if (endpoint === root + '/git/commits/' + merge) value = { sha: merge, tree: { sha: s.race ? 'wrong-tree' : 'release-tree' }, parents: [{sha: source}, {sha: head}] };
@@ -60,7 +66,7 @@ if (process.argv[1].endsWith('/git')) {
     if (body.ref.startsWith('refs/heads/')) { s.branch = body.ref.slice(11); value = s.ref = {object: {sha: head, type: 'commit'}}; }
     else value = s.tagRef = {object: {sha: tag, type: 'tag'}};
   }
-  else if (endpoint.startsWith(root + '/pulls?')) value = s.pr ? [s.pr] : [];
+  else if (endpoint.startsWith(root + '/pulls?')) value = s.pr ? [{number:s.pr.number}] : [];
   else if (endpoint === root + '/pulls') value = s.pr = {number: 1, state: 'open', merged: false, merge_commit_sha: null, user: {login: 'github-actions[bot]'}, head: {sha: head, ref: s.branch, repo: {full_name: 'owner/repo'}}, base: {ref: 'main', repo: {full_name: 'owner/repo'}}};
   else if (endpoint === root + '/pulls/1') value = s.pr;
   else if (endpoint === root + '/pulls/1/merge') {
@@ -95,6 +101,9 @@ interface State {
   loose?: boolean
   checked?: boolean
   merged?: boolean
+  deleted?: boolean
+  cleanupAdvanced?: boolean
+  cleanupRace?: boolean
   release?: { tag_name: string }
 }
 
@@ -158,6 +167,7 @@ describe(
         await f.run('publish')
         const state = await f.state()
         assert.equal(state.release?.tag_name, 'v1.0.0')
+        assert.equal(state.deleted, true)
         for (const call of [
           'POST repos/owner/repo/git/commits',
           'POST repos/owner/repo/pulls',
@@ -171,6 +181,26 @@ describe(
       } finally {
         // Fixtures contain synthetic data only and remain in the OS temporary directory.
         assert.ok(f.directory.startsWith(tmpdir()))
+      }
+    })
+
+    it('preserves a release branch updated before or during cleanup', async () => {
+      for (const patch of [{ cleanupAdvanced: true }, { cleanupRace: true }]) {
+        const f = await fixture()
+        await f.run('prepare')
+        await f.patch(patch)
+        const result = await f.run('publish')
+        assert.match(
+          result.stderr,
+          /Release published; branch cleanup could not complete/u
+        )
+        const state = await f.state()
+        assert.equal(state.release?.tag_name, 'v1.0.0')
+        assert.notEqual(state.deleted, true)
+        await f.patch({ cleanupAdvanced: false, cleanupRace: false })
+        await f.run('publish')
+        const recovered = await f.state()
+        assert.equal(recovered.deleted, true)
       }
     })
 
