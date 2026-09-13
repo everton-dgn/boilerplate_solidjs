@@ -143,7 +143,7 @@ async function fixture() {
 
 describe(
   'release orchestration with isolated Git and GitHub',
-  { timeout: 30_000 },
+  { timeout: 30_000, concurrent: true },
   () => {
     it('recovers after a release API failure without recreating commit, PR, merge or tag', async () => {
       const f = await fixture()
