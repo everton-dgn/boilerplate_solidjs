@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.1.1 - 2026-09-13
+
+### Fixed
+
+- skip duplicate pull request CI (e216970)
+
 ## 1.1.0 - 2026-09-13
 
 ### Added
