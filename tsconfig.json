@@ -41,5 +41,11 @@
     "tsBuildInfoFile": ".tsbuild/app.tsbuildinfo",
     "incremental": true
   },
-  "include": ["src", "vite.config.ts", "tooling/**/*.ts"]
+  "include": [
+    "src",
+    "env.ts",
+    "solid-env.d.ts",
+    "vite.config.ts",
+    "tooling/**/*.ts"
+  ]
 }

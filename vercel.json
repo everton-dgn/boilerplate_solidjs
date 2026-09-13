@@ -1,5 +1,7 @@
 {
-  "buildCommand": "pnpm build",
+  "git": {
+    "deploymentEnabled": false
+  },
   "headers": [
     {
       "source": "/(.*)",

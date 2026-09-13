@@ -208,7 +208,15 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'eslint/no-lonely-if': 'error',
     'eslint/no-loop-func': 'error',
     'eslint/no-loss-of-precision': 'error',
-    'eslint/no-magic-numbers': ['error', { ignore: [0, 1] }],
+    'eslint/no-magic-numbers': [
+      'error',
+      {
+        ignore: [0, 1],
+        ignoreNumericLiteralTypes: true,
+        ignoreDefaultValues: true,
+        ignoreArrayIndexes: true
+      }
+    ],
     'eslint/no-misleading-character-class': 'error',
     'eslint/no-multi-assign': 'error',
     'eslint/no-multi-str': 'error',
@@ -333,7 +341,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'import/no-named-as-default': 'error',
     'import/no-named-as-default-member': 'error',
     'import/no-named-default': 'error',
-    'import/no-namespace': 'error',
+    'import/no-namespace': ['error', { ignore: ['valibot'] }],
     'import/no-nodejs-modules': 'error',
     'import/no-relative-parent-imports': 'off',
     'import/no-self-import': 'error',

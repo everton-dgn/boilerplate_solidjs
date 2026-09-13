@@ -120,7 +120,10 @@ export default defineConfig(({ mode }) => {
             env: testEnv,
             name: { label: 'node', color: 'cyan' },
             environment: 'node',
-            include: ['src/**/*.node.test.{ts,tsx}']
+            include: [
+              'src/**/*.node.test.{ts,tsx}',
+              'tooling/release/*.test.ts'
+            ]
           }
         },
         {
@@ -155,7 +158,10 @@ export default defineConfig(({ mode }) => {
                 mode: 'retain-on-failure',
                 tracesDir: './test-results/browser-traces'
               },
-              provider: playwright(),
+              // GitHub runners include Chrome; local runs use Playwright's Chromium.
+              provider: playwright({
+                launchOptions: env.CI ? { channel: 'chrome' } : {}
+              }),
               instances: [{ browser: 'chromium' }]
             }
           }
