@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.1.0 - 2026-09-13
+
+### Added
+
+- add Nav component and update layout (fffdc92)
+- remove main protection rules and enable concurrent tests (de54348)
+
 ## 1.0.0 - 2026-09-12
 
 ### Added
