@@ -1,6 +1,6 @@
 import { renderWithProviders } from '@/tests/providers/component'
 
-import NotFound from './not-found.tsx'
+import NotFound from '../not-found.tsx'
 
 describe('página não encontrada', () => {
   it('mostra o erro e oferece um link para o início', async () => {

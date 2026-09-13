@@ -122,7 +122,7 @@ export default defineConfig(({ mode }) => {
             environment: 'node',
             include: [
               'src/**/*.node.test.{ts,tsx}',
-              'tooling/release/*.test.ts'
+              'tooling/release/**/*.test.ts'
             ]
           }
         },

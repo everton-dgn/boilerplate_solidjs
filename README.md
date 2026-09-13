@@ -68,18 +68,24 @@ project/
 │   ├── App.tsx              # Componente raiz: Router + layout
 │   ├── Document.tsx         # Shell HTML do SSR (head, HydrationScript)
 │   ├── api.ts               # Server functions ('use server')
-│   ├── api.node.test.ts     # Teste da server function (projeto node)
 │   ├── middleware.ts        # Middlewares do servidor
 │   ├── router.ts            # Definição das rotas (createRouter)
 │   ├── style.css            # Estilos globais
+│   ├── __tests__/           # Testes dos módulos da raiz de src
+│   │   ├── api.node.test.ts        # Teste da server function (projeto node)
+│   │   └── middleware.node.test.ts # Teste dos middlewares (projeto node)
 │   └── routes/
 │       ├── index.tsx        # Página inicial
-│       ├── index.dom.test.tsx     # Teste em happy-dom
-│       ├── index.browser.test.tsx # Teste em Chromium real
-│       └── not-found.tsx    # Página 404
+│       ├── not-found.tsx    # Página 404
+│       └── __tests__/       # Testes das rotas
+│           ├── index.dom.test.tsx     # Teste em happy-dom
+│           ├── index.browser.test.tsx # Teste em Chromium real
+│           └── not-found.browser.test.tsx
 ├── tooling/
 │   ├── fmt.ts               # Configuração do Oxfmt
-│   └── lint.ts              # Configuração do Oxlint
+│   ├── lint.ts              # Configuração do Oxlint
+│   └── release/
+│       └── __tests__/       # Testes da automação de release (projeto node)
 ├── vercel.json              # Comando de build e headers da Vercel
 ├── vite.config.ts           # Vite+ (Solid, Nitro, fmt, lint, test)
 ├── .lefthook.yml            # Hooks de git
@@ -204,6 +210,11 @@ podem divergir, então confira o `package.json` antes de rodar direto.
 
 # :test_tube: Testes
 
+Os arquivos de teste ficam em pastas `__tests__` ao lado do código que exercitam
+(`src/__tests__/`, `src/routes/__tests__/`, `tooling/release/__tests__/`). Os
+testes E2E são a exceção e vivem em `src/tests/pages/`, fora dos projetos do
+Vitest.
+
 O `vite.config.ts` define três projetos do Vitest, escolhidos pelo sufixo do
 arquivo:
 
@@ -228,7 +239,7 @@ opções sem `extends`, pois no Vitest 4.1 a herança da configuração raiz exi
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
 `vite-plus/prefer-vite-plus-imports` bloqueia o import direto). Server functions
 são testadas com `provideRequestEvent` de `@solidjs/web/storage`, como em
-`src/api.node.test.ts`.
+`src/__tests__/api.node.test.ts`.
 
 <br />
 

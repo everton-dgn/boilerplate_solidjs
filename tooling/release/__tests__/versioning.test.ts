@@ -7,8 +7,8 @@ import {
   assertReleasePullRequest,
   assertSourceRun,
   type PullRequest
-} from './github.ts'
-import { planRelease } from './versioning.ts'
+} from '../github.ts'
+import { planRelease } from '../versioning.ts'
 
 const SHA_LENGTH = 40
 const SHA = 'a'.repeat(SHA_LENGTH)
