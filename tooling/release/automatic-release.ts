@@ -201,9 +201,23 @@ async function prepare(
   create: boolean
 ): Promise<Prepared> {
   const branch = `release/v${plan.version}-${ctx.source.slice(0, BRANCH_SHA_LENGTH)}`
+  const [owner] = ctx.repository.split('/')
+  const pulls = await api<PullRequest[]>(
+    `${ctx.root}/pulls?state=all&base=main&head=${owner}:${branch}&per_page=100`
+  )
+  if (pulls.length > 1) throw new Error('Ambiguous release pull requests.')
   let ref = await optionalApi<GitReference>(
     `${ctx.root}/git/ref/heads/${branch}`
   )
+  if (!ref && pulls[0]) {
+    const pr = await api<PullRequest>(`${ctx.root}/pulls/${pulls[0].number}`)
+    if (pr.merged) {
+      const head = requireSha(pr.head.sha)
+      assertReleasePullRequest(pr, ctx.repository, branch, head)
+      await validateHead(ctx, plan, head)
+      return { plan, branch, head, pr }
+    }
+  }
   if (!ref) {
     if (!create) throw new Error('Prepared release branch is missing.')
     if ((await mainSha(ctx)) !== ctx.source) {
@@ -243,11 +257,6 @@ async function prepare(
   }
   const head = requireSha(ref.object.sha)
   await validateHead(ctx, plan, head)
-  const [owner] = ctx.repository.split('/')
-  const pulls = await api<PullRequest[]>(
-    `${ctx.root}/pulls?state=all&base=main&head=${owner}:${branch}&per_page=100`
-  )
-  if (pulls.length > 1) throw new Error('Ambiguous release pull requests.')
   let number = pulls[0]?.number
   if (!number) {
     if (!create) throw new Error('Prepared release pull request is missing.')
@@ -401,6 +410,32 @@ async function publish(ctx: Context, prepared: Prepared): Promise<void> {
     })
   }
   await output({ tag: prepared.plan.tag, version: prepared.plan.version })
+  try {
+    const branchRef = `refs/heads/${prepared.branch}`
+    const remaining = await optionalApi<GitReference>(
+      `${ctx.root}/git/ref/heads/${prepared.branch}`
+    )
+    if (remaining) {
+      if (remaining.object.sha !== prepared.head) {
+        throw new Error('Release branch advanced; refusing cleanup.')
+      }
+      // The lease checks the expected SHA atomically, including updates after the read.
+      await command('git', [
+        '-c',
+        'credential.helper=',
+        '-c',
+        'credential.helper=!gh auth git-credential',
+        'push',
+        `--force-with-lease=${branchRef}:${prepared.head}`,
+        `https://github.com/${ctx.repository}.git`,
+        `:${branchRef}`
+      ])
+    }
+  } catch {
+    console.warn(
+      '::warning::Release published; branch cleanup could not complete. The branch was preserved if it still exists.'
+    )
+  }
 }
 
 const mode = required('RELEASE_MODE')
