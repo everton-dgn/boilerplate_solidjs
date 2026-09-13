@@ -36,7 +36,7 @@ if (process.argv[1].endsWith('/git')) {
   else if (command === 'show' && rest[0] === source + ':package.json') out('{"name":"fixture","version":"0.0.0"}\n');
   else if (command === 'show' && rest[0] === source + ':CHANGELOG.md') out('# Changelog\n\n## Unreleased\n');
   else if (command === 'show' && rest[0].startsWith(head + ':')) out(s.files[rest[0].slice(41)]);
-  else throw Error('Unexpected fake git call: ' + args.path.join(' '));
+  else throw Error('Unexpected fake git call: ' + args.join(' '));
 } else {
   const endpoint = args[1];
   const method = args.includes('--method') ? args[args.indexOf('--method') + 1] : 'GET';

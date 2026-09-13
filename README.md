@@ -47,7 +47,7 @@ testes e hooks de git), sem aplicação de produto pronta.
       imports e regras específicas do Solid 2
 - [x] TypeScript com configurações para aplicação e ferramentas Node, com cache
       incremental
-- [x] Hooks de git: format + lint + typecheck no commit, testes e build no push
+- [x] Hooks de git: format + lint no commit, typecheck, testes e build no push
 - [x] Conventional Commits validados no `commit-msg`
 - [x] Versões de Node e pnpm fixadas em `package.json` e baixadas
       automaticamente quando ausentes (`devEngines`)
@@ -290,11 +290,11 @@ desenvolvimento nas interfaces de rede da máquina.
 Instalados pelo Lefthook no `pnpm install` (habilitado em `allowBuilds` do
 `pnpm-workspace.yaml`):
 
-| Hook         | O que roda                                                   |
-| ------------ | ------------------------------------------------------------ |
-| `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `typecheck` |
-| `commit-msg` | `commitlint` (header até 50 caracteres, corpo até 100)       |
-| `pre-push`   | `check:ci`, `test` e `build` em paralelo                     |
+| Hook         | O que roda                                                                                                 |
+| ------------ | ---------------------------------------------------------------------------------------------------------- |
+| `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `scan:secrets --staged` quando Kingfisher está disponível |
+| `commit-msg` | `commitlint` (header até 50 caracteres, corpo até 100)                                                     |
+| `pre-push`   | `check:ci`, `typecheck`, `test:ci` e `build` em paralelo                                                   |
 
 O `pre-commit` é pulado durante `merge` e `rebase`. Em CI o Lefthook não instala
 os hooks.

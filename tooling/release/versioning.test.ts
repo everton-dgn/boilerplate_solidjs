@@ -72,6 +72,37 @@ describe('release versioning', () => {
     )
   })
 
+  it.each([
+    ['````', '```', '````'],
+    ['~~~~', '~~~', '~~~~'],
+    ['```', '~~~', '```'],
+    ['```', '```text', '````']
+  ])(
+    'preserves examples inside %s fences containing %s',
+    (open, inner, close) => {
+      const message = [
+        'fix: docs',
+        '',
+        open,
+        inner,
+        '',
+        'BREAKING CHANGE: example',
+        close
+      ].join('\n')
+      assert.equal(
+        planRelease({ ...base, commits: commits(message) })?.version,
+        '1.2.4'
+      )
+      assert.equal(
+        planRelease({
+          ...base,
+          commits: commits(`${message}\n\nBREAKING CHANGE: actual change`)
+        })?.version,
+        '2.0.0'
+      )
+    }
+  )
+
   it('skips documentation and release commits without a loop', () => {
     assert.equal(
       planRelease({

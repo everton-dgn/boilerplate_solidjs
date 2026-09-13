@@ -30,10 +30,12 @@ function hasBreakingFooter(lines: string[]): boolean {
   let fence = ''
   let footer = false
   for (const [index, line] of lines.entries()) {
-    const marker = /^\s*(?<fence>`{3,}|~{3,})/u.exec(line)?.groups?.fence?.[0]
+    const marker = /^\s*(?<fence>`{3,}|~{3,})/u.exec(line)?.groups?.fence
     if (marker) {
       if (!fence) fence = marker
-      else if (fence === marker) fence = ''
+      else if (marker.startsWith(fence) && line.trim() === marker) {
+        fence = ''
+      }
       continue
     }
     if (fence) continue
