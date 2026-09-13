@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.1.2 - 2026-09-13
+
+### Fixed
+
+- clean up published release branches safely (75eb879)
+
 ## 1.1.1 - 2026-09-13
 
 ### Fixed
