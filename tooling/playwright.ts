@@ -5,10 +5,17 @@ import { defineConfig, devices } from '@playwright/test'
 loadEnvFile(new URL('../.env.test', import.meta.url))
 
 const BASE_URL = env.BASE_URL_TEST
-const { HOST, PORT } = env
 
-if (!BASE_URL || !HOST || !PORT) {
-  throw new Error('.env.test must define BASE_URL_TEST, HOST and PORT')
+if (!BASE_URL) {
+  throw new Error('.env.test must define BASE_URL_TEST')
+}
+
+// BASE_URL_TEST é a única fonte de host e porta: o loadEnvFile preserva HOST ou
+// PORT já exportadas no shell, que subiriam o preview em outro endereço.
+const { hostname: HOST, port: PORT } = new URL(BASE_URL)
+
+if (!PORT) {
+  throw new Error('BASE_URL_TEST must include an explicit port')
 }
 const STARTUP_TIMEOUT = 120_000
 
@@ -63,14 +70,22 @@ const config = defineConfig({
     //   use: { ...devices['Pixel 10'], browserName: 'firefox' },
     // }
   ],
-  webServer: {
-    command: 'pnpm build && pnpm start --strictPort',
-    cwd: '..',
-    env: { HOST, PORT },
-    url: BASE_URL,
-    reuseExistingServer: false,
-    timeout: STARTUP_TIMEOUT
-  }
+  webServer: [
+    {
+      command: 'node tooling/testing/error-backend.ts',
+      cwd: '..',
+      url: 'http://127.0.0.1:4318/control',
+      reuseExistingServer: false
+    },
+    {
+      command: 'pnpm build --mode e2e && pnpm start --strictPort',
+      cwd: '..',
+      env: { HOST, PORT, NODE_ENV: 'production' },
+      url: BASE_URL,
+      reuseExistingServer: false,
+      timeout: STARTUP_TIMEOUT
+    }
+  ]
 })
 
 export default config

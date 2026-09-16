@@ -1,6 +1,7 @@
 import { env, loadEnvFile } from 'node:process'
 
 import solid from '@solidjs/vite-plugin'
+import { fileRoutes } from 'filesystem-routing/vite'
 import { nitro } from 'nitro/vite'
 import postcssPresetEnv from 'postcss-preset-env'
 import { FileSystemIconLoader } from 'unplugin-icons/loaders'
@@ -25,12 +26,19 @@ const shared = {
 const icons = () =>
   Icons({
     compiler: 'solid',
+    iconCustomizer(_collection, _icon, props) {
+      props['aria-hidden'] = 'true'
+    },
     customCollections: {
       'my-images': FileSystemIconLoader('./src/assets/images')
     }
   })
 
-const componentPlugins = () => [icons(), solid({ serverFunctions: true })]
+const componentPlugins = () => [
+  icons(),
+  solid({ serverFunctions: true }),
+  fileRoutes({ types: 'src/@types/routes.d.ts' })
+]
 
 const css = {
   postcss: {
@@ -39,7 +47,8 @@ const css = {
         stage: 3,
         autoprefixer: {},
         features: {
-          'custom-properties': true
+          'custom-properties': true,
+          'light-dark-function': true
         }
       })
     ]
@@ -64,6 +73,11 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    run: {
+      cache: {
+        scripts: true
+      }
+    },
     build: {
       rolldownOptions: {
         output: {
@@ -85,6 +99,11 @@ export default defineConfig(({ mode }) => {
               ssr: true,
               serverFunctions: true
             }),
+            fileRoutes(
+              mode === 'e2e'
+                ? { dir: 'src/tests/fixtures/e2e/routes' }
+                : { types: 'src/@types/routes.d.ts' }
+            ),
             nitro({ serverEntry: false, preset: 'vercel' })
           ],
     fmt,
@@ -155,7 +174,7 @@ export default defineConfig(({ mode }) => {
                 mode: 'retain-on-failure',
                 tracesDir: './test-results/browser-traces'
               },
-              // GitHub runners include Chrome; local runs use Playwright's Chromium.
+              // Os runners do GitHub têm Chrome; execuções locais usam o Chromium do Playwright.
               provider: playwright({
                 launchOptions: env.CI ? { channel: 'chrome' } : {}
               }),
