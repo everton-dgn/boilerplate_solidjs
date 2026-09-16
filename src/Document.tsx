@@ -1,17 +1,81 @@
-import { HydrationScript } from '@solidjs/web'
+import { getRequestEvent, HydrationScript, isServer } from '@solidjs/web'
 import type { ParentProps } from 'solid-js'
 
+import { SITE } from '@/constants/site.ts'
+import {
+  DARK_MEDIA_QUERY,
+  DEFAULT_THEME,
+  THEME_COLORS
+} from '@/constants/theme.ts'
+import { applyTheme } from '@/infra/adapters/applyTheme/index.ts'
+import { readTheme } from '@/infra/adapters/themeStorage/index.ts'
+
 import interMedium from './assets/fonts/inter-latin-ext-500-normal.woff2?url&no-inline'
+import interSemiBold from './assets/fonts/inter-latin-ext-600-normal.woff2?url&no-inline'
+import interBold from './assets/fonts/inter-latin-ext-700-normal.woff2?url&no-inline'
 
 export default function Document(props: ParentProps) {
+  const cookieHeader = isServer
+    ? (getRequestEvent()?.request.headers.get('cookie') ?? null)
+    : undefined
+  const theme = readTheme(cookieHeader) ?? DEFAULT_THEME
+  const explicitTheme = theme === 'system' ? undefined : theme
+
   return (
-    <html lang="pt-BR">
+    <html
+      lang="pt-BR"
+      class={explicitTheme}
+      style={explicitTheme ? { 'color-scheme': explicitTheme } : undefined}
+    >
       <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{SITE.title}</title>
+        <meta name="description" content={SITE.description} />
+        <meta name="author" content={SITE.author} />
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="pt_BR" />
+        <meta property="og:site_name" content={SITE.title} />
+        <meta property="og:title" content={SITE.title} />
+        <meta property="og:description" content={SITE.description} />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={SITE.title} />
+        <meta name="twitter:description" content={SITE.description} />
+        <meta
+          name="viewport"
+          content="minimum-scale=1, initial-scale=1, width=device-width"
+        />
+        <meta
+          name="format-detection"
+          content="telephone=no,email=no,address=no,date=no,url=no"
+        />
+        <meta
+          name="theme-color"
+          content={THEME_COLORS[explicitTheme ?? 'light']}
+        />
+        <script>
+          {`(() => {
+            const theme = ${JSON.stringify(theme)};
+            const dark = theme === 'dark' || (theme === 'system' && matchMedia(${JSON.stringify(DARK_MEDIA_QUERY)}).matches);
+            (${applyTheme.toString()})({ theme: dark ? 'dark' : 'light', color: dark ? ${JSON.stringify(THEME_COLORS.dark)} : ${JSON.stringify(THEME_COLORS.light)} });
+          })();`}
+        </script>
         <link
           rel="preload"
           href={interMedium}
+          as="font"
+          type="font/woff2"
+          crossorigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href={interSemiBold}
+          as="font"
+          type="font/woff2"
+          crossorigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href={interBold}
           as="font"
           type="font/woff2"
           crossorigin="anonymous"
@@ -28,7 +92,6 @@ export default function Document(props: ParentProps) {
           href="/favicon/apple-touch-icon.png"
           sizes="180x180"
         />
-        <title>Solid App</title>
         <HydrationScript />
       </head>
       <body>{props.children}</body>
