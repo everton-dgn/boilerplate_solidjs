@@ -31,6 +31,7 @@ export const fmt: NonNullable<UserConfig['fmt']> = {
   ignorePatterns: [
     'public/**',
     'src/assets/**',
+    'src/@types/routes.d.ts',
     '**/*.svg',
     '*.lock',
     'pnpm-lock.yaml',

@@ -11,7 +11,7 @@ const TEST_FILES = [
 ]
 
 export const lint: NonNullable<UserConfig['lint']> = {
-  ignorePatterns: ['public/**', 'src/assets/**'],
+  ignorePatterns: ['public/**', 'src/assets/**', 'src/@types/routes.d.ts'],
   categories: {
     correctness: 'off',
     nursery: 'off',
@@ -22,6 +22,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     suspicious: 'off'
   },
   jsPlugins: [
+    { name: 'project', specifier: './tooling/css-modules-plugin.ts' },
     { name: 'solid', specifier: 'eslint-plugin-solid' },
     { name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }
   ],
@@ -30,6 +31,22 @@ export const lint: NonNullable<UserConfig['lint']> = {
     typeCheck: true
   },
   overrides: [
+    {
+      files: ['src/**/*.test.{ts,tsx}', 'tooling/**/*.test.ts'],
+      rules: { 'unicorn/filename-case': 'off' }
+    },
+    {
+      // Assinaturas ditadas por terceiros: middleware do Nitro, callbacks de
+      // teste e hooks de plugin não aceitam um objeto no lugar dos parâmetros.
+      files: [
+        'src/**/*.test.{ts,tsx}',
+        'src/tests/**/*.{ts,tsx}',
+        'src/middleware.ts',
+        'tooling/**/*.ts',
+        'vite.config.ts'
+      ],
+      rules: { 'eslint/max-params': 'off' }
+    },
     {
       files: ['src/@types/icons.d.ts'],
       rules: {
@@ -45,7 +62,9 @@ export const lint: NonNullable<UserConfig['lint']> = {
     {
       files: ['src/@types/solid.d.ts'],
       rules: {
-        'import/no-unassigned-import': 'off'
+        'import/no-unassigned-import': 'off',
+        // O RequestEventLocals amplia a interface do framework por declaration merging.
+        'typescript/consistent-type-definitions': ['error', 'interface']
       }
     },
     {
@@ -86,13 +105,6 @@ export const lint: NonNullable<UserConfig['lint']> = {
       rules: {
         'node/callback-return': 'off'
       }
-    },
-    {
-      files: ['src/api.ts'],
-      rules: {
-        'eslint/require-await': 'off',
-        'typescript/require-await': 'off'
-      }
     }
   ],
   plugins: [
@@ -106,6 +118,9 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'vitest'
   ],
   rules: {
+    'project/css-modules-import': 'error',
+    'project/css-filename': 'error',
+    'project/test-filename': 'error',
     'eslint/accessor-pairs': 'error',
     'eslint/array-callback-return': 'error',
     'eslint/arrow-body-style': ['error', 'as-needed'],
@@ -146,7 +161,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
       { max: 200, skipBlankLines: true, skipComments: true }
     ],
     'eslint/max-nested-callbacks': ['warn', { max: 3 }],
-    'eslint/max-params': 'off',
+    'eslint/max-params': ['error', { max: 1 }],
     'eslint/max-statements': 'off',
     'eslint/new-cap': 'off',
     'eslint/no-alert': 'off',
@@ -238,7 +253,18 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'eslint/no-regex-spaces': 'error',
     'eslint/no-restricted-exports': 'error',
     'eslint/no-restricted-globals': 'error',
-    'eslint/no-restricted-imports': 'error',
+    'eslint/no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          {
+            regex: '^(\\.\\./){4,}',
+            message:
+              'Imports relativos podem subir no máximo três níveis. Use o alias @/ para caminhos mais distantes.'
+          }
+        ]
+      }
+    ],
     'eslint/no-restricted-properties': 'error',
     'eslint/no-return-assign': 'error',
     'eslint/no-script-url': 'error',
@@ -281,7 +307,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'eslint/no-useless-return': 'error',
     'eslint/no-var': 'error',
     'eslint/no-void': 'off',
-    'eslint/no-warning-comments': 'error',
+    'eslint/no-warning-comments': 'off',
     'eslint/no-with': 'error',
     'eslint/object-shorthand': 'error',
     'eslint/one-var': 'off',
@@ -325,7 +351,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'import/extensions': ['error', 'ignorePackages'],
     'import/first': 'error',
     'import/group-exports': 'off',
-    'import/max-dependencies': 'error',
+    'import/max-dependencies': 'off',
     'import/named': 'error',
     'import/namespace': 'error',
     'import/newline-after-import': 'error',
@@ -484,7 +510,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'typescript/consistent-indexed-object-style': 'error',
     'typescript/consistent-return': 'error',
     'typescript/consistent-type-assertions': 'error',
-    'typescript/consistent-type-definitions': 'error',
+    'typescript/consistent-type-definitions': ['error', 'type'],
     'typescript/consistent-type-exports': 'error',
     'typescript/consistent-type-imports': [
       'error',
@@ -761,8 +787,8 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'vitest/padding-around-after-all-blocks': 'error',
     'vitest/padding-around-test-blocks': 'error',
     'vitest/prefer-called-exactly-once-with': 'error',
+    // prefer-called-times contradiz esta regra: as duas juntas proibiriam as duas formas.
     'vitest/prefer-called-once': 'error',
-    'vitest/prefer-called-times': 'error',
     'vitest/prefer-called-with': 'error',
     'vitest/prefer-comparison-matcher': 'error',
     'vitest/prefer-describe-function-title': 'error',
