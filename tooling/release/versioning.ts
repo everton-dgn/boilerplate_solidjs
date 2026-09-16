@@ -1,15 +1,15 @@
-interface Commit {
+type Commit = {
   sha: string
   message: string
 }
 type Bump = 'major' | 'minor' | 'patch'
-interface Change {
+type Change = {
   bump: Bump
   section: string
   summary: string
   sha: string
 }
-interface ReleasePlan {
+type ReleasePlan = {
   version: string
   tag: string
   notes: string

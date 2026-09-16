@@ -18,14 +18,14 @@ export async function api<T>(
 ): Promise<T> {
   const args = ['api', path, '--method', method]
   if (payload !== undefined) args.push('--input', '-')
-  // oxlint-disable-next-line promise/avoid-new -- Bridge execFile stdin and its completion callback.
+  // oxlint-disable-next-line promise/avoid-new -- Faz a ponte entre o stdin do execFile e o callback de conclusão.
   const output = await new Promise<string>((resolve, reject) => {
     const child = execFile(
       'gh',
       args,
       { maxBuffer: MAX_OUTPUT_BYTES },
       (error, stdout) => {
-        // API errors can contain request data; do not echo payloads or tokens.
+        // Erros da API podem conter dados da requisição; não ecoe payloads nem tokens.
         if (error) {
           reject(
             new Error(
@@ -39,13 +39,13 @@ export async function api<T>(
       payload === undefined ? undefined : JSON.stringify(payload)
     )
   })
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Callers validate the identities and state used for mutations.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Quem chama valida as identidades e o estado usados nas mutações.
   return JSON.parse(output) as T
 }
 
 export async function optionalApi<T>(path: string): Promise<T | undefined> {
-  // Inspect HTTP status explicitly so authentication/network failures are never treated as absence.
-  // oxlint-disable-next-line promise/avoid-new -- HTTP 404 is carried in stdout even when execFile fails.
+  // Inspecione o status HTTP explicitamente para que falha de autenticação ou de rede nunca seja tratada como ausência.
+  // oxlint-disable-next-line promise/avoid-new -- O HTTP 404 vem no stdout mesmo quando o execFile falha.
   const output = await new Promise<string>((resolve, reject) => {
     execFile(
       'gh',
@@ -65,7 +65,7 @@ export async function optionalApi<T>(path: string): Promise<T | undefined> {
   if (!output) return undefined
   const separator = output.search(/\r?\n\r?\n/u)
   if (separator < 0) throw new Error('Missing GitHub HTTP response headers.')
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Callers validate mutation-relevant fields.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Quem chama valida os campos relevantes para a mutação.
   return JSON.parse(output.slice(separator).trim()) as T
 }
 
@@ -101,7 +101,7 @@ export function assertSourceRun(
   return requireSha(run.head_sha)
 }
 
-export interface PullRequest {
+export type PullRequest = {
   number: number
   state: string
   merged: boolean

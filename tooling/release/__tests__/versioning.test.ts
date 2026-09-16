@@ -1,4 +1,4 @@
-/* oxlint-disable vitest/no-import-node-test -- Release tests use the native Node.js runner. */
+/* oxlint-disable vitest/no-import-node-test -- Os testes de release usam o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
@@ -72,7 +72,7 @@ describe('release versioning', () => {
     )
   })
 
-  // oxlint-disable-next-line vitest/prefer-each -- node:test has no it.each API.
+  // oxlint-disable-next-line vitest/prefer-each -- O node:test não tem a API it.each.
   for (const [open, inner, close] of [
     ['````', '```', '````'],
     ['~~~~', '~~~', '~~~~'],

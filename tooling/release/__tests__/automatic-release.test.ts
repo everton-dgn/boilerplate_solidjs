@@ -1,4 +1,4 @@
-/* oxlint-disable vitest/no-import-node-test -- Release tests use the native Node.js runner. */
+/* oxlint-disable vitest/no-import-node-test -- Os testes de release usam o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { chmod, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -14,7 +14,7 @@ const SHA_LENGTH = 40
 const HEAD = 'b'.repeat(SHA_LENGTH)
 const script = path.resolve('tooling/release/automatic-release.ts')
 
-// The subprocess PATH contains only these fake commands. No live Git or GitHub is reachable.
+// O PATH do subprocesso contém só estes comandos falsos. Nenhum Git ou GitHub real fica acessível.
 const fake = String.raw`
 const fs = require('node:fs');
 const args = process.argv.slice(2);
@@ -71,7 +71,7 @@ if (process.argv[1].endsWith('/git')) {
   else if (endpoint === root + '/pulls/1') value = s.pr;
   else if (endpoint === root + '/pulls/1/merge') {
     if (body.merge_method !== 'merge' || body.sha !== head) throw Error('Unsafe merge');
-    // GitHub rejects a stale PR at the mutation boundary when strict checks apply.
+    // O GitHub rejeita um PR desatualizado na fronteira da mutação quando há strict checks.
     if (s.race && s.checked) { save(); process.exitCode=1; return; }
     s.merged = true; Object.assign(s.pr, {state:'closed', merged:true, merge_commit_sha:merge}); value = {merged:true,sha:merge};
   }
@@ -90,7 +90,7 @@ if (process.argv[1].endsWith('/git')) {
 }
 `
 
-interface State {
+type State = {
   calls: string[]
   failRelease?: boolean
   badRun?: boolean
@@ -125,11 +125,11 @@ async function fixture() {
   return {
     directory,
     async state(): Promise<State> {
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- State is written exclusively by this synthetic CLI.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- O estado é escrito exclusivamente por esta CLI sintética.
       return JSON.parse(await readFile(statePath, 'utf8')) as State
     },
     async patch(patch: Partial<State>) {
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Synthetic fixture state only.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Estado de fixture sintética apenas.
       const state = JSON.parse(await readFile(statePath, 'utf8')) as State
       await writeFile(statePath, JSON.stringify({ ...state, ...patch }))
     },
@@ -179,7 +179,7 @@ describe(
         await f.patch({ wrongTag: true })
         await assert.rejects(f.run('publish'), /another commit/u)
       } finally {
-        // Fixtures contain synthetic data only and remain in the OS temporary directory.
+        // As fixtures contêm só dados sintéticos e ficam no diretório temporário do sistema.
         assert.ok(f.directory.startsWith(tmpdir()))
       }
     })
@@ -219,7 +219,7 @@ describe(
           false
         )
       } finally {
-        // Fixtures contain synthetic data only and remain in the OS temporary directory.
+        // As fixtures contêm só dados sintéticos e ficam no diretório temporário do sistema.
         assert.ok(f.directory.startsWith(tmpdir()))
       }
     })
@@ -238,7 +238,7 @@ describe(
           false
         )
       } finally {
-        // Fixtures contain synthetic data only and remain in the OS temporary directory.
+        // As fixtures contêm só dados sintéticos e ficam no diretório temporário do sistema.
         assert.ok(f.directory.startsWith(tmpdir()))
       }
     })
