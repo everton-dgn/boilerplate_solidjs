@@ -28,6 +28,29 @@ type LintFixture = {
 }
 type Diagnostic = { filename: string; code: string; severity: string }
 type PolicyCase = { source: string; code: string }
+type FilenameMatch = { actual: string; expected: string }
+
+function matchesFilename({ actual, expected }: FilenameMatch): boolean {
+  return actual === expected || actual.endsWith(`/${expected}`)
+}
+
+test('compara caminhos relativos, absolutos e URLs dos diagnósticos', () => {
+  const expected = 'src/helpers/fetch.ts'
+  for (const actual of [
+    expected,
+    `/tmp/project/${expected}`,
+    `file:///tmp/project/${expected}`
+  ]) {
+    assert.ok(matchesFilename({ actual, expected }), actual)
+  }
+  for (const actual of [
+    `other-${expected}`,
+    `${expected}x`,
+    'src/helpers/other.ts'
+  ]) {
+    assert.equal(matchesFilename({ actual, expected }), false, actual)
+  }
+})
 
 function readDiagnostics(output: string): Diagnostic[] {
   const diagnostic = v.object({
@@ -185,9 +208,10 @@ test('a política rejeita desvios de acesso no parser real do Oxlint', context =
     assert.ok(
       diagnostics.some(
         diagnostic =>
-          diagnostic.filename.endsWith(
-            '/src/infra/server/protectServerOperation/index.ts'
-          ) &&
+          matchesFilename({
+            actual: diagnostic.filename,
+            expected: 'src/infra/server/protectServerOperation/index.ts'
+          }) &&
           diagnostic.code === code &&
           diagnostic.severity === 'error'
       ),
@@ -198,7 +222,10 @@ test('a política rejeita desvios de acesso no parser real do Oxlint', context =
     assert.ok(
       diagnostics.some(
         diagnostic =>
-          diagnostic.filename.endsWith(`/${filename}`) &&
+          matchesFilename({
+            actual: diagnostic.filename,
+            expected: filename
+          }) &&
           diagnostic.severity === 'error' &&
           /^eslint\(no-restricted-(?:globals|imports|properties)\)$/u.test(
             diagnostic.code
@@ -233,7 +260,10 @@ test('o lint completo aplica as novas regras com exceções restritas', context 
     assert.ok(
       diagnostics.some(
         diagnostic =>
-          diagnostic.filename.endsWith(`/${filename}`) &&
+          matchesFilename({
+            actual: diagnostic.filename,
+            expected: filename
+          }) &&
           diagnostic.code === code &&
           diagnostic.severity === 'error'
       ),
@@ -343,7 +373,10 @@ test('a política cobre todas as extensões de código sem ampliar privilégios'
     assert.ok(
       diagnostics.some(
         diagnostic =>
-          diagnostic.filename.endsWith(`/${filename}`) &&
+          matchesFilename({
+            actual: diagnostic.filename,
+            expected: filename
+          }) &&
           diagnostic.code === code &&
           diagnostic.severity === 'error'
       ),
