@@ -26,11 +26,22 @@ release. Add a tool name to select part of the graph. For example, run
 
 <!--VITE PLUS END-->
 
+## Documentação de dependências
+
+- Não repita números de versões de dependências em guias, instruções ou
+  comentários. Consulte `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`
+  e o workflow responsável por ferramentas instaladas no CI.
+- Documente o contrato, os limites e os comandos de validação. Ao atualizar
+  dependências, revise o comportamento e mantenha os números nos arquivos que
+  controlam a instalação.
+
 ## Nomes de arquivos e pastas de módulos
 
 - Quando um módulo exportar uma única função, componente ou classe, use o
   mesmo nome e capitalização no arquivo ou na pasta que contém seu `index`:
-  `makeSystemTheme/index.ts`, `Button/index.tsx` ou `readBackend.ts`.
+  `makeSystemTheme/index.ts`, `Button/index.tsx` ou `readBackend/index.ts`.
+  Arquivo solto fora de uma pasta `index` segue o kebab-case exigido por
+  `unicorn/filename-case`.
 - Módulos com várias exportações relacionadas são exceção. Use um nome que
   descreva a responsabilidade compartilhada, como `themeStorage` para
   `readTheme` e `saveTheme`. Quando houver uma exportação principal e funções
@@ -130,4 +141,58 @@ release. Add a tool name to select part of the graph. For example, run
 - Use nesting para estados e media queries de cada classe. As classes de
   variantes e tamanhos ficam no nível superior, fora da classe base.
 - Importe CSS Modules como `S`. O Stylelint exige snake_case em `src/**/*.css`;
-  valide mudanças com `pnpm lint:css` e `pnpm test:css`.
+  valide mudanças com `pnpm lint:css` e `pnpm test:tooling`.
+
+## Dependências entre camadas
+
+- Preserve `architecture/layer-imports` em `tooling/architecturePolicy/index.ts`.
+  `helpers`, `constants`, `@types`, `data` e `infra` não dependem de UI,
+  primitives, rotas ou entradas (`App`, `Document`, `router`, `middleware`).
+  Primitives globais não dependem de UI, rotas ou entradas; atoms não dependem
+  de molecules/organisms, e molecules não dependem de organisms.
+- Produção em `src` não importa testes, fixtures de `src/tests` ou `tooling`.
+  A exceção de testes vale como origem, inclusive para fixtures E2E.
+  Primitives colocalizadas pertencem à camada do componente que as contém.
+- Imports de tipo e reexportações também respeitam as camadas. Caminhos
+  calculados e outros carregadores exigem revisão; não contorne a política
+  com imports dinâmicos ou comentários de disable.
+- Ao criar camada ou alias, atualize a regra e seus testes. Use as APIs de
+  `vite-plus/lint/plugins` e `vite-plus/lint/plugins-dev`, sem instalar outra
+  cópia de Oxlint. Rode `pnpm test:tooling` e `pnpm check:ci`. Consulte a
+  matriz e os limites no README.
+
+## Erros no servidor e chamadas de backend
+
+- Antes de alterar backend, server functions ou tratamento SSR, leia
+  [docs/server-errors.md](docs/server-errors.md). Toda operação deve terminar em
+  dados públicos ou em um erro público novo antes de chegar ao Solid.
+- HTTP usa `requestJson`. SDK e banco exigem adapter com `server-only` e
+  `protectServerOperation({ run })` envolvendo leitura, validação e saída.
+  `allowControl` pertence somente ao registro global de server functions.
+- Use `createPublicError()`; somente `publicErrors` pode chamar
+  `markSafeError`. Nunca publique mensagem, causa, propriedades, corpo ou
+  headers de um erro upstream, inclusive dentro de um resultado.
+- O schema seleciona os campos públicos. A verificação estrutural do wrapper
+  não identifica dados confidenciais em strings. Não retorne erros, promises
+  aninhadas ou trabalho adiado sem contrato específico.
+- Mantenha o registro global e os sinais de controle do Solid. A proteção do
+  registro central cobre server functions; um fallback visual não protege o payload.
+  Os logs atuais são fixos e não recebem o objeto original.
+- Não registre erro original, headers, cookies, argumentos, corpos ou
+  credenciais. Logs detalhados exigem remoção de dados sensíveis definida antes.
+  O lint reserva `console` ao wrapper `protectServerOperation`, onde se usa
+  `console.error` diretamente. Acessos como `globalThis.console` continuam
+  proibidos. Preserve o argumento fixo coberto pelos testes.
+- Preserve as restrições de lint em `tooling/backendPolicy`: o módulo inteiro
+  de configuração do servidor pertence a `configureServerErrors`. Use imports
+  estáticos de `@solidjs/web` e seus subcaminhos, inclusive nos módulos
+  privilegiados. SDKs novos exigem restrição por pacote e exceção por adapter.
+  Revise fontes de import calculadas, templates dos outros pacotes e demais
+  limites do guia; não contorne o contrato com disable. Fixtures seguem
+  protegidas; as exceções de backend cobrem só testes e declarações de tipos.
+- Após mudar essa fronteira, rode `pnpm test:tooling`, os testes Node
+  pertinentes e `pnpm test:e2e src/tests/pages/BackendError`. Preserve no CI
+  a verificação do corpo completo em SSR inicial, streaming e chamada HTTP.
+- Em atualizações do Solid/plugin, siga o roteiro do guia. Só retire o wrapper
+  após testar o runtime publicado sem essa interceptação; uma issue fechada ou
+  commit integrado não comprova a correção na versão instalada.

@@ -54,9 +54,10 @@ merge se faltar a exigência de CI estrito. As versões de Node e Vite+ vêm do
 `package.json`; as dependências são instaladas com lockfile congelado.
 
 Os testes mantêm os projetos node, dom e browser. No CI, o provider usa o canal
-`chrome` disponível no runner `ubuntu-24.04`, sem baixar Chromium. Localmente,
-continua usando o Chromium gerenciado pelo Playwright. O checkout usa o SHA do
-evento ou o SHA explícito da chamada reutilizável.
+`chrome` disponível no runner definido no
+[workflow do CI](../../.github/workflows/ci.yml), sem baixar Chromium.
+Localmente, continua usando o Chromium gerenciado pelo Playwright. O checkout
+usa o SHA do evento ou o SHA explícito da chamada reutilizável.
 
 Novos PRs podem cancelar seu CI anterior. Pushes não cancelam o workflow em
 andamento, preservando o deploy. A release aceita somente a branch `main` no
@@ -73,10 +74,11 @@ somente em push na `main`. PRs e chamadas reutilizáveis usadas pela release
 validam o código sem publicar na Vercel.
 
 O job faz checkout do SHA validado, prepara Node e Vite+ com as versões do
-`package.json` e instala com `vp install --frozen-lockfile`. A CLI Vercel
-`59.11.7` carrega as configurações de produção, executa `vercel build --prod` e
-publica o resultado com `vercel deploy --prebuilt --prod`. O script `build` do
-projeto continua usando `vp build`.
+`package.json` e instala com `vp install --frozen-lockfile`. A CLI Vercel,
+selecionada no [workflow do CI](../../.github/workflows/ci.yml), carrega as
+configurações de produção, executa `vercel build --prod` e publica o resultado
+com `vercel deploy --prebuilt --prod`. O script `build` do projeto continua
+usando `vp build`.
 
 O GitHub precisa destas configurações em Settings > Secrets and variables >
 Actions:

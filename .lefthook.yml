@@ -39,3 +39,6 @@ pre-push:
 
           - name: test
             run: pnpm test:ci
+
+          - name: tooling
+            run: pnpm test:tooling

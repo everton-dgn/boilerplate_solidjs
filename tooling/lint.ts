@@ -1,5 +1,9 @@
 import type { UserConfig } from 'vite-plus'
 
+import backendPolicy, {
+  RELATIVE_IMPORT_RESTRICTION
+} from './backendPolicy/index.ts'
+
 const TEST_FILES = [
   '**/*.test.ts',
   '**/*.test.tsx',
@@ -23,6 +27,11 @@ export const lint: NonNullable<UserConfig['lint']> = {
   },
   jsPlugins: [
     { name: 'project', specifier: './tooling/css-modules-plugin.ts' },
+    { name: 'backend', specifier: './tooling/backendPolicy/plugin.ts' },
+    {
+      name: 'architecture',
+      specifier: './tooling/architecturePolicy/index.ts'
+    },
     { name: 'solid', specifier: 'eslint-plugin-solid' },
     { name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }
   ],
@@ -31,6 +40,20 @@ export const lint: NonNullable<UserConfig['lint']> = {
     typeCheck: true
   },
   overrides: [
+    ...backendPolicy,
+    {
+      files: [
+        'src/infra/server/**/index.ts',
+        'src/data/errorApi/publicErrors/index.ts'
+      ],
+      rules: {
+        'import/no-unassigned-import': ['error', { allow: ['server-only'] }]
+      }
+    },
+    {
+      files: ['src/tests/pages/BackendError/BackendError.e2e.test.ts'],
+      rules: { 'import/no-nodejs-modules': 'off' }
+    },
     {
       files: ['src/**/*.test.{ts,tsx}', 'tooling/**/*.test.ts'],
       rules: { 'unicorn/filename-case': 'off' }
@@ -77,9 +100,14 @@ export const lint: NonNullable<UserConfig['lint']> = {
       files: TEST_FILES,
       rules: {
         'eslint/no-empty': 'off',
-        'typescript/no-floating-promises': 'off',
-        'typescript/no-misused-promises': 'off',
         'vitest/require-hook': 'error'
+      }
+    },
+    {
+      files: ['**/*.{test,spec}.{ts,tsx}'],
+      rules: {
+        'typescript/no-floating-promises': 'off',
+        'typescript/no-misused-promises': 'off'
       }
     },
     {
@@ -118,6 +146,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'vitest'
   ],
   rules: {
+    'architecture/layer-imports': 'error',
     'project/css-modules-import': 'error',
     'project/css-filename': 'error',
     'project/test-filename': 'error',
@@ -256,13 +285,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'eslint/no-restricted-imports': [
       'error',
       {
-        patterns: [
-          {
-            regex: '^(\\.\\./){4,}',
-            message:
-              'Imports relativos podem subir no máximo três níveis. Use o alias @/ para caminhos mais distantes.'
-          }
-        ]
+        patterns: [RELATIVE_IMPORT_RESTRICTION]
       }
     ],
     'eslint/no-restricted-properties': 'error',
@@ -809,9 +832,11 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'vitest/prefer-strict-boolean-matchers': 'error',
     'vitest/prefer-strict-equal': 'error',
     'vitest/prefer-to-be': 'error',
-    'vitest/prefer-to-be-falsy': 'error',
+    // prefer-to-be-falsy/truthy exigem o oposto de prefer-strict-boolean-matchers;
+    // a comparação estrita prevalece.
+    'vitest/prefer-to-be-falsy': 'off',
     'vitest/prefer-to-be-object': 'error',
-    'vitest/prefer-to-be-truthy': 'error',
+    'vitest/prefer-to-be-truthy': 'off',
     'vitest/prefer-to-contain': 'error',
     'vitest/prefer-to-have-been-called-times': 'error',
     'vitest/prefer-to-have-length': 'error',

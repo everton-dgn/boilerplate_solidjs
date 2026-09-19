@@ -86,5 +86,5 @@ test('preserva foco visível no menu em alto contraste', async ({ page }) => {
   const option = page.getByRole('menuitemradio', { name: 'Claro', exact: true })
   await expect(option).toBeFocused()
   await expect(option).toHaveCSS('outline-style', 'solid')
-  await expect(option).toHaveCSS('outline-width', '2px')
+  await expect(option).toHaveCSS('outline-width', '3px')
 })

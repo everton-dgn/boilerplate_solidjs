@@ -49,7 +49,21 @@ vi.mock(import('virtual:file-routes'), async importOriginal => {
   return manifest
 })
 
+// TODO: Em desenvolvimento, o Errored do Solid registra no console o erro que a
+// boundary capturou quando o fallback não recebe
+// parâmetros. O teste fixa esse comportamento em vez de deixá-lo no stderr.
+function expectBoundaryReport(message: string): void {
+  const { calls } = vi.mocked(console.error).mock
+  expect(calls).toHaveLength(1)
+  const reported: unknown = calls[0]?.[0]
+  expect(reported).toBeInstanceOf(Error)
+  expect(reported).toHaveProperty('message', message)
+}
+
 describe('feedback de erro da aplicação', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+  afterEach(() => vi.restoreAllMocks())
+
   it.each([
     ['provider', checkProvider],
     ['topbar', checkTopbar],
@@ -88,6 +102,7 @@ describe('feedback de erro da aplicação', () => {
       expect(reload.textContent).toBe('Recarregar página')
       expect(reload.href).toBe(globalThis.location.href)
       expect(reload.target).toBe('_self')
+      expectBoundaryReport('Detalhe interno que não deve aparecer')
     }
   )
 })

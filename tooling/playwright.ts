@@ -56,7 +56,13 @@ const config = defineConfig({
     //   name: 'webkit',
     //   use: { ...devices['Desktop Safari'] },
     // },
-    { name: 'chromium', use: devices['Desktop Chrome'] }
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: env.CI ? 'chrome' : undefined
+      }
+    }
     // {
     //   name: 'Mobile Chrome',
     //   use: { ...devices['Pixel 10'] },

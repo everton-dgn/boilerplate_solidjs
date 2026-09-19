@@ -27,6 +27,10 @@ const config = {
     'src/App.tsx!',
     'src/Document.tsx!',
     'src/middleware.ts!',
+    'src/infra/server/configureServerErrors/index.ts!',
+    // API de transporte do boilerplate; o consumidor atual está na fixture E2E.
+    'src/infra/server/requestJson/index.ts!',
+    'tooling/testing/server-only.ts',
     'env.ts!',
     'tooling/testing/error-backend.ts'
   ],
