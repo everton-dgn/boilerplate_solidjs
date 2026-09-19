@@ -82,7 +82,13 @@ project/
 │   │   └── organisms/      # ErrorFallback
 │   ├── constants/          # Constantes compartilhadas do tema
 │   ├── helpers/            # Validação pura da preferência de tema
-│   ├── infra/adapters/     # Persistência e comunicação entre abas
+│   ├── infra/
+│   │   ├── adapters/       # Persistência e comunicação entre abas
+│   │   └── server/         # Transporte e proteção de operações no servidor
+│   │       ├── configureServerErrors/   # Registro global de server functions
+│   │       ├── protectServerOperation/  # Proteção das operações e da saída
+│   │       ├── publicErrors/            # Criação de erros públicos seguros
+│   │       └── requestJson/             # HTTP e validação do JSON de sucesso
 │   ├── primitives/         # createTheme: estado e ciclo de vida reativos
 │   ├── theme/              # Somente CSS
 │   │   ├── globalStyles.css # Entrada global, reset e acessibilidade
@@ -91,6 +97,8 @@ project/
 │   └── routes/
 │       ├── index.tsx        # Página inicial
 │       └── [...404].tsx     # Página 404 para caminhos desconhecidos
+├── docs/
+│   └── server-errors.md     # Contrato de erros e chamadas de backend
 ├── tooling/
 │   ├── fmt.ts               # Configuração do Oxfmt
 │   ├── lint.ts              # Configuração do Oxlint
@@ -120,10 +128,13 @@ Tipos, estilos específicos, testes e primitives usados por um único componente
 ficam junto dele, incluindo `Button/styles.module.css`. As utilidades globais
 ficam em `theme/class/`, e `theme/tokens/` concentra os valores visuais
 consumidos pelo CSS. `helpers/` contém funções puras compartilhadas;
-`infra/adapters/` isola as APIs do navegador. O prefixo `make` identifica
-utilitários sem estado reativo próprio, como `makeThemeChannel`, que devolve seu
-descarte. O prefixo `create` identifica primitives com estado ou efeitos
-reativos, como `createTheme`.
+`infra/adapters/` isola as APIs do navegador, e `infra/server/` concentra o
+transporte de backend, a proteção das operações e a criação de erros públicos.
+Os módulos de servidor usam `server-only`; consulte o
+[contrato de erros no servidor](docs/server-errors.md). O prefixo `make`
+identifica utilitários sem estado reativo próprio, como `makeThemeChannel`, que
+devolve seu descarte. O prefixo `create` identifica primitives com estado ou
+efeitos reativos, como `createTheme`.
 
 Imports de CSS Modules usam o nome `S`, por exemplo,
 `import S from './styles.module.css'`. A regra local
@@ -233,10 +244,12 @@ violações bloqueiam a validação até serem corrigidas.
 
 Quando houver consumidores de formatação de datas, moedas ou números, coloque
 essas funções em `data/formatters/`, com testes junto delas. Normalização de
-erros de domínio de APIs fica em `data/errorApi/`. A criação de erros públicos
-exclusivos do servidor fica em `infra/server/publicErrors/`, junto da proteção
-das operações de backend. Requisições e persistência continuam em `infra/`.
-Validação de tema continua em `helpers/isTheme/`.
+erros de domínio de APIs, quando necessária, fica em `data/errorApi/`. Essas
+pastas de `data/` são convenções para novos consumidores; atualmente não contêm
+módulos. A criação de erros públicos exclusivos do servidor fica em
+[`infra/server/publicErrors/`](src/infra/server/publicErrors/index.ts), junto da
+proteção das operações de backend. Requisições e persistência continuam em
+`infra/`. Validação de tema continua em `helpers/isTheme/`.
 
 ### Falhas de backend e recuperação
 

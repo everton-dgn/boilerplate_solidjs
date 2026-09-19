@@ -169,9 +169,13 @@ release. Add a tool name to select part of the graph. For example, run
 - HTTP usa `requestJson`. SDK e banco exigem adapter com `server-only` e
   `protectServerOperation({ run })` envolvendo leitura, validação e saída.
   `allowControl` pertence somente ao registro global de server functions.
-- Use `createPublicError()`; somente `publicErrors` pode chamar
-  `markSafeError`. Nunca publique mensagem, causa, propriedades, corpo ou
-  headers de um erro upstream, inclusive dentro de um resultado.
+- Mantenha transporte, proteção de operações e criação de erros públicos em
+  `src/infra/server/`. `data/errorApi/` fica reservado à normalização de erros
+  de domínio, quando houver consumidores.
+- Importe `createPublicError()` de `@/infra/server/publicErrors/index.ts`;
+  somente esse módulo pode chamar `markSafeError`. Nunca publique mensagem,
+  causa, propriedades, corpo ou headers de um erro upstream, inclusive dentro
+  de um resultado.
 - O schema seleciona os campos públicos. A verificação estrutural do wrapper
   não identifica dados confidenciais em strings. Não retorne erros, promises
   aninhadas ou trabalho adiado sem contrato específico.

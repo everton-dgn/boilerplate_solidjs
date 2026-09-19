@@ -6,6 +6,12 @@ por IA. O contrato abaixo deve ser preservado nas atualizações de dependência
 
 ## Proteção atual
 
+Os módulos desta proteção ficam em `src/infra/server/`. `publicErrors` pertence
+a essa camada porque depende de `server-only` e da autorização de serialização
+do Solid. `data/errorApi/` fica reservado à normalização de erros de domínio,
+quando houver consumidores. Novos imports de erros públicos usam
+`@/infra/server/publicErrors/index.ts`.
+
 O [registro central](../src/infra/server/configureServerErrors/index.ts) usa
 `configureServerFunctionsServer({ wrapInvocation })`. O
 [Vite](../vite.config.ts) o carrega por `serverFunctions.configure`, cobrindo
