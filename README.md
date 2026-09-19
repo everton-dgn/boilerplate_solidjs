@@ -233,8 +233,10 @@ violações bloqueiam a validação até serem corrigidas.
 
 Quando houver consumidores de formatação de datas, moedas ou números, coloque
 essas funções em `data/formatters/`, com testes junto delas. Normalização de
-erros de domínio de APIs fica em `data/errorApi/`; requisições e persistência
-continuam em `infra/`. Validação de tema continua em `helpers/isTheme/`.
+erros de domínio de APIs fica em `data/errorApi/`. A criação de erros públicos
+exclusivos do servidor fica em `infra/server/publicErrors/`, junto da proteção
+das operações de backend. Requisições e persistência continuam em `infra/`.
+Validação de tema continua em `helpers/isTheme/`.
 
 ### Falhas de backend e recuperação
 

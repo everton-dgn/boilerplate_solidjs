@@ -26,7 +26,7 @@ test('a política distingue dependências permitidas e inversões de camada', ()
     valid: [
       {
         filename: 'src/infra/server/operation/index.ts',
-        code: 'import { createPublicError } from "@/data/errorApi/publicErrors/index.ts"'
+        code: 'import { createPublicError } from "@/infra/server/publicErrors/index.ts"'
       },
       {
         filename: 'src/components/atoms/Provider/index.tsx',

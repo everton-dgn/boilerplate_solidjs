@@ -1,7 +1,7 @@
 import { redirect, reload, respond } from '@solidjs/web'
 import { NotReadyError } from 'solid-js'
 
-import { createPublicError } from '@/data/errorApi/publicErrors/index.ts'
+import { createPublicError } from '@/infra/server/publicErrors/index.ts'
 
 import { protectServerOperation } from '../index.ts'
 

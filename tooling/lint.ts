@@ -42,10 +42,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
   overrides: [
     ...backendPolicy,
     {
-      files: [
-        'src/infra/server/**/index.ts',
-        'src/data/errorApi/publicErrors/index.ts'
-      ],
+      files: ['src/infra/server/**/index.ts'],
       rules: {
         'import/no-unassigned-import': ['error', { allow: ['server-only'] }]
       }

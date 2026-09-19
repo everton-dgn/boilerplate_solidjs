@@ -5,7 +5,7 @@ import { NotReadyError } from 'solid-js'
 import {
   createPublicError,
   isPublicError
-} from '@/data/errorApi/publicErrors/index.ts'
+} from '@/infra/server/publicErrors/index.ts'
 
 type Operation<T> = { run: () => T; allowControl?: boolean }
 type DataCheck = { value: unknown; path?: Set<object>; done?: WeakSet<object> }

@@ -1,6 +1,6 @@
 import * as v from 'valibot'
 
-import { createPublicError } from '@/data/errorApi/publicErrors/index.ts'
+import { createPublicError } from '@/infra/server/publicErrors/index.ts'
 import { requestJson } from '@/infra/server/requestJson/index.ts'
 
 type BackendData = { message: string }

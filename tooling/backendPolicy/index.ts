@@ -100,7 +100,7 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
     })
   },
   {
-    files: ['src/data/errorApi/publicErrors/index.ts'],
+    files: ['src/infra/server/publicErrors/index.ts'],
     rules: imports([...SERVER_CONFIG, ...TRANSPORTS])
   },
   {

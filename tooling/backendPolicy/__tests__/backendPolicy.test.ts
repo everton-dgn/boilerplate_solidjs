@@ -170,7 +170,7 @@ test('a política rejeita desvios de acesso no parser real do Oxlint', context =
     'src/infra/server/protectServerOperation/index.ts':
       'fetch("/private"); globalThis.console.warn("PRIVATE")',
     'src/infra/server/requestJson/index.ts': 'new WebSocket("wss://private")',
-    'src/data/errorApi/publicErrors/index.ts':
+    'src/infra/server/publicErrors/index.ts':
       'import "@solidjs/web/server-functions"',
     'src/infra/server/configureServerErrors/index.ts':
       'import { markSafeError } from "@solidjs/web"'
@@ -221,7 +221,7 @@ test('o lint completo aplica as novas regras com exceções restritas', context 
     'src/infra/server/protectServerOperation/index.ts':
       'console.warn("PRIVATE")',
     'src/infra/server/requestJson/index.ts': 'console.error("PRIVATE")',
-    'src/data/errorApi/publicErrors/index.ts': 'void import("@solidjs/web")'
+    'src/infra/server/publicErrors/index.ts': 'void import("@solidjs/web")'
   }
   const result = lintFixture({ sources, full: true, context })
   assert.equal(result.status, 1, result.stderr)
@@ -248,7 +248,7 @@ test('a política preserva APIs públicas, testes e logging do tooling', context
     sources: {
       'src/infra/server/requestJson/index.ts':
         'export const request = () => fetch("/private")',
-      'src/data/errorApi/publicErrors/index.ts':
+      'src/infra/server/publicErrors/index.ts':
         'import { markSafeError } from "@solidjs/web"; export const error = markSafeError(new Error("public"))',
       'src/infra/server/configureServerErrors/index.ts':
         'import { configureServerFunctionsServer } from "@solidjs/web/server-functions/server"; import { handleServerFunctionRequest } from "@solidjs/web/server-functions"; configureServerFunctionsServer({}); export { handleServerFunctionRequest }',
@@ -331,7 +331,7 @@ test('a política cobre todas as extensões de código sem ampliar privilégios'
   }
   fixtures['src/infra/server/requestJson/index.mts'] = cases.fetch
   fixtures['src/infra/server/protectServerOperation/index.mts'] = cases.console
-  fixtures['src/data/errorApi/publicErrors/index.mts'] = cases.safe
+  fixtures['src/infra/server/publicErrors/index.mts'] = cases.safe
   fixtures['src/infra/server/configureServerErrors/index.mts'] = cases.config
   const sources = Object.fromEntries(
     Object.entries(fixtures).map(([filename, { source }]) => [filename, source])

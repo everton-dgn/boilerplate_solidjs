@@ -15,7 +15,7 @@ server functions chamadas diretamente no SSR e pelo transporte HTTP.
   HTTP, lê o JSON de sucesso e aplica o schema de saída dentro da proteção.
 - [protectServerOperation](../src/infra/server/protectServerOperation/index.ts)
   captura lançamentos e rejeições e verifica a estrutura do resultado.
-- [publicErrors](../src/data/errorApi/publicErrors/index.ts) cria um erro novo
+- [publicErrors](../src/infra/server/publicErrors/index.ts) cria um erro novo
   com a mensagem fixa "Não foi possível concluir a solicitação.".
 - Os módulos importam `server-only`; o plugin impede que entrem no bundle
   cliente. O alias de testes existe somente no projeto Node.
