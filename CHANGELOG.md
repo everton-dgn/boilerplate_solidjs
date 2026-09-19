@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 1.2.0 - 2026-09-19
+
+### Added
+
+- protect server operations from public exposure (c9dddaa)
+- integrate file routes and error recovery (fd929f2)
+- add themed components and document shell (0d5d810)
+- add persistent synchronized theme state (4266c2d)
+
+### Fixed
+
+- accept relative paths in lint diagnostics (7ff3d62)
+- align router and dynamic rendering with solid runtime (f263b10)
+- update solid-js and related packages to v2.0.0-rc.9 (de5c779)
+
 ## 1.1.2 - 2026-09-13
 
 ### Fixed
