@@ -1,11 +1,8 @@
 import { env, loadEnvFile } from 'node:process'
+import { fileURLToPath } from 'node:url'
 
-import solid from '@solidjs/vite-plugin'
-import { nitro } from 'nitro/vite'
 import postcssPresetEnv from 'postcss-preset-env'
-import { FileSystemIconLoader } from 'unplugin-icons/loaders'
-import Icons from 'unplugin-icons/vite'
-import { defineConfig, loadEnv } from 'vite-plus'
+import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 import { fmt } from './tooling/fmt.ts'
@@ -22,15 +19,70 @@ const shared = {
   exclude: ['**/node_modules/**', '**/playwright/**', '**/*.e2e.test.{ts,tsx}']
 }
 
-const icons = () =>
+// Os plugins do Vite só são importados quando o Vite roda de fato. vp lint,
+// fmt, check, staged e o tooling do editor leem a config sem pagar esse custo
+// nem receber os logs de inicialização do Nitro no stdout.
+const loadPluginModules = async () => {
+  const [solidModule, routing, nitroModule, iconsModule, loaders] =
+    await Promise.all([
+      import('@solidjs/vite-plugin'),
+      import('filesystem-routing/vite'),
+      import('nitro/vite'),
+      import('unplugin-icons/vite'),
+      import('unplugin-icons/loaders')
+    ])
+  return {
+    solid: solidModule.default,
+    fileRoutes: routing.fileRoutes,
+    nitro: nitroModule.nitro,
+    Icons: iconsModule.default,
+    FileSystemIconLoader: loaders.FileSystemIconLoader
+  }
+}
+
+type PluginModules = Awaited<ReturnType<typeof loadPluginModules>>
+
+const icons = ({ Icons, FileSystemIconLoader }: PluginModules) =>
   Icons({
     compiler: 'solid',
+    iconCustomizer(_collection, _icon, props) {
+      props['aria-hidden'] = 'true'
+    },
     customCollections: {
       'my-images': FileSystemIconLoader('./src/assets/images')
     }
   })
 
-const componentPlugins = () => [icons(), solid({ serverFunctions: true })]
+const componentPlugins = () =>
+  lazyPlugins(async () => {
+    const modules = await loadPluginModules()
+    return [
+      icons(modules),
+      modules.solid({ serverFunctions: true }),
+      modules.fileRoutes({ types: 'src/@types/routes.d.ts' })
+    ]
+  })
+
+const appPlugins = (mode: string) =>
+  lazyPlugins(async () => {
+    const modules = await loadPluginModules()
+    return [
+      icons(modules),
+      modules.solid({
+        start: { middleware: './src/middleware.ts' },
+        ssr: true,
+        serverFunctions: {
+          configure: './src/infra/server/configureServerErrors/index.ts'
+        }
+      }),
+      modules.fileRoutes(
+        mode === 'e2e'
+          ? { dir: 'src/tests/fixtures/e2e/routes' }
+          : { types: 'src/@types/routes.d.ts' }
+      ),
+      modules.nitro({ serverEntry: false, preset: 'vercel' })
+    ]
+  })
 
 const css = {
   postcss: {
@@ -39,7 +91,8 @@ const css = {
         stage: 3,
         autoprefixer: {},
         features: {
-          'custom-properties': true
+          'custom-properties': true,
+          'light-dark-function': true
         }
       })
     ]
@@ -64,6 +117,11 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    run: {
+      cache: {
+        scripts: true
+      }
+    },
     build: {
       rolldownOptions: {
         output: {
@@ -75,18 +133,7 @@ export default defineConfig(({ mode }) => {
     resolve,
     server,
     preview: server,
-    plugins:
-      mode === 'test'
-        ? []
-        : [
-            icons(),
-            solid({
-              start: { middleware: './src/middleware.ts' },
-              ssr: true,
-              serverFunctions: true
-            }),
-            nitro({ serverEntry: false, preset: 'vercel' })
-          ],
+    plugins: mode === 'test' ? [] : appPlugins(mode),
     fmt,
     lint,
     test: {
@@ -104,6 +151,8 @@ export default defineConfig(({ mode }) => {
         include: ['src/**/*.{ts,tsx}'],
         exclude: [
           'src/**/*.d.ts',
+          'src/**/{constants,types,@types}/**',
+          'src/**/{constants,types}.{ts,tsx}',
           'src/**/*.test.{ts,tsx}',
           'src/tests/**',
           'src/App.tsx',
@@ -114,7 +163,14 @@ export default defineConfig(({ mode }) => {
       reporters: ['verbose'],
       projects: [
         {
-          resolve,
+          resolve: {
+            ...resolve,
+            alias: {
+              'server-only': fileURLToPath(
+                new URL('tooling/testing/server-only.ts', import.meta.url)
+              )
+            }
+          },
           test: {
             ...shared,
             env: testEnv,
@@ -155,7 +211,7 @@ export default defineConfig(({ mode }) => {
                 mode: 'retain-on-failure',
                 tracesDir: './test-results/browser-traces'
               },
-              // GitHub runners include Chrome; local runs use Playwright's Chromium.
+              // Os runners do GitHub têm Chrome; execuções locais usam o Chromium do Playwright.
               provider: playwright({
                 launchOptions: env.CI ? { channel: 'chrome' } : {}
               }),

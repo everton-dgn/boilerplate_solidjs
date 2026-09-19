@@ -1,0 +1,17 @@
+:root {
+  --ring-focus: 0 0 0 3px var(--color-focus);
+  --ring-focus-destructive: 0 0 0 3px var(--color-destructive);
+  --shadow-sm: 0 10px 24px -6px oklch(0 0 0 / 25%);
+  --shadow-lg: 0 24px 48px -12px oklch(0 0 0 / 35%);
+  --shadow-md: 0 12px 28px -10px oklch(0 0 0 / 35%);
+  --shadow-xs: 0 1px 2px
+    light-dark(
+      color-mix(in oklab, var(--color-foreground) 10%, transparent),
+      transparent
+    );
+  --ring-decorative: 0 0 0 4px
+    light-dark(
+      color-mix(in oklab, var(--color-foreground) 10%, transparent),
+      color-mix(in oklab, var(--color-foreground) 5%, transparent)
+    );
+}

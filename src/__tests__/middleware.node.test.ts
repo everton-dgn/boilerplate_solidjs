@@ -68,6 +68,7 @@ describe('middlewares de requisição', () => {
   })
 
   it('continua a requisição mesmo sem contexto', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(vi.fn())
     const response = new Response()
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
     const requestContext = middleware[REQUEST_CONTEXT_INDEX]
@@ -77,5 +78,8 @@ describe('middlewares de requisição', () => {
       requestContext(new Request('http://localhost'), next)
     ).resolves.toBe(response)
     expect(next).toHaveBeenCalledExactlyOnceWith()
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining('RequestEvent is missing.')
+    )
   })
 })

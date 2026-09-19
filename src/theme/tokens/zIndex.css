@@ -1,0 +1,5 @@
+:root {
+  --z-index-topbar: 50;
+  --z-index-dropdown: 50;
+  --z-index-toast: 100;
+}

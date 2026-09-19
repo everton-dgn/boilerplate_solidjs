@@ -1,21 +1,26 @@
+import { Errored } from 'solid-js'
+
 import { Provider } from '@/components/atoms/Provider/index.tsx'
-import { Nav } from '@/components/molecules/Nav/index.tsx'
+import { Topbar } from '@/components/molecules/Topbar/index.tsx'
+import { ErrorFallback } from '@/components/organisms/ErrorFallback/index.tsx'
 
 import { Router } from './router.ts'
 
-import './style.css'
+import './theme/globalStyles.css'
 
 export default function App() {
   return (
-    <Provider>
-      <Router>
-        {props => (
-          <main class="layout">
-            <Nav />
-            {props.children}
-          </main>
-        )}
-      </Router>
-    </Provider>
+    <Errored fallback={() => <ErrorFallback kind="runtime" />}>
+      <Provider>
+        <Router>
+          {props => (
+            <>
+              <Topbar />
+              {props.children}
+            </>
+          )}
+        </Router>
+      </Provider>
+    </Errored>
   )
 }

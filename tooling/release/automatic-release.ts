@@ -29,22 +29,22 @@ const MERGE_PARENT_COUNT = 2
 const GITHUB_ACTIONS_APP_ID = 15_368
 const REQUIRED_CHECK = 'CI required'
 
-interface GitCommit {
+type GitCommit = {
   sha: string
   tree: { sha: string }
   parents: { sha: string }[]
   author: { date: string }
 }
-interface GitReference {
+type GitReference = {
   object: { sha: string; type: string }
 }
-interface Context {
+type Context = {
   repository: string
   source: string
   root: string
   date: string
 }
-interface Prepared {
+type Prepared = {
   plan: ReleasePlan
   branch: string
   head: string
@@ -97,7 +97,7 @@ async function mainSha(ctx: Context): Promise<string> {
 }
 
 async function createPlan(ctx: Context): Promise<ReleasePlan | undefined> {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- The manifest is read from the CI-validated commit; version is validated by planRelease.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- O manifest é lido do commit validado pela CI; a versão é validada pelo planRelease.
   const manifest = JSON.parse(
     await git('show', `${ctx.source}:package.json`)
   ) as { version: string }
@@ -148,7 +148,7 @@ async function expectedFiles(
   ctx: Context,
   plan: ReleasePlan
 ): Promise<{ path: string; content: string }[]> {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- The manifest is read from the CI-validated commit; version is validated by planRelease.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- O manifest é lido do commit validado pela CI; a versão é validada pelo planRelease.
   const manifest = JSON.parse(
     await git('show', `${ctx.source}:package.json`)
   ) as Record<string, unknown>
@@ -185,7 +185,7 @@ async function validateHead(
   const files = changed.split('\n')
   assertReleaseFiles(files)
   for (const expected of await expectedFiles(ctx, plan)) {
-    // git show output is trimmed by command; normalize only the final newline.
+    // A saída do git show já vem aparada pelo comando; normalize só a quebra de linha final.
     if (
       (await git('show', `${head}:${expected.path}`)) !==
       expected.content.trimEnd()
@@ -300,7 +300,7 @@ async function publish(ctx: Context, prepared: Prepared): Promise<void> {
   }
   let merge = prepared.pr.merge_commit_sha
   if (!prepared.pr.merged) {
-    // Strict checks reject a concurrent base update inside GitHub's merge operation.
+    // Os strict checks rejeitam atualização concorrente da base dentro da operação de merge do GitHub.
     const rules = await api<
       {
         type: string
@@ -332,8 +332,8 @@ async function publish(ctx: Context, prepared: Prepared): Promise<void> {
         'Main advanced during release validation; refusing merge.'
       )
     }
-    // The reusable CI belongs to the caller run; attach its success to the tested SHA.
-    // This mode is invoked only after the validate job succeeds.
+    // A CI reutilizável pertence à execução chamadora; vincule o sucesso dela ao SHA testado.
+    // Este modo é invocado só depois que o job validate passa.
     await api(`${ctx.root}/check-runs`, 'POST', {
       name: REQUIRED_CHECK,
       head_sha: prepared.head,
@@ -419,7 +419,7 @@ async function publish(ctx: Context, prepared: Prepared): Promise<void> {
       if (remaining.object.sha !== prepared.head) {
         throw new Error('Release branch advanced; refusing cleanup.')
       }
-      // The lease checks the expected SHA atomically, including updates after the read.
+      // O lease confere o SHA esperado de forma atômica, inclusive atualizações após a leitura.
       await command('git', [
         '-c',
         'credential.helper=',

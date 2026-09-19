@@ -1,0 +1,25 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-badge-border);
+  border-radius: var(--radius-9999);
+  background: var(--color-badge-background);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-500);
+  line-height: 16px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-badge-foreground);
+  box-shadow: var(--shadow-xs);
+  backdrop-filter: blur(8px);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-9999);
+  background: var(--color-badge-dot);
+  box-shadow: var(--ring-decorative);
+}

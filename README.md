@@ -1,10 +1,10 @@
-<h1 align="center">SolidJS 2 + Vite+ Boilerplate</h1>
+<h1 align="center">SolidJS + Vite+ Boilerplate</h1>
 
 <br />
 
 # :memo: Sobre o Projeto
 
-Boilerplate enxuto para iniciar projetos com SolidJS 2, renderização no servidor
+Boilerplate enxuto para iniciar projetos com SolidJS, renderização no servidor
 (SSR), server functions e Vite+ como toolchain única. A base traz roteamento,
 middleware, servidor Nitro e a esteira de qualidade (formatação, lint, tipos,
 testes e hooks de git), sem aplicação de produto pronta.
@@ -17,12 +17,12 @@ testes e hooks de git), sem aplicação de produto pronta.
 
 | Categoria         | Tecnologia                                                |
 | ----------------- | --------------------------------------------------------- |
-| Framework         | SolidJS 2 (`solid-js` + `@solidjs/web`)                   |
-| Roteamento        | `@solidjs/router` 2                                       |
+| Framework         | SolidJS (`solid-js` + `@solidjs/web`)                     |
+| Roteamento        | `@solidjs/router`                                         |
 | Renderização      | SSR com hidratação e server functions                     |
-| Linguagem         | TypeScript 7 (modo estrito, `erasableSyntaxOnly`)         |
+| Linguagem         | TypeScript (modo estrito, `erasableSyntaxOnly`)           |
 | Toolchain         | Vite+ (`vp`): Vite, Rolldown, Vitest, Oxlint, Oxfmt       |
-| Servidor          | Nitro 3, com preset Vercel e preview local                |
+| Servidor          | Nitro, com preset Vercel e preview local                  |
 | Testes            | Vitest com projetos `node`, `dom` (happy-dom) e `browser` |
 | Testes no browser | Vitest Browser Mode + Playwright (Chromium)               |
 | Lint              | Oxlint (type-aware) + `eslint-plugin-solid`               |
@@ -36,15 +36,19 @@ testes e hooks de git), sem aplicação de produto pronta.
 # :triangular_flag_on_post: Funcionalidades
 
 - [x] SSR com hidratação no cliente e `Document` próprio (`src/Document.tsx`)
-- [x] Server functions com `'use server'` e acesso ao evento da requisição
+- [x] Toolchain configurada para server functions com `'use server'`
 - [x] Middleware de servidor: `server-timing`, cabeçalhos de segurança e
       `requestId` por requisição
 - [x] Roteamento com lazy loading e rota 404 respondendo com status HTTP correto
+- [x] Layout responsivo com Topbar, página inicial e páginas de erro
+- [x] Botão, menu de tema e componentes de página com CSS Modules
+- [x] Tema claro, escuro ou do sistema (padrão), aplicado antes da hidratação,
+      com persistência e sincronização entre abas
 - [x] Nitro para servir estáticos e SSR, com preset Vercel e preview local
 - [x] Três projetos de teste separados por sufixo de arquivo:
       `*.node.test.{ts,tsx}`, `*.dom.test.{ts,tsx}` e `*.browser.test.{ts,tsx}`
 - [x] Lint type-aware com regras de acessibilidade (`jsx-a11y`), promessas,
-      imports e regras específicas do Solid 2
+      imports e regras específicas do Solid
 - [x] TypeScript com configurações para aplicação e ferramentas Node, com cache
       incremental
 - [x] Hooks de git: format + lint no commit, typecheck, testes e build no push
@@ -64,26 +68,37 @@ project/
 │   ├── favicon/             # Ícones SVG, ICO e PNG
 │   └── robots.txt           # Regras de rastreamento
 ├── src/
-│   ├── @types/              # Declarações de tipos do Solid e dos ícones
+│   ├── @types/              # Tipos compartilhados, Solid e ícones
 │   ├── App.tsx              # Componente raiz: Router + layout
 │   ├── Document.tsx         # Shell HTML do SSR (head, HydrationScript)
-│   ├── api.ts               # Server functions ('use server')
 │   ├── middleware.ts        # Middlewares do servidor
-│   ├── router.ts            # Definição das rotas (createRouter)
-│   ├── style.css            # Estilos globais
+│   ├── router.ts            # Integração do manifesto de rotas por arquivo
 │   ├── __tests__/           # Testes dos módulos da raiz de src
-│   │   ├── api.node.test.ts        # Teste da server function (projeto node)
+│   │   ├── App.dom.test.tsx       # Erro real da rota e recuperação pelo App
 │   │   └── middleware.node.test.ts # Teste dos middlewares (projeto node)
 │   ├── components/          # Componentes por atomic design
-│   │   ├── atoms/Provider/  # Provider que envolve a aplicação
-│   │   └── molecules/Nav/   # Menu de navegação (usa Router.paths)
+│   │   ├── atoms/           # Button, PageBadge, menu e tema
+│   │   ├── molecules/      # Topbar
+│   │   └── organisms/      # ErrorFallback
+│   ├── constants/          # Constantes compartilhadas do tema
+│   ├── helpers/            # Validação pura da preferência de tema
+│   ├── infra/
+│   │   ├── adapters/       # Persistência e comunicação entre abas
+│   │   └── server/         # Transporte e proteção de operações no servidor
+│   │       ├── configureServerErrors/   # Registro global de server functions
+│   │       ├── protectServerOperation/  # Proteção das operações e da saída
+│   │       ├── publicErrors/            # Criação de erros públicos seguros
+│   │       └── requestJson/             # HTTP e validação do JSON de sucesso
+│   ├── primitives/         # createTheme: estado e ciclo de vida reativos
+│   ├── theme/              # Somente CSS
+│   │   ├── globalStyles.css # Entrada global, reset e acessibilidade
+│   │   ├── class/          # utilities, animation e index.css
+│   │   └── tokens/         # colors, fonts, grids, radius, shadows, sizes, zIndex
 │   └── routes/
 │       ├── index.tsx        # Página inicial
-│       ├── not-found.tsx    # Página 404
-│       └── __tests__/       # Testes das rotas
-│           ├── home.dom.test.tsx      # Teste em happy-dom
-│           ├── home.browser.test.tsx  # Teste em Chromium real
-│           └── not-found.browser.test.tsx
+│       └── [...404].tsx     # Página 404 para caminhos desconhecidos
+├── docs/
+│   └── server-errors.md     # Contrato de erros e chamadas de backend
 ├── tooling/
 │   ├── fmt.ts               # Configuração do Oxfmt
 │   ├── lint.ts              # Configuração do Oxlint
@@ -96,6 +111,191 @@ project/
 ├── pnpm-workspace.yaml      # Catálogo de versões e builds permitidos
 └── AGENTS.md                # Instruções do Vite+ para agentes
 ```
+
+As páginas em `src/routes` usam `export default` e são descobertas pelo
+`filesystem-routing`. `index.tsx` define `/`, `[id].tsx` define um parâmetro
+dinâmico e `[...404].tsx` captura caminhos desconhecidos. O `export const route`
+define opções como `preload`, usado pelo fallback para responder com HTTP 404.
+Componentes colocalizados podem ficar em pastas `components` dentro de `routes`:
+use exportações nomeadas para que eles não sejam registrados como páginas. Não é
+necessário editar `src/router.ts` ao adicionar uma página.
+
+O plugin gera `src/@types/routes.d.ts` com os caminhos tipados durante o build
+ou desenvolvimento. Mantenha essa declaração versionada e atualizada ao mudar as
+rotas, para permitir typecheck antes de iniciar o Vite.
+
+Tipos, estilos específicos, testes e primitives usados por um único componente
+ficam junto dele, incluindo `Button/styles.module.css`. As utilidades globais
+ficam em `theme/class/`, e `theme/tokens/` concentra os valores visuais
+consumidos pelo CSS. `helpers/` contém funções puras compartilhadas;
+`infra/adapters/` isola as APIs do navegador, e `infra/server/` concentra o
+transporte de backend, a proteção das operações e a criação de erros públicos.
+Os módulos de servidor usam `server-only`; consulte o
+[contrato de erros no servidor](docs/server-errors.md). O prefixo `make`
+identifica utilitários sem estado reativo próprio, como `makeThemeChannel`, que
+devolve seu descarte. O prefixo `create` identifica primitives com estado ou
+efeitos reativos, como `createTheme`.
+
+Imports de CSS Modules usam o nome `S`, por exemplo,
+`import S from './styles.module.css'`. A regra local
+`project/css-modules-import` do lint exige esse formato.
+
+### Dependências entre camadas
+
+`architecture/layer-imports`, em `tooling/architecturePolicy/index.ts`, verifica
+as dependências diretas de imports e reexportações pelos caminhos locais. As
+restrições são:
+
+| Origem                                                     | Dependências proibidas                                       |
+| ---------------------------------------------------------- | ------------------------------------------------------------ |
+| `helpers`, `constants`, `@types`, `data`, `infra`, `theme` | `primitives`, `components`, `routes` e entradas da aplicação |
+| `primitives`                                               | `components`, `routes` e entradas da aplicação               |
+| `components/atoms`                                         | `components/molecules` e `components/organisms`              |
+| `components/molecules`                                     | `components/organisms`                                       |
+| Qualquer módulo de produção em `src`                       | Testes, fixtures de `src/tests` e `tooling`                  |
+
+As entradas são `App`, `Document`, `router` e `middleware`. A classificação
+parte da raiz de `src`: primitives colocalizadas dentro de um componente
+continuam na camada desse componente. Testes (`*.test.*`, `*.spec.*`,
+`__tests__` e `src/tests`) podem importar as camadas que verificam. A declaração
+gerada `src/@types/routes.d.ts` continua excluída do lint.
+
+Nos diagnósticos, `base` identifica as seis pastas da primeira linha, `entry`
+identifica as entradas e `source` os demais módulos de `src`.
+
+A regra normaliza `@/`, `/src/` e caminhos relativos. Verifica reexportações,
+imports só de tipo e `import()` com string ou template sem interpolação. Pacotes
+externos, módulos virtuais e caminhos calculados não são resolvidos. Cada
+declaração é verificada no arquivo que a contém, sem seguir a cadeia de módulos
+importados. `import.meta.glob` e outros carregadores exigem revisão. Ao criar
+uma camada ou alias, atualize a classificação e os testes. O lint de camadas não
+substitui o contrato de [erros de servidor](docs/server-errors.md).
+
+A implementação usa `defineRule` e `definePlugin` de `vite-plus/lint/plugins`,
+com `RuleTester` de `vite-plus/lint/plugins-dev`, sem dependência adicional.
+Execute os comandos a partir da raiz do projeto. `pnpm check:ci` verifica o
+código atual; `pnpm test:tooling` testa a política, seu registro no lint e as
+restrições de backend. Os dois comandos rodam no CI.
+
+### Regras de CSS
+
+Execute `pnpm lint:css` para verificar todos os arquivos CSS de `src/`. O
+comando faz parte de `pnpm lint` e `pnpm check:ci`. O pre-push e o CI executam
+essa verificação. O pre-commit usa apenas `vp check --fix` nos arquivos staged,
+sem executar o lint de CSS. `vp lint` e `vp check` chamados diretamente
+continuam sendo os comandos internos do Vite+.
+
+- Classes de todo o projeto usam snake_case, como `.home_link` e `.sr_only`.
+  Nomes de uma palavra, como `.btn` e `.page`, continuam válidos.
+- Componentes com variantes e tamanhos usam classes independentes da classe
+  base, com os prefixos `variant_` e `size_`, como `.variant_default` e
+  `.size_sm`. Concatene o prefixo com o valor da prop no acesso ao CSS Module,
+  sem mapas de constantes. Use nesting para estados e media queries de cada
+  classe.
+- Tokens usam nomes em kebab-case, como `--color-primary-hover`. A regra
+  `custom-property-no-missing-var-function` detecta a ausência de `var()` para
+  tokens declarados no mesmo arquivo. Nas propriedades protegidas pelo plugin de
+  tokens, valores sem `var()` também são rejeitados.
+- Seletores e media queries inválidos, seletores duplicados no mesmo contexto e
+  etapas duplicadas em `@keyframes` geram erro.
+- Nomes e valores desconhecidos em media features, operadores sem os espaços
+  obrigatórios em `calc()` e `@import` em posição inválida geram erro.
+- Fora de `src/theme/`, `color-mix()` e `light-dark()` são proibidos.
+  `stylelint-declaration-strict-value` exige tokens nas propriedades de cor,
+  `background`, `fill`, `stroke`, sombras, `font-size`, `font-weight`, `z-index`
+  e `border-radius` (incluindo cantos físicos e lógicos), com análise das
+  abreviações suportadas pelo plugin. Funções locais não são liberadas;
+  gradientes compartilhados ficam nos tokens. Valores como `transparent`,
+  `currentColor`, `inherit`, `none` e `auto` são permitidos. O tema pode definir
+  os valores e manter as cores de sistema usadas no reset de alto contraste. O
+  plugin não escolhe tokens nem aplica correções automáticas. Sua análise de
+  abreviações é experimental e não cobre toda a sintaxe CSS.
+- Propriedades, valores, unidades, cores hexadecimais, pseudoclasses e at-rules
+  desconhecidos geram erro. `:global` e `:local` não são permitidos; os estilos
+  globais ficam em `src/theme/`.
+- Declarações duplicadas e abreviações que sobrescrevem propriedades anteriores
+  geram erro. Fallbacks consecutivos com sintaxes diferentes são permitidos.
+- Nomes de animação devem ter `@keyframes` no próprio arquivo ou nas referências
+  compartilhadas, incluindo `src/theme/class/animation.css`.
+- `no-unknown-custom-properties` rejeita `var(--token)` sem definição no próprio
+  arquivo ou em `src/theme/tokens/**/*.css`. Por exemplo, `var(--backgroud)`
+  gera erro; `var(--color-background)` é reconhecido. A regra nativa aceita
+  variáveis desconhecidas com fallback, como `var(--opcional, red)`. As
+  referências compartilhadas usam `referenceFiles`, recurso experimental do
+  Stylelint.
+- Fora de `src/theme/`, inclusive nas rotas, o nome obrigatório é
+  `styles.module.css`. Em `src/theme/`, use nomes como `colors.css` e
+  `zIndex.css`.
+- O limite é de dois níveis de nesting dentro de uma regra. O Stylelint
+  desconsidera at-rules na raiz ao contar essa profundidade.
+- `stylelint-use-nesting` aponta seletores e media queries adjacentes que podem
+  ser aninhados. Essa regra não encontra toda oportunidade de nesting entre
+  blocos distantes. Os comandos do projeto não aplicam correção automática de
+  CSS, para preservar a ordem da cascata.
+
+A regra `project/css-filename` do plugin local do Oxlint valida os nomes dos
+arquivos CSS referenciados por imports e reexportações em JS/TS. O comando
+`lint:css` reutiliza essa validação para todos os arquivos CSS em `src/`,
+inclusive aqueles sem imports em JS/TS.
+
+`pnpm test:tooling` verifica o comportamento dos verificadores com casos em
+memória e roda nos hooks e no CI. O lint do CSS real continua automático, e suas
+violações bloqueiam a validação até serem corrigidas.
+
+Quando houver consumidores de formatação de datas, moedas ou números, coloque
+essas funções em `data/formatters/`, com testes junto delas. Normalização de
+erros de domínio de APIs, quando necessária, fica em `data/errorApi/`. Essas
+pastas de `data/` são convenções para novos consumidores; atualmente não contêm
+módulos. A criação de erros públicos exclusivos do servidor fica em
+[`infra/server/publicErrors/`](src/infra/server/publicErrors/index.ts), junto da
+proteção das operações de backend. Requisições e persistência continuam em
+`infra/`. Validação de tema continua em `helpers/isTheme/`.
+
+### Falhas de backend e recuperação
+
+`App` usa um `Errored` global, que substitui a aplicação e o cabeçalho pelo
+fallback. A chamada atual está na fixture E2E `readBackend`, protegida por
+`requestJson` e pelo registro central de server functions. Antes de criar uma
+integração, leia [o contrato de erros no servidor](docs/server-errors.md): ele
+define a saída pública, os limites do lint e a retirada futura do wrapper.
+
+O link "Recarregar página" preserva a URL e funciona sem JavaScript. Ele refaz o
+carregamento inicial; ações posteriores precisam ser repetidas. O `query` cuida
+do cache e pressupõe uma server function com saída pública validada:
+
+```tsx
+const getBackend = query(readBackend, 'backend')
+
+export default function Page() {
+  const data = createMemo(() => getBackend('example'))
+  return <h1>{data().message}</h1>
+}
+```
+
+O registro central protege server functions no SSR e no HTTP. Exceções de render
+fora dessas funções ainda dependem do runtime. O E2E verifica o payload e tolera
+somente a mensagem pública fixa repetida durante a hidratação. Após o envio
+inicial do streaming, o status HTTP pode permanecer 200.
+
+O tema começa em `system`. O cookie `app-theme` guarda a preferência por um ano,
+com `Path=/`, `SameSite=Lax` e `Secure` em HTTPS, restrito ao host atual. O
+`Document` lê esse cookie na requisição e entrega o tema explícito no HTML,
+mesmo sem JavaScript. O script diretamente no `head` resolve a preferência do
+sistema antes da hidratação, e `Provider` mantém uma instância de estado por
+árvore. O seletor aplica a escolha imediatamente, antes de tentar persistir o
+cookie. `BroadcastChannel` sincroniza abas da mesma origem; ao recuperar foco,
+ficar visível ou receber `pageshow`, a aba relê o cookie. Sem o canal, a
+sincronização acontece nesses eventos. Se o cookie não puder ser gravado, a
+escolha fica em memória e ainda pode ser propagada pelo canal. Ela é preservada
+ao retornar à aba enquanto o cookie não mudar e é perdida ao recarregar. O tema
+não usa `localStorage`. `infra/adapters/themeStorage/` lê e grava o cookie,
+`infra/adapters/applyTheme/` aplica o tema no DOM,
+`infra/adapters/makeBroadcastChannel/` encapsula o canal entre abas para
+qualquer domínio, `infra/adapters/makeThemeChannel/` concentra a regra de tema
+sobre esse canal, `infra/adapters/makeSystemTheme/` observa a preferência do
+sistema e `@types/theme.ts` define os tipos compartilhados, mantendo `theme/` só
+com CSS. As cores usam `light-dark()` com `color-scheme`, para definir cada par
+uma vez e seguir o sistema também quando JavaScript está desabilitado.
 
 <br />
 
@@ -159,9 +359,8 @@ plataforma de hospedagem; o comando `preview` é destinado à conferência local
 
 O Nitro usa `preset: 'vercel'` no `vite.config.ts` e gera a função SSR e os
 estáticos em `.vercel/output/`. O plugin do Solid gera a entrada SSR, que o
-Nitro usa diretamente. O `@solidjs/web` a partir da versão `2.0.0-rc.8` corrige
-a compatibilidade das requisições de server functions com Nitro/srvx,
-dispensando o adaptador manual.
+Nitro usa diretamente. As requisições de server functions usam a integração
+nativa entre Solid e Nitro/srvx.
 
 Para gerar o artefato da Vercel:
 
@@ -170,14 +369,14 @@ pnpm build
 ```
 
 Esse comando gera `.vercel/output/`, incluindo estáticos e a função SSR com
-runtime Node 24. O `vercel.json` define esse comando como build do projeto. Na
+runtime Node. O `vercel.json` define esse comando como build do projeto. Na
 Vercel, importe o repositório e deixe o diretório de saída sem override manual
 para usar a Build Output API. Gerar o artefato localmente não publica a
 aplicação.
 
-O Nitro está fixado na versão beta declarada em `package.json`. Ao atualizá-lo,
-valide o build Vercel, o preview local e os E2E. Os diretórios gerados
-`.output/`, `.nitro/` e `.vercel/` são ignorados pelo Git.
+O Nitro é definido no [package.json](package.json). Ao atualizá-lo, valide o
+build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
+`.nitro/` e `.vercel/` são ignorados pelo Git.
 
 <br />
 
@@ -196,12 +395,12 @@ valide o build Vercel, o preview local e os E2E. Os diretórios gerados
 | `pnpm check:ci`             | Formatação + lint sem alterar arquivos          |
 | `pnpm check:fix`            | Formatação + lint corrigindo o que for possível |
 | `pnpm test`                 | Todos os projetos de teste da aplicação         |
-| `pnpm test:release`         | Testes dos scripts de release, execução manual  |
+| `pnpm test:tooling`         | Testes de `tooling/` com `node:test`            |
 | `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)       |
 | `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)      |
 | `pnpm test:browser:install` | Baixar o Chromium do Playwright                 |
 | `pnpm test:watch`           | Testes em modo de observação                    |
-| `pnpm validate`             | typecheck + check:ci + test + build             |
+| `pnpm validate`             | typecheck + check:ci + test + tooling + build   |
 | `pnpm commitlint`           | Validar mensagem de commit                      |
 
 Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
@@ -215,17 +414,23 @@ podem divergir, então confira o `package.json` antes de rodar direto.
 # :test_tube: Testes
 
 Os arquivos de teste ficam em pastas `__tests__` ao lado do código que exercitam
-(`src/__tests__/`, `src/routes/__tests__/`, `tooling/release/__tests__/`). Os
-testes E2E são a exceção e vivem em `src/tests/pages/`, fora dos projetos do
-Vitest.
+(`src/__tests__/`, pastas dos módulos, `tooling/release/__tests__/`). Os testes
+E2E são a exceção e vivem em `src/tests/pages/`, fora dos projetos do Vitest.
+
+Teste regras e resultados observáveis: recuperação após erro, navegação,
+seleção, persistência e sincronização. Componentes de apresentação simples não
+precisam de suíte própria para conferir montagem, textos estáticos, classes ou o
+funcionamento nativo de botões. Escolha o ambiente que cobre o comportamento e
+evite repetir o mesmo cenário em outro nível.
 
 O `vite.config.ts` define três projetos do Vitest, escolhidos pelo sufixo do
 arquivo:
 
-Os testes de `tooling/release/__tests__/` usam o executor nativo `node:test`,
-sem configuração adicional, e rodam somente com `pnpm test:release`. Execute
-esse comando ao alterar os scripts de release. Essa suíte não participa dos
-comandos gerais de teste, cobertura, UI, watch, `validate`, hooks ou CI.
+Os testes em `tooling/**/__tests__/` usam o executor nativo `node:test`, sem
+configuração adicional, e rodam com `pnpm test:tooling`. Um único glob cobre
+todos os módulos, então um módulo novo não exige script próprio. Essa suíte roda
+em `validate`, no `pre-push` e no CI, mas fica fora dos comandos do Vitest:
+teste, cobertura, UI e watch.
 
 | Sufixo                    | Ambiente      | Uso                                         |
 | ------------------------- | ------------- | ------------------------------------------- |
@@ -242,13 +447,13 @@ Importe o CSS no teste quando precisar validar estilos.
 A configuração compartilhada limpa o histórico de mocks entre testes e exclui
 arquivos E2E, `node_modules` e `playwright`. `passWithNoTests: false` faz a
 execução falhar quando nenhum teste é encontrado. Os projetos declaram suas
-opções sem `extends`, pois no Vitest 4.1 a herança da configuração raiz exige
-`extends: true`.
+opções compartilhadas explicitamente, sem herdar a configuração raiz por
+`extends`.
 
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
-`vite-plus/prefer-vite-plus-imports` bloqueia o import direto). Server functions
-são testadas com `provideRequestEvent` de `@solidjs/web/storage`, como em
-`src/__tests__/api.node.test.ts`.
+`vite-plus/prefer-vite-plus-imports` bloqueia o import direto). O contexto de
+requisição dos middlewares é testado com `provideRequestEvent` de
+`@solidjs/web/storage` em `src/__tests__/middleware.node.test.ts`.
 
 <br />
 
@@ -275,14 +480,14 @@ import SolidLogo from '~icons/my-images/solid'
 Adicione arquivos `.svg` nessa pasta e importe pelo nome, sem extensão. As cores
 originais são preservadas. PNG, JPEG e WebP continuam sendo imagens comuns.
 `src/@types/icons.d.ts` declara os componentes com os tipos de `@solidjs/web`
-para Solid 2, pois os tipos fornecidos pelo plugin ainda usam a API do Solid 1.
+para manter os ícones alinhados à API usada pelo projeto.
 
 O
 [SVG do Solid vem do template oficial do Vite](https://github.com/vitejs/vite/blob/main/packages/create-vite/template-solid/src/assets/solid.svg).
 
 Os ícones prontos usam a coleção `@iconify-json/hugeicons` pelo mesmo plugin. O
-botão "Chamar o servidor" demonstra
-`import IconServer from '~icons/hugeicons/server'`. Apenas os ícones importados
+seletor de tema usa, por exemplo,
+`import IconSun from '~icons/hugeicons/sun-01'`. Apenas os ícones importados
 entram no build.
 
 ## Testes da aplicação completa
@@ -290,8 +495,21 @@ entram no build.
 `pnpm test:e2e` executa os testes em `src/tests/pages/*.e2e.test.ts` com
 Chromium. O Playwright gera o build e inicia o servidor de produção em
 `http://127.0.0.1:4317`, encerrando-o ao terminar. A porta precisa estar livre.
-Os cenários cobrem a página inicial, hidratação do contador, chamada ao servidor
-e resposta 404 com navegação de volta ao início.
+Os cenários cobrem a página inicial, hidratação do seletor de tema, teclado,
+persistência e sincronização entre abas, cores sem JavaScript, layout e resposta
+404 com navegação de volta ao início. Também cobrem a confidencialidade de erros
+do servidor: HTTP 500 de um backend local, exceção após a leitura, `Error`
+dentro do resultado, erro público e sucesso, cada um em SSR inicial, chamada
+pelo navegador e streaming, além de recarregamento ainda com falha, recuperação
+após o backend voltar e isolamento do bundle cliente. O SSR inicial também é
+verificado com JavaScript desativado. O detalhe está em
+[docs/server-errors.md](docs/server-errors.md); o CI executa a suíte inteira.
+
+O build E2E usa `--mode e2e` com otimizações de produção e acrescenta a página
+de teste pelo diretório `src/tests/fixtures/e2e/routes/`. O backend simulado
+escuta somente em `127.0.0.1:4318` e é iniciado e encerrado pelo Playwright. O
+build normal (`pnpm build`) usa apenas `src/routes/` e não inclui essa página
+nem o backend simulado. As portas 4317 e 4318 precisam estar livres.
 
 Use `pnpm test:e2e:ui` para abrir a interface interativa do Playwright. Com
 `CI=true`, os E2E usam um único worker; localmente, mantêm o paralelismo padrão.
@@ -314,7 +532,7 @@ Instalados pelo Lefthook no `pnpm install` (habilitado em `allowBuilds` do
 | ------------ | ---------------------------------------------------------------------------------------------------------- |
 | `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `scan:secrets --staged` quando Kingfisher está disponível |
 | `commit-msg` | `commitlint` (header até 50 caracteres, corpo até 100)                                                     |
-| `pre-push`   | `check:ci`, `typecheck`, `test:ci` e `build` em paralelo                                                   |
+| `pre-push`   | `check:ci`, `typecheck` e `test:ci` em paralelo                                                            |
 
 O `pre-commit` é pulado durante `merge` e `rebase`. Em CI o Lefthook não instala
 os hooks.
@@ -325,9 +543,9 @@ os hooks.
 
 # :rotating_light: Considerações Importantes
 
-- SolidJS 2, `@solidjs/router` 2 e `@solidjs/vite-plugin` estão em versões
-  pré-lançamento (`rc` e `next`). As versões são fixadas sem `^` (`savePrefix`
-  vazio) para evitar quebras silenciosas.
+- As versões de dependências são fixadas sem `^` (`savePrefix` vazio) para
+  evitar quebras silenciosas. Consulte os arquivos de dependências para saber
+  quais estão instaladas.
 - `vite` e `vitest` vêm do catálogo em `pnpm-workspace.yaml`; `vite` resolve
   para o core do Vite+. Atualize os dois lá, não no `package.json`.
 - Commits devem seguir Conventional Commits.

@@ -1,0 +1,11 @@
+:root {
+  --width-hero: 768px;
+  --width-heading: 672px;
+  --width-description: 576px;
+  --width-dialog: 512px;
+  --page-padding: 16px;
+
+  @media (min-width: 640px) {
+    --page-padding: 24px;
+  }
+}

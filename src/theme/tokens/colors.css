@@ -1,0 +1,112 @@
+:root {
+  color-scheme: light dark;
+
+  --color-background: light-dark(oklch(1 0 0), oklch(0.141 0.005 285.823));
+  --color-foreground: light-dark(oklch(0.141 0.005 285.823), oklch(0.985 0 0));
+  --color-card: light-dark(oklch(1 0 0), oklch(0.21 0.006 285.885));
+  --color-card-foreground: light-dark(
+    oklch(0.141 0.005 285.823),
+    oklch(0.985 0 0)
+  );
+  --color-popover: light-dark(oklch(1 0 0), oklch(0.21 0.006 285.885));
+  --color-popover-foreground: light-dark(
+    oklch(0.141 0.005 285.823),
+    oklch(0.985 0 0)
+  );
+  --color-primary: light-dark(
+    oklch(0.21 0.006 285.885),
+    oklch(0.92 0.004 286.32)
+  );
+  --color-primary-foreground: light-dark(
+    oklch(0.985 0 0),
+    oklch(0.21 0.006 285.885)
+  );
+  --color-secondary: light-dark(
+    oklch(0.967 0.001 286.375),
+    oklch(0.274 0.006 286.033)
+  );
+  --color-secondary-foreground: light-dark(
+    oklch(0.21 0.006 285.885),
+    oklch(0.985 0 0)
+  );
+  --color-muted: light-dark(
+    oklch(0.967 0.001 286.375),
+    oklch(0.274 0.006 286.033)
+  );
+  --color-muted-foreground: light-dark(
+    oklch(0.552 0.016 285.938),
+    oklch(0.705 0.015 286.067)
+  );
+  --color-accent: light-dark(
+    oklch(0.967 0.001 286.375),
+    oklch(0.274 0.006 286.033)
+  );
+  --color-accent-foreground: light-dark(
+    oklch(0.21 0.006 285.885),
+    oklch(0.985 0 0)
+  );
+  --color-destructive: light-dark(
+    oklch(0.577 0.245 27.325),
+    oklch(0.704 0.191 22.216)
+  );
+  --color-border: light-dark(oklch(0.92 0.004 286.32), oklch(1 0 0 / 10%));
+  --color-input: light-dark(oklch(0.92 0.004 286.32), oklch(1 0 0 / 15%));
+  --color-focus: oklch(0.605 0.208 256.184 / 0.8);
+  --color-white: oklch(1 0 0);
+  --color-overlay: oklch(0 0 0 / 55%);
+  --color-success: oklch(0.62 0.16 150);
+  --color-info: oklch(0.62 0.15 250);
+  --color-warning: oklch(0.72 0.16 75);
+  --color-primary-hover: color-mix(
+    in oklab,
+    var(--color-primary) 90%,
+    transparent
+  );
+  --color-secondary-hover: color-mix(
+    in oklab,
+    var(--color-secondary) 80%,
+    transparent
+  );
+  --color-destructive-hover: color-mix(
+    in oklab,
+    var(--color-destructive) 90%,
+    transparent
+  );
+  --color-page-tint: color-mix(in oklab, var(--color-muted) 40%, transparent);
+  --gradient-page: linear-gradient(
+    to bottom,
+    var(--color-page-tint),
+    var(--color-background),
+    var(--color-background)
+  );
+  --color-page-glow: color-mix(in oklab, var(--color-primary) 5%, transparent);
+  --color-topbar-background: color-mix(
+    in oklab,
+    var(--color-background) 80%,
+    transparent
+  );
+  --color-badge-border: light-dark(
+    color-mix(in oklab, var(--color-foreground) 15%, transparent),
+    color-mix(in oklab, var(--color-foreground) 10%, transparent)
+  );
+  --color-badge-background: light-dark(
+    color-mix(in oklab, var(--color-background) 90%, transparent),
+    color-mix(in oklab, var(--color-muted) 50%, transparent)
+  );
+  --color-badge-foreground: light-dark(
+    var(--color-foreground),
+    color-mix(in oklab, var(--color-foreground) 70%, transparent)
+  );
+  --color-badge-dot: light-dark(
+    var(--color-foreground),
+    color-mix(in oklab, var(--color-foreground) 60%, transparent)
+  );
+
+  &.light {
+    color-scheme: light;
+  }
+
+  &.dark {
+    color-scheme: dark;
+  }
+}

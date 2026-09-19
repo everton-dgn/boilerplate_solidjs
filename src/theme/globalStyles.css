@@ -1,0 +1,165 @@
+@import './tokens/index.css';
+@import './class/index.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  font: var(--font-weight-500) 62.5%/1.5 var(--font-family);
+  font-synthesis: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  scroll-behavior: smooth;
+  scrollbar-color: var(--color-muted-foreground) transparent;
+}
+
+/* scrollbar-color é herdada e cobre todo container sozinha.
+   scrollbar-width não é, então precisa do universal. */
+* {
+  scrollbar-width: thin;
+}
+
+body {
+  font-size: var(--font-size-16);
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  margin: 0;
+  isolation: isolate;
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: var(--font-weight-600);
+}
+
+:where(ul, ol, dl, dd, figure, blockquote, fieldset, pre, hr) {
+  margin: 0;
+}
+
+:where(ul, ol) {
+  padding-inline-start: 0;
+}
+
+/* Leading fluido: quanto maior a fonte, menor o ratio.
+   16px -> 24px, 36px -> 44px, 60px -> 68px. */
+:where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  li,
+  dd,
+  dt,
+  blockquote,
+  figcaption,
+  label,
+  button,
+  input,
+  select,
+  textarea
+) {
+  line-height: calc(1em + 0.8rem);
+}
+
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+a {
+  color: var(--color-foreground);
+  text-decoration: none;
+}
+
+/* Anuncia o limite do destaque para leitor de tela, que ignora
+   a cor de fundo do mark. Texto fica fora do fluxo visual. */
+mark {
+  position: relative;
+
+  &::before,
+  &::after {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(100%);
+    content: ' [início do texto destacado] ';
+  }
+
+  &::after {
+    content: ' [fim do texto destacado] ';
+  }
+}
+
+:where(button, a, [role='button']) {
+  touch-action: manipulation;
+}
+
+:where(button:not(:disabled)) {
+  cursor: pointer;
+}
+
+:where(:disabled, [aria-disabled='true']) {
+  cursor: not-allowed;
+}
+
+:where(:focus-visible) {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: -1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: -1ms !important;
+    background-attachment: initial !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus {
+    outline: 3px solid Highlight !important;
+    outline-offset: 1px;
+  }
+}
