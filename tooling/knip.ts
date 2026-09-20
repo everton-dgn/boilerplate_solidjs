@@ -1,22 +1,49 @@
 import path from 'node:path'
 
-import { PageFileSystemRouter } from 'filesystem-routing'
+import {
+  type ModuleRef,
+  PageFileSystemRouter,
+  type RouteManifestEntry
+} from 'filesystem-routing'
 import type { KnipConfig } from 'knip'
 
-async function discoverPages(directory: string, production: boolean) {
+type DiscoverRouteModulesOptions = {
+  directory: string
+  production: boolean
+}
+
+function isModuleRef(value: unknown): value is ModuleRef {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'src' in value &&
+    typeof value.src === 'string'
+  )
+}
+
+// Páginas ($component) e handlers HTTP ($GET, $POST…) são entradas: só o
+// manifesto do filesystem-routing os importa.
+function routeSources(route: RouteManifestEntry): string[] {
+  return Object.entries(route).flatMap(([key, value]) =>
+    key.startsWith('$') && isModuleRef(value) ? [value.src] : []
+  )
+}
+
+async function discoverRouteModules({
+  directory,
+  production
+}: DiscoverRouteModulesOptions) {
   const router = new PageFileSystemRouter({
     dir: `${import.meta.dirname}/../${directory}`,
-    extensions: ['js', 'jsx', 'ts', 'tsx']
+    extensions: ['js', 'jsx', 'ts', 'tsx'],
+    httpMethods: true
   })
   const routes = await router.getRoutes()
+  const sources = new Set(routes.flatMap(route => routeSources(route)))
 
-  return routes.flatMap(route =>
-    route.$component
-      ? [
-          path.relative(`${import.meta.dirname}/..`, route.$component.src) +
-            (production ? '!' : '')
-        ]
-      : []
+  return [...sources].map(
+    src =>
+      path.relative(`${import.meta.dirname}/..`, src) + (production ? '!' : '')
   )
 }
 
@@ -26,7 +53,7 @@ const config = {
   entry: [
     'src/App.tsx!',
     'src/Document.tsx!',
-    'src/middleware.ts!',
+    'src/middleware/index.ts!',
     'src/infra/server/configureServerErrors/index.ts!',
     // API de transporte do boilerplate; o consumidor atual está na fixture E2E.
     'src/infra/server/requestJson/index.ts!',
@@ -63,9 +90,15 @@ const config = {
 
 export default async function configureKnip(): Promise<KnipConfig> {
   const [pages, fixtures, e2ePages] = await Promise.all([
-    discoverPages('src/routes', true),
-    discoverPages('src/tests/fixtures/routes', false),
-    discoverPages('src/tests/fixtures/e2e/routes', false)
+    discoverRouteModules({ directory: 'src/routes', production: true }),
+    discoverRouteModules({
+      directory: 'src/tests/fixtures/routes',
+      production: false
+    }),
+    discoverRouteModules({
+      directory: 'src/tests/fixtures/e2e/routes',
+      production: false
+    })
   ])
 
   return {

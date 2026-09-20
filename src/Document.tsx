@@ -37,7 +37,7 @@ export default function Document(props: ParentProps) {
         <meta property="og:site_name" content={SITE.title} />
         <meta property="og:title" content={SITE.title} />
         <meta property="og:description" content={SITE.description} />
-        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={SITE.title} />
         <meta name="twitter:description" content={SITE.description} />
         <meta

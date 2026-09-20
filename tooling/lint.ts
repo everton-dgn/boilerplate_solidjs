@@ -48,7 +48,10 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      files: ['src/tests/pages/BackendError/BackendError.e2e.test.ts'],
+      files: [
+        'src/tests/pages/BackendError/BackendError.e2e.test.ts',
+        'src/tests/pages/**/*.seo.e2e.test.ts'
+      ],
       rules: { 'import/no-nodejs-modules': 'off' }
     },
     {
@@ -61,7 +64,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
       files: [
         'src/**/*.test.{ts,tsx}',
         'src/tests/**/*.{ts,tsx}',
-        'src/middleware.ts',
+        'src/middleware/index.ts',
         'tooling/**/*.ts',
         'vite.config.ts'
       ],
@@ -80,7 +83,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      files: ['src/@types/solid.d.ts'],
+      files: ['src/@types/solid.d.ts', 'src/@types/env.d.ts'],
       rules: {
         'import/no-unassigned-import': 'off',
         // O RequestEventLocals amplia a interface do framework por declaration merging.
@@ -126,7 +129,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      files: ['src/middleware.ts'],
+      files: ['src/middleware/index.ts'],
       rules: {
         'node/callback-return': 'off'
       }

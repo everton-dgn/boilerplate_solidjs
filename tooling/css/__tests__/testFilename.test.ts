@@ -19,7 +19,7 @@ describe('test filename policy', () => {
     'src/infra/adapters/themeStorage/__tests__/themeStorage.dom.test.ts',
     'src/primitives/createTheme/__tests__/createTheme.dom.test.tsx',
     'src/__tests__/App.dom.test.tsx',
-    'src/__tests__/middleware.node.test.ts',
+    'src/middleware/__tests__/middleware.node.test.ts',
     'src/__tests__/PageFileSystemRouter.node.test.ts',
     'src/tests/pages/Home/Home.themeCss.e2e.test.ts',
     'src/tests/pages/NotFound/NotFound.e2e.test.ts',

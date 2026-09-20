@@ -3,6 +3,9 @@ import { env, loadEnvFile } from 'node:process'
 import { defineConfig, devices } from '@playwright/test'
 
 loadEnvFile(new URL('../.env.test', import.meta.url))
+// Variáveis já definidas prevalecem, então .env só completa o que .env.test não
+// cobre, como a URL pública usada pelos metadados de SEO.
+loadEnvFile(new URL('../.env', import.meta.url))
 
 const BASE_URL = env.BASE_URL_TEST
 
