@@ -6,7 +6,14 @@ import { ErrorFallback } from '@/components/organisms/ErrorFallback/index.tsx'
 const HTTP_NOT_FOUND = 404
 
 export const route = {
-  preload: () => httpStatus(HTTP_NOT_FOUND)
+  preload: () => httpStatus(HTTP_NOT_FOUND),
+  info: {
+    seo: {
+      title: 'Página não encontrada',
+      description: 'A página solicitada não foi encontrada.',
+      noindex: true
+    }
+  }
 } satisfies RouteDefinition
 
 export default function NotFound() {

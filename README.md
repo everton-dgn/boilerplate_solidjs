@@ -319,12 +319,67 @@ uma vez e seguir o sistema também quando JavaScript está desabilitado.
 para a rota atual, inclusive na navegação no cliente. Sem a variável, o servidor
 usa a origem da requisição. Os metadados fixos ficam em `Document.tsx`.
 
+Cada página pode exportar `route.info.seo` com `title`, `description` e
+`noindex`. Isso não muda sua estratégia de renderização nem torna a página
+estática: são metadados, disponíveis também em rotas com parâmetros. `SeoHead`
+lê a cadeia de rotas ativas com `useRouteMatches` e publica esses campos no
+título, na descrição, no Open Graph e no Twitter usando `useHead`. A rota filha
+sobrescreve os campos que declara e herda os demais do layout; sem definição na
+cadeia, título e descrição vêm de `SITE`, e `noindex` é `false`. O `SeoHead`
+global também publica `robots: noindex`, inclusive na página 404. Uma filha pode
+sobrescrever `noindex` com `false` explicitamente.
+
+```tsx
+import type { RouteDefinition } from '@solidjs/router'
+
+export const route = {
+  info: {
+    seo: { title: 'Sobre nós', description: 'Conheça nossa equipe.' },
+    llms: { section: 'Empresa' }
+  }
+} satisfies RouteDefinition
+```
+
+O `llms.txt` coleta os mesmos metadados pelo manifesto, sem renderizar páginas
+nem executar preloads, e publica só as páginas que declaram `route.info.llms`. O
+arquivo é um índice curado para modelos de linguagem, não um sitemap: em sites
+grandes, selecione as páginas que explicam o produto e agrupe-as. `llms: true`
+inclui a página; sem seção herdada, ela entra na seção padrão `Páginas`.
+`{ section: 'Guias' }` cria ou reutiliza uma seção com esse nome, na ordem em
+que aparece no manifesto; `{ optional: true }` move a página para a seção
+`Optional`, que o formato reserva ao conteúdo que o modelo pode pular, e uma
+seção declarada com esse nome se funde a ela. A configuração é herdada pela
+cadeia de rotas: um layout com `llms: { section: 'Docs' }` inclui suas filhas
+nessa seção, uma filha pode sair com `llms: false` ou sobrescrever só o campo
+que declara, e `llms: true` numa filha reativa a inclusão preservando seção e
+marcação opcional herdadas. `noindex: true` exclui a página do sitemap e do
+llms.txt, mesmo com a flag. O filtro considera a configuração efetiva da página,
+incluindo herança e a rota de índice filha.
+
+Só URLs sem parâmetros entram nas listas automáticas. Páginas de artigos ou
+produtos devem compartilhar seus dados de conteúdo com a geração de URLs e
+descrições; `route.info` não enumera registros de um CMS. Títulos carregados em
+runtime ainda podem usar `useHead`, mas essas alterações não são lidas pelo
+gerador. Para que `noindex` seja respeitado pelas listas, declare-o em
+`route.info.seo`, em vez de acrescentar apenas uma tag HTML avulsa.
+
+A travessia do manifesto é iterativa, para não depender do limite de recursão do
+JavaScript. O coletor do sitemap lê caminhos e `noindex`, sem resolver título ou
+descrição. O coletor do `llms.txt` resolve também os metadados das páginas. O
+registro histórico da medição dos casos extremos está em
+[desempenho da coleta de SEO](docs/seo-performance.md).
+
 `sitemap.xml.ts`, `robots.txt.ts` e `llms.txt.ts` são rotas de API: o sitemap
 lista as páginas estáticas do manifesto de rotas, sem parâmetros dinâmicos nem o
-fallback 404, o robots aponta para ele e o llms.txt publica, em Markdown, o
-título, a descrição e a mesma lista de páginas para agentes de IA. A página 404
-declara `robots: noindex`. A imagem social fica em `public/images/og.png`, com
-cache imutável configurado em `vercel.json`.
+fallback 404 e sem `noindex`, o robots aponta para ele e o llms.txt publica, em
+Markdown, título e descrição das páginas selecionadas por `route.info.llms`,
+agrupadas por seção. Em produção o processo guarda a última resposta do llms.txt
+em memória, substituída quando a URL do site muda, porque o manifesto é fixo no
+build; em desenvolvimento a rota responde com `no-store`. As URLs absolutas dos
+três arquivos partem da origem de `VITE_SITE_URL`; um site servido em um
+subcaminho não é suportado por essa geração. A página 404 declara
+`robots: noindex`. A imagem social fica em `public/images/og.png`, com cache
+imutável configurado em `vercel.json`.
 
 <br />
 

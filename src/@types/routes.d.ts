@@ -63,7 +63,7 @@ declare module "virtual:file-routes" {
       path: "/(home)/";
       page: true;
       $component: FileRouteLazyRef<typeof import("../routes/(home)/index")>;
-      $$route?: undefined;
+      $$route: FileRouteEagerRef<typeof import("../routes/(home)/index")>;
     }
   ];
   export default routes;
@@ -83,7 +83,7 @@ declare module "virtual:file-routes" {
       id: "/(home)/";
       page: true;
       $component: FileRouteLazyRef<typeof import("../routes/(home)/index")>;
-      $$route?: undefined;
+      $$route: FileRouteEagerRef<typeof import("../routes/(home)/index")>;
       children?: undefined;
     }
   ];

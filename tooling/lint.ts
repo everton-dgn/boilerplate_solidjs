@@ -83,10 +83,14 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      files: ['src/@types/solid.d.ts', 'src/@types/env.d.ts'],
+      files: [
+        'src/@types/solid.d.ts',
+        'src/@types/env.d.ts',
+        'src/@types/router.d.ts'
+      ],
       rules: {
         'import/no-unassigned-import': 'off',
-        // O RequestEventLocals amplia a interface do framework por declaration merging.
+        // Estas declarações ampliam interfaces de terceiros por declaration merging.
         'typescript/consistent-type-definitions': ['error', 'interface']
       }
     },
