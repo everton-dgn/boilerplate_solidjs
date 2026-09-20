@@ -40,6 +40,9 @@ testes e hooks de git), sem aplicação de produto pronta.
 - [x] Middleware de servidor: `server-timing`, cabeçalhos de segurança e
       `requestId` por requisição
 - [x] Roteamento com lazy loading e rota 404 respondendo com status HTTP correto
+- [x] SEO: canonical e Open Graph por rota com `useHead`, imagem social,
+      `sitemap.xml`, `robots.txt` e `llms.txt` gerados a partir do manifesto de
+      rotas
 - [x] Layout responsivo com Topbar, página inicial e páginas de erro
 - [x] Botão, menu de tema e componentes de página com CSS Modules
 - [x] Tema claro, escuro ou do sistema (padrão), aplicado antes da hidratação,
@@ -66,22 +69,23 @@ testes e hooks de git), sem aplicação de produto pronta.
 project/
 ├── public/
 │   ├── favicon/             # Ícones SVG, ICO e PNG
-│   └── robots.txt           # Regras de rastreamento
+│   └── images/og.png        # Imagem social (Open Graph e Twitter)
 ├── src/
 │   ├── @types/              # Tipos compartilhados, Solid e ícones
 │   ├── App.tsx              # Componente raiz: Router + layout
 │   ├── Document.tsx         # Shell HTML do SSR (head, HydrationScript)
-│   ├── middleware.ts        # Middlewares do servidor
+│   ├── middleware/         # Middlewares do servidor
+│   │   ├── index.ts
+│   │   └── __tests__/middleware.node.test.ts # Teste dos middlewares (projeto node)
 │   ├── router.ts            # Integração do manifesto de rotas por arquivo
 │   ├── __tests__/           # Testes dos módulos da raiz de src
-│   │   ├── App.dom.test.tsx       # Erro real da rota e recuperação pelo App
-│   │   └── middleware.node.test.ts # Teste dos middlewares (projeto node)
+│   │   └── App.dom.test.tsx       # Erro real da rota e recuperação pelo App
 │   ├── components/          # Componentes por atomic design
-│   │   ├── atoms/           # Button, PageBadge, menu e tema
+│   │   ├── atoms/           # Button, PageBadge, SeoHead, menu e tema
 │   │   ├── molecules/      # Topbar
 │   │   └── organisms/      # ErrorFallback
-│   ├── constants/          # Constantes compartilhadas do tema
-│   ├── helpers/            # Validação pura da preferência de tema
+│   ├── constants/          # Constantes do site e do tema
+│   ├── helpers/            # Funções puras: tema, URL pública, sitemap e llms.txt
 │   ├── infra/
 │   │   ├── adapters/       # Persistência e comunicação entre abas
 │   │   └── server/         # Transporte e proteção de operações no servidor
@@ -95,8 +99,11 @@ project/
 │   │   ├── class/          # utilities, animation e index.css
 │   │   └── tokens/         # colors, fonts, grids, radius, shadows, sizes, zIndex
 │   └── routes/
-│       ├── index.tsx        # Página inicial
-│       └── [...404].tsx     # Página 404 para caminhos desconhecidos
+│       ├── (home)/index.tsx # Página inicial
+│       ├── [...404].tsx     # Página 404 para caminhos desconhecidos
+│       ├── llms.txt.ts      # Rota de API: índice em Markdown para LLMs
+│       ├── robots.txt.ts    # Rota de API: robots com o link do sitemap
+│       └── sitemap.xml.ts   # Rota de API: sitemap das páginas estáticas
 ├── docs/
 │   └── server-errors.md     # Contrato de erros e chamadas de backend
 ├── tooling/
@@ -119,6 +126,13 @@ define opções como `preload`, usado pelo fallback para responder com HTTP 404.
 Componentes colocalizados podem ficar em pastas `components` dentro de `routes`:
 use exportações nomeadas para que eles não sejam registrados como páginas. Não é
 necessário editar `src/router.ts` ao adicionar uma página.
+
+Rotas de API são módulos de `src/routes` que exportam `GET`, `POST` ou outro
+método HTTP em vez de `export default`. O `createAPIHandler` em
+`src/middleware/index.ts` responde a essas requisições antes do SSR e deixa
+passar as demais. O nome do arquivo vira o caminho sem a extensão, então
+`sitemap.xml.ts` atende `/sitemap.xml`; colchetes continuam indicando parâmetros
+dinâmicos.
 
 O plugin gera `src/@types/routes.d.ts` com os caminhos tipados durante o build
 ou desenvolvimento. Mantenha essa declaração versionada e atualizada ao mudar as
@@ -297,6 +311,21 @@ sistema e `@types/theme.ts` define os tipos compartilhados, mantendo `theme/` s�
 com CSS. As cores usam `light-dark()` com `color-scheme`, para definir cada par
 uma vez e seguir o sistema também quando JavaScript está desabilitado.
 
+### SEO e metadados
+
+`VITE_SITE_URL` no `.env` define a URL pública do site, validada em `env.ts`.
+`SeoHead`, renderizado dentro do `Router` em `App.tsx`, usa `useHead` do
+`@solidjs/web` para publicar `canonical`, `og:url` e a imagem social absolutas
+para a rota atual, inclusive na navegação no cliente. Sem a variável, o servidor
+usa a origem da requisição. Os metadados fixos ficam em `Document.tsx`.
+
+`sitemap.xml.ts`, `robots.txt.ts` e `llms.txt.ts` são rotas de API: o sitemap
+lista as páginas estáticas do manifesto de rotas, sem parâmetros dinâmicos nem o
+fallback 404, o robots aponta para ele e o llms.txt publica, em Markdown, o
+título, a descrição e a mesma lista de páginas para agentes de IA. A página 404
+declara `robots: noindex`. A imagem social fica em `public/images/og.png`, com
+cache imutável configurado em `vercel.json`.
+
 <br />
 
 ---
@@ -349,10 +378,11 @@ pnpm build && pnpm start
 ```
 
 O preview usa o Vite+ com a integração do Nitro. O `.env` versionado contém os
-valores locais de `HOST` e `PORT`, usados tanto pelo dev quanto pelo preview.
-Ele também é carregado durante o build; variáveis já definidas no ambiente têm
-prioridade. Para escolher outra porta ou interface no preview, use
-`pnpm start --port 3001` ou `pnpm start --host 0.0.0.0`.
+valores locais de `HOST` e `PORT`, usados tanto pelo dev quanto pelo preview, e
+`VITE_SITE_URL`, a URL pública dos metadados de SEO. Ele também é carregado
+durante o build; variáveis já definidas no ambiente têm prioridade. Para
+escolher outra porta ou interface no preview, use `pnpm start --port 3001` ou
+`pnpm start --host 0.0.0.0`.
 
 `pnpm start` é um alias do preview local. Em produção, configure as variáveis na
 plataforma de hospedagem; o comando `preview` é destinado à conferência local.
@@ -453,7 +483,7 @@ opções compartilhadas explicitamente, sem herdar a configuração raiz por
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
 `vite-plus/prefer-vite-plus-imports` bloqueia o import direto). O contexto de
 requisição dos middlewares é testado com `provideRequestEvent` de
-`@solidjs/web/storage` em `src/__tests__/middleware.node.test.ts`.
+`@solidjs/web/storage` em `src/middleware/__tests__/middleware.node.test.ts`.
 
 <br />
 

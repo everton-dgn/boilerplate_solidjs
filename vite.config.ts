@@ -59,7 +59,7 @@ const componentPlugins = () =>
     return [
       icons(modules),
       modules.solid({ serverFunctions: true }),
-      modules.fileRoutes({ types: 'src/@types/routes.d.ts' })
+      modules.fileRoutes({ types: 'src/@types/routes.d.ts', httpMethods: true })
     ]
   })
 
@@ -69,7 +69,7 @@ const appPlugins = (mode: string) =>
     return [
       icons(modules),
       modules.solid({
-        start: { middleware: './src/middleware.ts' },
+        start: { middleware: './src/middleware/index.ts' },
         ssr: true,
         serverFunctions: {
           configure: './src/infra/server/configureServerErrors/index.ts'
@@ -77,8 +77,8 @@ const appPlugins = (mode: string) =>
       }),
       modules.fileRoutes(
         mode === 'e2e'
-          ? { dir: 'src/tests/fixtures/e2e/routes' }
-          : { types: 'src/@types/routes.d.ts' }
+          ? { dir: 'src/tests/fixtures/e2e/routes', httpMethods: true }
+          : { types: 'src/@types/routes.d.ts', httpMethods: true }
       ),
       modules.nitro({ serverEntry: false, preset: 'vercel' })
     ]
@@ -168,6 +168,9 @@ export default defineConfig(({ mode }) => {
             alias: {
               'server-only': fileURLToPath(
                 new URL('tooling/testing/server-only.ts', import.meta.url)
+              ),
+              'virtual:file-routes': fileURLToPath(
+                new URL('tooling/testing/file-routes.ts', import.meta.url)
               )
             }
           },

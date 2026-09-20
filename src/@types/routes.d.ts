@@ -39,6 +39,27 @@ declare module "virtual:file-routes" {
       $$route: FileRouteEagerRef<typeof import("../routes/[...404]")>;
     },
     {
+      path: "/llms.txt";
+      page: false;
+      $GET: FileRouteLazyRef<typeof import("../routes/llms.txt")>;
+      $HEAD: FileRouteLazyRef<typeof import("../routes/llms.txt")>;
+      $$route?: undefined;
+    },
+    {
+      path: "/robots.txt";
+      page: false;
+      $GET: FileRouteLazyRef<typeof import("../routes/robots.txt")>;
+      $HEAD: FileRouteLazyRef<typeof import("../routes/robots.txt")>;
+      $$route?: undefined;
+    },
+    {
+      path: "/sitemap.xml";
+      page: false;
+      $GET: FileRouteLazyRef<typeof import("../routes/sitemap.xml")>;
+      $HEAD: FileRouteLazyRef<typeof import("../routes/sitemap.xml")>;
+      $$route?: undefined;
+    },
+    {
       path: "/(home)/";
       page: true;
       $component: FileRouteLazyRef<typeof import("../routes/(home)/index")>;

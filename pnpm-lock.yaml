@@ -176,6 +176,9 @@ importers:
       '@solidjs/web':
         specifier: 2.0.0-rc.9
         version: 2.0.0-rc.9(solid-js@2.0.0-rc.9)
+      filesystem-routing:
+        specifier: 0.3.1
+        version: 0.3.1(@voidzero-dev/vite-plus-core@0.3.3(@types/node@24.13.5)(jiti@2.6.1)(typescript@7.0.2)(yaml@2.9.1))(supports-color@7.2.0)
       solid-js:
         specifier: 2.0.0-rc.9
         version: 2.0.0-rc.9
@@ -216,9 +219,6 @@ importers:
       eslint-plugin-solid:
         specifier: 0.18.0
         version: 0.18.0(eslint@10.9.1(jiti@2.6.1)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@7.0.2)
-      filesystem-routing:
-        specifier: 0.3.1
-        version: 0.3.1(@voidzero-dev/vite-plus-core@0.3.3(@types/node@24.13.5)(jiti@2.6.1)(typescript@7.0.2)(yaml@2.9.1))(supports-color@7.2.0)
       happy-dom:
         specifier: 20.14.5
         version: 20.14.5

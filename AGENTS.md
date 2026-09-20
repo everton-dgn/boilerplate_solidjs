@@ -116,7 +116,7 @@ release. Add a tool name to select part of the graph. For example, run
   argumento único.
 - A regra vale para as funções do projeto. Assinaturas ditadas por terceiros
   ficam como o contrato exige, sem adaptação: middlewares `(request, next)` em
-  `src/middleware.ts`, callbacks de teste e hooks de plugin do Vite.
+  `src/middleware/index.ts`, callbacks de teste e hooks de plugin do Vite.
 
 ## Nomes de signal
 
