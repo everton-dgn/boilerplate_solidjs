@@ -81,7 +81,7 @@ project/
 │   ├── __tests__/           # Testes dos módulos da raiz de src
 │   │   └── App.dom.test.tsx       # Erro real da rota e recuperação pelo App
 │   ├── components/          # Componentes por atomic design
-│   │   ├── atoms/           # Button, PageBadge, SeoHead, menu e tema
+│   │   ├── atoms/           # Button, PageBadge, SeoHead, StructuredData, menu e tema
 │   │   ├── molecules/      # Topbar
 │   │   └── organisms/      # ErrorFallback
 │   ├── constants/          # Constantes do site, do tema e do cache das rotas geradas
@@ -331,15 +331,15 @@ regra de `noindex` abaixo; em `Document.tsx` fica só `author`. Não repita no
 ocorrência.
 
 Cada página pode exportar `route.info.seo` com `title`, `description`,
-`noindex`, `type` e `image`. Isso não muda sua estratégia de renderização nem
-torna a página estática: são metadados, disponíveis também em rotas com
-parâmetros. `SeoHead` lê a cadeia de rotas ativas com `useRouteMatches` e
-publica esses campos no título, na descrição, no Open Graph, no Twitter e no
-JSON-LD usando `useHead`. A rota filha sobrescreve os campos que declara e herda
-os demais do layout; `image` é mesclada atributo a atributo (`path`, `width`,
-`height`, `alt`). Sem definição na cadeia, título, descrição e imagem vêm de
-`SITE`, `type` é `website` e `noindex` é `false`. Por isso a home não declara
-`seo`: ela usa exatamente esses padrões. Escolha do projeto: com
+`noindex`, `type`, `image` e `article`. Isso não muda sua estratégia de
+renderização nem torna a página estática: são metadados, disponíveis também em
+rotas com parâmetros. `SeoHead` lê a cadeia de rotas ativas com
+`useRouteMatches` e publica esses campos no título, na descrição, no Open Graph,
+no Twitter e no JSON-LD usando `useHead`. A rota filha sobrescreve os campos que
+declara e herda os demais do layout; `image` é mesclada atributo a atributo
+(`path`, `width`, `height`, `alt`). Sem definição na cadeia, título, descrição e
+imagem vêm de `SITE`, `type` é `website` e `noindex` é `false`. Por isso a home
+não declara `seo`: ela usa exatamente esses padrões. Escolha do projeto: com
 `noindex: true`, o `SeoHead` publica só `robots: noindex`, título e descrição.
 Canonical, Open Graph, Twitter (inclusive `og:locale`, `og:site_name` e
 `twitter:card`) e JSON-LD ficam de fora, inclusive na página 404. Neste
@@ -353,12 +353,52 @@ um campo em `route.info.seo` que devolva Open Graph e Twitter sem canonical nem
 JSON-LD.
 
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
-JSON-LD: `WebPage` por padrão, ou `Article` com `headline` e `author` (de
-`SITE.author`). O JSON-LD, montado por `helpers/buildStructuredData/`, publica
-sempre um nó `WebSite` e o nó da página com URL canônica, descrição, idioma e
-imagem; `<`, `>` e `&` são escapados como sequências JSON para não encerrar o
-`<script>`. Dados que o projeto não tem, como handle do Twitter (`twitter:site`)
-e `hreflang`, não são publicados.
+JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (de
+`SITE.author`) e, quando a rota declara
+`article: { datePublished, dateModified }` em ISO 8601, essas datas. Fora de
+`article`, as datas são ignoradas. O JSON-LD, montado por
+`helpers/buildStructuredData/`, publica sempre um nó `WebSite` e o nó da página
+com URL canônica, descrição, idioma e imagem. O idioma vem de `SITE.locale`, que
+também alimenta o `lang` do `Document.tsx` e o `og:locale` (com sublinhado).
+`helpers/serializeJsonLd/` escapa `<`, `>` e `&` como sequências JSON para não
+encerrar o `<script>`. Dados que o projeto não tem, como handle do Twitter
+(`twitter:site`) e `hreflang`, não são publicados.
+
+Esse grafo base é fixo de propósito. Tipos que dependem da página (`Product`,
+`FAQPage`, `BreadcrumbList`, `Event`, datas de um `Article`) entram pelo atom
+`StructuredData`, renderizado no componente da rota com os dados já carregados.
+Ele publica um segundo `<script type="application/ld+json">` com `@context`,
+aceita um nó ou uma lista (vira `@graph`), remove o script ao desmontar e
+convive com outras instâncias na mesma página. A prop `data` é tipada com
+`schema-dts`, os tipos do schema.org mantidos pelo Google, então propriedade
+inválida falha no typecheck. Para ligar o nó ao grafo base, use o `@id` da
+página (a URL canônica) ou do site (`<VITE_SITE_URL>/#website`). O atom não
+consulta `noindex`: uma rota fora do índice que o renderiza publica o JSON-LD
+mesmo assim.
+
+```tsx
+import { StructuredData } from '@/components/atoms/StructuredData/index.tsx'
+
+export default function FaqPage() {
+  return (
+    <main>
+      <h1>Perguntas frequentes</h1>
+      <StructuredData
+        data={{
+          '@type': 'FAQPage',
+          mainEntity: [
+            {
+              '@type': 'Question',
+              name: 'O que é o boilerplate?',
+              acceptedAnswer: { '@type': 'Answer', text: 'Uma base SolidJS.' }
+            }
+          ]
+        }}
+      />
+    </main>
+  )
+}
+```
 
 ```tsx
 import type { RouteDefinition } from '@solidjs/router'

@@ -12,6 +12,8 @@ const SITE_DESCRIPTION =
   'Uma base para aplicações web com SolidJS, TypeScript e Vite+, com renderização no servidor e temas claro e escuro.'
 const SITE_IMAGE_ALT = 'Logo do SolidJS sobre o título SolidJS Boilerplate'
 const SOCIAL_TAGS = 'head meta[property^="og:"], head meta[name^="twitter:"]'
+// Grafo base do SeoHead mais o script próprio da página.
+const SCRIPTS_WITH_PAGE_DATA = 2
 
 // Só os campos que identificam cada nó; o formato completo é coberto pelos
 // testes unitários de `buildStructuredData`.
@@ -169,7 +171,30 @@ test.describe('metadados de SEO', () => {
     expect(article).toMatchObject({
       '@type': 'Article',
       url: `${siteUrl}/seo-article`,
-      name: 'Artigo de exemplo'
+      name: 'Artigo de exemplo',
+      datePublished: '2026-09-01',
+      dateModified: '2026-09-21'
     })
+  })
+
+  test('publica o JSON-LD próprio da página ao lado do grafo base', async ({
+    page
+  }) => {
+    await page.goto('/structured-data')
+
+    const scripts = page.locator('head script[type="application/ld+json"]')
+    await expect(scripts).toHaveCount(SCRIPTS_WITH_PAGE_DATA)
+    const texts = await scripts.allTextContents()
+    expect(
+      texts.filter(text => text.includes('"@type":"WebSite"'))
+    ).toHaveLength(1)
+    expect(
+      texts.filter(text => text.includes('"@type":"FAQPage"'))
+    ).toHaveLength(1)
+
+    await page.getByRole('link', { name: 'Início', exact: true }).click()
+    await expect(page).toHaveTitle(SITE_TITLE)
+    await expect(scripts).toHaveCount(1)
+    expect(await scripts.allTextContents()).not.toContain('FAQPage')
   })
 })

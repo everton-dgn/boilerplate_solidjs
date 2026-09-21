@@ -7,7 +7,8 @@ export const route = {
       title: 'Artigo de exemplo',
       description: 'Conteúdo de um artigo com imagem própria.',
       type: 'article',
-      image: { path: '/images/article.png', alt: 'Capa do artigo de exemplo' }
+      image: { path: '/images/article.png', alt: 'Capa do artigo de exemplo' },
+      article: { datePublished: '2026-09-01', dateModified: '2026-09-21' }
     }
   }
 } satisfies RouteDefinition

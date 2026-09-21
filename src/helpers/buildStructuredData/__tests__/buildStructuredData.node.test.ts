@@ -30,7 +30,7 @@ describe('dados estruturados da página', () => {
         url: `${SITE.url}/`,
         name: SITE.title,
         description: SITE.description,
-        inLanguage: 'pt-BR'
+        inLanguage: SITE.locale
       },
       {
         '@type': 'WebPage',
@@ -38,7 +38,7 @@ describe('dados estruturados da página', () => {
         url: `${SITE.url}/guia`,
         name: 'Guia público',
         description: 'Conteúdo público do guia.',
-        inLanguage: 'pt-BR',
+        inLanguage: SITE.locale,
         isPartOf: { '@id': `${SITE.url}/#website` },
         image: {
           '@type': 'ImageObject',
@@ -67,6 +67,40 @@ describe('dados estruturados da página', () => {
       '@type': 'Person',
       name: SITE.author
     })
+    expect('datePublished' in (article ?? {})).toBe(false)
+  })
+
+  it('publica as datas do artigo quando a rota as declara', () => {
+    const graph = parseStructuredData(
+      buildStructuredData({
+        seo: {
+          ...page,
+          type: 'article',
+          article: { datePublished: '2026-09-01', dateModified: '2026-09-21' }
+        },
+        url: `${SITE.url}/artigo`,
+        image: `${SITE.url}/images/artigo.png`
+      })
+    )
+    const [, article] = graph['@graph']
+
+    expect(article).toMatchObject({
+      '@type': 'Article',
+      datePublished: '2026-09-01',
+      dateModified: '2026-09-21'
+    })
+  })
+
+  it('ignora as datas de artigo em página que não é artigo', () => {
+    const graph = parseStructuredData(
+      buildStructuredData({
+        seo: { ...page, article: { datePublished: '2026-09-01' } },
+        url: `${SITE.url}/guia`,
+        image: `${SITE.url}${SITE.image.path}`
+      })
+    )
+
+    expect('datePublished' in (graph['@graph'][1] ?? {})).toBe(false)
   })
 
   it('escapa HTML para não encerrar o script que envolve o JSON', () => {

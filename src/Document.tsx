@@ -23,7 +23,7 @@ export default function Document(props: ParentProps) {
 
   return (
     <html
-      lang="pt-BR"
+      lang={SITE.locale}
       class={explicitTheme}
       style={explicitTheme ? { 'color-scheme': explicitTheme } : undefined}
     >

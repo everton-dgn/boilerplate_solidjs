@@ -25,7 +25,13 @@ export function SeoHead() {
   ]
 
   const indexableTags = (): HeadTag[] => [
-    { tag: 'meta', props: { property: 'og:locale', content: 'pt_BR' } },
+    {
+      tag: 'meta',
+      props: {
+        property: 'og:locale',
+        content: SITE.locale.replaceAll('-', '_')
+      }
+    },
     { tag: 'meta', props: { property: 'og:site_name', content: SITE.title } },
     {
       tag: 'meta',

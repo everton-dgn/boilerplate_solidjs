@@ -63,6 +63,7 @@
     "nitro": "3.0.260903-beta",
     "playwright": "1.63.0",
     "postcss-preset-env": "11.5.3",
+    "schema-dts": "2.0.0",
     "stylelint": "17.15.0",
     "stylelint-declaration-strict-value": "1.12.1",
     "stylelint-use-nesting": "6.0.2",

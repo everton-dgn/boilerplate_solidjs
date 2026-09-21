@@ -3,6 +3,9 @@ export const SITE = {
   description:
     'Uma base para aplicações web com SolidJS, TypeScript e Vite+, com renderização no servidor e temas claro e escuro.',
   author: 'Éverton Toffanetto',
+  // BCP 47: `lang` do documento e `inLanguage` do JSON-LD; o `og:locale`
+  // deriva daqui trocando o hífen por sublinhado.
+  locale: 'pt-BR',
   // URL pública fixa para canonical, Open Graph, sitemap e robots, definida
   // por VITE_SITE_URL.
   url: import.meta.env.VITE_SITE_URL,
