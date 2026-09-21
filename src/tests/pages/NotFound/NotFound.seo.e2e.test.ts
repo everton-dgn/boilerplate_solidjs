@@ -1,6 +1,6 @@
-import { env } from 'node:process'
-
 import { expect, test } from '@playwright/test'
+
+import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 test.describe('página inexistente', () => {
   test.use({ javaScriptEnabled: false })
@@ -8,7 +8,7 @@ test.describe('página inexistente', () => {
   test('pede noindex e mantém canonical absoluta na carga direta', async ({
     page
   }) => {
-    const siteUrl = new URL(String(env.VITE_SITE_URL)).origin
+    const siteUrl = readSiteOrigin()
     await page.goto('/pagina-inexistente')
 
     await expect(page).toHaveTitle('Página não encontrada')

@@ -4,6 +4,6 @@ import 'vite/client'
 // A interface do Vite exige mesclagem de declarações.
 declare global {
   interface ImportMetaEnv {
-    readonly VITE_SITE_URL?: string
+    readonly VITE_SITE_URL: string
   }
 }

@@ -38,6 +38,17 @@ describe('geração do llms.txt', () => {
     )
   })
 
+  it('publica só o cabeçalho quando nenhuma página foi selecionada', () => {
+    const text = buildLlmsText({
+      title: 'Site',
+      description: 'Resumo do site.',
+      pages: [],
+      siteUrl: 'https://example.com'
+    })
+
+    expect(text).toBe(['# Site', '', '> Resumo do site.', ''].join('\n'))
+  })
+
   it('agrupa por seção na ordem do manifesto e publica as opcionais por último', () => {
     const text = buildLlmsText({
       title: 'Site',

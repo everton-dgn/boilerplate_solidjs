@@ -49,7 +49,7 @@ async function renderAt({
     { providers: false }
   )
   await vi.waitUntil(() => readCanonical() !== null)
-  return SITE.url ?? globalThis.location.origin
+  return SITE.url
 }
 
 describe('metadados de SEO no head', () => {

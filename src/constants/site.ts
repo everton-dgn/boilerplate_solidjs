@@ -3,8 +3,8 @@ export const SITE = {
   description:
     'Uma base para aplicações web com SolidJS, TypeScript e Vite+, com renderização no servidor e temas claro e escuro.',
   author: 'Éverton Toffanetto',
-  // URL pública fixa para canonical, Open Graph, sitemap e robots. Sem ela, o
-  // servidor usa a origem da requisição.
+  // URL pública fixa para canonical, Open Graph, sitemap e robots, definida
+  // por VITE_SITE_URL.
   url: import.meta.env.VITE_SITE_URL,
   image: {
     path: '/images/og.png',

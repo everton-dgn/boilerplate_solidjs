@@ -1,6 +1,6 @@
-import { env } from 'node:process'
-
 import { expect, test } from '@playwright/test'
+
+import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 const HTTP_OK = 200
 const SITE_TITLE = 'SolidJS Boilerplate'
@@ -11,7 +11,7 @@ test.describe('metadados de SEO', () => {
   test('publica canonical, Open Graph e imagem social por rota', async ({
     page
   }) => {
-    const siteUrl = new URL(String(env.VITE_SITE_URL)).origin
+    const siteUrl = readSiteOrigin()
     await page.goto('/')
     await expect(page).toHaveTitle(SITE_TITLE)
     await expect(page.locator('head meta[name="description"]')).toHaveAttribute(
@@ -80,7 +80,7 @@ test.describe('metadados de SEO', () => {
   test('gera sitemap, robots e llms.txt a partir do manifesto de rotas', async ({
     request
   }) => {
-    const siteUrl = new URL(String(env.VITE_SITE_URL)).origin
+    const siteUrl = readSiteOrigin()
     const cacheControl = 'public, max-age=3600'
 
     const sitemap = await request.get('/sitemap.xml')
