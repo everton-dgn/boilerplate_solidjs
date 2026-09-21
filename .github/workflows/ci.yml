@@ -67,8 +67,8 @@ jobs:
       - name: Run end-to-end tests
         run: pnpm test:e2e
 
-      - name: Build application
-        run: pnpm build
+      - name: Test production routes
+        run: pnpm test:e2e:production
 
   deploy:
     needs: check

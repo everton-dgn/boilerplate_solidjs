@@ -31,6 +31,11 @@ function readStructuredData(): StructuredData | null {
   return script?.textContent ? parseStructuredData(script.textContent) : null
 }
 
+// A ordem dos nós não importa em JSON-LD; localiza pelo `@type`.
+function readNode(type: string): StructuredData['@graph'][number] | undefined {
+  return readStructuredData()?.['@graph'].find(node => node['@type'] === type)
+}
+
 function readCanonical(): string | null {
   return (
     document.head
@@ -103,10 +108,8 @@ describe('metadados de SEO no head', () => {
       readMeta('meta[property="og:site_name"]'),
       readMeta('meta[name="twitter:card"]')
     ]).toStrictEqual(['pt_BR', SITE.title, 'summary_large_image'])
-    const graph = readStructuredData()
-    expect(graph?.['@graph'][0]?.['@type']).toBe('WebSite')
-    expect(graph?.['@graph'][1]).toMatchObject({
-      '@type': 'WebPage',
+    expect(readNode('WebSite')).toBeDefined()
+    expect(readNode('WebPage')).toMatchObject({
       url: `${base}/`,
       name: SITE.title
     })
@@ -139,11 +142,11 @@ describe('metadados de SEO no head', () => {
       readMeta('meta[property="og:image:alt"]'),
       readMeta('meta[name="twitter:image:alt"]')
     ]).toStrictEqual(['Capa', 'Capa'])
-    expect(readMeta('meta[property="og:image:width"]')).toBe('1200')
-    expect(readStructuredData()?.['@graph'][1]).toMatchObject({
-      '@type': 'Article',
-      headline: 'Artigo'
-    })
+    expect([
+      readMeta('meta[property="og:image:width"]'),
+      readMeta('meta[property="article:published_time"]')
+    ]).toStrictEqual(['1200', null])
+    expect(readNode('Article')).toMatchObject({ headline: 'Artigo' })
   })
 
   it('remove as tags ao desmontar e usa barra final na raiz', async () => {
@@ -243,6 +246,55 @@ describe('indexação e Open Graph de artigo', () => {
       readMeta('meta[property="article:published_time"]'),
       readMeta('meta[property="article:modified_time"]')
     ]).toStrictEqual(['2026-09-01', '2026-09-21'])
+  })
+
+  it('publica só a data que o artigo declara', async () => {
+    await vi.waitUntil(
+      () => readMeta('meta[property="article:published_time"]') === null
+    )
+    await renderAt({
+      pathname: '/artigo',
+      routes: [
+        {
+          path: '/artigo',
+          info: {
+            seo: { type: 'article', article: { dateModified: '2026-09-21' } }
+          },
+          component: () => null
+        }
+      ]
+    })
+
+    expect([
+      readMeta('meta[property="article:published_time"]'),
+      readMeta('meta[property="article:modified_time"]')
+    ]).toStrictEqual([null, '2026-09-21'])
+  })
+
+  it('omite as datas de artigo em rota noindex', async () => {
+    await vi.waitUntil(() => readMeta('meta[name="robots"]') === null)
+    await renderAt({
+      pathname: '/rascunho',
+      routes: [
+        {
+          path: '/rascunho',
+          info: {
+            seo: {
+              type: 'article',
+              noindex: true,
+              article: { datePublished: '2026-09-01' }
+            }
+          },
+          component: () => null
+        }
+      ],
+      ready: () => readMeta('meta[name="robots"]') === 'noindex'
+    })
+
+    expect([
+      readMeta('meta[property="article:published_time"]'),
+      readMeta('meta[property="og:type"]')
+    ]).toStrictEqual([null, null])
   })
 
   it('omite as datas de artigo em página que não é artigo', async () => {

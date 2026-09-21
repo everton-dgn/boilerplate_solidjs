@@ -5,12 +5,12 @@ import { defineConfig, devices } from '@playwright/test'
 import { loadEnv } from 'vite'
 
 loadEnvFile(new URL('../.env.test', import.meta.url))
-// O servidor sobe com `build --mode e2e`, que lê .env, .env.local, .env.e2e e
-// .env.e2e.local. Resolver as variáveis públicas com a mesma precedência do
-// Vite e exportá-las aqui mantém os testes e o build coerentes sobre a URL
-// pública usada pelos metadados de SEO; variáveis já definidas prevalecem.
+const PRODUCTION_ROUTES = env.TEST_PRODUCTION_ROUTES === 'true'
+const BUILD_MODE = PRODUCTION_ROUTES ? 'production' : 'e2e'
+// Resolver as variáveis públicas no mesmo modo do build mantém os testes e o
+// servidor coerentes sobre a URL pública; variáveis já definidas prevalecem.
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
-Object.assign(env, loadEnv('e2e', ROOT, 'VITE_'))
+Object.assign(env, loadEnv(BUILD_MODE, ROOT, 'VITE_'))
 
 const BASE_URL = env.BASE_URL_TEST
 
@@ -29,14 +29,27 @@ const STARTUP_TIMEOUT = 120_000
 
 const config = defineConfig({
   testDir: '../src/tests/pages',
-  testMatch: '**/*.e2e.test.ts',
-  outputDir: '../test-results/e2e',
+  testMatch: PRODUCTION_ROUTES
+    ? '**/*.production.e2e.test.ts'
+    : '**/*.e2e.test.ts',
+  testIgnore: PRODUCTION_ROUTES ? [] : ['**/*.production.e2e.test.ts'],
+  outputDir: PRODUCTION_ROUTES
+    ? '../test-results/e2e-production'
+    : '../test-results/e2e',
   fullyParallel: true,
   forbidOnly: true,
   workers: env.CI ? 1 : undefined,
   reporter: [
     ['list'],
-    ['html', { outputFolder: '../playwright-report', open: 'never' }]
+    [
+      'html',
+      {
+        outputFolder: PRODUCTION_ROUTES
+          ? '../playwright-report/production'
+          : '../playwright-report/e2e',
+        open: 'never'
+      }
+    ]
   ],
   use: {
     // bypassCSP: true,
@@ -85,14 +98,18 @@ const config = defineConfig({
     // }
   ],
   webServer: [
+    ...(PRODUCTION_ROUTES
+      ? []
+      : [
+          {
+            command: 'node tooling/testing/error-backend.ts',
+            cwd: '..',
+            url: 'http://127.0.0.1:4318/control',
+            reuseExistingServer: false
+          }
+        ]),
     {
-      command: 'node tooling/testing/error-backend.ts',
-      cwd: '..',
-      url: 'http://127.0.0.1:4318/control',
-      reuseExistingServer: false
-    },
-    {
-      command: 'pnpm build --mode e2e && pnpm start --strictPort',
+      command: `pnpm build --mode ${BUILD_MODE} && pnpm start --strictPort`,
       cwd: '..',
       env: { HOST, PORT, NODE_ENV: 'production' },
       url: BASE_URL,

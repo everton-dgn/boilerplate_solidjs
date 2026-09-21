@@ -41,8 +41,8 @@ testes e hooks de git), sem aplicação de produto pronta.
       `requestId` por requisição
 - [x] Roteamento com lazy loading e rota 404 respondendo com status HTTP correto
 - [x] SEO: canonical e Open Graph por rota com `useHead`, imagem social,
-      `sitemap.xml`, `robots.txt` e `llms.txt` gerados a partir do manifesto de
-      rotas
+      `sitemap.xml` e `llms.txt` gerados a partir do manifesto de rotas e
+      `robots.txt` com bloqueio de robôs de treinamento de IA
 - [x] Layout responsivo com Topbar, página inicial e páginas de erro
 - [x] Botão, menu de tema e componentes de página com CSS Modules
 - [x] Tema claro, escuro ou do sistema (padrão), aplicado antes da hidratação,
@@ -63,65 +63,7 @@ testes e hooks de git), sem aplicação de produto pronta.
 
 ---
 
-# :open_file_folder: Estrutura do Projeto
-
-```text
-project/
-├── public/
-│   ├── favicon/             # Ícones SVG, ICO e PNG
-│   └── images/og.png        # Imagem social (Open Graph e Twitter)
-├── src/
-│   ├── @types/              # Tipos compartilhados, Solid e ícones
-│   ├── App.tsx              # Componente raiz: Router + layout
-│   ├── Document.tsx         # Shell HTML do SSR (head, HydrationScript)
-│   ├── middleware/         # Middlewares do servidor
-│   │   ├── index.ts
-│   │   └── __tests__/middleware.node.test.ts # Teste dos middlewares (projeto node)
-│   ├── router.ts            # Integração do manifesto de rotas por arquivo
-│   ├── __tests__/           # Testes dos módulos da raiz de src
-│   │   └── App.dom.test.tsx       # Erro real da rota e recuperação pelo App
-│   ├── components/          # Componentes por atomic design
-│   │   ├── atoms/           # Button, PageBadge, SeoHead, StructuredData, menu e tema
-│   │   ├── molecules/      # Topbar
-│   │   └── organisms/      # ErrorFallback
-│   ├── constants/          # Constantes do site, do tema e do cache das rotas geradas
-│   ├── helpers/            # Funções puras compartilhadas: tema, URL pública, cache, SEO e rotas estáticas
-│   ├── infra/
-│   │   ├── adapters/       # Persistência e comunicação entre abas
-│   │   └── server/         # Transporte e proteção de operações no servidor
-│   │       ├── configureServerErrors/   # Registro global de server functions
-│   │       ├── protectServerOperation/  # Proteção das operações e da saída
-│   │       ├── publicErrors/            # Criação de erros públicos seguros
-│   │       └── requestJson/             # HTTP e validação do JSON de sucesso
-│   ├── primitives/         # createTheme: estado e ciclo de vida reativos
-│   ├── theme/              # Somente CSS
-│   │   ├── globalStyles.css # Entrada global, reset e acessibilidade
-│   │   ├── class/          # utilities, animation e index.css
-│   │   └── tokens/         # colors, fonts, grids, radius, shadows, sizes, zIndex
-│   └── routes/
-│       ├── (home)/index.tsx # Página inicial
-│       ├── [...404].tsx     # Página 404 para caminhos desconhecidos
-│       ├── buildLlmsText/   # Montagem do llms.txt; só a rota llms.txt usa
-│       ├── buildSitemap/    # Montagem do XML do sitemap; só a rota sitemap.xml usa
-│       ├── collectLlmsPages/   # Páginas selecionadas para o llms.txt
-│       ├── collectStaticPaths/ # Caminhos indexáveis para o sitemap
-│       ├── llms.txt.ts      # Rota de API: índice em Markdown para LLMs
-│       ├── robots.txt.ts    # Rota de API: robots com o link do sitemap
-│       └── sitemap.xml.ts   # Rota de API: sitemap das páginas estáticas
-├── docs/
-│   └── server-errors.md     # Contrato de erros e chamadas de backend
-├── tooling/
-│   ├── fmt.ts               # Configuração do Oxfmt
-│   ├── lint.ts              # Configuração do Oxlint
-│   └── release/
-│       └── __tests__/       # Testes da automação de release (projeto node)
-├── vercel.json              # Comando de build e headers da Vercel
-├── vite.config.ts           # Vite+ (Solid, Nitro, fmt, lint, test)
-├── .lefthook.yml            # Hooks de git
-├── .commitlintrc            # Regras de Conventional Commits
-├── pnpm-workspace.yaml      # Catálogo de versões e builds permitidos
-└── AGENTS.md                # Instruções do Vite+ para agentes
-```
+# :straight_ruler: Convenções
 
 As páginas em `src/routes` usam `export default` e são descobertas pelo
 `filesystem-routing`. `index.tsx` define `/`, `[id].tsx` define um parâmetro
@@ -359,50 +301,52 @@ JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (de
 `SITE.author`), `publisher` e, quando a rota declara
 `article: { datePublished, dateModified }` em ISO 8601, essas datas no nó e nas
 metas `article:published_time` e `article:modified_time`. Fora de `article`, as
-datas são ignoradas. O JSON-LD, montado por `helpers/buildStructuredData/`,
+datas são ignoradas. O JSON-LD, montado por `SeoHead/buildStructuredData/`,
 publica sempre um nó `WebSite`, o nó da página com URL canônica, descrição,
 idioma e imagem, e um nó `Organization` com nome, URL, logo (`SITE.logo`, ao
 menos 112x112 pixels) e perfis oficiais (`SITE.socialLinks`, em `sameAs`).
 `WebSite.publisher` e `Article.publisher` apontam para esse nó pelo `@id`
-`<VITE_SITE_URL>/#organization`. O grafo é tipado com `schema-dts`; só `width` e
-`height` das imagens ficam numéricos, como o Google documenta, porque o
-schema-dts os tipa como `Distance` ou `QuantitativeValue`. O idioma vem de
-`SITE.locale`, que também alimenta o `lang` do `Document.tsx` e o `og:locale`
-(com sublinhado). `helpers/serializeJsonLd/` escapa `<`, `>` e `&` como
-sequências JSON para não encerrar o `<script>`. Dados que o projeto não tem,
-como handle do Twitter (`twitter:site`) e `hreflang`, não são publicados.
+`<VITE_SITE_URL>/#organization`. O grafo é tipado com `schema-dts`, então
+propriedade inválida falha no typecheck; as dimensões da imagem ficam só no Open
+Graph. O idioma vem de `SITE.locale`, que também alimenta o `lang` do
+`Document.tsx` e o `og:locale` (com sublinhado). `helpers/serializeJsonLd/`
+escapa `<`, `>` e `&` como sequências JSON para não encerrar o `<script>`. Dados
+que o projeto não tem, como handle do Twitter (`twitter:site`) e `hreflang`, não
+são publicados.
 
 Esse grafo base é fixo de propósito. Tipos que dependem da página (`Product`,
-`FAQPage`, `BreadcrumbList`, `Event`, datas de um `Article`) entram pelo atom
-`StructuredData`, renderizado no componente da rota com os dados já carregados.
-Ele publica um segundo `<script type="application/ld+json">` com `@context`,
-aceita um nó ou uma lista (vira `@graph`), remove o script ao desmontar e
-convive com outras instâncias na mesma página. A prop `data` é tipada com
-`schema-dts`, os tipos do schema.org mantidos pelo Google, então propriedade
-inválida falha no typecheck. Para ligar o nó ao grafo base, use o `@id` da
-página (a URL canônica), do site (`<VITE_SITE_URL>/#website`) ou da organização
-(`<VITE_SITE_URL>/#organization`). O atom não consulta `noindex`: uma rota fora
-do índice que o renderiza publica o JSON-LD mesmo assim.
+`FAQPage`, `BreadcrumbList`, `Event`) entram pela primitive
+`createStructuredData`, chamada no corpo do componente da rota. Ela recebe um
+accessor `() => data` e publica um segundo `<script type="application/ld+json">`
+com `@context`. Os dados podem ser um nó ou uma lista (vira `@graph`) e são
+tipados com `schema-dts`, os tipos do schema.org mantidos pelo Google, então
+propriedade inválida falha no typecheck. A primitive acompanha as mudanças do
+accessor, remove o script ao descartar seu escopo e convive com outras
+instâncias na mesma página. Retornar `undefined` suspende a publicação; quando o
+accessor voltar a fornecer dados, o script reaparece. Para ligar o nó ao grafo
+base, use o `@id` da página (a URL canônica), do site
+(`<VITE_SITE_URL>/#website`) ou da organização
+(`<VITE_SITE_URL>/#organization`). A primitive não consulta `noindex`: uma rota
+fora do índice que a utiliza publica o JSON-LD mesmo assim.
 
 ```tsx
-import { StructuredData } from '@/components/atoms/StructuredData/index.tsx'
+import { createStructuredData } from '@/primitives/createStructuredData/index.ts'
 
 export default function FaqPage() {
+  createStructuredData(() => ({
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'O que é o boilerplate?',
+        acceptedAnswer: { '@type': 'Answer', text: 'Uma base SolidJS.' }
+      }
+    ]
+  }))
+
   return (
     <main>
       <h1>Perguntas frequentes</h1>
-      <StructuredData
-        data={{
-          '@type': 'FAQPage',
-          mainEntity: [
-            {
-              '@type': 'Question',
-              name: 'O que é o boilerplate?',
-              acceptedAnswer: { '@type': 'Answer', text: 'Uma base SolidJS.' }
-            }
-          ]
-        }}
-      />
     </main>
   )
 }
@@ -453,12 +397,20 @@ descrição. O coletor do `llms.txt` resolve também os metadados das páginas. 
 registro histórico da medição dos casos extremos está em
 [desempenho da coleta de SEO](docs/seo-performance.md).
 
-`sitemap.xml.ts`, `robots.txt.ts` e `llms.txt.ts` são rotas de API: o sitemap
-lista as páginas estáticas do manifesto de rotas, sem parâmetros dinâmicos nem o
-fallback 404 e sem `noindex`, o robots aponta para ele e o llms.txt publica, em
-Markdown, título e descrição das páginas selecionadas por `route.info.llms`,
-agrupadas por seção. Em produção o processo guarda a resposta do sitemap e do
-llms.txt em memória, porque o manifesto e a URL do site são fixos no build. Os
+`sitemap.xml/`, `robots.txt/` e `llms.txt/` são rotas de API (`index.ts`): o
+sitemap lista as páginas estáticas do manifesto de rotas, sem parâmetros
+dinâmicos nem o fallback 404 e sem `noindex`, e o llms.txt publica, em Markdown,
+título e descrição das páginas selecionadas por `route.info.llms`, agrupadas por
+seção. O `Document.tsx` anuncia esse arquivo em todas as páginas com
+`<link rel="describedby" href="/llms.txt">`, a descoberta recomendada pela spec
+do llms.txt; agentes não são redirecionados. O robots publica os grupos de
+`robots.txt/constants.ts`: `*` com `Allow: /` e `Disallow: /_server` (endpoint
+das server functions), robôs de treinamento de IA com `Disallow: /`, e o link do
+sitemap. Buscadores e agentes que leem páginas a pedido do usuário continuam
+liberados, porque são o público do llms.txt. `Disallow` é um pedido que robôs
+mal comportados ignoram e não remove URL do índice; para isso, use `noindex` em
+`route.info.seo`. Em produção o processo guarda a resposta dos três arquivos em
+memória, porque o manifesto, os grupos e a URL do site são fixos no build. Os
 três arquivos saem com `public, max-age=3600` em produção e com `no-store` em
 desenvolvimento. As URLs absolutas dos três arquivos partem da origem de
 `VITE_SITE_URL`; um site servido em um subcaminho não é suportado por essa
@@ -662,18 +614,19 @@ entram no build.
 
 ## Testes da aplicação completa
 
-`pnpm test:e2e` executa os testes em `src/tests/pages/*.e2e.test.ts` com
-Chromium. O Playwright gera o build e inicia o servidor de produção em
-`http://127.0.0.1:4317`, encerrando-o ao terminar. A porta precisa estar livre.
-Os cenários cobrem a página inicial, hidratação do seletor de tema, teclado,
-persistência e sincronização entre abas, cores sem JavaScript, layout e resposta
-404 com navegação de volta ao início. Também cobrem a confidencialidade de erros
-do servidor: HTTP 500 de um backend local, exceção após a leitura, `Error`
-dentro do resultado, erro público e sucesso, cada um em SSR inicial, chamada
-pelo navegador e streaming, além de recarregamento ainda com falha, recuperação
-após o backend voltar e isolamento do bundle cliente. O SSR inicial também é
-verificado com JavaScript desativado. O detalhe está em
-[docs/server-errors.md](docs/server-errors.md); o CI executa a suíte inteira.
+`pnpm test:e2e` executa os testes em `src/tests/pages/**/*.e2e.test.ts`, exceto
+os arquivos `*.production.e2e.test.ts`, com Chromium. O Playwright gera o build
+e inicia o servidor de produção em `http://127.0.0.1:4317`, encerrando-o ao
+terminar. A porta precisa estar livre. Os cenários cobrem a página inicial,
+hidratação do seletor de tema, teclado, persistência e sincronização entre abas,
+cores sem JavaScript, layout e resposta 404 com navegação de volta ao início.
+Também cobrem a confidencialidade de erros do servidor: HTTP 500 de um backend
+local, exceção após a leitura, `Error` dentro do resultado, erro público e
+sucesso, cada um em SSR inicial, chamada pelo navegador e streaming, além de
+recarregamento ainda com falha, recuperação após o backend voltar e isolamento
+do bundle cliente. O SSR inicial também é verificado com JavaScript desativado.
+O detalhe está em [docs/server-errors.md](docs/server-errors.md); o CI executa a
+suíte inteira.
 
 O build E2E usa `--mode e2e` com otimizações de produção e acrescenta a página
 de teste pelo diretório `src/tests/fixtures/e2e/routes/`. O backend simulado
@@ -681,13 +634,25 @@ escuta somente em `127.0.0.1:4318` e é iniciado e encerrado pelo Playwright. O
 build normal (`pnpm build`) usa apenas `src/routes/` e não inclui essa página
 nem o backend simulado. As portas 4317 e 4318 precisam estar livres.
 
+`pnpm test:e2e:production` executa os arquivos `*.production.e2e.test.ts` contra
+um build normal, com a árvore real de `src/routes/`. Essa suíte verifica por
+HTTP que `/robots.txt`, `/llms.txt` e `/sitemap.xml` respondem sem
+redirecionamento, com conteúdo e headers esperados, e que os helpers locais não
+viram endpoints públicos. Também verifica a ausência de uma rota das fixtures. O
+comando usa a mesma `BASE_URL_TEST`, carrega as variáveis públicas no modo
+`production` e dispensa o backend simulado. Execute as duas suítes em sequência,
+pois compartilham a porta e os artefatos de build. O CI executa ambas; a suíte
+de produção também valida o build final.
+
 Use `pnpm test:e2e:ui` para abrir a interface interativa do Playwright. Com
 `CI=true`, os E2E usam um único worker; localmente, mantêm o paralelismo padrão.
 
-O relatório HTML fica em `playwright-report/` e os traces de falhas E2E em
-`test-results/e2e/`. Os testes do Vitest Browser Mode guardam traces de falhas
-em `test-results/browser-traces/`. Esses artefatos são ignorados pelo Git. Os
-E2E têm comando separado e não fazem parte de `pnpm test` ou `pnpm validate`.
+Os relatórios HTML ficam em `playwright-report/e2e/` e
+`playwright-report/production/`. Os traces de falhas ficam em
+`test-results/e2e/` e `test-results/e2e-production/`, respectivamente. Os testes
+do Vitest Browser Mode guardam traces de falhas em
+`test-results/browser-traces/`. Esses artefatos são ignorados pelo Git. Os E2E
+têm comando separado e não fazem parte de `pnpm test` ou `pnpm validate`.
 
 Para conferir a interface em um celular na mesma rede, execute `pnpm dev:phone`
 e abra a URL de rede exibida pelo Vite. Esse comando disponibiliza o servidor de

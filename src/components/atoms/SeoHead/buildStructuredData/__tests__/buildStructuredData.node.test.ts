@@ -17,12 +17,7 @@ const organization = {
   '@id': `${SITE.url}/#organization`,
   name: SITE.title,
   url: `${SITE.url}/`,
-  logo: {
-    '@type': 'ImageObject',
-    url: `${SITE.url}${SITE.logo.path}`,
-    width: SITE.logo.width,
-    height: SITE.logo.height
-  },
+  logo: { '@type': 'ImageObject', url: `${SITE.url}${SITE.logo}` },
   sameAs: SITE.socialLinks
 }
 
@@ -58,8 +53,6 @@ describe('dados estruturados da página', () => {
         image: {
           '@type': 'ImageObject',
           url: `${SITE.url}${SITE.image.path}`,
-          width: SITE.image.width,
-          height: SITE.image.height,
           caption: SITE.image.alt
         }
       },
@@ -81,7 +74,8 @@ describe('dados estruturados da página', () => {
     expect(article?.headline).toBe('Artigo')
     expect(article?.author).toStrictEqual({
       '@type': 'Person',
-      name: SITE.author
+      name: SITE.author.name,
+      url: SITE.author.url
     })
     expect(article?.publisher).toStrictEqual({
       '@id': `${SITE.url}/#organization`

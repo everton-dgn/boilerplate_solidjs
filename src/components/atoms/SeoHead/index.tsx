@@ -2,9 +2,10 @@ import { useLocation, useRouteMatches } from '@solidjs/router'
 import { type HeadTag, useHead } from '@solidjs/web'
 
 import { SITE } from '@/constants/site.ts'
-import { buildStructuredData } from '@/helpers/buildStructuredData/index.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
+
+import { buildStructuredData } from './buildStructuredData/index.ts'
 
 // `index, follow` já é o padrão do crawler; o ganho está em
 // `max-image-preview:large`, que libera a prévia grande da imagem.

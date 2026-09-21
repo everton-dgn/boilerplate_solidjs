@@ -39,31 +39,31 @@ declare module "virtual:file-routes" {
       $$route: FileRouteEagerRef<typeof import("../routes/[...404]")>;
     },
     {
-      path: "/llms.txt";
-      page: false;
-      $GET: FileRouteLazyRef<typeof import("../routes/llms.txt")>;
-      $HEAD: FileRouteLazyRef<typeof import("../routes/llms.txt")>;
-      $$route?: undefined;
-    },
-    {
-      path: "/robots.txt";
-      page: false;
-      $GET: FileRouteLazyRef<typeof import("../routes/robots.txt")>;
-      $HEAD: FileRouteLazyRef<typeof import("../routes/robots.txt")>;
-      $$route?: undefined;
-    },
-    {
-      path: "/sitemap.xml";
-      page: false;
-      $GET: FileRouteLazyRef<typeof import("../routes/sitemap.xml")>;
-      $HEAD: FileRouteLazyRef<typeof import("../routes/sitemap.xml")>;
-      $$route?: undefined;
-    },
-    {
       path: "/(home)/";
       page: true;
       $component: FileRouteLazyRef<typeof import("../routes/(home)/index")>;
       $$route: FileRouteEagerRef<typeof import("../routes/(home)/index")>;
+    },
+    {
+      path: "/(seo)/llms.txt/";
+      page: false;
+      $GET: FileRouteLazyRef<typeof import("../routes/(seo)/llms.txt/index")>;
+      $HEAD: FileRouteLazyRef<typeof import("../routes/(seo)/llms.txt/index")>;
+      $$route?: undefined;
+    },
+    {
+      path: "/(seo)/robots.txt/";
+      page: false;
+      $GET: FileRouteLazyRef<typeof import("../routes/(seo)/robots.txt/index")>;
+      $HEAD: FileRouteLazyRef<typeof import("../routes/(seo)/robots.txt/index")>;
+      $$route?: undefined;
+    },
+    {
+      path: "/(seo)/sitemap.xml/";
+      page: false;
+      $GET: FileRouteLazyRef<typeof import("../routes/(seo)/sitemap.xml/index")>;
+      $HEAD: FileRouteLazyRef<typeof import("../routes/(seo)/sitemap.xml/index")>;
+      $$route?: undefined;
     }
   ];
   export default routes;

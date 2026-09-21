@@ -58,7 +58,7 @@ const config = {
     // API de transporte do boilerplate; o consumidor atual está na fixture E2E.
     'src/infra/server/requestJson/index.ts!',
     // JSON-LD por página do boilerplate; o consumidor atual está na fixture E2E.
-    'src/components/atoms/StructuredData/index.tsx!',
+    'src/primitives/createStructuredData/index.ts!',
     'tooling/testing/server-only.ts',
     'env.ts!',
     'tooling/testing/error-backend.ts'

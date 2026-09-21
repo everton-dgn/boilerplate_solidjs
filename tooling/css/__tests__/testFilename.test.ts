@@ -24,6 +24,7 @@ describe('test filename policy', () => {
     'src/tests/pages/Home/Home.themeCss.e2e.test.ts',
     'src/tests/pages/NotFound/NotFound.e2e.test.ts',
     'src/tests/pages/BackendError/BackendError.e2e.test.ts',
+    'src/tests/pages/StructuredData/StructuredData.streaming.e2e.test.ts',
     'tooling/release/__tests__/automatic-release.test.ts',
     'tooling/css/__tests__/cssPolicy.test.ts',
     'tooling/css/__tests__/testFilename.test.ts',

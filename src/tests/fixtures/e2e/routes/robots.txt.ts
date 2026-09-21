@@ -1,1 +1,1 @@
-export { GET } from '@/routes/robots.txt.ts'
+export { GET } from '@/routes/(seo)/robots.txt/index.ts'

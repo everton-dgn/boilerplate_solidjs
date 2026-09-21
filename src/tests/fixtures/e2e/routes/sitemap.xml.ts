@@ -1,1 +1,1 @@
-export { GET } from '@/routes/sitemap.xml.ts'
+export { GET } from '@/routes/(seo)/sitemap.xml/index.ts'

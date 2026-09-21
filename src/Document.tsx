@@ -30,7 +30,7 @@ export default function Document(props: ParentProps) {
       <head>
         <meta charset="utf-8" />
         <title>{SITE.title}</title>
-        <meta name="author" content={SITE.author} />
+        <meta name="author" content={SITE.author.name} />
         <meta
           name="viewport"
           content="minimum-scale=1, initial-scale=1, width=device-width"
@@ -43,6 +43,7 @@ export default function Document(props: ParentProps) {
           name="theme-color"
           content={THEME_COLORS[explicitTheme ?? 'light']}
         />
+        <link rel="describedby" href="/llms.txt" />
         <script>
           {`(() => {
             const theme = ${JSON.stringify(theme)};

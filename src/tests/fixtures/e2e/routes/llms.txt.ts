@@ -1,1 +1,1 @@
-export { GET } from '@/routes/llms.txt.ts'
+export { GET } from '@/routes/(seo)/llms.txt/index.ts'
