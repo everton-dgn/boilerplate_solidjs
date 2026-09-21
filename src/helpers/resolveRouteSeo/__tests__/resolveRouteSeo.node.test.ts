@@ -47,6 +47,19 @@ describe('resolução dos metadados de SEO na cadeia de rotas', () => {
     })
   })
 
+  it('mescla as datas de artigo e omite a chave quando ninguém as declara', () => {
+    const seo = resolveRouteSeo([
+      { type: 'article', article: { datePublished: '2026-09-01' } },
+      { article: { dateModified: '2026-09-21', datePublished: undefined } }
+    ])
+
+    expect(seo.article).toStrictEqual({
+      datePublished: '2026-09-01',
+      dateModified: '2026-09-21'
+    })
+    expect('article' in resolveRouteSeo([{ type: 'article' }])).toBe(false)
+  })
+
   it('não compartilha o objeto de imagem de SITE com o resultado', () => {
     const seo = resolveRouteSeo([])
     seo.image.alt = 'alterado'
