@@ -373,14 +373,13 @@ registro histórico da medição dos casos extremos está em
 lista as páginas estáticas do manifesto de rotas, sem parâmetros dinâmicos nem o
 fallback 404 e sem `noindex`, o robots aponta para ele e o llms.txt publica, em
 Markdown, título e descrição das páginas selecionadas por `route.info.llms`,
-agrupadas por seção. Em produção o processo guarda a última resposta do sitemap
-e do llms.txt em memória, substituída quando a URL do site muda, porque o
-manifesto é fixo no build. Os três arquivos saem com `public, max-age=3600` em
-produção e com `no-store` em desenvolvimento. As URLs absolutas dos três
-arquivos partem da origem de `VITE_SITE_URL`; um site servido em um subcaminho
-não é suportado por essa geração. A página 404 declara `robots: noindex`. A
-imagem social fica em `public/images/og.png`, com cache imutável configurado em
-`vercel.json`.
+agrupadas por seção. Em produção o processo guarda a resposta do sitemap e do
+llms.txt em memória, porque o manifesto e a URL do site são fixos no build. Os
+três arquivos saem com `public, max-age=3600` em produção e com `no-store` em
+desenvolvimento. As URLs absolutas dos três arquivos partem da origem de
+`VITE_SITE_URL`; um site servido em um subcaminho não é suportado por essa
+geração. A página 404 declara `robots: noindex`. A imagem social fica em
+`public/images/og.png`, com cache imutável configurado em `vercel.json`.
 
 <br />
 
