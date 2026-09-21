@@ -42,6 +42,27 @@ declare module "virtual:file-routes" {
       path: "/(home)/";
       page: true;
       $component: FileRouteLazyRef<typeof import("../routes/(home)/index")>;
+      $$route: FileRouteEagerRef<typeof import("../routes/(home)/index")>;
+    },
+    {
+      path: "/(seo)/llms.txt/";
+      page: false;
+      $GET: FileRouteLazyRef<typeof import("../routes/(seo)/llms.txt/index")>;
+      $HEAD: FileRouteLazyRef<typeof import("../routes/(seo)/llms.txt/index")>;
+      $$route?: undefined;
+    },
+    {
+      path: "/(seo)/robots.txt/";
+      page: false;
+      $GET: FileRouteLazyRef<typeof import("../routes/(seo)/robots.txt/index")>;
+      $HEAD: FileRouteLazyRef<typeof import("../routes/(seo)/robots.txt/index")>;
+      $$route?: undefined;
+    },
+    {
+      path: "/(seo)/sitemap.xml/";
+      page: false;
+      $GET: FileRouteLazyRef<typeof import("../routes/(seo)/sitemap.xml/index")>;
+      $HEAD: FileRouteLazyRef<typeof import("../routes/(seo)/sitemap.xml/index")>;
       $$route?: undefined;
     }
   ];
@@ -62,7 +83,7 @@ declare module "virtual:file-routes" {
       id: "/(home)/";
       page: true;
       $component: FileRouteLazyRef<typeof import("../routes/(home)/index")>;
-      $$route?: undefined;
+      $$route: FileRouteEagerRef<typeof import("../routes/(home)/index")>;
       children?: undefined;
     }
   ];

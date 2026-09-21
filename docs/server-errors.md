@@ -69,6 +69,11 @@ a operação inteira em `protectServerOperation({ run })`, incluindo leitura,
 validação e montagem da saída. Acrescente o pacote às restrições de import do
 lint, com exceção apenas para o adapter e teste da proteção.
 
+As fontes do sitemap (`route.info.sitemap`) seguem a mesma regra: a função
+declarada na rota chama uma server function, que faz a leitura protegida e
+devolve só `path` e `lastmod`. A rota do sitemap responde 503 sem corpo a
+qualquer falha; ela não registra o erro original.
+
 Nunca copie `error.message`, `cause`, propriedades, corpo upstream ou issues do
 validador para a saída. Para uma falha pública, use `createPublicError()`.
 Somente `publicErrors` pode usar `markSafeError`, que autoriza a serialização do

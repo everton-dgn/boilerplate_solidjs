@@ -34,8 +34,8 @@ pre-push:
           - name: check-ci
             run: pnpm check:ci
 
-          - name: typecheck
-            run: pnpm typecheck
+          - name: typecheck-node
+            run: pnpm typecheck:node
 
           - name: test
             run: pnpm test:ci

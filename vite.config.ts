@@ -59,7 +59,7 @@ const componentPlugins = () =>
     return [
       icons(modules),
       modules.solid({ serverFunctions: true }),
-      modules.fileRoutes({ types: 'src/@types/routes.d.ts' })
+      modules.fileRoutes({ types: 'src/@types/routes.d.ts', httpMethods: true })
     ]
   })
 
@@ -69,7 +69,7 @@ const appPlugins = (mode: string) =>
     return [
       icons(modules),
       modules.solid({
-        start: { middleware: './src/middleware.ts' },
+        start: { middleware: './src/middleware/index.ts' },
         ssr: true,
         serverFunctions: {
           configure: './src/infra/server/configureServerErrors/index.ts'
@@ -77,8 +77,8 @@ const appPlugins = (mode: string) =>
       }),
       modules.fileRoutes(
         mode === 'e2e'
-          ? { dir: 'src/tests/fixtures/e2e/routes' }
-          : { types: 'src/@types/routes.d.ts' }
+          ? { dir: 'src/tests/fixtures/e2e/routes', httpMethods: true }
+          : { types: 'src/@types/routes.d.ts', httpMethods: true }
       ),
       modules.nitro({ serverEntry: false, preset: 'vercel' })
     ]
@@ -100,7 +100,7 @@ const css = {
 }
 
 export default defineConfig(({ mode }) => {
-  const localEnv = loadEnv(mode, import.meta.dirname, '')
+  const localEnv = loadEnv(mode, import.meta.dirname, ['HOST', 'PORT'])
   const server = {
     host: localEnv.HOST,
     port: localEnv.PORT ? Number(localEnv.PORT) : undefined
@@ -120,6 +120,16 @@ export default defineConfig(({ mode }) => {
     run: {
       cache: {
         scripts: true
+      },
+      tasks: {
+        'lint-project': {
+          command: 'node tooling/css/check.ts && vp lint',
+          env: ['NODE_ENV', 'NODE_OPTIONS', 'PATH']
+        },
+        'check-project': {
+          command: 'node tooling/css/check.ts && vp check',
+          env: ['NODE_ENV', 'NODE_OPTIONS', 'PATH']
+        }
       }
     },
     build: {
@@ -168,6 +178,9 @@ export default defineConfig(({ mode }) => {
             alias: {
               'server-only': fileURLToPath(
                 new URL('tooling/testing/server-only.ts', import.meta.url)
+              ),
+              'virtual:file-routes': fileURLToPath(
+                new URL('tooling/testing/file-routes.ts', import.meta.url)
               )
             }
           },

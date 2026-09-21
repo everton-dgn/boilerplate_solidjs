@@ -139,6 +139,10 @@ test('a política distingue dependências permitidas e inversões de camada', ()
         code: 'import App from "@/App.tsx"'
       },
       {
+        filename: 'src/infra/example.ts',
+        code: 'import middleware from "@/middleware/index.ts"'
+      },
+      {
         filename: 'src/components/atoms/Button/index.tsx',
         code: 'import { Topbar } from "../../molecules/Topbar/index.tsx"'
       },

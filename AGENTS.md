@@ -102,6 +102,39 @@ release. Add a tool name to select part of the graph. For example, run
 - Preserve os tipos que precisam ser exportados como parte de uma API pública
   intencional.
 
+## Localização de módulos
+
+- O critério de consumidores vale para qualquer módulo, não só para funções:
+  helpers, constantes, configurações, schemas, builders e tipos. As pastas
+  globais `src/helpers/`, `src/constants/` e os tipos compartilhados em
+  `src/@types/` recebem só módulos com dois ou mais consumidores de produção.
+  Um módulo usado por uma única rota fica dentro da pasta dela em
+  `src/routes/`, e um módulo usado por um único componente fica dentro da
+  pasta do componente.
+- Constante de consumidor único fica no próprio arquivo que a usa. Quando for
+  configuração que o projeto edita, vai para um `constants.ts` na pasta do
+  consumidor, como `DropdownMenu/constants.ts` e
+  `(seo)/robots.txt/constants.ts`. Nunca em `src/constants/` antes do segundo
+  consumidor.
+- Rota que passa a precisar de módulos locais vira pasta com `index.ts`:
+  `robots.txt.ts` passa a `robots.txt/index.ts`, e o que a rota consome fica
+  dentro dessa pasta. `sitemap.xml/`, `llms.txt/` e `robots.txt/` seguem esse
+  formato.
+- Quando uma rota ou componente tiver dois ou mais módulos auxiliares locais,
+  agrupe-os em uma pasta `helpers/` dentro da pasta da rota ou componente.
+  Com apenas um helper local, mantenha-o diretamente na pasta do consumidor.
+  `constants.ts` e `types.ts` são módulos de suporte e não entram nessa
+  contagem. Essa organização não muda o critério de compartilhamento das
+  pastas globais.
+- Pasta ou arquivo em `src/routes/` só vira rota com `export default` ou com
+  um handler HTTP (`GET`, `POST` e os demais métodos reconhecidos). Módulos
+  colocalizados não exportam esses nomes.
+- Previsão de reuso não justifica a extração. Mova para a pasta global
+  correspondente quando o segundo consumidor aparecer, atualizando imports,
+  testes e o README.
+- Testes não decidem a localização. Um módulo colocalizado mantém seus
+  testes em `__tests__/` ao lado dele.
+
 ## Parâmetros de função
 
 - Função com dois parâmetros ou mais recebe um único objeto nomeado:
@@ -116,7 +149,7 @@ release. Add a tool name to select part of the graph. For example, run
   argumento único.
 - A regra vale para as funções do projeto. Assinaturas ditadas por terceiros
   ficam como o contrato exige, sem adaptação: middlewares `(request, next)` em
-  `src/middleware.ts`, callbacks de teste e hooks de plugin do Vite.
+  `src/middleware/index.ts`, callbacks de teste e hooks de plugin do Vite.
 
 ## Nomes de signal
 

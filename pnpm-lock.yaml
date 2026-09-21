@@ -176,6 +176,9 @@ importers:
       '@solidjs/web':
         specifier: 2.0.0-rc.9
         version: 2.0.0-rc.9(solid-js@2.0.0-rc.9)
+      filesystem-routing:
+        specifier: 0.3.1
+        version: 0.3.1(@voidzero-dev/vite-plus-core@0.3.3(@types/node@24.13.5)(jiti@2.6.1)(typescript@7.0.2)(yaml@2.9.1))(supports-color@7.2.0)
       solid-js:
         specifier: 2.0.0-rc.9
         version: 2.0.0-rc.9
@@ -216,9 +219,6 @@ importers:
       eslint-plugin-solid:
         specifier: 0.18.0
         version: 0.18.0(eslint@10.9.1(jiti@2.6.1)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@7.0.2)
-      filesystem-routing:
-        specifier: 0.3.1
-        version: 0.3.1(@voidzero-dev/vite-plus-core@0.3.3(@types/node@24.13.5)(jiti@2.6.1)(typescript@7.0.2)(yaml@2.9.1))(supports-color@7.2.0)
       happy-dom:
         specifier: 20.14.5
         version: 20.14.5
@@ -240,6 +240,9 @@ importers:
       postcss-preset-env:
         specifier: 11.5.3
         version: 11.5.3(postcss@8.5.26)
+      schema-dts:
+        specifier: 2.0.0
+        version: 2.0.0(typescript@7.0.2)
       stylelint:
         specifier: 17.15.0
         version: 17.15.0(supports-color@7.2.0)(typescript@7.0.2)
@@ -4038,6 +4041,15 @@ packages:
   saxes@6.0.0:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
     engines: {node: '>=v12.22.7'}
+
+  schema-dts-lib@1.0.0:
+    resolution: {integrity: sha512-9MEO5vpQH9JdBioUupqluzxSYxPLjhmqRUudk15adUl/ypnRsM2/M1kN3AmVJQeG7nZqcL68H8JlGqQQT6vy9A==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      typescript: '>=4.9.5'
+
+  schema-dts@2.0.0:
+    resolution: {integrity: sha512-t7NoCy3Rn5GHGx6p7s1qIYK/AeIb8ZxJNR9WUNFkwMv2CiiGZBmqqYWc2FlZVm5ZbiHMY4OvBWhj7QtyrFO2Jw==}
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
@@ -8077,6 +8089,16 @@ snapshots:
     dependencies:
       xmlchars: 2.2.0
     optional: true
+
+  schema-dts-lib@1.0.0(typescript@7.0.2):
+    dependencies:
+      typescript: 7.0.2
+
+  schema-dts@2.0.0(typescript@7.0.2):
+    dependencies:
+      schema-dts-lib: 1.0.0(typescript@7.0.2)
+    transitivePeerDependencies:
+      - typescript
 
   semver@6.3.1: {}
 

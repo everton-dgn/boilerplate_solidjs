@@ -23,23 +23,14 @@ export default function Document(props: ParentProps) {
 
   return (
     <html
-      lang="pt-BR"
+      lang={SITE.locale}
       class={explicitTheme}
       style={explicitTheme ? { 'color-scheme': explicitTheme } : undefined}
     >
       <head>
         <meta charset="utf-8" />
         <title>{SITE.title}</title>
-        <meta name="description" content={SITE.description} />
-        <meta name="author" content={SITE.author} />
-        <meta property="og:type" content="website" />
-        <meta property="og:locale" content="pt_BR" />
-        <meta property="og:site_name" content={SITE.title} />
-        <meta property="og:title" content={SITE.title} />
-        <meta property="og:description" content={SITE.description} />
-        <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content={SITE.title} />
-        <meta name="twitter:description" content={SITE.description} />
+        <meta name="author" content={SITE.author.name} />
         <meta
           name="viewport"
           content="minimum-scale=1, initial-scale=1, width=device-width"
@@ -52,6 +43,7 @@ export default function Document(props: ParentProps) {
           name="theme-color"
           content={THEME_COLORS[explicitTheme ?? 'light']}
         />
+        <link rel="describedby" href="/llms.txt" />
         <script>
           {`(() => {
             const theme = ${JSON.stringify(theme)};

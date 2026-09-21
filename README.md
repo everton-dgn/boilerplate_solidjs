@@ -40,6 +40,9 @@ testes e hooks de git), sem aplicação de produto pronta.
 - [x] Middleware de servidor: `server-timing`, cabeçalhos de segurança e
       `requestId` por requisição
 - [x] Roteamento com lazy loading e rota 404 respondendo com status HTTP correto
+- [x] SEO: canonical e Open Graph por rota com `useHead`, imagem social,
+      `sitemap.xml` e `llms.txt` gerados a partir do manifesto de rotas e
+      `robots.txt` com bloqueio de robôs de treinamento de IA
 - [x] Layout responsivo com Topbar, página inicial e páginas de erro
 - [x] Botão, menu de tema e componentes de página com CSS Modules
 - [x] Tema claro, escuro ou do sistema (padrão), aplicado antes da hidratação,
@@ -60,57 +63,7 @@ testes e hooks de git), sem aplicação de produto pronta.
 
 ---
 
-# :open_file_folder: Estrutura do Projeto
-
-```text
-project/
-├── public/
-│   ├── favicon/             # Ícones SVG, ICO e PNG
-│   └── robots.txt           # Regras de rastreamento
-├── src/
-│   ├── @types/              # Tipos compartilhados, Solid e ícones
-│   ├── App.tsx              # Componente raiz: Router + layout
-│   ├── Document.tsx         # Shell HTML do SSR (head, HydrationScript)
-│   ├── middleware.ts        # Middlewares do servidor
-│   ├── router.ts            # Integração do manifesto de rotas por arquivo
-│   ├── __tests__/           # Testes dos módulos da raiz de src
-│   │   ├── App.dom.test.tsx       # Erro real da rota e recuperação pelo App
-│   │   └── middleware.node.test.ts # Teste dos middlewares (projeto node)
-│   ├── components/          # Componentes por atomic design
-│   │   ├── atoms/           # Button, PageBadge, menu e tema
-│   │   ├── molecules/      # Topbar
-│   │   └── organisms/      # ErrorFallback
-│   ├── constants/          # Constantes compartilhadas do tema
-│   ├── helpers/            # Validação pura da preferência de tema
-│   ├── infra/
-│   │   ├── adapters/       # Persistência e comunicação entre abas
-│   │   └── server/         # Transporte e proteção de operações no servidor
-│   │       ├── configureServerErrors/   # Registro global de server functions
-│   │       ├── protectServerOperation/  # Proteção das operações e da saída
-│   │       ├── publicErrors/            # Criação de erros públicos seguros
-│   │       └── requestJson/             # HTTP e validação do JSON de sucesso
-│   ├── primitives/         # createTheme: estado e ciclo de vida reativos
-│   ├── theme/              # Somente CSS
-│   │   ├── globalStyles.css # Entrada global, reset e acessibilidade
-│   │   ├── class/          # utilities, animation e index.css
-│   │   └── tokens/         # colors, fonts, grids, radius, shadows, sizes, zIndex
-│   └── routes/
-│       ├── index.tsx        # Página inicial
-│       └── [...404].tsx     # Página 404 para caminhos desconhecidos
-├── docs/
-│   └── server-errors.md     # Contrato de erros e chamadas de backend
-├── tooling/
-│   ├── fmt.ts               # Configuração do Oxfmt
-│   ├── lint.ts              # Configuração do Oxlint
-│   └── release/
-│       └── __tests__/       # Testes da automação de release (projeto node)
-├── vercel.json              # Comando de build e headers da Vercel
-├── vite.config.ts           # Vite+ (Solid, Nitro, fmt, lint, test)
-├── .lefthook.yml            # Hooks de git
-├── .commitlintrc            # Regras de Conventional Commits
-├── pnpm-workspace.yaml      # Catálogo de versões e builds permitidos
-└── AGENTS.md                # Instruções do Vite+ para agentes
-```
+# :straight_ruler: Convenções
 
 As páginas em `src/routes` usam `export default` e são descobertas pelo
 `filesystem-routing`. `index.tsx` define `/`, `[id].tsx` define um parâmetro
@@ -120,6 +73,13 @@ Componentes colocalizados podem ficar em pastas `components` dentro de `routes`:
 use exportações nomeadas para que eles não sejam registrados como páginas. Não é
 necessário editar `src/router.ts` ao adicionar uma página.
 
+Rotas de API são módulos de `src/routes` que exportam `GET`, `POST` ou outro
+método HTTP em vez de `export default`. O `createAPIHandler` em
+`src/middleware/index.ts` responde a essas requisições antes do SSR e deixa
+passar as demais. O nome do arquivo vira o caminho sem a extensão, então
+`sitemap.xml.ts` atende `/sitemap.xml`; colchetes continuam indicando parâmetros
+dinâmicos.
+
 O plugin gera `src/@types/routes.d.ts` com os caminhos tipados durante o build
 ou desenvolvimento. Mantenha essa declaração versionada e atualizada ao mudar as
 rotas, para permitir typecheck antes de iniciar o Vite.
@@ -127,10 +87,12 @@ rotas, para permitir typecheck antes de iniciar o Vite.
 Tipos, estilos específicos, testes e primitives usados por um único componente
 ficam junto dele, incluindo `Button/styles.module.css`. As utilidades globais
 ficam em `theme/class/`, e `theme/tokens/` concentra os valores visuais
-consumidos pelo CSS. `helpers/` contém funções puras compartilhadas;
-`infra/adapters/` isola as APIs do navegador, e `infra/server/` concentra o
-transporte de backend, a proteção das operações e a criação de erros públicos.
-Os módulos de servidor usam `server-only`; consulte o
+consumidos pelo CSS. `helpers/` contém funções puras compartilhadas; um módulo
+usado por uma única rota fica ao lado dela em `routes/`, sem export default nem
+handler HTTP, e por isso não vira rota. `infra/adapters/` isola as APIs do
+navegador, e `infra/server/` concentra o transporte de backend, a proteção das
+operações e a criação de erros públicos. Os módulos de servidor usam
+`server-only`; consulte o
 [contrato de erros no servidor](docs/server-errors.md). O prefixo `make`
 identifica utilitários sem estado reativo próprio, como `makeThemeChannel`, que
 devolve seu descarte. O prefixo `create` identifica primitives com estado ou
@@ -297,6 +259,201 @@ sistema e `@types/theme.ts` define os tipos compartilhados, mantendo `theme/` s�
 com CSS. As cores usam `light-dark()` com `color-scheme`, para definir cada par
 uma vez e seguir o sistema também quando JavaScript está desabilitado.
 
+### SEO e metadados
+
+`VITE_SITE_URL` no `.env` é obrigatória e define a URL pública do site, validada
+em `env.ts`. `SeoHead`, renderizado dentro do `Router` em `App.tsx`, usa
+`useHead` do `@solidjs/web` para publicar `canonical`, `og:url`, `og:type`, a
+imagem social absoluta (Open Graph e Twitter, com dimensões e texto alternativo)
+e um `<script type="application/ld+json">` para a rota atual, inclusive na
+navegação no cliente. As tags sociais que não variam por rota (`og:locale`,
+`og:site_name`, `twitter:card`, `twitter:site` e `twitter:creator`) também saem
+do `SeoHead`, para acompanhar a regra de `noindex` abaixo; em `Document.tsx`
+fica só `author`. Não repita no `Document.tsx` uma tag que o `SeoHead` publica,
+porque o crawler lê a primeira ocorrência.
+
+Cada página pode exportar `route.info.seo` com `title`, `description`,
+`noindex`, `type`, `image` e `article`. Isso não muda sua estratégia de
+renderização nem torna a página estática: são metadados, disponíveis também em
+rotas com parâmetros. `SeoHead` lê a cadeia de rotas ativas com
+`useRouteMatches` e publica esses campos no título, na descrição, no Open Graph,
+no Twitter e no JSON-LD usando `useHead`. A rota filha sobrescreve os campos que
+declara e herda os demais do layout; `image` é mesclada atributo a atributo
+(`path`, `width`, `height`, `alt`). Sem definição na cadeia, título, descrição e
+imagem vêm de `SITE`, `type` é `website` e `noindex` é `false`. Por isso a home
+não declara `seo`: ela usa exatamente esses padrões. Página indexável publica
+`robots` com `index, follow, max-image-preview:large`: os dois primeiros já são
+o padrão do crawler e o terceiro libera a prévia grande da imagem no Google
+Discover. Escolha do projeto: com `noindex: true`, o `SeoHead` publica só
+`robots: noindex`, título e descrição. Canonical, Open Graph, Twitter (inclusive
+`og:locale`, `og:site_name` e `twitter:card`) e JSON-LD ficam de fora, inclusive
+na página 404. Neste boilerplate esses metadados só têm consumidor em páginas
+indexáveis; a canonical da 404 apontava para a URL inexistente digitada, e o
+JSON-LD declarava um `WebPage` nela. Uma filha pode sobrescrever `noindex` com
+`false` explicitamente. Limite conhecido: página `noindex` feita para
+compartilhamento (convite, resultado, campanha) ainda não tem suporte e deixa de
+fornecer metadados explícitos para a prévia social. Quando esse caso surgir,
+acrescente um campo em `route.info.seo` que devolva Open Graph e Twitter sem
+canonical nem JSON-LD.
+
+`type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
+JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (nó
+`Person` com nome, URL e perfis de `SITE.author`, os perfis em `sameAs`),
+`publisher` e, quando a rota declara `article: { datePublished, dateModified }`
+em ISO 8601, essas datas no nó e nas metas `article:published_time` e
+`article:modified_time`. Fora de `article`, as datas são ignoradas. O JSON-LD,
+montado por `SeoHead/buildStructuredData/`, publica sempre um nó `WebSite`, o nó
+da página com URL canônica, descrição, idioma e imagem, e um nó `Organization`
+com nome, URL, logo (`SITE.logo`, ao menos 112x112 pixels) e perfis oficiais
+(`SITE.socialLinks`, em `sameAs`). `WebSite.publisher` e `Article.publisher`
+apontam para esse nó pelo `@id` `<VITE_SITE_URL>/#organization`. O grafo é
+tipado com `schema-dts`, então propriedade inválida falha no typecheck; as
+dimensões da imagem ficam só no Open Graph. O idioma vem de `SITE.locale`, que
+também alimenta o `lang` do `Document.tsx` e o `og:locale` (com sublinhado).
+`helpers/serializeJsonLd/` escapa `<`, `>` e `&` como sequências JSON para não
+encerrar o `<script>`. Os handles do Twitter saem de `SITE.twitter`
+(`twitter:site`, a conta do site) e de `SITE.author.twitter` (`twitter:creator`,
+a conta do autor). O LinkedIn não tem meta tag própria: ele lê o Open Graph para
+a prévia, e o perfil entra só no `sameAs`. Dados que o projeto não tem, como
+`hreflang`, não são publicados.
+
+Esse grafo base é fixo de propósito. Tipos que dependem da página (`Product`,
+`FAQPage`, `BreadcrumbList`, `Event`) entram pela primitive
+`createStructuredData`, chamada no corpo do componente da rota. Ela recebe um
+accessor `() => data` e publica um segundo `<script type="application/ld+json">`
+com `@context`. Os dados podem ser um nó ou uma lista (vira `@graph`) e são
+tipados com `schema-dts`, os tipos do schema.org mantidos pelo Google, então
+propriedade inválida falha no typecheck. A primitive acompanha as mudanças do
+accessor, remove o script ao descartar seu escopo e convive com outras
+instâncias na mesma página. Retornar `undefined` suspende a publicação; quando o
+accessor voltar a fornecer dados, o script reaparece. Para ligar o nó ao grafo
+base, use o `@id` da página (a URL canônica), do site
+(`<VITE_SITE_URL>/#website`) ou da organização
+(`<VITE_SITE_URL>/#organization`). A primitive não consulta `noindex`: uma rota
+fora do índice que a utiliza publica o JSON-LD mesmo assim.
+
+```tsx
+import { createStructuredData } from '@/primitives/createStructuredData/index.ts'
+
+export default function FaqPage() {
+  createStructuredData(() => ({
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'O que é o boilerplate?',
+        acceptedAnswer: { '@type': 'Answer', text: 'Uma base SolidJS.' }
+      }
+    ]
+  }))
+
+  return (
+    <main>
+      <h1>Perguntas frequentes</h1>
+    </main>
+  )
+}
+```
+
+```tsx
+import type { RouteDefinition } from '@solidjs/router'
+
+export const route = {
+  info: {
+    seo: {
+      title: 'Sobre nós',
+      description: 'Conheça nossa equipe.',
+      type: 'article',
+      image: { path: '/images/equipe.png', alt: 'Foto da equipe' }
+    },
+    llms: { section: 'Empresa' }
+  }
+} satisfies RouteDefinition
+```
+
+O `llms.txt` coleta os mesmos metadados pelo manifesto, sem renderizar páginas
+nem executar preloads, e publica só as páginas que declaram `route.info.llms`. O
+arquivo é um índice curado para modelos de linguagem, não um sitemap: em sites
+grandes, selecione as páginas que explicam o produto e agrupe-as. `llms: true`
+inclui a página; sem seção herdada, ela entra na seção padrão `Páginas`.
+`{ section: 'Guias' }` cria ou reutiliza uma seção com esse nome, na ordem em
+que aparece no manifesto; `{ optional: true }` move a página para a seção
+`Optional`, que o formato reserva ao conteúdo que o modelo pode pular, e uma
+seção declarada com esse nome se funde a ela. A configuração é herdada pela
+cadeia de rotas: um layout com `llms: { section: 'Docs' }` inclui suas filhas
+nessa seção, uma filha pode sair com `llms: false` ou sobrescrever só o campo
+que declara, e `llms: true` numa filha reativa a inclusão preservando seção e
+marcação opcional herdadas. `noindex: true` exclui a página do sitemap e do
+llms.txt, mesmo com a flag. O filtro considera a configuração efetiva da página,
+incluindo herança e a rota de índice filha.
+
+O `llms.txt` só lista URLs sem parâmetros. No sitemap, uma rota com parâmetro
+entra pelas entradas de `route.info.sitemap`: uma função, síncrona ou
+assíncrona, que devolve `{ path, lastmod? }` com caminhos absolutos do site,
+enumerados a partir da fonte de dados. O módulo da rota entra no bundle do
+cliente, então banco e SDK ficam numa server function chamada pela fonte,
+conforme o [contrato de erros no servidor](docs/server-errors.md). A fonte roda
+a cada request do sitemap (o CDN reutiliza a resposta por uma hora) e é ignorada
+sob `noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito.
+As entradas são validadas na fronteira: caminho que não começa com `/`, com
+host, esquema, query, fragmento ou espaço falha; barras finais e repetidas são
+normalizadas; caminho repetido mantém a primeira ocorrência (a página estática
+antes da fonte); `lastmod` fora do W3C Datetime é omitido. Falha de qualquer
+fonte, entrada inválida, prazo estourado ou sitemap acima do limite do protocolo
+(os dois valores ficam em `sitemap.xml/constants.ts`) respondem 503 sem corpo e
+sem cache: o crawler tenta de novo e o CDN mantém a última cópia boa, em vez de
+guardar um sitemap parcial por uma hora. Títulos carregados em runtime ainda
+podem usar `useHead`, mas essas alterações não são lidas pelo gerador.
+
+```tsx
+import type { RouteDefinition } from '@solidjs/router'
+
+import { listPostEntries } from './listPostEntries/index.ts'
+
+// blog/[slug].tsx: `listPostEntries` é uma server function que devolve
+// `{ path: '/blog/meu-post', lastmod: '2026-09-21' }` por registro publicado.
+export const route = {
+  info: { seo: { type: 'article' }, sitemap: listPostEntries }
+} satisfies RouteDefinition
+```
+
+Para que `noindex` seja respeitado pelas listas, declare-o em `route.info.seo`,
+em vez de acrescentar apenas uma tag HTML avulsa.
+
+A travessia do manifesto é iterativa, para não depender do limite de recursão do
+JavaScript. O coletor do sitemap lê caminhos, `noindex`, `type` e as datas de
+artigo, sem resolver título ou descrição. O coletor do `llms.txt` resolve também
+os metadados das páginas. O registro histórico da medição dos casos extremos
+está em [desempenho da coleta de SEO](docs/seo-performance.md).
+
+`sitemap.xml/`, `robots.txt/` e `llms.txt/` são rotas de API (`index.ts`): o
+sitemap lista as páginas estáticas do manifesto de rotas, sem o fallback 404 e
+sem `noindex`, com `<lastmod>` nas páginas `article` (a mesma data do JSON-LD,
+`dateModified` ou `datePublished`), mais as entradas das fontes de
+`route.info.sitemap`, e o llms.txt publica, em Markdown, as notas de
+`llms.txt/constants.ts` (fatos que o agente precisa saber antes de abrir os
+links: idioma, o que o site oferece, o que não existe) e, em seguida, título e
+descrição das páginas selecionadas por `route.info.llms`, agrupadas por seção.
+Reescreva as notas em cada projeto derivado. O `Document.tsx` anuncia esse
+arquivo em todas as páginas com `<link rel="describedby" href="/llms.txt">`, a
+descoberta recomendada pela spec do llms.txt; agentes não são redirecionados. O
+robots publica os grupos de `robots.txt/constants.ts`: `*` com `Allow: /` e
+`Disallow: /_server` (endpoint das server functions), robôs de treinamento de IA
+com `Disallow: /`, e o link do sitemap. Buscadores e agentes que leem páginas a
+pedido do usuário continuam liberados, porque são o público do llms.txt.
+`Disallow` é um pedido que robôs mal comportados ignoram e não remove URL do
+índice; para isso, use `noindex` em `route.info.seo`. Em produção o processo
+guarda em memória a resposta do robots e do llms.txt e a leitura do manifesto do
+sitemap, porque o manifesto, os grupos e a URL do site são fixos no build; as
+fontes do sitemap rodam a cada request. Os três arquivos saem com
+`public, max-age=0, s-maxage=3600` em produção (o CDN reutiliza por uma hora; a
+Vercel só cacheia resposta de função com `s-maxage`) e com `no-store` em
+desenvolvimento. As URLs absolutas dos três arquivos partem da origem de
+`VITE_SITE_URL`; um site servido em um subcaminho não é suportado por essa
+geração. A página 404 declara `robots: noindex`. A imagem social fica em
+`public/images/og.png`, com cache imutável configurado em `vercel.json`; o logo
+do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
+
 <br />
 
 ---
@@ -349,10 +506,11 @@ pnpm build && pnpm start
 ```
 
 O preview usa o Vite+ com a integração do Nitro. O `.env` versionado contém os
-valores locais de `HOST` e `PORT`, usados tanto pelo dev quanto pelo preview.
-Ele também é carregado durante o build; variáveis já definidas no ambiente têm
-prioridade. Para escolher outra porta ou interface no preview, use
-`pnpm start --port 3001` ou `pnpm start --host 0.0.0.0`.
+valores locais de `HOST` e `PORT`, usados tanto pelo dev quanto pelo preview, e
+`VITE_SITE_URL`, a URL pública obrigatória dos metadados de SEO. Ele também é
+carregado durante o build; variáveis já definidas no ambiente têm prioridade.
+Para escolher outra porta ou interface no preview, use `pnpm start --port 3001`
+ou `pnpm start --host 0.0.0.0`.
 
 `pnpm start` é um alias do preview local. Em produção, configure as variáveis na
 plataforma de hospedagem; o comando `preview` é destinado à conferência local.
@@ -384,28 +542,44 @@ build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
 
 # :wrench: Scripts
 
-| Script                      | Descrição                                       |
-| --------------------------- | ----------------------------------------------- |
-| `pnpm dev`                  | Servidor de desenvolvimento com HMR             |
-| `pnpm build`                | Build Nitro para Vercel em `.vercel/output/`    |
-| `pnpm start`                | Pré-visualizar o build pelo Vite                |
-| `pnpm typecheck`            | Tipos da aplicação e das ferramentas Node       |
-| `pnpm lint`                 | Lint com Oxlint                                 |
-| `pnpm format`               | Formatar código com Oxfmt                       |
-| `pnpm check:ci`             | Formatação + lint sem alterar arquivos          |
-| `pnpm check:fix`            | Formatação + lint corrigindo o que for possível |
-| `pnpm test`                 | Todos os projetos de teste da aplicação         |
-| `pnpm test:tooling`         | Testes de `tooling/` com `node:test`            |
-| `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)       |
-| `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)      |
-| `pnpm test:browser:install` | Baixar o Chromium do Playwright                 |
-| `pnpm test:watch`           | Testes em modo de observação                    |
-| `pnpm validate`             | typecheck + check:ci + test + tooling + build   |
-| `pnpm commitlint`           | Validar mensagem de commit                      |
+| Script                      | Descrição                                                   |
+| --------------------------- | ----------------------------------------------------------- |
+| `pnpm dev`                  | Servidor de desenvolvimento com HMR                         |
+| `pnpm build`                | Build Nitro para Vercel em `.vercel/output/`                |
+| `pnpm start`                | Pré-visualizar o build pelo Vite                            |
+| `pnpm typecheck`            | Tipos da aplicação e das ferramentas Node                   |
+| `pnpm typecheck:node`       | Tipos das ferramentas no ambiente Node                      |
+| `pnpm lint`                 | CSS, lint e tipos com cache do Vite+                        |
+| `pnpm format`               | Formatar código com Oxfmt                                   |
+| `pnpm check:ci`             | Formatação, lint e tipos da aplicação                       |
+| `pnpm check:fix`            | Formatação + lint corrigindo o que for possível             |
+| `pnpm test`                 | Todos os projetos de teste da aplicação                     |
+| `pnpm test:tooling`         | Testes de `tooling/` com `node:test`                        |
+| `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)                   |
+| `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)                  |
+| `pnpm test:browser:install` | Baixar o Chromium do Playwright                             |
+| `pnpm test:watch`           | Testes em modo de observação                                |
+| `pnpm validate`             | check:ci + typecheck:node + test:coverage + tooling + build |
+| `pnpm commitlint`           | Validar mensagem de commit                                  |
 
 Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
 comando embutido; `vp run <script>` executa um script do `package.json`. Os dois
 podem divergir, então confira o `package.json` antes de rodar direto.
+
+`pnpm lint` e `pnpm check:ci` usam as tarefas `lint-project` e `check-project`
+do `vite.config.ts`. O Vite+ reaproveita resultados bem-sucedidos quando os
+arquivos lidos, as listagens de diretórios, os argumentos e as variáveis de
+ambiente selecionadas continuam iguais. O rastreamento de arquivos permanece
+automático, incluindo dependências e tipos gerados. As tarefas incluem
+`NODE_ENV`, `NODE_OPTIONS` e `PATH` na chave do cache; o Vite também registra as
+variáveis que carrega. A configuração do servidor limita `loadEnv` aos prefixos
+`HOST` e `PORT`, para não registrar todo o ambiente. Variáveis de sessão sem
+relação com essas verificações não invalidam o resultado.
+
+O cache mantém `typeAware` e `typeCheck` ativos e identifica na saída quando
+reproduz um resultado anterior. Para executar tudo novamente, use
+`vp run --no-cache lint` ou `vp run --no-cache check:ci`. `check:fix`,
+`typecheck` e as suítes de testes mantêm seus comandos próprios.
 
 <br />
 
@@ -453,7 +627,7 @@ opções compartilhadas explicitamente, sem herdar a configuração raiz por
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
 `vite-plus/prefer-vite-plus-imports` bloqueia o import direto). O contexto de
 requisição dos middlewares é testado com `provideRequestEvent` de
-`@solidjs/web/storage` em `src/__tests__/middleware.node.test.ts`.
+`@solidjs/web/storage` em `src/middleware/__tests__/middleware.node.test.ts`.
 
 <br />
 
@@ -492,18 +666,19 @@ entram no build.
 
 ## Testes da aplicação completa
 
-`pnpm test:e2e` executa os testes em `src/tests/pages/*.e2e.test.ts` com
-Chromium. O Playwright gera o build e inicia o servidor de produção em
-`http://127.0.0.1:4317`, encerrando-o ao terminar. A porta precisa estar livre.
-Os cenários cobrem a página inicial, hidratação do seletor de tema, teclado,
-persistência e sincronização entre abas, cores sem JavaScript, layout e resposta
-404 com navegação de volta ao início. Também cobrem a confidencialidade de erros
-do servidor: HTTP 500 de um backend local, exceção após a leitura, `Error`
-dentro do resultado, erro público e sucesso, cada um em SSR inicial, chamada
-pelo navegador e streaming, além de recarregamento ainda com falha, recuperação
-após o backend voltar e isolamento do bundle cliente. O SSR inicial também é
-verificado com JavaScript desativado. O detalhe está em
-[docs/server-errors.md](docs/server-errors.md); o CI executa a suíte inteira.
+`pnpm test:e2e` executa os testes em `src/tests/pages/**/*.e2e.test.ts`, exceto
+os arquivos `*.production.e2e.test.ts`, com Chromium. O Playwright gera o build
+e inicia o servidor de produção em `http://127.0.0.1:4317`, encerrando-o ao
+terminar. A porta precisa estar livre. Os cenários cobrem a página inicial,
+hidratação do seletor de tema, teclado, persistência e sincronização entre abas,
+cores sem JavaScript, layout e resposta 404 com navegação de volta ao início.
+Também cobrem a confidencialidade de erros do servidor: HTTP 500 de um backend
+local, exceção após a leitura, `Error` dentro do resultado, erro público e
+sucesso, cada um em SSR inicial, chamada pelo navegador e streaming, além de
+recarregamento ainda com falha, recuperação após o backend voltar e isolamento
+do bundle cliente. O SSR inicial também é verificado com JavaScript desativado.
+O detalhe está em [docs/server-errors.md](docs/server-errors.md); o CI executa a
+suíte inteira.
 
 O build E2E usa `--mode e2e` com otimizações de produção e acrescenta a página
 de teste pelo diretório `src/tests/fixtures/e2e/routes/`. O backend simulado
@@ -511,13 +686,25 @@ escuta somente em `127.0.0.1:4318` e é iniciado e encerrado pelo Playwright. O
 build normal (`pnpm build`) usa apenas `src/routes/` e não inclui essa página
 nem o backend simulado. As portas 4317 e 4318 precisam estar livres.
 
+`pnpm test:e2e:production` executa os arquivos `*.production.e2e.test.ts` contra
+um build normal, com a árvore real de `src/routes/`. Essa suíte verifica por
+HTTP que `/robots.txt`, `/llms.txt` e `/sitemap.xml` respondem sem
+redirecionamento, com conteúdo e headers esperados, e que os helpers locais não
+viram endpoints públicos. Também verifica a ausência de uma rota das fixtures. O
+comando usa a mesma `BASE_URL_TEST`, carrega as variáveis públicas no modo
+`production` e dispensa o backend simulado. Execute as duas suítes em sequência,
+pois compartilham a porta e os artefatos de build. O CI executa ambas; a suíte
+de produção também valida o build final.
+
 Use `pnpm test:e2e:ui` para abrir a interface interativa do Playwright. Com
 `CI=true`, os E2E usam um único worker; localmente, mantêm o paralelismo padrão.
 
-O relatório HTML fica em `playwright-report/` e os traces de falhas E2E em
-`test-results/e2e/`. Os testes do Vitest Browser Mode guardam traces de falhas
-em `test-results/browser-traces/`. Esses artefatos são ignorados pelo Git. Os
-E2E têm comando separado e não fazem parte de `pnpm test` ou `pnpm validate`.
+Os relatórios HTML ficam em `playwright-report/e2e/` e
+`playwright-report/production/`. Os traces de falhas ficam em
+`test-results/e2e/` e `test-results/e2e-production/`, respectivamente. Os testes
+do Vitest Browser Mode guardam traces de falhas em
+`test-results/browser-traces/`. Esses artefatos são ignorados pelo Git. Os E2E
+têm comando separado e não fazem parte de `pnpm test` ou `pnpm validate`.
 
 Para conferir a interface em um celular na mesma rede, execute `pnpm dev:phone`
 e abra a URL de rede exibida pelo Vite. Esse comando disponibiliza o servidor de
@@ -532,7 +719,7 @@ Instalados pelo Lefthook no `pnpm install` (habilitado em `allowBuilds` do
 | ------------ | ---------------------------------------------------------------------------------------------------------- |
 | `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `scan:secrets --staged` quando Kingfisher está disponível |
 | `commit-msg` | `commitlint` (header até 50 caracteres, corpo até 100)                                                     |
-| `pre-push`   | `check:ci`, `typecheck` e `test:ci` em paralelo                                                            |
+| `pre-push`   | `check:ci`, `typecheck:node`, `test:ci` e `test:tooling` em paralelo                                       |
 
 O `pre-commit` é pulado durante `merge` e `rebase`. Em CI o Lefthook não instala
 os hooks.
@@ -551,6 +738,9 @@ os hooks.
 - Commits devem seguir Conventional Commits.
 - O lint é type-aware e roda com `typeCheck: true`; erros de tipo aparecem no
   `pnpm lint` além do `pnpm typecheck`.
+- O CI, o pre-push e `pnpm validate` combinam `check:ci` com `typecheck:node`
+  para verificar a aplicação uma vez e preservar a checagem das ferramentas sem
+  os tipos do DOM. `pnpm typecheck` continua verificando os dois projetos.
 - Use as versões de Node e pnpm definidas em `package.json`.
 
 <br />

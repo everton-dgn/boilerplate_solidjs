@@ -60,7 +60,10 @@ function layer(file: string): Layer | undefined {
   if (/^src\/components(?:\/|$)/u.test(file)) return 'components'
   if (/^src\/routes(?:\/|$)/u.test(file)) return 'routes'
   if (
-    /^src\/(?:App|Document|router|middleware)(?:\.[cm]?[jt]sx?)?$/u.test(file)
+    /^src\/(?:App|Document|router|middleware)(?:\.[cm]?[jt]sx?)?$/u.test(
+      file
+    ) ||
+    file.startsWith('src/middleware/')
   ) {
     return 'entry'
   }

@@ -1,4 +1,6 @@
 import { getRequestEvent } from '@solidjs/web'
+import { createAPIHandler } from 'filesystem-routing/api'
+import routes from 'virtual:file-routes'
 
 type Next = () => Promise<Response>
 
@@ -25,6 +27,13 @@ async function requestContext(_request: Request, next: Next) {
   return next()
 }
 
-const middleware = [requestTiming, securityHeaders, requestContext]
+// Rotas com exportações GET, POST etc. respondem antes do SSR; o restante
+// segue para a renderização.
+const middleware = [
+  requestTiming,
+  securityHeaders,
+  requestContext,
+  createAPIHandler(routes)
+]
 
 export default middleware

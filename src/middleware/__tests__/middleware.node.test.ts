@@ -1,8 +1,9 @@
 import { provideRequestEvent } from '@solidjs/web/storage'
 
-import middleware from '../middleware.ts'
+import middleware from '../index.ts'
 
 const REQUEST_CONTEXT_INDEX = 2
+const API_HANDLER_INDEX = 3
 
 describe('middlewares de requisição', () => {
   afterEach(() => {
@@ -65,6 +66,20 @@ describe('middlewares de requisição', () => {
       provideRequestEvent(event, () => requestContext(event.request, next))
     ).resolves.toBe(response)
     expect(next).toHaveBeenCalledExactlyOnceWith()
+  })
+
+  // O despacho das rotas de API é do filesystem-routing e a suíte E2E cobre
+  // sitemap.xml e robots.txt; aqui só o encadeamento importa.
+  it('entrega ao próximo handler as requisições sem rota de API', async () => {
+    const response = new Response('página')
+    const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
+    const apiHandler = middleware[API_HANDLER_INDEX]
+    if (!apiHandler) throw new Error('API handler middleware not found')
+
+    await expect(
+      apiHandler(new Request('http://localhost/pagina'), next)
+    ).resolves.toBe(response)
+    expect(next).toHaveBeenCalledOnce()
   })
 
   it('continua a requisição mesmo sem contexto', async () => {

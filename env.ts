@@ -18,7 +18,7 @@ const env = {
     BASE_URL_TEST: v.optional(v.pipe(v.string(), v.url()))
   },
   client: {
-    VITE_APP_NAME: v.optional(v.pipe(v.string(), v.nonEmpty()), 'Solid App')
+    VITE_SITE_URL: v.pipe(v.string(), v.url())
   }
 }
 

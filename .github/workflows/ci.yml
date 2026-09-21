@@ -55,8 +55,8 @@ jobs:
       - name: Check formatting and lint
         run: pnpm check:ci
 
-      - name: Check types
-        run: pnpm typecheck
+      - name: Check Node tooling types
+        run: pnpm typecheck:node
 
       - name: Run tests with coverage
         run: pnpm test:ci
@@ -67,8 +67,8 @@ jobs:
       - name: Run end-to-end tests
         run: pnpm test:e2e
 
-      - name: Build application
-        run: pnpm build
+      - name: Test production routes
+        run: pnpm test:e2e:production
 
   deploy:
     needs: check

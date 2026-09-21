@@ -1,8 +1,13 @@
+import type { RouteDefinition } from '@solidjs/router'
 import SolidLogo from '~icons/my-images/solid'
 
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
 
 import S from './styles.module.css'
+
+export const route = {
+  info: { llms: true }
+} satisfies RouteDefinition
 
 export default function Home() {
   return (

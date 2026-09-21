@@ -42,7 +42,11 @@ vi.mock(import('virtual:file-routes'), async importOriginal => {
 
   for (const route of manifest.pageRoutes) {
     if (route.path === '/') {
-      route.$component.import = () => Promise.resolve({ default: renderHome })
+      route.$component.import = () =>
+        Promise.resolve({
+          default: renderHome,
+          route: route.$$route.require().route
+        })
     }
   }
 
