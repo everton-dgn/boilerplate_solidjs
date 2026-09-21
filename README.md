@@ -387,37 +387,67 @@ marcação opcional herdadas. `noindex: true` exclui a página do sitemap e do
 llms.txt, mesmo com a flag. O filtro considera a configuração efetiva da página,
 incluindo herança e a rota de índice filha.
 
-Só URLs sem parâmetros entram nas listas automáticas. Páginas de artigos ou
-produtos devem compartilhar seus dados de conteúdo com a geração de URLs e
-descrições; `route.info` não enumera registros de um CMS. Títulos carregados em
-runtime ainda podem usar `useHead`, mas essas alterações não são lidas pelo
-gerador. Para que `noindex` seja respeitado pelas listas, declare-o em
-`route.info.seo`, em vez de acrescentar apenas uma tag HTML avulsa.
+O `llms.txt` só lista URLs sem parâmetros. No sitemap, uma rota com parâmetro
+entra pelas entradas de `route.info.sitemap`: uma função, síncrona ou
+assíncrona, que devolve `{ path, lastmod? }` com caminhos absolutos do site,
+enumerados a partir da fonte de dados. O módulo da rota entra no bundle do
+cliente, então banco e SDK ficam numa server function chamada pela fonte,
+conforme o [contrato de erros no servidor](docs/server-errors.md). A fonte roda
+a cada request do sitemap (o CDN reutiliza a resposta por uma hora) e é ignorada
+sob `noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito.
+As entradas são validadas na fronteira: caminho que não começa com `/`, com
+host, esquema, query, fragmento ou espaço falha; barras finais e repetidas são
+normalizadas; caminho repetido mantém a primeira ocorrência (a página estática
+antes da fonte); `lastmod` fora do W3C Datetime é omitido. Falha de qualquer
+fonte, entrada inválida, prazo estourado ou sitemap acima do limite do protocolo
+(os dois valores ficam em `sitemap.xml/constants.ts`) respondem 503 sem corpo e
+sem cache: o crawler tenta de novo e o CDN mantém a última cópia boa, em vez de
+guardar um sitemap parcial por uma hora. Títulos carregados em runtime ainda
+podem usar `useHead`, mas essas alterações não são lidas pelo gerador.
+
+```tsx
+import type { RouteDefinition } from '@solidjs/router'
+
+import { listPostEntries } from './listPostEntries/index.ts'
+
+// blog/[slug].tsx: `listPostEntries` é uma server function que devolve
+// `{ path: '/blog/meu-post', lastmod: '2026-09-21' }` por registro publicado.
+export const route = {
+  info: { seo: { type: 'article' }, sitemap: listPostEntries }
+} satisfies RouteDefinition
+```
+
+Para que `noindex` seja respeitado pelas listas, declare-o em `route.info.seo`,
+em vez de acrescentar apenas uma tag HTML avulsa.
 
 A travessia do manifesto é iterativa, para não depender do limite de recursão do
-JavaScript. O coletor do sitemap lê caminhos e `noindex`, sem resolver título ou
-descrição. O coletor do `llms.txt` resolve também os metadados das páginas. O
-registro histórico da medição dos casos extremos está em
-[desempenho da coleta de SEO](docs/seo-performance.md).
+JavaScript. O coletor do sitemap lê caminhos, `noindex`, `type` e as datas de
+artigo, sem resolver título ou descrição. O coletor do `llms.txt` resolve também
+os metadados das páginas. O registro histórico da medição dos casos extremos
+está em [desempenho da coleta de SEO](docs/seo-performance.md).
 
 `sitemap.xml/`, `robots.txt/` e `llms.txt/` são rotas de API (`index.ts`): o
-sitemap lista as páginas estáticas do manifesto de rotas, sem parâmetros
-dinâmicos nem o fallback 404 e sem `noindex`, e o llms.txt publica, em Markdown,
-as notas de `llms.txt/constants.ts` (fatos que o agente precisa saber antes de
-abrir os links: idioma, o que o site oferece, o que não existe) e, em seguida,
-título e descrição das páginas selecionadas por `route.info.llms`, agrupadas por
-seção. Reescreva as notas em cada projeto derivado. O `Document.tsx` anuncia
-esse arquivo em todas as páginas com
-`<link rel="describedby" href="/llms.txt">`, a descoberta recomendada pela spec
-do llms.txt; agentes não são redirecionados. O robots publica os grupos de
-`robots.txt/constants.ts`: `*` com `Allow: /` e `Disallow: /_server` (endpoint
-das server functions), robôs de treinamento de IA com `Disallow: /`, e o link do
-sitemap. Buscadores e agentes que leem páginas a pedido do usuário continuam
-liberados, porque são o público do llms.txt. `Disallow` é um pedido que robôs
-mal comportados ignoram e não remove URL do índice; para isso, use `noindex` em
-`route.info.seo`. Em produção o processo guarda a resposta dos três arquivos em
-memória, porque o manifesto, os grupos e a URL do site são fixos no build. Os
-três arquivos saem com `public, max-age=3600` em produção e com `no-store` em
+sitemap lista as páginas estáticas do manifesto de rotas, sem o fallback 404 e
+sem `noindex`, com `<lastmod>` nas páginas `article` (a mesma data do JSON-LD,
+`dateModified` ou `datePublished`), mais as entradas das fontes de
+`route.info.sitemap`, e o llms.txt publica, em Markdown, as notas de
+`llms.txt/constants.ts` (fatos que o agente precisa saber antes de abrir os
+links: idioma, o que o site oferece, o que não existe) e, em seguida, título e
+descrição das páginas selecionadas por `route.info.llms`, agrupadas por seção.
+Reescreva as notas em cada projeto derivado. O `Document.tsx` anuncia esse
+arquivo em todas as páginas com `<link rel="describedby" href="/llms.txt">`, a
+descoberta recomendada pela spec do llms.txt; agentes não são redirecionados. O
+robots publica os grupos de `robots.txt/constants.ts`: `*` com `Allow: /` e
+`Disallow: /_server` (endpoint das server functions), robôs de treinamento de IA
+com `Disallow: /`, e o link do sitemap. Buscadores e agentes que leem páginas a
+pedido do usuário continuam liberados, porque são o público do llms.txt.
+`Disallow` é um pedido que robôs mal comportados ignoram e não remove URL do
+índice; para isso, use `noindex` em `route.info.seo`. Em produção o processo
+guarda em memória a resposta do robots e do llms.txt e a leitura do manifesto do
+sitemap, porque o manifesto, os grupos e a URL do site são fixos no build; as
+fontes do sitemap rodam a cada request. Os três arquivos saem com
+`public, max-age=0, s-maxage=3600` em produção (o CDN reutiliza por uma hora; a
+Vercel só cacheia resposta de função com `s-maxage`) e com `no-store` em
 desenvolvimento. As URLs absolutas dos três arquivos partem da origem de
 `VITE_SITE_URL`; um site servido em um subcaminho não é suportado por essa
 geração. A página 404 declara `robots: noindex`. A imagem social fica em
@@ -512,28 +542,44 @@ build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
 
 # :wrench: Scripts
 
-| Script                      | Descrição                                       |
-| --------------------------- | ----------------------------------------------- |
-| `pnpm dev`                  | Servidor de desenvolvimento com HMR             |
-| `pnpm build`                | Build Nitro para Vercel em `.vercel/output/`    |
-| `pnpm start`                | Pré-visualizar o build pelo Vite                |
-| `pnpm typecheck`            | Tipos da aplicação e das ferramentas Node       |
-| `pnpm lint`                 | Lint com Oxlint                                 |
-| `pnpm format`               | Formatar código com Oxfmt                       |
-| `pnpm check:ci`             | Formatação + lint sem alterar arquivos          |
-| `pnpm check:fix`            | Formatação + lint corrigindo o que for possível |
-| `pnpm test`                 | Todos os projetos de teste da aplicação         |
-| `pnpm test:tooling`         | Testes de `tooling/` com `node:test`            |
-| `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)       |
-| `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)      |
-| `pnpm test:browser:install` | Baixar o Chromium do Playwright                 |
-| `pnpm test:watch`           | Testes em modo de observação                    |
-| `pnpm validate`             | typecheck + check:ci + test + tooling + build   |
-| `pnpm commitlint`           | Validar mensagem de commit                      |
+| Script                      | Descrição                                          |
+| --------------------------- | -------------------------------------------------- |
+| `pnpm dev`                  | Servidor de desenvolvimento com HMR                |
+| `pnpm build`                | Build Nitro para Vercel em `.vercel/output/`       |
+| `pnpm start`                | Pré-visualizar o build pelo Vite                   |
+| `pnpm typecheck`            | Tipos da aplicação e das ferramentas Node          |
+| `pnpm typecheck:node`       | Tipos das ferramentas no ambiente Node             |
+| `pnpm lint`                 | CSS, lint e tipos com cache do Vite+               |
+| `pnpm format`               | Formatar código com Oxfmt                          |
+| `pnpm check:ci`             | Formatação, lint e tipos da aplicação              |
+| `pnpm check:fix`            | Formatação + lint corrigindo o que for possível    |
+| `pnpm test`                 | Todos os projetos de teste da aplicação            |
+| `pnpm test:tooling`         | Testes de `tooling/` com `node:test`               |
+| `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)          |
+| `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)         |
+| `pnpm test:browser:install` | Baixar o Chromium do Playwright                    |
+| `pnpm test:watch`           | Testes em modo de observação                       |
+| `pnpm validate`             | check:ci + typecheck:node + test + tooling + build |
+| `pnpm commitlint`           | Validar mensagem de commit                         |
 
 Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
 comando embutido; `vp run <script>` executa um script do `package.json`. Os dois
 podem divergir, então confira o `package.json` antes de rodar direto.
+
+`pnpm lint` e `pnpm check:ci` usam as tarefas `lint-project` e `check-project`
+do `vite.config.ts`. O Vite+ reaproveita resultados bem-sucedidos quando os
+arquivos lidos, as listagens de diretórios, os argumentos e as variáveis de
+ambiente selecionadas continuam iguais. O rastreamento de arquivos permanece
+automático, incluindo dependências e tipos gerados. As tarefas incluem
+`NODE_ENV`, `NODE_OPTIONS` e `PATH` na chave do cache; o Vite também registra as
+variáveis que carrega. A configuração do servidor limita `loadEnv` aos prefixos
+`HOST` e `PORT`, para não registrar todo o ambiente. Variáveis de sessão sem
+relação com essas verificações não invalidam o resultado.
+
+O cache mantém `typeAware` e `typeCheck` ativos e identifica na saída quando
+reproduz um resultado anterior. Para executar tudo novamente, use
+`vp run --no-cache lint` ou `vp run --no-cache check:ci`. `check:fix`,
+`typecheck` e as suítes de testes mantêm seus comandos próprios.
 
 <br />
 
@@ -673,7 +719,7 @@ Instalados pelo Lefthook no `pnpm install` (habilitado em `allowBuilds` do
 | ------------ | ---------------------------------------------------------------------------------------------------------- |
 | `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `scan:secrets --staged` quando Kingfisher está disponível |
 | `commit-msg` | `commitlint` (header até 50 caracteres, corpo até 100)                                                     |
-| `pre-push`   | `check:ci`, `typecheck` e `test:ci` em paralelo                                                            |
+| `pre-push`   | `check:ci`, `typecheck:node`, `test:ci` e `test:tooling` em paralelo                                       |
 
 O `pre-commit` é pulado durante `merge` e `rebase`. Em CI o Lefthook não instala
 os hooks.
@@ -692,6 +738,9 @@ os hooks.
 - Commits devem seguir Conventional Commits.
 - O lint é type-aware e roda com `typeCheck: true`; erros de tipo aparecem no
   `pnpm lint` além do `pnpm typecheck`.
+- O CI, o pre-push e `pnpm validate` combinam `check:ci` com `typecheck:node`
+  para verificar a aplicação uma vez e preservar a checagem das ferramentas sem
+  os tipos do DOM. `pnpm typecheck` continua verificando os dois projetos.
 - Use as versões de Node e pnpm definidas em `package.json`.
 
 <br />

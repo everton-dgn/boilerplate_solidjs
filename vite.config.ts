@@ -100,7 +100,7 @@ const css = {
 }
 
 export default defineConfig(({ mode }) => {
-  const localEnv = loadEnv(mode, import.meta.dirname, '')
+  const localEnv = loadEnv(mode, import.meta.dirname, ['HOST', 'PORT'])
   const server = {
     host: localEnv.HOST,
     port: localEnv.PORT ? Number(localEnv.PORT) : undefined
@@ -120,6 +120,16 @@ export default defineConfig(({ mode }) => {
     run: {
       cache: {
         scripts: true
+      },
+      tasks: {
+        'lint-project': {
+          command: 'node tooling/css/check.ts && vp lint',
+          env: ['NODE_ENV', 'NODE_OPTIONS', 'PATH']
+        },
+        'check-project': {
+          command: 'node tooling/css/check.ts && vp check',
+          env: ['NODE_ENV', 'NODE_OPTIONS', 'PATH']
+        }
       }
     },
     build: {

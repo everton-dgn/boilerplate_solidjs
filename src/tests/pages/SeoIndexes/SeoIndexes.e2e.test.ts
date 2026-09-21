@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 const HTTP_OK = 200
+// Entradas publicadas pela fonte de `blog/[slug]`.
+const BLOG_ENTRIES = 2
 const SITE_TITLE = 'SolidJS Boilerplate'
 const SITE_DESCRIPTION =
   'Uma base para aplicações web com SolidJS, TypeScript e Vite+, com renderização no servidor e temas claro e escuro.'
@@ -15,7 +17,7 @@ test.describe('índices gerados do manifesto de rotas', () => {
     request
   }) => {
     const siteUrl = readSiteOrigin()
-    const cacheControl = 'public, max-age=3600'
+    const cacheControl = 'public, max-age=0, s-maxage=3600'
 
     const sitemap = await request.get('/sitemap.xml')
     expect(sitemap.status()).toBe(HTTP_OK)
@@ -26,7 +28,17 @@ test.describe('índices gerados do manifesto de rotas', () => {
     expect(xml).toContain(`<loc>${siteUrl}/backend-error</loc>`)
     expect(xml).toContain(`<loc>${siteUrl}/seo-public</loc>`)
     expect(xml).toContain(`<loc>${siteUrl}/seo-sitemap-only</loc>`)
-    expect(xml).toContain(`<loc>${siteUrl}/seo-article</loc>`)
+    expect(xml).toContain(
+      `<url><loc>${siteUrl}/seo-article</loc><lastmod>2026-09-21</lastmod></url>`
+    )
+    expect(xml).toContain(`<url><loc>${siteUrl}/</loc></url>`)
+    // Fonte de `blog/[slug]`: barra final normalizada e data inválida omitida.
+    expect(xml).toContain(
+      `<url><loc>${siteUrl}/blog/primeiro-post</loc><lastmod>2026-09-10</lastmod></url>`
+    )
+    expect(xml).toContain(`<url><loc>${siteUrl}/blog/segundo-post</loc></url>`)
+    expect(xml).not.toContain('ontem')
+    expect(xml).not.toContain('/private')
     expect(xml).not.toContain('/seo-noindex')
     expect(xml).not.toContain('404')
 
@@ -80,8 +92,24 @@ test.describe('índices gerados do manifesto de rotas', () => {
       `${siteUrl}/structured-data-stream`
     ])
     expect(new Set(llmsUrls)).toStrictEqual(
-      new Set(sitemapUrls.filter(url => !sitemapOnly.has(String(url))))
+      new Set(
+        sitemapUrls.filter(
+          url =>
+            !sitemapOnly.has(String(url)) &&
+            !String(url).startsWith(`${siteUrl}/blog/`)
+        )
+      )
     )
+    // Uma entrada da fonte com caminho errado só apareceria no Search Console.
+    // As URLs usam a origem pública; o servidor de teste responde pelo caminho.
+    const blogPaths = sitemapUrls
+      .map(url => String(url).slice(siteUrl.length))
+      .filter(path => path.startsWith('/blog/'))
+    expect(blogPaths).toHaveLength(BLOG_ENTRIES)
+    for (const path of blogPaths) {
+      const page = await request.get(path)
+      expect(page.status(), path).toBe(HTTP_OK)
+    }
     expect(new Set(llmsUrls).size).toBe(llmsUrls.length)
     expect(markdown).not.toContain('/seo-sitemap-only')
     expect(markdown).not.toContain('/structured-data-stream')

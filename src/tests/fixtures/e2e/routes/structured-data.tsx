@@ -1,4 +1,5 @@
 import type { RouteDefinition } from '@solidjs/router'
+import type { Answer, FAQPage, Question } from 'schema-dts'
 
 import { createStructuredData } from '@/primitives/createStructuredData/index.ts'
 
@@ -14,18 +15,19 @@ export const route = {
 } satisfies RouteDefinition
 
 export default function FaqPage() {
-  createStructuredData(() => ({
+  // Tipos concretos evitam inferir os nós aninhados contra toda a união de Thing.
+  const answer: Answer = {
+    '@type': 'Answer',
+    text: 'Uma base para aplicações SolidJS com SSR.'
+  }
+  const question: Question = {
+    '@type': 'Question',
+    name: 'O que é o boilerplate?',
+    acceptedAnswer: answer
+  }
+  createStructuredData((): FAQPage => ({
     '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: 'O que é o boilerplate?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Uma base para aplicações SolidJS com SSR.'
-        }
-      }
-    ]
+    mainEntity: [question]
   }))
 
   return (

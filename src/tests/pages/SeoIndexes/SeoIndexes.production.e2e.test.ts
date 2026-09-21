@@ -4,7 +4,7 @@ import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
-const CACHE_CONTROL = 'public, max-age=3600'
+const CACHE_CONTROL = 'public, max-age=0, s-maxage=3600'
 // Grupo dos robôs de treinamento de IA: começa em GPTBot e termina bloqueando tudo.
 const AI_BOTS_GROUP =
   /\nUser-agent: GPTBot\n(?:User-agent: [^\n]+\n)*Disallow: \/\n/u
@@ -61,7 +61,9 @@ test.describe('índices na árvore real de produção', () => {
     '/robots.txt/buildRobotsText',
     '/sitemap.xml/helpers',
     '/sitemap.xml/helpers/buildSitemap',
-    '/sitemap.xml/helpers/collectStaticPaths'
+    '/sitemap.xml/helpers/buildSitemapResponse',
+    '/sitemap.xml/helpers/collectSitemapEntries',
+    '/sitemap.xml/helpers/normalizeSitemapEntries'
   ]) {
     test(`não publica o helper ${path}`, async ({ request }) => {
       const response = await request.get(path, { maxRedirects: 0 })
