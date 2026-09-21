@@ -11,6 +11,7 @@ const SITE_TITLE = 'SolidJS Boilerplate'
 const SITE_DESCRIPTION =
   'Uma base para aplicações web com SolidJS, TypeScript e Vite+, com renderização no servidor e temas claro e escuro.'
 const SITE_IMAGE_ALT = 'Logo do SolidJS sobre o título SolidJS Boilerplate'
+const ROBOTS_INDEX = 'index, follow, max-image-preview:large'
 const SOCIAL_TAGS = 'head meta[property^="og:"], head meta[name^="twitter:"]'
 // Grafo base do SeoHead mais o script próprio da página.
 const SCRIPTS_WITH_PAGE_DATA = 2
@@ -74,9 +75,20 @@ test.describe('metadados de SEO', () => {
         '@type': 'WebPage',
         url: `${siteUrl}/`,
         name: SITE_TITLE
+      }),
+      expect.objectContaining({
+        '@type': 'Organization',
+        url: `${siteUrl}/`,
+        name: SITE_TITLE,
+        logo: expect.objectContaining({
+          url: `${siteUrl}/favicon/apple-touch-icon.png`
+        })
       })
     ])
-    await expect(page.locator('head meta[name="robots"]')).toHaveCount(0)
+    await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
+      'content',
+      ROBOTS_INDEX
+    )
 
     const image = await page.request.get('/images/og.png')
     expect(image.status()).toBe(HTTP_OK)
@@ -114,7 +126,10 @@ test.describe('metadados de SEO', () => {
     await expect(
       page.locator('head meta[name="twitter:description"]')
     ).toHaveAttribute('content', SITE_DESCRIPTION)
-    await expect(page.locator('head meta[name="robots"]')).toHaveCount(0)
+    await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
+      'content',
+      ROBOTS_INDEX
+    )
     await expect(
       page.locator('head script[type="application/ld+json"]')
     ).toHaveCount(1)
@@ -167,13 +182,20 @@ test.describe('metadados de SEO', () => {
     await expect(
       page.locator('head meta[property="og:image:width"]')
     ).toHaveAttribute('content', '1200')
+    await expect(
+      page.locator('head meta[property="article:published_time"]')
+    ).toHaveAttribute('content', '2026-09-01')
+    await expect(
+      page.locator('head meta[property="article:modified_time"]')
+    ).toHaveAttribute('content', '2026-09-21')
     const [, article] = await readStructuredData(page)
     expect(article).toMatchObject({
       '@type': 'Article',
       url: `${siteUrl}/seo-article`,
       name: 'Artigo de exemplo',
       datePublished: '2026-09-01',
-      dateModified: '2026-09-21'
+      dateModified: '2026-09-21',
+      publisher: { '@id': `${siteUrl}/#organization` }
     })
   })
 

@@ -339,30 +339,38 @@ no Twitter e no JSON-LD usando `useHead`. A rota filha sobrescreve os campos que
 declara e herda os demais do layout; `image` é mesclada atributo a atributo
 (`path`, `width`, `height`, `alt`). Sem definição na cadeia, título, descrição e
 imagem vêm de `SITE`, `type` é `website` e `noindex` é `false`. Por isso a home
-não declara `seo`: ela usa exatamente esses padrões. Escolha do projeto: com
-`noindex: true`, o `SeoHead` publica só `robots: noindex`, título e descrição.
-Canonical, Open Graph, Twitter (inclusive `og:locale`, `og:site_name` e
-`twitter:card`) e JSON-LD ficam de fora, inclusive na página 404. Neste
-boilerplate esses metadados só têm consumidor em páginas indexáveis; a canonical
-da 404 apontava para a URL inexistente digitada, e o JSON-LD declarava um
-`WebPage` nela. Uma filha pode sobrescrever `noindex` com `false`
-explicitamente. Limite conhecido: página `noindex` feita para compartilhamento
-(convite, resultado, campanha) ainda não tem suporte e deixa de fornecer
-metadados explícitos para a prévia social. Quando esse caso surgir, acrescente
-um campo em `route.info.seo` que devolva Open Graph e Twitter sem canonical nem
-JSON-LD.
+não declara `seo`: ela usa exatamente esses padrões. Página indexável publica
+`robots` com `index, follow, max-image-preview:large`: os dois primeiros já são
+o padrão do crawler e o terceiro libera a prévia grande da imagem no Google
+Discover. Escolha do projeto: com `noindex: true`, o `SeoHead` publica só
+`robots: noindex`, título e descrição. Canonical, Open Graph, Twitter (inclusive
+`og:locale`, `og:site_name` e `twitter:card`) e JSON-LD ficam de fora, inclusive
+na página 404. Neste boilerplate esses metadados só têm consumidor em páginas
+indexáveis; a canonical da 404 apontava para a URL inexistente digitada, e o
+JSON-LD declarava um `WebPage` nela. Uma filha pode sobrescrever `noindex` com
+`false` explicitamente. Limite conhecido: página `noindex` feita para
+compartilhamento (convite, resultado, campanha) ainda não tem suporte e deixa de
+fornecer metadados explícitos para a prévia social. Quando esse caso surgir,
+acrescente um campo em `route.info.seo` que devolva Open Graph e Twitter sem
+canonical nem JSON-LD.
 
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
 JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (de
-`SITE.author`) e, quando a rota declara
-`article: { datePublished, dateModified }` em ISO 8601, essas datas. Fora de
-`article`, as datas são ignoradas. O JSON-LD, montado por
-`helpers/buildStructuredData/`, publica sempre um nó `WebSite` e o nó da página
-com URL canônica, descrição, idioma e imagem. O idioma vem de `SITE.locale`, que
-também alimenta o `lang` do `Document.tsx` e o `og:locale` (com sublinhado).
-`helpers/serializeJsonLd/` escapa `<`, `>` e `&` como sequências JSON para não
-encerrar o `<script>`. Dados que o projeto não tem, como handle do Twitter
-(`twitter:site`) e `hreflang`, não são publicados.
+`SITE.author`), `publisher` e, quando a rota declara
+`article: { datePublished, dateModified }` em ISO 8601, essas datas no nó e nas
+metas `article:published_time` e `article:modified_time`. Fora de `article`, as
+datas são ignoradas. O JSON-LD, montado por `helpers/buildStructuredData/`,
+publica sempre um nó `WebSite`, o nó da página com URL canônica, descrição,
+idioma e imagem, e um nó `Organization` com nome, URL, logo (`SITE.logo`, ao
+menos 112x112 pixels) e perfis oficiais (`SITE.socialLinks`, em `sameAs`).
+`WebSite.publisher` e `Article.publisher` apontam para esse nó pelo `@id`
+`<VITE_SITE_URL>/#organization`. O grafo é tipado com `schema-dts`; só `width` e
+`height` das imagens ficam numéricos, como o Google documenta, porque o
+schema-dts os tipa como `Distance` ou `QuantitativeValue`. O idioma vem de
+`SITE.locale`, que também alimenta o `lang` do `Document.tsx` e o `og:locale`
+(com sublinhado). `helpers/serializeJsonLd/` escapa `<`, `>` e `&` como
+sequências JSON para não encerrar o `<script>`. Dados que o projeto não tem,
+como handle do Twitter (`twitter:site`) e `hreflang`, não são publicados.
 
 Esse grafo base é fixo de propósito. Tipos que dependem da página (`Product`,
 `FAQPage`, `BreadcrumbList`, `Event`, datas de um `Article`) entram pelo atom
@@ -372,9 +380,9 @@ aceita um nó ou uma lista (vira `@graph`), remove o script ao desmontar e
 convive com outras instâncias na mesma página. A prop `data` é tipada com
 `schema-dts`, os tipos do schema.org mantidos pelo Google, então propriedade
 inválida falha no typecheck. Para ligar o nó ao grafo base, use o `@id` da
-página (a URL canônica) ou do site (`<VITE_SITE_URL>/#website`). O atom não
-consulta `noindex`: uma rota fora do índice que o renderiza publica o JSON-LD
-mesmo assim.
+página (a URL canônica), do site (`<VITE_SITE_URL>/#website`) ou da organização
+(`<VITE_SITE_URL>/#organization`). O atom não consulta `noindex`: uma rota fora
+do índice que o renderiza publica o JSON-LD mesmo assim.
 
 ```tsx
 import { StructuredData } from '@/components/atoms/StructuredData/index.tsx'
@@ -455,7 +463,8 @@ três arquivos saem com `public, max-age=3600` em produção e com `no-store` em
 desenvolvimento. As URLs absolutas dos três arquivos partem da origem de
 `VITE_SITE_URL`; um site servido em um subcaminho não é suportado por essa
 geração. A página 404 declara `robots: noindex`. A imagem social fica em
-`public/images/og.png`, com cache imutável configurado em `vercel.json`.
+`public/images/og.png`, com cache imutável configurado em `vercel.json`; o logo
+do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
 
 <br />
 

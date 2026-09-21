@@ -9,6 +9,14 @@ export const SITE = {
   // URL pública fixa para canonical, Open Graph, sitemap e robots, definida
   // por VITE_SITE_URL.
   url: import.meta.env.VITE_SITE_URL,
+  // Perfis oficiais do site, publicados em `sameAs` no nó `Organization`.
+  socialLinks: ['https://github.com/everton-dgn/boilerplate_solidjs'],
+  // Logo do publisher no JSON-LD; o Google pede ao menos 112x112 pixels.
+  logo: {
+    path: '/favicon/apple-touch-icon.png',
+    width: 180,
+    height: 180
+  },
   image: {
     path: '/images/og.png',
     width: 1200,

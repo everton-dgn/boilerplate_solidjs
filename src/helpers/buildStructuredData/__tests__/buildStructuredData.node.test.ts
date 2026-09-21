@@ -12,8 +12,22 @@ const page: SeoMetadata = {
   image: SITE.image
 }
 
+const organization = {
+  '@type': 'Organization',
+  '@id': `${SITE.url}/#organization`,
+  name: SITE.title,
+  url: `${SITE.url}/`,
+  logo: {
+    '@type': 'ImageObject',
+    url: `${SITE.url}${SITE.logo.path}`,
+    width: SITE.logo.width,
+    height: SITE.logo.height
+  },
+  sameAs: SITE.socialLinks
+}
+
 describe('dados estruturados da página', () => {
-  it('descreve o site e a página como WebSite e WebPage', () => {
+  it('descreve o site, a página e a organização que os publica', () => {
     const graph = parseStructuredData(
       buildStructuredData({
         seo: page,
@@ -30,7 +44,8 @@ describe('dados estruturados da página', () => {
         url: `${SITE.url}/`,
         name: SITE.title,
         description: SITE.description,
-        inLanguage: SITE.locale
+        inLanguage: SITE.locale,
+        publisher: { '@id': `${SITE.url}/#organization` }
       },
       {
         '@type': 'WebPage',
@@ -47,11 +62,12 @@ describe('dados estruturados da página', () => {
           height: SITE.image.height,
           caption: SITE.image.alt
         }
-      }
+      },
+      organization
     ])
   })
 
-  it('publica artigos como Article com headline e autor', () => {
+  it('publica artigos como Article com headline, autor e publisher', () => {
     const graph = parseStructuredData(
       buildStructuredData({
         seo: { ...page, type: 'article', title: 'Artigo' },
@@ -66,6 +82,9 @@ describe('dados estruturados da página', () => {
     expect(article?.author).toStrictEqual({
       '@type': 'Person',
       name: SITE.author
+    })
+    expect(article?.publisher).toStrictEqual({
+      '@id': `${SITE.url}/#organization`
     })
     expect('datePublished' in (article ?? {})).toBe(false)
   })

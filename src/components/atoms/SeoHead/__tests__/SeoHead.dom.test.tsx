@@ -207,6 +207,61 @@ describe('metadados de SEO no head', () => {
       'Guias do projeto.'
     ])
   })
+})
+
+describe('indexação e Open Graph de artigo', () => {
+  it('libera a prévia grande de imagem em rota indexável', async () => {
+    await vi.waitUntil(() => readMeta('meta[name="robots"]') === null)
+    await renderAt({ pathname: '/' })
+
+    expect(readMeta('meta[name="robots"]')).toBe(
+      'index, follow, max-image-preview:large'
+    )
+  })
+
+  it('publica as datas do artigo no Open Graph', async () => {
+    await renderAt({
+      pathname: '/artigo',
+      routes: [
+        {
+          path: '/artigo',
+          info: {
+            seo: {
+              type: 'article',
+              article: {
+                datePublished: '2026-09-01',
+                dateModified: '2026-09-21'
+              }
+            }
+          },
+          component: () => null
+        }
+      ]
+    })
+
+    expect([
+      readMeta('meta[property="article:published_time"]'),
+      readMeta('meta[property="article:modified_time"]')
+    ]).toStrictEqual(['2026-09-01', '2026-09-21'])
+  })
+
+  it('omite as datas de artigo em página que não é artigo', async () => {
+    await vi.waitUntil(
+      () => readMeta('meta[property="article:published_time"]') === null
+    )
+    await renderAt({
+      pathname: '/guia',
+      routes: [
+        {
+          path: '/guia',
+          info: { seo: { article: { datePublished: '2026-09-01' } } },
+          component: () => null
+        }
+      ]
+    })
+
+    expect(readMeta('meta[property="article:published_time"]')).toBeNull()
+  })
 
   it('publica só robots, título e descrição em rota noindex', async () => {
     await vi.waitUntil(() => readCanonical() === null)
