@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## 1.3.0 - 2026-09-21
+
+### Added
+
+- restructure sitemap generation (6933276)
+- update sitemap and cache control (d103d7f)
+- improve sitemap generation and cache control (ecce70d)
+- add notes to llms.txt (0b59f54)
+- add llms.txt, robots.txt, and sitemap.xml (94762c0)
+- refine structured data and social metadata (488854c)
+- enhance structured data and indexing (c8661f4)
+- merge article data and omit key when not declared (db9a170)
+- add structured data and update site locale (047957b)
+- refine noindex behavior and metadata exclusion (b6fe86a)
+- refine noindex behavior and metadata exclusion (6d86677)
+- add structured data and update metadata (d74ad39)
+- add article type and structured data (d2444a9)
+- improve route collection and URL escaping (22b62fa)
+- memoize sitemap and llms.txt generation (a08e92e)
+- collect and display route-specific SEO metadata (1adc6ab)
+- improve SEO and route metadata handling (2dbe4d3)
+- add route info seo and llms data (aa3a5a0)
+- refactor middleware and improve SEO and route handling (3292265)
+- add SEO metadata and API routes for sitemap, robots, and LLMs (c185c8d)
+
 ## 1.2.0 - 2026-09-19
 
 ### Added
