@@ -1,10 +1,14 @@
 import { useLocation, useRouteMatches } from '@solidjs/router'
-import { useHead } from '@solidjs/web'
+import { type HeadTag, useHead } from '@solidjs/web'
 
+import { SITE } from '@/constants/site.ts'
 import { buildStructuredData } from '@/helpers/buildStructuredData/index.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 
+// Escolha do projeto: página `noindex` publica só `robots`, título e
+// descrição. Canonical, Open Graph, Twitter e JSON-LD ficam restritos às
+// páginas indexáveis, inclusive as tags que não variam por rota.
 export function SeoHead() {
   const location = useLocation()
   const matches = useRouteMatches()
@@ -15,17 +19,18 @@ export function SeoHead() {
   const structuredData = () =>
     buildStructuredData({ seo: seo(), url: canonical(), image: image() })
 
-  useHead(() => [
-    ...(seo().noindex
-      ? [
-          {
-            tag: 'meta' as const,
-            props: { name: 'robots', content: 'noindex' }
-          }
-        ]
-      : []),
+  const baseTags = (): HeadTag[] => [
     { tag: 'title', props: { children: seo().title } },
-    { tag: 'meta', props: { name: 'description', content: seo().description } },
+    { tag: 'meta', props: { name: 'description', content: seo().description } }
+  ]
+
+  const indexableTags = (): HeadTag[] => [
+    { tag: 'meta', props: { property: 'og:locale', content: 'pt_BR' } },
+    { tag: 'meta', props: { property: 'og:site_name', content: SITE.title } },
+    {
+      tag: 'meta',
+      props: { name: 'twitter:card', content: 'summary_large_image' }
+    },
     { tag: 'meta', props: { property: 'og:type', content: seo().type } },
     { tag: 'meta', props: { property: 'og:title', content: seo().title } },
     {
@@ -65,7 +70,16 @@ export function SeoHead() {
       key: 'structured-data',
       props: { type: 'application/ld+json', children: structuredData() }
     }
-  ])
+  ]
+
+  useHead(() =>
+    seo().noindex
+      ? [
+          { tag: 'meta', props: { name: 'robots', content: 'noindex' } },
+          ...baseTags()
+        ]
+      : [...baseTags(), ...indexableTags()]
+  )
 
   return null
 }

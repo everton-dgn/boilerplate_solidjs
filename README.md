@@ -324,10 +324,11 @@ em `env.ts`. `SeoHead`, renderizado dentro do `Router` em `App.tsx`, usa
 `useHead` do `@solidjs/web` para publicar `canonical`, `og:url`, `og:type`, a
 imagem social absoluta (Open Graph e Twitter, com dimensões e texto alternativo)
 e um `<script type="application/ld+json">` para a rota atual, inclusive na
-navegação no cliente. Os metadados que não variam por rota (`author`,
-`og:locale`, `og:site_name`, `twitter:card`) ficam em `Document.tsx`; não repita
-no `Document.tsx` uma tag que o `SeoHead` publica, porque o crawler lê a
-primeira ocorrência.
+navegação no cliente. As tags sociais que não variam por rota (`og:locale`,
+`og:site_name`, `twitter:card`) também saem do `SeoHead`, para acompanhar a
+regra de `noindex` abaixo; em `Document.tsx` fica só `author`. Não repita no
+`Document.tsx` uma tag que o `SeoHead` publica, porque o crawler lê a primeira
+ocorrência.
 
 Cada página pode exportar `route.info.seo` com `title`, `description`,
 `noindex`, `type` e `image`. Isso não muda sua estratégia de renderização nem
@@ -338,15 +339,18 @@ JSON-LD usando `useHead`. A rota filha sobrescreve os campos que declara e herda
 os demais do layout; `image` é mesclada atributo a atributo (`path`, `width`,
 `height`, `alt`). Sem definição na cadeia, título, descrição e imagem vêm de
 `SITE`, `type` é `website` e `noindex` é `false`. Por isso a home não declara
-`seo`: ela usa exatamente esses padrões. Com `noindex: true`, o `SeoHead`
-publica só `robots: noindex`, título e descrição; canonical, Open Graph, Twitter
-e JSON-LD ficam de fora, inclusive na página 404, porque só servem a indexadores
-e a prévias de link. Uma filha pode sobrescrever `noindex` com `false`
+`seo`: ela usa exatamente esses padrões. Escolha do projeto: com
+`noindex: true`, o `SeoHead` publica só `robots: noindex`, título e descrição.
+Canonical, Open Graph, Twitter (inclusive `og:locale`, `og:site_name` e
+`twitter:card`) e JSON-LD ficam de fora, inclusive na página 404. Neste
+boilerplate esses metadados só têm consumidor em páginas indexáveis; a canonical
+da 404 apontava para a URL inexistente digitada, e o JSON-LD declarava um
+`WebPage` nela. Uma filha pode sobrescrever `noindex` com `false`
 explicitamente. Limite conhecido: página `noindex` feita para compartilhamento
-(convite, resultado, campanha) ainda não tem suporte, e sua prévia em redes
-sociais cai para título e descrição, sem imagem. Quando esse caso surgir,
-acrescente um campo em `route.info.seo` que devolva Open Graph e Twitter sem
-canonical nem JSON-LD.
+(convite, resultado, campanha) ainda não tem suporte e deixa de fornecer
+metadados explícitos para a prévia social. Quando esse caso surgir, acrescente
+um campo em `route.info.seo` que devolva Open Graph e Twitter sem canonical nem
+JSON-LD.
 
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
 JSON-LD: `WebPage` por padrão, ou `Article` com `headline` e `author` (de

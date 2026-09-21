@@ -16,6 +16,8 @@ import { SeoHead } from '../index.tsx'
 type RenderAtOptions = {
   pathname: string
   routes?: readonly RouteDefinition[]
+  // Sinal de que o head foi aplicado; por padrão, a canonical da rota.
+  ready?: () => boolean
 }
 
 function readMeta(selector: string): string | null {
@@ -40,7 +42,8 @@ function readCanonical(): string | null {
 // O registro do head aplica e remove as tags em microtask após os efeitos.
 async function renderAt({
   pathname,
-  routes = [{ path: '/*rest', component: () => null }]
+  routes = [{ path: '/*rest', component: () => null }],
+  ready = () => readCanonical() !== null
 }: RenderAtOptions): Promise<string> {
   const Router = createRouter({
     routes,
@@ -59,7 +62,7 @@ async function renderAt({
     ),
     { providers: false }
   )
-  await vi.waitUntil(() => readCanonical() !== null)
+  await vi.waitUntil(ready)
   return SITE.url
 }
 
@@ -95,6 +98,11 @@ describe('metadados de SEO no head', () => {
     const base = await renderAt({ pathname: '/' })
 
     expect(readMeta('meta[property="og:type"]')).toBe('website')
+    expect([
+      readMeta('meta[property="og:locale"]'),
+      readMeta('meta[property="og:site_name"]'),
+      readMeta('meta[name="twitter:card"]')
+    ]).toStrictEqual(['pt_BR', SITE.title, 'summary_large_image'])
     const graph = readStructuredData()
     expect(graph?.['@graph'][0]?.['@type']).toBe('WebSite')
     expect(graph?.['@graph'][1]).toMatchObject({
@@ -198,5 +206,42 @@ describe('metadados de SEO no head', () => {
       'Guias do projeto.',
       'Guias do projeto.'
     ])
+  })
+
+  it('publica só robots, título e descrição em rota noindex', async () => {
+    await vi.waitUntil(() => readCanonical() === null)
+    await renderAt({
+      pathname: '/restrita',
+      routes: [
+        {
+          path: '/restrita',
+          info: {
+            seo: {
+              title: 'Área restrita',
+              description: 'Conteúdo interno.',
+              noindex: true
+            }
+          },
+          component: () => null
+        }
+      ],
+      ready: () => readMeta('meta[name="robots"]') !== null
+    })
+
+    expect([
+      readMeta('meta[name="robots"]'),
+      document.title,
+      readMeta('meta[name="description"]')
+    ]).toStrictEqual(['noindex', 'Área restrita', 'Conteúdo interno.'])
+    expect([
+      readCanonical(),
+      readMeta('meta[property="og:type"]'),
+      readMeta('meta[property="og:title"]'),
+      readMeta('meta[property="og:url"]'),
+      readMeta('meta[property="og:image"]'),
+      readMeta('meta[name="twitter:title"]'),
+      readMeta('meta[name="twitter:image"]'),
+      readStructuredData()
+    ]).toStrictEqual([null, null, null, null, null, null, null, null])
   })
 })

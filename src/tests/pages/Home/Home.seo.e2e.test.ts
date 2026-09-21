@@ -11,6 +11,7 @@ const SITE_TITLE = 'SolidJS Boilerplate'
 const SITE_DESCRIPTION =
   'Uma base para aplicações web com SolidJS, TypeScript e Vite+, com renderização no servidor e temas claro e escuro.'
 const SITE_IMAGE_ALT = 'Logo do SolidJS sobre o título SolidJS Boilerplate'
+const SOCIAL_TAGS = 'head meta[property^="og:"], head meta[name^="twitter:"]'
 
 // Só os campos que identificam cada nó; o formato completo é coberto pelos
 // testes unitários de `buildStructuredData`.
@@ -93,10 +94,7 @@ test.describe('metadados de SEO', () => {
       'noindex'
     )
     await expect(canonical).toHaveCount(0)
-    await expect(page.locator('head meta[property="og:title"]')).toHaveCount(0)
-    await expect(
-      page.locator('head meta[name="twitter:description"]')
-    ).toHaveCount(0)
+    await expect(page.locator(SOCIAL_TAGS)).toHaveCount(0)
     await expect(
       page.locator('head script[type="application/ld+json"]')
     ).toHaveCount(0)
@@ -115,6 +113,12 @@ test.describe('metadados de SEO', () => {
       page.locator('head meta[name="twitter:description"]')
     ).toHaveAttribute('content', SITE_DESCRIPTION)
     await expect(page.locator('head meta[name="robots"]')).toHaveCount(0)
+    await expect(
+      page.locator('head script[type="application/ld+json"]')
+    ).toHaveCount(1)
+    expect(await readStructuredData(page)).toContainEqual(
+      expect.objectContaining({ '@type': 'WebPage', url: `${siteUrl}/` })
+    )
   })
 
   test('publica noindex no HTML de uma rota estática sem depender de JavaScript', async ({
