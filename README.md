@@ -267,10 +267,10 @@ em `env.ts`. `SeoHead`, renderizado dentro do `Router` em `App.tsx`, usa
 imagem social absoluta (Open Graph e Twitter, com dimensões e texto alternativo)
 e um `<script type="application/ld+json">` para a rota atual, inclusive na
 navegação no cliente. As tags sociais que não variam por rota (`og:locale`,
-`og:site_name`, `twitter:card`) também saem do `SeoHead`, para acompanhar a
-regra de `noindex` abaixo; em `Document.tsx` fica só `author`. Não repita no
-`Document.tsx` uma tag que o `SeoHead` publica, porque o crawler lê a primeira
-ocorrência.
+`og:site_name`, `twitter:card`, `twitter:site` e `twitter:creator`) também saem
+do `SeoHead`, para acompanhar a regra de `noindex` abaixo; em `Document.tsx`
+fica só `author`. Não repita no `Document.tsx` uma tag que o `SeoHead` publica,
+porque o crawler lê a primeira ocorrência.
 
 Cada página pode exportar `route.info.seo` com `title`, `description`,
 `noindex`, `type`, `image` e `article`. Isso não muda sua estratégia de
@@ -297,22 +297,25 @@ acrescente um campo em `route.info.seo` que devolva Open Graph e Twitter sem
 canonical nem JSON-LD.
 
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
-JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (de
-`SITE.author`), `publisher` e, quando a rota declara
-`article: { datePublished, dateModified }` em ISO 8601, essas datas no nó e nas
-metas `article:published_time` e `article:modified_time`. Fora de `article`, as
-datas são ignoradas. O JSON-LD, montado por `SeoHead/buildStructuredData/`,
-publica sempre um nó `WebSite`, o nó da página com URL canônica, descrição,
-idioma e imagem, e um nó `Organization` com nome, URL, logo (`SITE.logo`, ao
-menos 112x112 pixels) e perfis oficiais (`SITE.socialLinks`, em `sameAs`).
-`WebSite.publisher` e `Article.publisher` apontam para esse nó pelo `@id`
-`<VITE_SITE_URL>/#organization`. O grafo é tipado com `schema-dts`, então
-propriedade inválida falha no typecheck; as dimensões da imagem ficam só no Open
-Graph. O idioma vem de `SITE.locale`, que também alimenta o `lang` do
-`Document.tsx` e o `og:locale` (com sublinhado). `helpers/serializeJsonLd/`
-escapa `<`, `>` e `&` como sequências JSON para não encerrar o `<script>`. Dados
-que o projeto não tem, como handle do Twitter (`twitter:site`) e `hreflang`, não
-são publicados.
+JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (nó
+`Person` com nome, URL e perfis de `SITE.author`, os perfis em `sameAs`),
+`publisher` e, quando a rota declara `article: { datePublished, dateModified }`
+em ISO 8601, essas datas no nó e nas metas `article:published_time` e
+`article:modified_time`. Fora de `article`, as datas são ignoradas. O JSON-LD,
+montado por `SeoHead/buildStructuredData/`, publica sempre um nó `WebSite`, o nó
+da página com URL canônica, descrição, idioma e imagem, e um nó `Organization`
+com nome, URL, logo (`SITE.logo`, ao menos 112x112 pixels) e perfis oficiais
+(`SITE.socialLinks`, em `sameAs`). `WebSite.publisher` e `Article.publisher`
+apontam para esse nó pelo `@id` `<VITE_SITE_URL>/#organization`. O grafo é
+tipado com `schema-dts`, então propriedade inválida falha no typecheck; as
+dimensões da imagem ficam só no Open Graph. O idioma vem de `SITE.locale`, que
+também alimenta o `lang` do `Document.tsx` e o `og:locale` (com sublinhado).
+`helpers/serializeJsonLd/` escapa `<`, `>` e `&` como sequências JSON para não
+encerrar o `<script>`. Os handles do Twitter saem de `SITE.twitter`
+(`twitter:site`, a conta do site) e de `SITE.author.twitter` (`twitter:creator`,
+a conta do autor). O LinkedIn não tem meta tag própria: ele lê o Open Graph para
+a prévia, e o perfil entra só no `sameAs`. Dados que o projeto não tem, como
+`hreflang`, não são publicados.
 
 Esse grafo base é fixo de propósito. Tipos que dependem da página (`Product`,
 `FAQPage`, `BreadcrumbList`, `Event`) entram pela primitive

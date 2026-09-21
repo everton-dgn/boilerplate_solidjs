@@ -106,8 +106,16 @@ describe('metadados de SEO no head', () => {
     expect([
       readMeta('meta[property="og:locale"]'),
       readMeta('meta[property="og:site_name"]'),
-      readMeta('meta[name="twitter:card"]')
-    ]).toStrictEqual(['pt_BR', SITE.title, 'summary_large_image'])
+      readMeta('meta[name="twitter:card"]'),
+      readMeta('meta[name="twitter:site"]'),
+      readMeta('meta[name="twitter:creator"]')
+    ]).toStrictEqual([
+      'pt_BR',
+      SITE.title,
+      'summary_large_image',
+      SITE.twitter,
+      SITE.author.twitter
+    ])
     expect(readNode('WebSite')).toBeDefined()
     expect(readNode('WebPage')).toMatchObject({
       url: `${base}/`,
@@ -348,7 +356,8 @@ describe('indexação e Open Graph de artigo', () => {
       readMeta('meta[property="og:image"]'),
       readMeta('meta[name="twitter:title"]'),
       readMeta('meta[name="twitter:image"]'),
+      readMeta('meta[name="twitter:site"]'),
       readStructuredData()
-    ]).toStrictEqual([null, null, null, null, null, null, null, null])
+    ]).toStrictEqual([null, null, null, null, null, null, null, null, null])
   })
 })

@@ -50,7 +50,8 @@ export function buildStructuredData({
           author: {
             '@type': 'Person',
             name: SITE.author.name,
-            url: SITE.author.url
+            url: SITE.author.url,
+            sameAs: SITE.author.sameAs
           },
           publisher: { '@id': organizationId },
           ...seo.article

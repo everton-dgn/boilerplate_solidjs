@@ -75,7 +75,8 @@ describe('dados estruturados da página', () => {
     expect(article?.author).toStrictEqual({
       '@type': 'Person',
       name: SITE.author.name,
-      url: SITE.author.url
+      url: SITE.author.url,
+      sameAs: SITE.author.sameAs
     })
     expect(article?.publisher).toStrictEqual({
       '@id': `${SITE.url}/#organization`

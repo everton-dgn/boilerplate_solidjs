@@ -4,10 +4,22 @@ import * as v from 'valibot'
 
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
-import { StructuredData } from '../index.tsx'
+import { createStructuredData } from '../index.ts'
 
 const INSTANCES = 2
 const NodeSchema = v.record(v.string(), v.unknown())
+
+type StructuredDataAccessor = Parameters<typeof createStructuredData>[0]
+
+function mountData(accessors: StructuredDataAccessor[]): void {
+  renderComponent(
+    () => {
+      for (const accessor of accessors) createStructuredData(accessor)
+      return null
+    },
+    { providers: false }
+  )
+}
 
 function readScripts(): string[] {
   return [
@@ -31,10 +43,7 @@ describe('dados estruturados publicados pela página', () => {
   })
 
   it('envolve um nó com @context e o publica no head', async () => {
-    renderComponent(
-      () => <StructuredData data={{ '@type': 'FAQPage', name: 'Dúvidas' }} />,
-      { providers: false }
-    )
+    mountData([() => ({ '@type': 'FAQPage', name: 'Dúvidas' })])
 
     const [json] = await waitForScripts(1)
     expect(parseNode(json)).toStrictEqual({
@@ -45,17 +54,12 @@ describe('dados estruturados publicados pela página', () => {
   })
 
   it('publica uma lista de nós como @graph', async () => {
-    renderComponent(
-      () => (
-        <StructuredData
-          data={[
-            { '@type': 'Organization', name: 'Acme' },
-            { '@type': 'Person', name: 'Ana' }
-          ]}
-        />
-      ),
-      { providers: false }
-    )
+    // `as const` prova que uma lista `readonly` é aceita.
+    const nodes = [
+      { '@type': 'Organization', name: 'Acme' },
+      { '@type': 'Person', name: 'Ana' }
+    ] as const
+    mountData([() => nodes])
 
     const [json] = await waitForScripts(1)
     expect(parseNode(json)).toStrictEqual({
@@ -68,15 +72,10 @@ describe('dados estruturados publicados pela página', () => {
   })
 
   it('mantém um script por instância', async () => {
-    renderComponent(
-      () => (
-        <>
-          <StructuredData data={{ '@type': 'Product', name: 'Primeiro' }} />
-          <StructuredData data={{ '@type': 'Product', name: 'Segundo' }} />
-        </>
-      ),
-      { providers: false }
-    )
+    mountData([
+      () => ({ '@type': 'Product', name: 'Primeiro' }),
+      () => ({ '@type': 'Product', name: 'Segundo' })
+    ])
 
     const scripts = await waitForScripts(INSTANCES)
     expect(scripts.map(json => parseNode(json).name)).toStrictEqual([
@@ -91,10 +90,16 @@ describe('dados estruturados publicados pela página', () => {
       name: 'Antes'
     })
     const [mounted, setMounted] = createSignal(true)
+
+    function ProductData() {
+      createStructuredData(data)
+      return null
+    }
+
     renderComponent(
       () => (
         <Show when={mounted()}>
-          <StructuredData data={data()} />
+          <ProductData />
         </Show>
       ),
       { providers: false }
@@ -110,13 +115,35 @@ describe('dados estruturados publicados pela página', () => {
     expect(readScripts()).toHaveLength(0)
   })
 
-  it('escapa HTML para não encerrar o script', async () => {
-    renderComponent(
-      () => (
-        <StructuredData data={{ '@type': 'Thing', name: '</script><b>&' }} />
-      ),
-      { providers: false }
+  it('publica, remove e republica os dados sem afetar outra instância', async () => {
+    const [data, setData] = createSignal<Product>()
+
+    function ProductData() {
+      createStructuredData(() => ({ '@type': 'Product', name: 'Fixo' }))
+      createStructuredData(data)
+      return null
+    }
+
+    renderComponent(ProductData, { providers: false })
+    const [fixed] = await waitForScripts(1)
+    expect(parseNode(fixed).name).toBe('Fixo')
+
+    setData({ '@type': 'Product', name: 'Condicional' })
+    const published = await waitForScripts(INSTANCES)
+    expect(published.map(json => parseNode(json).name)).toContain('Condicional')
+
+    setData(undefined)
+    await expect(waitForScripts(1)).resolves.toStrictEqual([fixed])
+
+    setData({ '@type': 'Product', name: 'Retomado' })
+    const resumed = await waitForScripts(INSTANCES)
+    expect(resumed.map(json => parseNode(json).name)).toStrictEqual(
+      expect.arrayContaining(['Fixo', 'Retomado'])
     )
+  })
+
+  it('escapa HTML para não encerrar o script', async () => {
+    mountData([() => ({ '@type': 'Thing', name: '</script><b>&' })])
 
     const [json] = await waitForScripts(1)
     expect(json).not.toMatch(/[<>&]/u)

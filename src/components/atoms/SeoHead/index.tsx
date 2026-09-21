@@ -70,6 +70,11 @@ export function SeoHead() {
       tag: 'meta',
       props: { name: 'twitter:card', content: 'summary_large_image' }
     },
+    { tag: 'meta', props: { name: 'twitter:site', content: SITE.twitter } },
+    {
+      tag: 'meta',
+      props: { name: 'twitter:creator', content: SITE.author.twitter }
+    },
     { tag: 'meta', props: { property: 'og:type', content: seo().type } },
     { tag: 'meta', props: { property: 'og:title', content: seo().title } },
     {

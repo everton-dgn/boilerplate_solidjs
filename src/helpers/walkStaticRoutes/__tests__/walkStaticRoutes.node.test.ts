@@ -1,5 +1,5 @@
-import { collectLlmsPages } from '@/routes/collectLlmsPages/index.ts'
-import { collectStaticPaths } from '@/routes/collectStaticPaths/index.ts'
+import { collectLlmsPages } from '@/routes/(seo)/llms.txt/helpers/collectLlmsPages/index.ts'
+import { collectStaticPaths } from '@/routes/(seo)/sitemap.xml/helpers/collectStaticPaths/index.ts'
 
 import { walkStaticRoutes } from '../index.ts'
 import type { StaticRoute, WalkStaticRoutesOptions } from '../types.ts'
