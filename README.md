@@ -542,25 +542,25 @@ build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
 
 # :wrench: Scripts
 
-| Script                      | Descrição                                          |
-| --------------------------- | -------------------------------------------------- |
-| `pnpm dev`                  | Servidor de desenvolvimento com HMR                |
-| `pnpm build`                | Build Nitro para Vercel em `.vercel/output/`       |
-| `pnpm start`                | Pré-visualizar o build pelo Vite                   |
-| `pnpm typecheck`            | Tipos da aplicação e das ferramentas Node          |
-| `pnpm typecheck:node`       | Tipos das ferramentas no ambiente Node             |
-| `pnpm lint`                 | CSS, lint e tipos com cache do Vite+               |
-| `pnpm format`               | Formatar código com Oxfmt                          |
-| `pnpm check:ci`             | Formatação, lint e tipos da aplicação              |
-| `pnpm check:fix`            | Formatação + lint corrigindo o que for possível    |
-| `pnpm test`                 | Todos os projetos de teste da aplicação            |
-| `pnpm test:tooling`         | Testes de `tooling/` com `node:test`               |
-| `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)          |
-| `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)         |
-| `pnpm test:browser:install` | Baixar o Chromium do Playwright                    |
-| `pnpm test:watch`           | Testes em modo de observação                       |
-| `pnpm validate`             | check:ci + typecheck:node + test + tooling + build |
-| `pnpm commitlint`           | Validar mensagem de commit                         |
+| Script                      | Descrição                                                   |
+| --------------------------- | ----------------------------------------------------------- |
+| `pnpm dev`                  | Servidor de desenvolvimento com HMR                         |
+| `pnpm build`                | Build Nitro para Vercel em `.vercel/output/`                |
+| `pnpm start`                | Pré-visualizar o build pelo Vite                            |
+| `pnpm typecheck`            | Tipos da aplicação e das ferramentas Node                   |
+| `pnpm typecheck:node`       | Tipos das ferramentas no ambiente Node                      |
+| `pnpm lint`                 | CSS, lint e tipos com cache do Vite+                        |
+| `pnpm format`               | Formatar código com Oxfmt                                   |
+| `pnpm check:ci`             | Formatação, lint e tipos da aplicação                       |
+| `pnpm check:fix`            | Formatação + lint corrigindo o que for possível             |
+| `pnpm test`                 | Todos os projetos de teste da aplicação                     |
+| `pnpm test:tooling`         | Testes de `tooling/` com `node:test`                        |
+| `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)                   |
+| `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)                  |
+| `pnpm test:browser:install` | Baixar o Chromium do Playwright                             |
+| `pnpm test:watch`           | Testes em modo de observação                                |
+| `pnpm validate`             | check:ci + typecheck:node + test:coverage + tooling + build |
+| `pnpm commitlint`           | Validar mensagem de commit                                  |
 
 Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
 comando embutido; `vp run <script>` executa um script do `package.json`. Os dois
