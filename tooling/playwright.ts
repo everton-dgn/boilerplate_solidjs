@@ -1,11 +1,16 @@
 import { env, loadEnvFile } from 'node:process'
+import { fileURLToPath } from 'node:url'
 
 import { defineConfig, devices } from '@playwright/test'
+import { loadEnv } from 'vite'
 
 loadEnvFile(new URL('../.env.test', import.meta.url))
-// Variáveis já definidas prevalecem, então .env só completa o que .env.test não
-// cobre, como a URL pública usada pelos metadados de SEO.
-loadEnvFile(new URL('../.env', import.meta.url))
+// O servidor sobe com `build --mode e2e`, que lê .env, .env.local, .env.e2e e
+// .env.e2e.local. Resolver as variáveis públicas com a mesma precedência do
+// Vite e exportá-las aqui mantém os testes e o build coerentes sobre a URL
+// pública usada pelos metadados de SEO; variáveis já definidas prevalecem.
+const ROOT = fileURLToPath(new URL('..', import.meta.url))
+Object.assign(env, loadEnv('e2e', ROOT, 'VITE_'))
 
 const BASE_URL = env.BASE_URL_TEST
 

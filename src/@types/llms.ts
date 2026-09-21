@@ -8,12 +8,6 @@ type LlmsRouteOptions = {
 // incluiu; o objeto inclui e sobrescreve só os campos declarados.
 export type LlmsRouteInfo = boolean | LlmsRouteOptions
 
-export type LlmsSelection = {
-  include: boolean
-  section: string
-  optional: boolean
-}
-
 export type LlmsPage = {
   path: string
   title: string

@@ -84,8 +84,8 @@ project/
 │   │   ├── atoms/           # Button, PageBadge, SeoHead, menu e tema
 │   │   ├── molecules/      # Topbar
 │   │   └── organisms/      # ErrorFallback
-│   ├── constants/          # Constantes do site e do tema
-│   ├── helpers/            # Funções puras: tema, URL pública, sitemap e llms.txt
+│   ├── constants/          # Constantes do site, do tema e do cache das rotas geradas
+│   ├── helpers/            # Funções puras: tema, URL pública, cache, sitemap e llms.txt
 │   ├── infra/
 │   │   ├── adapters/       # Persistência e comunicação entre abas
 │   │   └── server/         # Transporte e proteção de operações no servidor
@@ -313,11 +313,11 @@ uma vez e seguir o sistema também quando JavaScript está desabilitado.
 
 ### SEO e metadados
 
-`VITE_SITE_URL` no `.env` define a URL pública do site, validada em `env.ts`.
-`SeoHead`, renderizado dentro do `Router` em `App.tsx`, usa `useHead` do
-`@solidjs/web` para publicar `canonical`, `og:url` e a imagem social absolutas
-para a rota atual, inclusive na navegação no cliente. Sem a variável, o servidor
-usa a origem da requisição. Os metadados fixos ficam em `Document.tsx`.
+`VITE_SITE_URL` no `.env` é obrigatória e define a URL pública do site, validada
+em `env.ts`. `SeoHead`, renderizado dentro do `Router` em `App.tsx`, usa
+`useHead` do `@solidjs/web` para publicar `canonical`, `og:url` e a imagem
+social absolutas para a rota atual, inclusive na navegação no cliente. Os
+metadados fixos ficam em `Document.tsx`.
 
 Cada página pode exportar `route.info.seo` com `title`, `description` e
 `noindex`. Isso não muda sua estratégia de renderização nem torna a página
@@ -373,13 +373,14 @@ registro histórico da medição dos casos extremos está em
 lista as páginas estáticas do manifesto de rotas, sem parâmetros dinâmicos nem o
 fallback 404 e sem `noindex`, o robots aponta para ele e o llms.txt publica, em
 Markdown, título e descrição das páginas selecionadas por `route.info.llms`,
-agrupadas por seção. Em produção o processo guarda a última resposta do llms.txt
-em memória, substituída quando a URL do site muda, porque o manifesto é fixo no
-build; em desenvolvimento a rota responde com `no-store`. As URLs absolutas dos
-três arquivos partem da origem de `VITE_SITE_URL`; um site servido em um
-subcaminho não é suportado por essa geração. A página 404 declara
-`robots: noindex`. A imagem social fica em `public/images/og.png`, com cache
-imutável configurado em `vercel.json`.
+agrupadas por seção. Em produção o processo guarda a última resposta do sitemap
+e do llms.txt em memória, substituída quando a URL do site muda, porque o
+manifesto é fixo no build. Os três arquivos saem com `public, max-age=3600` em
+produção e com `no-store` em desenvolvimento. As URLs absolutas dos três
+arquivos partem da origem de `VITE_SITE_URL`; um site servido em um subcaminho
+não é suportado por essa geração. A página 404 declara `robots: noindex`. A
+imagem social fica em `public/images/og.png`, com cache imutável configurado em
+`vercel.json`.
 
 <br />
 
@@ -434,10 +435,10 @@ pnpm build && pnpm start
 
 O preview usa o Vite+ com a integração do Nitro. O `.env` versionado contém os
 valores locais de `HOST` e `PORT`, usados tanto pelo dev quanto pelo preview, e
-`VITE_SITE_URL`, a URL pública dos metadados de SEO. Ele também é carregado
-durante o build; variáveis já definidas no ambiente têm prioridade. Para
-escolher outra porta ou interface no preview, use `pnpm start --port 3001` ou
-`pnpm start --host 0.0.0.0`.
+`VITE_SITE_URL`, a URL pública obrigatória dos metadados de SEO. Ele também é
+carregado durante o build; variáveis já definidas no ambiente têm prioridade.
+Para escolher outra porta ou interface no preview, use `pnpm start --port 3001`
+ou `pnpm start --host 0.0.0.0`.
 
 `pnpm start` é um alias do preview local. Em produção, configure as variáveis na
 plataforma de hospedagem; o comando `preview` é destinado à conferência local.

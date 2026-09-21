@@ -3,6 +3,7 @@ import path from 'node:path'
 // Suites sem módulo colocalizado declaram os próprios alvos explicitamente.
 const subjects: Record<string, readonly string[]> = {
   'src/__tests__': ['App', 'PageFileSystemRouter'],
+  'src/constants/__tests__': ['cache'],
   'src/tests/pages/Home': ['Home'],
   'src/tests/pages/NotFound': ['NotFound'],
   'src/tests/pages/BackendError': ['BackendError'],

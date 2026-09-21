@@ -30,16 +30,11 @@ export default function Document(props: ParentProps) {
       <head>
         <meta charset="utf-8" />
         <title>{SITE.title}</title>
-        <meta name="description" content={SITE.description} />
         <meta name="author" content={SITE.author} />
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="pt_BR" />
         <meta property="og:site_name" content={SITE.title} />
-        <meta property="og:title" content={SITE.title} />
-        <meta property="og:description" content={SITE.description} />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={SITE.title} />
-        <meta name="twitter:description" content={SITE.description} />
         <meta
           name="viewport"
           content="minimum-scale=1, initial-scale=1, width=device-width"
