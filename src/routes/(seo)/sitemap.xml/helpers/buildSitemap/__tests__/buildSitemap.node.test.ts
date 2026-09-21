@@ -3,10 +3,10 @@ import { buildSitemap } from '../index.ts'
 const SITE_URL = 'https://example.com'
 
 describe('geração do sitemap', () => {
-  it('publica uma URL absoluta por caminho', () => {
+  it('publica uma URL absoluta por entrada', () => {
     const sitemap = buildSitemap({
       siteUrl: SITE_URL,
-      paths: ['/', '/docs', '/docs/guia']
+      entries: [{ path: '/' }, { path: '/docs' }, { path: '/docs/guia' }]
     })
 
     expect(sitemap).toBe(
@@ -22,8 +22,20 @@ describe('geração do sitemap', () => {
     )
   })
 
+  it('publica lastmod só nas entradas que declaram a data', () => {
+    const sitemap = buildSitemap({
+      siteUrl: SITE_URL,
+      entries: [{ path: '/artigo', lastmod: '2026-09-21' }, { path: '/' }]
+    })
+
+    expect(sitemap).toContain(
+      '  <url><loc>https://example.com/artigo</loc><lastmod>2026-09-21</lastmod></url>\n'
+    )
+    expect(sitemap).toContain('  <url><loc>https://example.com/</loc></url>\n')
+  })
+
   it('publica um urlset vazio quando não há páginas estáticas', () => {
-    const sitemap = buildSitemap({ siteUrl: SITE_URL, paths: [] })
+    const sitemap = buildSitemap({ siteUrl: SITE_URL, entries: [] })
 
     expect(sitemap).toBe(
       [
@@ -35,14 +47,21 @@ describe('geração do sitemap', () => {
     )
   })
 
-  it('escapa caracteres reservados do XML na URL', () => {
-    const sitemap = buildSitemap({ siteUrl: SITE_URL, paths: ["/a&b'c"] })
+  it('escapa caracteres reservados do XML na URL e na data', () => {
+    const sitemap = buildSitemap({
+      siteUrl: SITE_URL,
+      entries: [{ path: "/a&b'c", lastmod: '<2026>' }]
+    })
 
     expect(sitemap).toContain('<loc>https://example.com/a&amp;b&apos;c</loc>')
+    expect(sitemap).toContain('<lastmod>&lt;2026&gt;</lastmod>')
   })
 
   it('deixa a URL codificar o que o parser já percent-encoda', () => {
-    const sitemap = buildSitemap({ siteUrl: SITE_URL, paths: ['/a<b>"c d'] })
+    const sitemap = buildSitemap({
+      siteUrl: SITE_URL,
+      entries: [{ path: '/a<b>"c d' }]
+    })
 
     expect(sitemap).toContain('<loc>https://example.com/a%3Cb%3E%22c%20d</loc>')
   })
@@ -50,7 +69,7 @@ describe('geração do sitemap', () => {
   it('escapa <, > e " que sobrevivem em URLs de caminho opaco', () => {
     const sitemap = buildSitemap({
       siteUrl: SITE_URL,
-      paths: ['data:text/plain,<x>"']
+      entries: [{ path: 'data:text/plain,<x>"' }]
     })
 
     expect(sitemap).toContain('<loc>data:text/plain,&lt;x&gt;&quot;</loc>')
@@ -59,7 +78,7 @@ describe('geração do sitemap', () => {
   it('resolve caminhos absolutos contra a origem, ignorando o caminho do site', () => {
     const sitemap = buildSitemap({
       siteUrl: 'https://example.com/base/index.html?x=1',
-      paths: ['/docs']
+      entries: [{ path: '/docs' }]
     })
 
     expect(sitemap).toContain('<loc>https://example.com/docs</loc>')

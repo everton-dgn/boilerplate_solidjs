@@ -1,5 +1,7 @@
+import type { SitemapEntry } from '@/@types/sitemap.ts'
+
 type BuildSitemapOptions = {
-  paths: readonly string[]
+  entries: readonly SitemapEntry[]
   siteUrl: string
 }
 
@@ -14,10 +16,16 @@ function escapeXml(value: string): string {
     .replaceAll("'", '&apos;')
 }
 
-export function buildSitemap({ paths, siteUrl }: BuildSitemapOptions): string {
-  const urls = paths.map(
-    path => `  <url><loc>${escapeXml(new URL(path, siteUrl).href)}</loc></url>`
-  )
+export function buildSitemap({
+  entries,
+  siteUrl
+}: BuildSitemapOptions): string {
+  const urls = entries.map(({ path, lastmod }) => {
+    const loc = `<loc>${escapeXml(new URL(path, siteUrl).href)}</loc>`
+    const modified =
+      lastmod === undefined ? '' : `<lastmod>${escapeXml(lastmod)}</lastmod>`
+    return `  <url>${loc}${modified}</url>`
+  })
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',

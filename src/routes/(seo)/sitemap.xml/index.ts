@@ -1,26 +1,21 @@
 import { pageRoutes } from 'virtual:file-routes'
 
-import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
 import { memoizeOnce } from '@/helpers/memoizeOnce/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 
-import { buildSitemap } from './helpers/buildSitemap/index.ts'
-import { collectStaticPaths } from './helpers/collectStaticPaths/index.ts'
+import { buildSitemapResponse } from './helpers/buildSitemapResponse/index.ts'
+import { collectSitemapEntries } from './helpers/collectSitemapEntries/index.ts'
 
-const renderSitemap = memoizeOnce({
+// Só a leitura do manifesto é memoizada: as fontes das rotas com parâmetros
+// rodam a cada request, porque seus dados mudam sem novo build.
+const readManifest = memoizeOnce({
   enabled: import.meta.env.PROD,
-  render: () =>
-    buildSitemap({
-      paths: collectStaticPaths(pageRoutes),
-      siteUrl: resolveSiteUrl('/')
-    })
+  render: () => collectSitemapEntries(pageRoutes)
 })
 
-export function GET(): Response {
-  return new Response(renderSitemap(), {
-    headers: {
-      'content-type': 'application/xml; charset=utf-8',
-      'cache-control': SITE_CACHE_CONTROL
-    }
+export function GET(): Promise<Response> {
+  return buildSitemapResponse({
+    manifest: readManifest(),
+    siteUrl: resolveSiteUrl('/')
   })
 }
