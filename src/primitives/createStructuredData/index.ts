@@ -1,5 +1,5 @@
 import { useHead } from '@solidjs/web'
-import type { Graph, Thing, WithContext } from 'schema-dts'
+import type { Thing } from 'schema-dts'
 import { type Accessor, createUniqueId } from 'solid-js'
 
 import { serializeJsonLd } from '@/helpers/serializeJsonLd/index.ts'
@@ -16,12 +16,13 @@ function isNodeList(
   return Array.isArray(data)
 }
 
-function withContext(
-  data: SchemaNode | readonly SchemaNode[]
-): WithContext<SchemaNode> | Graph {
-  return isNodeList(data)
-    ? { '@context': 'https://schema.org', '@graph': data }
-    : { '@context': 'https://schema.org', ...data }
+function withContext(data: StructuredData): object {
+  if (isNodeList(data)) {
+    return { '@context': 'https://schema.org', '@graph': data }
+  }
+  // Evita distribuir o spread por todos os tipos de schema-dts.
+  const node: object = data
+  return { '@context': 'https://schema.org', ...node }
 }
 
 // JSON-LD próprio da página, em um `<script>` separado do grafo base que o

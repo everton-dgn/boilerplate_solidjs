@@ -18,7 +18,9 @@ describe('cache-control das rotas geradas do manifesto', () => {
     await expect(loadCacheControl(false)).resolves.toBe('no-store')
   })
 
-  it('em produção, é público por uma hora', async () => {
-    await expect(loadCacheControl(true)).resolves.toBe('public, max-age=3600')
+  it('em produção, o CDN reutiliza por uma hora e o navegador não guarda', async () => {
+    await expect(loadCacheControl(true)).resolves.toBe(
+      'public, max-age=0, s-maxage=3600'
+    )
   })
 })

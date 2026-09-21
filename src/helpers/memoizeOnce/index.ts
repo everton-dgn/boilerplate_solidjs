@@ -1,18 +1,19 @@
-type Render = () => string
-
-type MemoizeOnceOptions = {
-  render: Render
+type MemoizeOnceOptions<Value> = {
+  render: () => Value
   enabled: boolean
 }
 
-// O manifesto e a URL do site são fixos no build, então em produção o texto é
-// renderizado uma vez por processo. Desabilitado, devolve o render sem cache,
-// como em desenvolvimento, onde o manifesto muda.
-export function memoizeOnce({ render, enabled }: MemoizeOnceOptions): Render {
+// O manifesto e a URL do site são fixos no build, então em produção o valor é
+// produzido uma vez por processo. Desabilitado, devolve o render sem cache,
+// como em desenvolvimento, onde o manifesto muda. Uma falha não é guardada.
+export function memoizeOnce<Value>({
+  render,
+  enabled
+}: MemoizeOnceOptions<Value>): () => Value {
   if (!enabled) return render
-  let text: string | undefined
+  let cache: { value: Value } | undefined
   return () => {
-    text ??= render()
-    return text
+    cache ??= { value: render() }
+    return cache.value
   }
 }

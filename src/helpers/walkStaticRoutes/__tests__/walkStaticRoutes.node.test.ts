@@ -1,5 +1,5 @@
 import { collectLlmsPages } from '@/routes/(seo)/llms.txt/helpers/collectLlmsPages/index.ts'
-import { collectStaticPaths } from '@/routes/(seo)/sitemap.xml/helpers/collectStaticPaths/index.ts'
+import { collectSitemapEntries } from '@/routes/(seo)/sitemap.xml/helpers/collectSitemapEntries/index.ts'
 
 import { walkStaticRoutes } from '../index.ts'
 import type { StaticRoute, WalkStaticRoutesOptions } from '../types.ts'
@@ -10,6 +10,8 @@ type Visited = {
 }
 
 type VisitedFlat = readonly [path: string, parentState: string]
+
+type VisitedDynamic = readonly [path: string, dynamic: boolean]
 
 type Visit<State> = WalkStaticRoutesOptions<State>['visit']
 
@@ -78,8 +80,34 @@ describe('travessia das rotas estáticas', () => {
     expect(visit).toHaveBeenCalledExactlyOnceWith({
       route: { path: '/about', page: true, children: [] },
       path: '/about',
-      parentState: null
+      parentState: null,
+      dynamic: false
     })
+  })
+
+  it('com dynamic, visita ramos com parâmetro e marca também os descendentes', () => {
+    const visited: VisitedDynamic[] = []
+    walkStaticRoutes<null>({
+      routes: [
+        { path: '/users/:id', children: [{ path: '/profile', page: true }] },
+        { path: '/*404', page: true },
+        { path: '/about', page: true, children: [{ path: '/:tab' }] }
+      ],
+      initialState: null,
+      dynamic: true,
+      visit: ({ path, dynamic }) => {
+        visited.push([path, dynamic])
+        return null
+      }
+    })
+
+    expect(visited).toStrictEqual([
+      ['/users/:id', true],
+      ['/users/:id/profile', true],
+      ['/*404', true],
+      ['/about', false],
+      ['/about/:tab', true]
+    ])
   })
 
   it('percorre em profundidade, preservando a ordem dos irmãos', () => {
@@ -115,7 +143,9 @@ describe('travessia das rotas em casos extremos', () => {
       routes = [{ path: '/', children: routes }]
     }
 
-    expect(collectStaticPaths(routes)).toStrictEqual(['/leaf'])
+    expect(collectSitemapEntries(routes).entries).toStrictEqual([
+      { path: '/leaf' }
+    ])
     expect(collectLlmsPages(routes).map(page => page.path)).toStrictEqual([
       '/leaf'
     ])
@@ -126,11 +156,10 @@ describe('travessia das rotas em casos extremos', () => {
       path: `//page-${index}//`,
       page: true
     }))
-    const expected = Array.from(
-      { length: WIDE_COUNT },
-      (_, index) => `/page-${index}`
-    )
+    const expected = Array.from({ length: WIDE_COUNT }, (_, index) => ({
+      path: `/page-${index}`
+    }))
 
-    expect(collectStaticPaths(routes)).toStrictEqual(expected)
+    expect(collectSitemapEntries(routes).entries).toStrictEqual(expected)
   })
 })

@@ -23,6 +23,22 @@ describe('memoização única do texto', () => {
     expect(render).toHaveBeenCalledOnce()
   })
 
+  it('guarda qualquer valor, inclusive objetos e undefined', () => {
+    const manifest = { entries: [] }
+    const memoizedObject = memoizeOnce({
+      render: () => manifest,
+      enabled: true
+    })
+    const render = vi.fn<() => string | undefined>()
+    const memoizedUndefined = memoizeOnce({ render, enabled: true })
+
+    expect(memoizedObject()).toBe(memoizedObject())
+    expect(memoizedObject()).toBe(manifest)
+    expect(memoizedUndefined()).toBeUndefined()
+    expect(memoizedUndefined()).toBeUndefined()
+    expect(render).toHaveBeenCalledOnce()
+  })
+
   it('não guarda uma falha e tenta renderizar de novo na próxima chamada', () => {
     const render = vi
       .fn<Render>()

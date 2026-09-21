@@ -7,14 +7,16 @@ const DYNAMIC_SEGMENT = /[:*]/u
 export function walkStaticRoutes<State>({
   routes,
   initialState,
-  visit
+  visit,
+  dynamic: visitDynamic = false
 }: WalkStaticRoutesOptions<State>): void {
   const stack: WalkFrame<State>[] = []
   let frame: WalkFrame<State> | undefined = {
     routes,
     index: 0,
     parent: '',
-    state: initialState
+    state: initialState,
+    dynamic: false
   }
 
   while (frame) {
@@ -24,17 +26,18 @@ export function walkStaticRoutes<State>({
       continue
     }
     frame.index += 1
-    if (DYNAMIC_SEGMENT.test(route.path)) continue
+    const dynamic = frame.dynamic || DYNAMIC_SEGMENT.test(route.path)
+    if (dynamic && !visitDynamic) continue
 
     const segment = route.path
       .replaceAll(/\/+/gu, '/')
       .replaceAll(/^\/|\/$/gu, '')
     const parent = frame.parent === '/' ? '' : frame.parent
     const path = segment ? `${parent}/${segment}` : parent || '/'
-    const state = visit({ route, path, parentState: frame.state })
+    const state = visit({ route, path, parentState: frame.state, dynamic })
     if (route.children?.length) {
       stack.push(frame)
-      frame = { routes: route.children, index: 0, parent: path, state }
+      frame = { routes: route.children, index: 0, parent: path, state, dynamic }
     }
   }
 }
