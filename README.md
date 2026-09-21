@@ -315,26 +315,46 @@ uma vez e seguir o sistema também quando JavaScript está desabilitado.
 
 `VITE_SITE_URL` no `.env` é obrigatória e define a URL pública do site, validada
 em `env.ts`. `SeoHead`, renderizado dentro do `Router` em `App.tsx`, usa
-`useHead` do `@solidjs/web` para publicar `canonical`, `og:url` e a imagem
-social absolutas para a rota atual, inclusive na navegação no cliente. Os
-metadados fixos ficam em `Document.tsx`.
+`useHead` do `@solidjs/web` para publicar `canonical`, `og:url`, `og:type`, a
+imagem social absoluta (Open Graph e Twitter, com dimensões e texto alternativo)
+e um `<script type="application/ld+json">` para a rota atual, inclusive na
+navegação no cliente. Os metadados que não variam por rota (`author`,
+`og:locale`, `og:site_name`, `twitter:card`) ficam em `Document.tsx`; não repita
+no `Document.tsx` uma tag que o `SeoHead` publica, porque o crawler lê a
+primeira ocorrência.
 
-Cada página pode exportar `route.info.seo` com `title`, `description` e
-`noindex`. Isso não muda sua estratégia de renderização nem torna a página
-estática: são metadados, disponíveis também em rotas com parâmetros. `SeoHead`
-lê a cadeia de rotas ativas com `useRouteMatches` e publica esses campos no
-título, na descrição, no Open Graph e no Twitter usando `useHead`. A rota filha
-sobrescreve os campos que declara e herda os demais do layout; sem definição na
-cadeia, título e descrição vêm de `SITE`, e `noindex` é `false`. O `SeoHead`
-global também publica `robots: noindex`, inclusive na página 404. Uma filha pode
-sobrescrever `noindex` com `false` explicitamente.
+Cada página pode exportar `route.info.seo` com `title`, `description`,
+`noindex`, `type` e `image`. Isso não muda sua estratégia de renderização nem
+torna a página estática: são metadados, disponíveis também em rotas com
+parâmetros. `SeoHead` lê a cadeia de rotas ativas com `useRouteMatches` e
+publica esses campos no título, na descrição, no Open Graph, no Twitter e no
+JSON-LD usando `useHead`. A rota filha sobrescreve os campos que declara e herda
+os demais do layout; `image` é mesclada atributo a atributo (`path`, `width`,
+`height`, `alt`). Sem definição na cadeia, título, descrição e imagem vêm de
+`SITE`, `type` é `website` e `noindex` é `false`. Por isso a home não declara
+`seo`: ela usa exatamente esses padrões. O `SeoHead` global também publica
+`robots: noindex`, inclusive na página 404. Uma filha pode sobrescrever
+`noindex` com `false` explicitamente.
+
+`type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
+JSON-LD: `WebPage` por padrão, ou `Article` com `headline` e `author` (de
+`SITE.author`). O JSON-LD, montado por `helpers/buildStructuredData/`, publica
+sempre um nó `WebSite` e o nó da página com URL canônica, descrição, idioma e
+imagem; `<`, `>` e `&` são escapados como sequências JSON para não encerrar o
+`<script>`. Dados que o projeto não tem, como handle do Twitter (`twitter:site`)
+e `hreflang`, não são publicados.
 
 ```tsx
 import type { RouteDefinition } from '@solidjs/router'
 
 export const route = {
   info: {
-    seo: { title: 'Sobre nós', description: 'Conheça nossa equipe.' },
+    seo: {
+      title: 'Sobre nós',
+      description: 'Conheça nossa equipe.',
+      type: 'article',
+      image: { path: '/images/equipe.png', alt: 'Foto da equipe' }
+    },
     llms: { section: 'Empresa' }
   }
 } satisfies RouteDefinition

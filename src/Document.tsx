@@ -31,7 +31,6 @@ export default function Document(props: ParentProps) {
         <meta charset="utf-8" />
         <title>{SITE.title}</title>
         <meta name="author" content={SITE.author} />
-        <meta property="og:type" content="website" />
         <meta property="og:locale" content="pt_BR" />
         <meta property="og:site_name" content={SITE.title} />
         <meta name="twitter:card" content="summary_large_image" />

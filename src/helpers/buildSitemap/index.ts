@@ -3,16 +3,15 @@ type BuildSitemapOptions = {
   siteUrl: string
 }
 
-const XML_ESCAPES: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&apos;'
-}
-
+// Caminhos hierárquicos saem de URL.href percent-encodados, mas caminhos
+// opacos (data:, mailto:) preservam <, > e ", então o XML escapa os cinco.
 function escapeXml(value: string): string {
-  return value.replaceAll(/[&<>"']/gu, char => XML_ESCAPES[char] ?? char)
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;')
 }
 
 export function buildSitemap({ paths, siteUrl }: BuildSitemapOptions): string {

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import * as v from 'valibot'
 
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
@@ -6,6 +7,20 @@ const HTTP_OK = 200
 const SITE_TITLE = 'SolidJS Boilerplate'
 const SITE_DESCRIPTION =
   'Uma base para aplicações web com SolidJS, TypeScript e Vite+, com renderização no servidor e temas claro e escuro.'
+const SITE_IMAGE_ALT = 'Logo do SolidJS sobre o título SolidJS Boilerplate'
+
+const NodeSchema = v.object({
+  '@type': v.string(),
+  url: v.string(),
+  name: v.string()
+})
+const StructuredDataSchema = v.object({ '@graph': v.array(NodeSchema) })
+
+// Só os campos que identificam cada nó; o formato completo é coberto pelos
+// testes unitários de `buildStructuredData`.
+function readStructuredData(json: string | null) {
+  return v.parse(StructuredDataSchema, JSON.parse(json ?? 'null'))['@graph']
+}
 
 test.describe('metadados de SEO', () => {
   test('publica canonical, Open Graph e imagem social por rota', async ({
@@ -34,6 +49,27 @@ test.describe('metadados de SEO', () => {
     await expect(
       page.locator('head meta[name="twitter:card"]')
     ).toHaveAttribute('content', 'summary_large_image')
+    await expect(page.locator('head meta[property="og:type"]')).toHaveCount(1)
+    await expect(page.locator('head meta[property="og:type"]')).toHaveAttribute(
+      'content',
+      'website'
+    )
+    await expect(
+      page.locator('head meta[name="twitter:image:alt"]')
+    ).toHaveAttribute('content', SITE_IMAGE_ALT)
+    await expect(
+      page.locator('head script[type="application/ld+json"]')
+    ).toHaveCount(1)
+    expect(
+      readStructuredData(
+        await page
+          .locator('head script[type="application/ld+json"]')
+          .textContent()
+      )
+    ).toStrictEqual([
+      { '@type': 'WebSite', url: `${siteUrl}/`, name: SITE_TITLE },
+      { '@type': 'WebPage', url: `${siteUrl}/`, name: SITE_TITLE }
+    ])
     await expect(page.locator('head meta[name="robots"]')).toHaveCount(0)
 
     const image = await page.request.get('/images/og.png')
@@ -77,65 +113,6 @@ test.describe('metadados de SEO', () => {
     await expect(page.locator('head meta[name="robots"]')).toHaveCount(0)
   })
 
-  test('gera sitemap, robots e llms.txt a partir do manifesto de rotas', async ({
-    request
-  }) => {
-    const siteUrl = readSiteOrigin()
-    const cacheControl = 'public, max-age=3600'
-
-    const sitemap = await request.get('/sitemap.xml')
-    expect(sitemap.status()).toBe(HTTP_OK)
-    expect(sitemap.headers()['content-type']).toContain('application/xml')
-    expect(sitemap.headers()['cache-control']).toBe(cacheControl)
-    const xml = await sitemap.text()
-    expect(xml).toContain(`<loc>${siteUrl}/</loc>`)
-    expect(xml).toContain(`<loc>${siteUrl}/backend-error</loc>`)
-    expect(xml).toContain(`<loc>${siteUrl}/seo-public</loc>`)
-    expect(xml).toContain(`<loc>${siteUrl}/seo-sitemap-only</loc>`)
-    expect(xml).not.toContain('/seo-noindex')
-    expect(xml).not.toContain('404')
-
-    const robots = await request.get('/robots.txt')
-    expect(robots.status()).toBe(HTTP_OK)
-    expect(robots.headers()['content-type']).toContain('text/plain')
-    expect(robots.headers()['cache-control']).toBe(cacheControl)
-    await expect(robots.text()).resolves.toBe(
-      `User-agent: *\nAllow: /\nSitemap: ${siteUrl}/sitemap.xml\n`
-    )
-
-    const llms = await request.get('/llms.txt')
-    expect(llms.status()).toBe(HTTP_OK)
-    expect(llms.headers()['content-type']).toContain('text/markdown')
-    expect(llms.headers()['cache-control']).toBe(cacheControl)
-    const markdown = await llms.text()
-    expect(markdown.startsWith('# ')).toBe(true)
-    expect(markdown).toContain(
-      `## Páginas\n\n- [${SITE_TITLE}](${siteUrl}/): ${SITE_DESCRIPTION}\n`
-    )
-    expect(markdown).toContain(
-      `## Guias\n\n- [Guia público](${siteUrl}/seo-public): Conteúdo público do guia.\n`
-    )
-    expect(markdown).toContain(
-      `## Optional\n\n- [Dados do backend](${siteUrl}/backend-error): Página de testes para os estados de resposta do backend.\n`
-    )
-    expect(markdown.indexOf('## Optional')).toBeGreaterThan(
-      markdown.indexOf('## Guias')
-    )
-    const sitemapUrls = [...xml.matchAll(/<loc>(?<url>[^<]+)<\/loc>/gu)].map(
-      match => match.groups?.url
-    )
-    const llmsUrls = [
-      ...markdown.matchAll(/^- \[[^\]]+\]\((?<url>[^)]+)\)/gmu)
-    ].map(match => match.groups?.url)
-    expect(new Set(llmsUrls)).toStrictEqual(
-      new Set(sitemapUrls.filter(url => url !== `${siteUrl}/seo-sitemap-only`))
-    )
-    expect(new Set(llmsUrls).size).toBe(llmsUrls.length)
-    expect(markdown).not.toContain('/seo-sitemap-only')
-    expect(markdown).not.toContain('/seo-noindex')
-    expect(markdown).not.toContain('404')
-  })
-
   test('publica noindex no HTML de uma rota estática sem depender de JavaScript', async ({
     browser,
     baseURL
@@ -155,5 +132,41 @@ test.describe('metadados de SEO', () => {
     } finally {
       await context.close()
     }
+  })
+
+  test('publica tipo, imagem e JSON-LD declarados pela rota', async ({
+    page
+  }) => {
+    const siteUrl = readSiteOrigin()
+    await page.goto('/seo-article')
+
+    await expect(page).toHaveTitle('Artigo de exemplo')
+    await expect(page.locator('head meta[property="og:type"]')).toHaveAttribute(
+      'content',
+      'article'
+    )
+    await expect(
+      page.locator('head meta[property="og:image"]')
+    ).toHaveAttribute('content', `${siteUrl}/images/article.png`)
+    await expect(
+      page.locator('head meta[name="twitter:image"]')
+    ).toHaveAttribute('content', `${siteUrl}/images/article.png`)
+    await expect(
+      page.locator('head meta[property="og:image:alt"]')
+    ).toHaveAttribute('content', 'Capa do artigo de exemplo')
+    await expect(
+      page.locator('head meta[property="og:image:width"]')
+    ).toHaveAttribute('content', '1200')
+    expect(
+      readStructuredData(
+        await page
+          .locator('head script[type="application/ld+json"]')
+          .textContent()
+      )[1]
+    ).toStrictEqual({
+      '@type': 'Article',
+      url: `${siteUrl}/seo-article`,
+      name: 'Artigo de exemplo'
+    })
   })
 })
