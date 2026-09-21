@@ -338,9 +338,15 @@ JSON-LD usando `useHead`. A rota filha sobrescreve os campos que declara e herda
 os demais do layout; `image` é mesclada atributo a atributo (`path`, `width`,
 `height`, `alt`). Sem definição na cadeia, título, descrição e imagem vêm de
 `SITE`, `type` é `website` e `noindex` é `false`. Por isso a home não declara
-`seo`: ela usa exatamente esses padrões. O `SeoHead` global também publica
-`robots: noindex`, inclusive na página 404. Uma filha pode sobrescrever
-`noindex` com `false` explicitamente.
+`seo`: ela usa exatamente esses padrões. Com `noindex: true`, o `SeoHead`
+publica só `robots: noindex`, título e descrição; canonical, Open Graph, Twitter
+e JSON-LD ficam de fora, inclusive na página 404, porque só servem a indexadores
+e a prévias de link. Uma filha pode sobrescrever `noindex` com `false`
+explicitamente. Limite conhecido: página `noindex` feita para compartilhamento
+(convite, resultado, campanha) ainda não tem suporte, e sua prévia em redes
+sociais cai para título e descrição, sem imagem. Quando esse caso surgir,
+acrescente um campo em `route.info.seo` que devolva Open Graph e Twitter sem
+canonical nem JSON-LD.
 
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
 JSON-LD: `WebPage` por padrão, ou `Article` com `headline` e `author` (de
