@@ -79,7 +79,10 @@ describe('coleta das páginas selecionadas para o llms.txt', () => {
         $$route: { require: () => ({ route: { info: { llms: true } } }) }
       },
       { path: '/about', page: true },
-      { path: '/api/health' },
+      {
+        path: '/api/health',
+        $$route: { require: () => ({ route: { info: { llms: true } } }) }
+      },
       { path: '/*404', page: true },
       {
         path: '/users/:id',
@@ -195,6 +198,48 @@ describe('herança da seleção de llms.txt na cadeia de rotas', () => {
     ])
   })
 
+  it('sobrescreve na filha só a seção e a marcação opcional declaradas', () => {
+    const pages = collectLlmsPages([
+      {
+        path: '/guias',
+        page: true,
+        $$route: {
+          require: () => ({
+            route: { info: { llms: { section: 'Guias', optional: true } } }
+          })
+        },
+        children: [
+          {
+            path: '/referencia',
+            page: true,
+            $$route: {
+              require: () => ({
+                route: { info: { llms: { section: 'Referência' } } }
+              })
+            }
+          },
+          {
+            path: '/essencial',
+            page: true,
+            $$route: {
+              require: () => ({
+                route: { info: { llms: { optional: false } } }
+              })
+            }
+          }
+        ]
+      }
+    ])
+
+    expect(
+      pages.map(page => [page.path, page.section, page.optional])
+    ).toStrictEqual([
+      ['/guias', 'Guias', true],
+      ['/guias/referencia', 'Referência', true],
+      ['/guias/essencial', 'Guias', false]
+    ])
+  })
+
   it('aplica o noindex do índice filho após resolver a URL compartilhada', () => {
     const pages = collectLlmsPages([
       {
@@ -209,6 +254,30 @@ describe('herança da seleção de llms.txt na cadeia de rotas', () => {
             page: true,
             $$route: {
               require: () => ({ route: { info: { seo: { noindex: true } } } })
+            }
+          },
+          { path: '/guide', page: true }
+        ]
+      }
+    ])
+
+    expect(pages.map(page => page.path)).toStrictEqual(['/docs/guide'])
+  })
+
+  it('exclui a URL compartilhada quando o índice filho declara llms: false', () => {
+    const pages = collectLlmsPages([
+      {
+        path: '/docs',
+        page: true,
+        $$route: {
+          require: () => ({ route: { info: { llms: true } } })
+        },
+        children: [
+          {
+            path: '/',
+            page: true,
+            $$route: {
+              require: () => ({ route: { info: { llms: false } } })
             }
           },
           { path: '/guide', page: true }

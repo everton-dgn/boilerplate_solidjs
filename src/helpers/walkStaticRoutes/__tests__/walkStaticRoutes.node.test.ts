@@ -15,7 +15,6 @@ type Visit<State> = WalkStaticRoutesOptions<State>['visit']
 
 const EXTREME_DEPTH = 10_000
 const WIDE_COUNT = 10_000
-const LAST_ITEM = -1
 
 // Cada visita devolve o próprio caminho, e a filha recebe o caminho do pai.
 function visitPath(visited: Visited[]): Visit<string> {
@@ -127,11 +126,11 @@ describe('travessia das rotas em casos extremos', () => {
       path: `//page-${index}//`,
       page: true
     }))
-    const paths = collectStaticPaths(routes)
+    const expected = Array.from(
+      { length: WIDE_COUNT },
+      (_, index) => `/page-${index}`
+    )
 
-    expect(paths).toHaveLength(WIDE_COUNT)
-    expect(paths[0]).toBe('/page-0')
-    expect(paths.at(LAST_ITEM)).toBe(`/page-${WIDE_COUNT - 1}`)
-    expect(new Set(paths).size).toBe(WIDE_COUNT)
+    expect(collectStaticPaths(routes)).toStrictEqual(expected)
   })
 })

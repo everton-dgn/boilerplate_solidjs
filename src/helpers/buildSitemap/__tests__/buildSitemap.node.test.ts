@@ -47,6 +47,15 @@ describe('geração do sitemap', () => {
     expect(sitemap).toContain('<loc>https://example.com/a%3Cb%3E%22c%20d</loc>')
   })
 
+  it('escapa <, > e " que sobrevivem em URLs de caminho opaco', () => {
+    const sitemap = buildSitemap({
+      siteUrl: SITE_URL,
+      paths: ['data:text/plain,<x>"']
+    })
+
+    expect(sitemap).toContain('<loc>data:text/plain,&lt;x&gt;&quot;</loc>')
+  })
+
   it('resolve caminhos absolutos contra a origem, ignorando o caminho do site', () => {
     const sitemap = buildSitemap({
       siteUrl: 'https://example.com/base/index.html?x=1',
