@@ -85,7 +85,7 @@ project/
 │   │   ├── molecules/      # Topbar
 │   │   └── organisms/      # ErrorFallback
 │   ├── constants/          # Constantes do site, do tema e do cache das rotas geradas
-│   ├── helpers/            # Funções puras: tema, URL pública, cache, sitemap e llms.txt
+│   ├── helpers/            # Funções puras compartilhadas: tema, URL pública, cache, SEO e rotas estáticas
 │   ├── infra/
 │   │   ├── adapters/       # Persistência e comunicação entre abas
 │   │   └── server/         # Transporte e proteção de operações no servidor
@@ -101,6 +101,10 @@ project/
 │   └── routes/
 │       ├── (home)/index.tsx # Página inicial
 │       ├── [...404].tsx     # Página 404 para caminhos desconhecidos
+│       ├── buildLlmsText/   # Montagem do llms.txt; só a rota llms.txt usa
+│       ├── buildSitemap/    # Montagem do XML do sitemap; só a rota sitemap.xml usa
+│       ├── collectLlmsPages/   # Páginas selecionadas para o llms.txt
+│       ├── collectStaticPaths/ # Caminhos indexáveis para o sitemap
 │       ├── llms.txt.ts      # Rota de API: índice em Markdown para LLMs
 │       ├── robots.txt.ts    # Rota de API: robots com o link do sitemap
 │       └── sitemap.xml.ts   # Rota de API: sitemap das páginas estáticas
@@ -141,10 +145,12 @@ rotas, para permitir typecheck antes de iniciar o Vite.
 Tipos, estilos específicos, testes e primitives usados por um único componente
 ficam junto dele, incluindo `Button/styles.module.css`. As utilidades globais
 ficam em `theme/class/`, e `theme/tokens/` concentra os valores visuais
-consumidos pelo CSS. `helpers/` contém funções puras compartilhadas;
-`infra/adapters/` isola as APIs do navegador, e `infra/server/` concentra o
-transporte de backend, a proteção das operações e a criação de erros públicos.
-Os módulos de servidor usam `server-only`; consulte o
+consumidos pelo CSS. `helpers/` contém funções puras compartilhadas; um módulo
+usado por uma única rota fica ao lado dela em `routes/`, sem export default nem
+handler HTTP, e por isso não vira rota. `infra/adapters/` isola as APIs do
+navegador, e `infra/server/` concentra o transporte de backend, a proteção das
+operações e a criação de erros públicos. Os módulos de servidor usam
+`server-only`; consulte o
 [contrato de erros no servidor](docs/server-errors.md). O prefixo `make`
 identifica utilitários sem estado reativo próprio, como `makeThemeChannel`, que
 devolve seu descarte. O prefixo `create` identifica primitives com estado ou

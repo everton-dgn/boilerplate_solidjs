@@ -7,6 +7,7 @@ const subjects: Record<string, readonly string[]> = {
   'src/tests/pages/Home': ['Home'],
   'src/tests/pages/NotFound': ['NotFound'],
   'src/tests/pages/BackendError': ['BackendError'],
+  'src/tests/pages/SeoIndexes': ['SeoIndexes'],
   'tooling/css/__tests__': ['cssPolicy', 'testFilename'],
   'tooling/release/__tests__': ['automatic-release', 'versioning']
 }

@@ -102,6 +102,21 @@ release. Add a tool name to select part of the graph. For example, run
 - Preserve os tipos que precisam ser exportados como parte de uma API pública
   intencional.
 
+## Localização de módulos
+
+- O mesmo critério vale para funções: `src/helpers/` recebe só módulos com
+  dois ou mais consumidores de produção. Um módulo usado por uma única rota
+  fica ao lado dela em `src/routes/`, como `routes/buildSitemap/`, e um
+  módulo usado por um único componente fica dentro da pasta do componente.
+- Pasta ou arquivo em `src/routes/` só vira rota com `export default` ou com
+  um handler HTTP (`GET`, `POST` e os demais métodos reconhecidos). Módulos
+  colocalizados não exportam esses nomes.
+- Previsão de reuso não justifica a extração. Mova para `src/helpers/`
+  quando o segundo consumidor aparecer, atualizando imports, testes e o
+  README.
+- Testes não decidem a localização. Um módulo colocalizado mantém seus
+  testes em `__tests__/` ao lado dele.
+
 ## Parâmetros de função
 
 - Função com dois parâmetros ou mais recebe um único objeto nomeado:

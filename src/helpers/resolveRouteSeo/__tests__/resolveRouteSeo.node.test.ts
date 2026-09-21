@@ -3,17 +3,17 @@ import { SITE } from '@/constants/site.ts'
 import { resolveRouteSeo } from '../index.ts'
 
 describe('resolução dos metadados de SEO na cadeia de rotas', () => {
+  const defaults = {
+    title: SITE.title,
+    description: SITE.description,
+    noindex: false,
+    type: 'website',
+    image: SITE.image
+  }
+
   it('usa os valores de SITE quando nenhuma rota declara metadados', () => {
-    expect(resolveRouteSeo([])).toStrictEqual({
-      title: SITE.title,
-      description: SITE.description,
-      noindex: false
-    })
-    expect(resolveRouteSeo([undefined, {}])).toStrictEqual({
-      title: SITE.title,
-      description: SITE.description,
-      noindex: false
-    })
+    expect(resolveRouteSeo([])).toStrictEqual(defaults)
+    expect(resolveRouteSeo([undefined, {}])).toStrictEqual(defaults)
   })
 
   it('sobrescreve campo a campo, da rota mais genérica para a mais específica', () => {
@@ -25,10 +25,33 @@ describe('resolução dos metadados de SEO na cadeia de rotas', () => {
     ])
 
     expect(seo).toStrictEqual({
+      ...defaults,
       title: 'Visão geral',
       description: 'Guias do projeto.',
       noindex: true
     })
+  })
+
+  it('herda o tipo do layout e mescla a imagem atributo a atributo', () => {
+    const seo = resolveRouteSeo([
+      { type: 'article', image: { path: '/images/blog.png' } },
+      { image: { alt: 'Capa do artigo' } }
+    ])
+
+    expect(seo.type).toBe('article')
+    expect(seo.image).toStrictEqual({
+      path: '/images/blog.png',
+      width: SITE.image.width,
+      height: SITE.image.height,
+      alt: 'Capa do artigo'
+    })
+  })
+
+  it('não compartilha o objeto de imagem de SITE com o resultado', () => {
+    const seo = resolveRouteSeo([])
+    seo.image.alt = 'alterado'
+
+    expect(SITE.image.alt).not.toBe('alterado')
   })
 
   it('permite que a rota filha reative a indexação com noindex: false', () => {

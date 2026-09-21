@@ -2,10 +2,11 @@ import { pageRoutes } from 'virtual:file-routes'
 
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
 import { SITE } from '@/constants/site.ts'
-import { buildLlmsText } from '@/helpers/buildLlmsText/index.ts'
-import { collectLlmsPages } from '@/helpers/collectLlmsPages/index.ts'
 import { memoizeOnce } from '@/helpers/memoizeOnce/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
+
+import { buildLlmsText } from './buildLlmsText/index.ts'
+import { collectLlmsPages } from './collectLlmsPages/index.ts'
 
 const renderLlmsText = memoizeOnce({
   enabled: import.meta.env.PROD,

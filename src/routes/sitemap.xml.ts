@@ -1,10 +1,11 @@
 import { pageRoutes } from 'virtual:file-routes'
 
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
-import { buildSitemap } from '@/helpers/buildSitemap/index.ts'
-import { collectStaticPaths } from '@/helpers/collectStaticPaths/index.ts'
 import { memoizeOnce } from '@/helpers/memoizeOnce/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
+
+import { buildSitemap } from './buildSitemap/index.ts'
+import { collectStaticPaths } from './collectStaticPaths/index.ts'
 
 const renderSitemap = memoizeOnce({
   enabled: import.meta.env.PROD,

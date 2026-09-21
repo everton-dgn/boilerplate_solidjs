@@ -1,6 +1,9 @@
-import { expect, test } from '@playwright/test'
-import * as v from 'valibot'
+import { expect, type Page, test } from '@playwright/test'
 
+import {
+  parseStructuredData,
+  type StructuredData
+} from '@/tests/helpers/parseStructuredData/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 const HTTP_OK = 200
@@ -9,17 +12,15 @@ const SITE_DESCRIPTION =
   'Uma base para aplicações web com SolidJS, TypeScript e Vite+, com renderização no servidor e temas claro e escuro.'
 const SITE_IMAGE_ALT = 'Logo do SolidJS sobre o título SolidJS Boilerplate'
 
-const NodeSchema = v.object({
-  '@type': v.string(),
-  url: v.string(),
-  name: v.string()
-})
-const StructuredDataSchema = v.object({ '@graph': v.array(NodeSchema) })
-
 // Só os campos que identificam cada nó; o formato completo é coberto pelos
 // testes unitários de `buildStructuredData`.
-function readStructuredData(json: string | null) {
-  return v.parse(StructuredDataSchema, JSON.parse(json ?? 'null'))['@graph']
+async function readStructuredData(
+  page: Page
+): Promise<StructuredData['@graph']> {
+  const json = await page
+    .locator('head script[type="application/ld+json"]')
+    .textContent()
+  return parseStructuredData(json)['@graph']
 }
 
 test.describe('metadados de SEO', () => {
@@ -60,15 +61,17 @@ test.describe('metadados de SEO', () => {
     await expect(
       page.locator('head script[type="application/ld+json"]')
     ).toHaveCount(1)
-    expect(
-      readStructuredData(
-        await page
-          .locator('head script[type="application/ld+json"]')
-          .textContent()
-      )
-    ).toStrictEqual([
-      { '@type': 'WebSite', url: `${siteUrl}/`, name: SITE_TITLE },
-      { '@type': 'WebPage', url: `${siteUrl}/`, name: SITE_TITLE }
+    expect(await readStructuredData(page)).toStrictEqual([
+      expect.objectContaining({
+        '@type': 'WebSite',
+        url: `${siteUrl}/`,
+        name: SITE_TITLE
+      }),
+      expect.objectContaining({
+        '@type': 'WebPage',
+        url: `${siteUrl}/`,
+        name: SITE_TITLE
+      })
     ])
     await expect(page.locator('head meta[name="robots"]')).toHaveCount(0)
 
@@ -157,13 +160,8 @@ test.describe('metadados de SEO', () => {
     await expect(
       page.locator('head meta[property="og:image:width"]')
     ).toHaveAttribute('content', '1200')
-    expect(
-      readStructuredData(
-        await page
-          .locator('head script[type="application/ld+json"]')
-          .textContent()
-      )[1]
-    ).toStrictEqual({
+    const [, article] = await readStructuredData(page)
+    expect(article).toMatchObject({
       '@type': 'Article',
       url: `${siteUrl}/seo-article`,
       name: 'Artigo de exemplo'

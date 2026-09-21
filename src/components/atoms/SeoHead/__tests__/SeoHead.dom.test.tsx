@@ -5,6 +5,10 @@ import {
 } from '@solidjs/router'
 
 import { SITE } from '@/constants/site.ts'
+import {
+  parseStructuredData,
+  type StructuredData
+} from '@/tests/helpers/parseStructuredData/index.ts'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { SeoHead } from '../index.tsx'
@@ -16,6 +20,13 @@ type RenderAtOptions = {
 
 function readMeta(selector: string): string | null {
   return document.head.querySelector(selector)?.getAttribute('content') ?? null
+}
+
+function readStructuredData(): StructuredData | null {
+  const script = document.head.querySelector(
+    'script[type="application/ld+json"]'
+  )
+  return script?.textContent ? parseStructuredData(script.textContent) : null
 }
 
 function readCanonical(): string | null {
@@ -77,6 +88,54 @@ describe('metadados de SEO no head', () => {
     expect(readMeta('meta[property="og:image:width"]')).toBe('1200')
     expect(readMeta('meta[property="og:image:height"]')).toBe('630')
     expect(readMeta('meta[property="og:image:alt"]')).toBe(SITE.image.alt)
+    expect(readMeta('meta[name="twitter:image:alt"]')).toBe(SITE.image.alt)
+  })
+
+  it('publica og:type website e o JSON-LD da página por padrão', async () => {
+    const base = await renderAt({ pathname: '/' })
+
+    expect(readMeta('meta[property="og:type"]')).toBe('website')
+    const graph = readStructuredData()
+    expect(graph?.['@graph'][0]?.['@type']).toBe('WebSite')
+    expect(graph?.['@graph'][1]).toMatchObject({
+      '@type': 'WebPage',
+      url: `${base}/`,
+      name: SITE.title
+    })
+  })
+
+  it('usa a imagem e o tipo declarados pela rota', async () => {
+    const base = await renderAt({
+      pathname: '/artigo',
+      routes: [
+        {
+          path: '/artigo',
+          info: {
+            seo: {
+              title: 'Artigo',
+              type: 'article',
+              image: { path: '/images/artigo.png', alt: 'Capa' }
+            }
+          },
+          component: () => null
+        }
+      ]
+    })
+
+    expect(readMeta('meta[property="og:type"]')).toBe('article')
+    expect([
+      readMeta('meta[property="og:image"]'),
+      readMeta('meta[name="twitter:image"]')
+    ]).toStrictEqual([`${base}/images/artigo.png`, `${base}/images/artigo.png`])
+    expect([
+      readMeta('meta[property="og:image:alt"]'),
+      readMeta('meta[name="twitter:image:alt"]')
+    ]).toStrictEqual(['Capa', 'Capa'])
+    expect(readMeta('meta[property="og:image:width"]')).toBe('1200')
+    expect(readStructuredData()?.['@graph'][1]).toMatchObject({
+      '@type': 'Article',
+      headline: 'Artigo'
+    })
   })
 
   it('remove as tags ao desmontar e usa barra final na raiz', async () => {
