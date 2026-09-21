@@ -38,6 +38,48 @@ describe('geração do llms.txt', () => {
     )
   })
 
+  it('publica as notas como lista entre o resumo e as seções, ignorando as vazias', () => {
+    const text = buildLlmsText({
+      title: 'Site',
+      description: 'Resumo do site.',
+      notes: [
+        'Conteúdo em português.',
+        ' \n ',
+        'Sem API [pública]\nno momento.'
+      ],
+      pages: [page({ path: '/', title: 'Início' })],
+      siteUrl: 'https://example.com'
+    })
+
+    expect(text).toBe(
+      [
+        '# Site',
+        '',
+        '> Resumo do site.',
+        '',
+        '- Conteúdo em português.',
+        String.raw`- Sem API \[pública\] no momento.`,
+        '',
+        '## Páginas',
+        '',
+        '- [Início](https://example.com/)',
+        ''
+      ].join('\n')
+    )
+  })
+
+  it('omite o bloco de notas quando todas estão em branco', () => {
+    const text = buildLlmsText({
+      title: 'Site',
+      description: 'Resumo do site.',
+      notes: ['', '  '],
+      pages: [],
+      siteUrl: 'https://example.com'
+    })
+
+    expect(text).toBe(['# Site', '', '> Resumo do site.', ''].join('\n'))
+  })
+
   it('publica só o cabeçalho quando nenhuma página foi selecionada', () => {
     const text = buildLlmsText({
       title: 'Site',

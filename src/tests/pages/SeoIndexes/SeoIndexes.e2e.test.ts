@@ -50,6 +50,12 @@ test.describe('índices gerados do manifesto de rotas', () => {
     const markdown = await llms.text()
     expect(markdown.startsWith('# ')).toBe(true)
     expect(markdown).toContain(
+      `> ${SITE_DESCRIPTION}\n\n- O conteúdo do site está em português do Brasil.\n`
+    )
+    expect(markdown.indexOf('- O conteúdo do site')).toBeLessThan(
+      markdown.indexOf('## ')
+    )
+    expect(markdown).toContain(
       `## Páginas\n\n- [${SITE_TITLE}](${siteUrl}/): ${SITE_DESCRIPTION}\n`
     )
     expect(markdown).toContain(
@@ -67,17 +73,18 @@ test.describe('índices gerados do manifesto de rotas', () => {
     const llmsUrls = [
       ...markdown.matchAll(/^- \[[^\]]+\]\((?<url>[^)]+)\)/gmu)
     ].map(match => match.groups?.url)
+    // Páginas indexáveis sem `route.info.llms`: só no sitemap.
+    const sitemapOnly = new Set([
+      `${siteUrl}/seo-sitemap-only`,
+      `${siteUrl}/seo-article`,
+      `${siteUrl}/structured-data-stream`
+    ])
     expect(new Set(llmsUrls)).toStrictEqual(
-      new Set(
-        sitemapUrls.filter(
-          url =>
-            url !== `${siteUrl}/seo-sitemap-only` &&
-            url !== `${siteUrl}/seo-article`
-        )
-      )
+      new Set(sitemapUrls.filter(url => !sitemapOnly.has(String(url))))
     )
     expect(new Set(llmsUrls).size).toBe(llmsUrls.length)
     expect(markdown).not.toContain('/seo-sitemap-only')
+    expect(markdown).not.toContain('/structured-data-stream')
     expect(markdown).not.toContain('/seo-noindex')
     expect(markdown).not.toContain('404')
   })

@@ -3,6 +3,8 @@ import type { LlmsPage } from '@/@types/llms.ts'
 type BuildLlmsTextOptions = {
   title: string
   description: string
+  // Fatos sobre o site, publicados como lista entre o resumo e as seções.
+  notes?: readonly string[]
   pages: readonly LlmsPage[]
   siteUrl: string
 }
@@ -39,11 +41,13 @@ function formatLink({ page, siteUrl }: FormatLinkOptions): string {
   return `- [${label}](${url})${summary ? `: ${summary}` : ''}`
 }
 
-// Formato do llms.txt: título em H1, resumo em citação, uma seção por grupo na
-// ordem em que aparece no manifesto e as páginas opcionais em `## Optional`.
+// Formato do llms.txt: título em H1, resumo em citação, notas livres sem
+// cabeçalho, uma seção por grupo na ordem em que aparece no manifesto e as
+// páginas opcionais em `## Optional`.
 export function buildLlmsText({
   title,
   description,
+  notes = [],
   pages,
   siteUrl
 }: BuildLlmsTextOptions): string {
@@ -68,6 +72,11 @@ export function buildLlmsText({
     `> ${escapeMarkdownText(description)}`,
     ''
   ]
+  const noteLines = notes
+    .map(note => escapeMarkdownText(note))
+    .filter(note => note !== '')
+    .map(note => `- ${note}`)
+  if (noteLines.length > 0) lines.push(...noteLines, '')
   for (const [section, links] of sections) {
     lines.push(`## ${escapeMarkdownText(section)}`, '', ...links, '')
   }

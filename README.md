@@ -403,8 +403,11 @@ registro histórico da medição dos casos extremos está em
 `sitemap.xml/`, `robots.txt/` e `llms.txt/` são rotas de API (`index.ts`): o
 sitemap lista as páginas estáticas do manifesto de rotas, sem parâmetros
 dinâmicos nem o fallback 404 e sem `noindex`, e o llms.txt publica, em Markdown,
+as notas de `llms.txt/constants.ts` (fatos que o agente precisa saber antes de
+abrir os links: idioma, o que o site oferece, o que não existe) e, em seguida,
 título e descrição das páginas selecionadas por `route.info.llms`, agrupadas por
-seção. O `Document.tsx` anuncia esse arquivo em todas as páginas com
+seção. Reescreva as notas em cada projeto derivado. O `Document.tsx` anuncia
+esse arquivo em todas as páginas com
 `<link rel="describedby" href="/llms.txt">`, a descoberta recomendada pela spec
 do llms.txt; agentes não são redirecionados. O robots publica os grupos de
 `robots.txt/constants.ts`: `*` com `Allow: /` e `Disallow: /_server` (endpoint
