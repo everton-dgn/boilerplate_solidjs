@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.4.0 - 2026-09-22
+
+### Added
+
+- introduce base layout for shared components (7a8026e)
+
 ## 1.3.1 - 2026-09-21
 
 ### Fixed
