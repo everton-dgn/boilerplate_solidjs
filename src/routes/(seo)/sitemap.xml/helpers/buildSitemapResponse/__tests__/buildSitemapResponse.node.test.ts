@@ -3,11 +3,29 @@ import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
 
 import { SITEMAP_SOURCES_TIMEOUT_MS } from '../../../constants.ts'
 import type { SitemapManifest } from '../../../types.ts'
+import { buildSitemap } from '../../buildSitemap/index.ts'
 import { buildSitemapResponse } from '../index.ts'
 
 const SITE_URL = 'https://example.com'
 const HTTP_OK = 200
 const HTTP_SERVICE_UNAVAILABLE = 503
+const SITEMAP_BYTE_LIMIT = 52_428_800
+const BASE_PATH_LENGTH = 1200
+
+function entriesAtByteSize(size: number): SitemapEntry[] {
+  const entries = Array.from({ length: 40_000 }, (_, index) => ({
+    path: `/page-${index}-${'a'.repeat(BASE_PATH_LENGTH)}`
+  }))
+  const bytes = new TextEncoder().encode(
+    buildSitemap({ entries, siteUrl: SITE_URL })
+  ).byteLength
+  const padding = size - bytes
+  const perEntry = Math.floor(padding / entries.length)
+  for (const entry of entries) entry.path += 'a'.repeat(perEntry)
+  const [first] = entries
+  if (first) first.path += 'a'.repeat(padding % entries.length)
+  return entries
+}
 
 function manifest(sources: readonly SitemapRouteInfo[]): SitemapManifest {
   return { entries: [{ path: '/' }, { path: '/docs' }], sources }
@@ -42,6 +60,28 @@ async function readOutcome(response: Response): Promise<Outcome> {
 describe('resposta do sitemap', () => {
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('aceita XML exatamente no limite de bytes', async () => {
+    const response = await buildSitemapResponse({
+      siteUrl: SITE_URL,
+      manifest: { entries: entriesAtByteSize(SITEMAP_BYTE_LIMIT), sources: [] }
+    })
+    const body = await response.arrayBuffer()
+    expect(response.status).toBe(HTTP_OK)
+    expect(body.byteLength).toBe(SITEMAP_BYTE_LIMIT)
+    expect(response.headers.get('cache-control')).toBe(SITE_CACHE_CONTROL)
+  })
+
+  it('responde 503 sem cache um byte acima do limite', async () => {
+    const response = await buildSitemapResponse({
+      siteUrl: SITE_URL,
+      manifest: {
+        entries: entriesAtByteSize(SITEMAP_BYTE_LIMIT + 1),
+        sources: []
+      }
+    })
+    await expect(readOutcome(response)).resolves.toStrictEqual(UNAVAILABLE)
   })
 
   it('publica as páginas estáticas e depois as entradas das fontes, na ordem', async () => {

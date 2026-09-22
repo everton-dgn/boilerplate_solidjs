@@ -14,6 +14,7 @@ type BuildSitemapResponseOptions = {
 }
 
 const HTTP_SERVICE_UNAVAILABLE = 503
+const SITEMAP_BYTE_LIMIT = 52_428_800
 
 // Fronteira com as fontes: só `path` e `lastmod` seguem adiante.
 const EntrySchema = v.object({
@@ -62,6 +63,9 @@ export async function buildSitemapResponse({
     const dynamic = await readSources(manifest.sources)
     const entries = normalizeSitemapEntries([...manifest.entries, ...dynamic])
     xml = buildSitemap({ entries, siteUrl })
+    if (new TextEncoder().encode(xml).byteLength > SITEMAP_BYTE_LIMIT) {
+      throw new Error('Sitemap acima do limite de bytes')
+    }
   } catch {
     return new Response(null, {
       status: HTTP_SERVICE_UNAVAILABLE,

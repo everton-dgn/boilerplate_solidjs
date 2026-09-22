@@ -2,6 +2,8 @@ import type { SitemapEntry } from '@/@types/sitemap.ts'
 
 import { SITEMAP_URL_LIMIT } from '../../constants.ts'
 
+const DATE_LENGTH = 10
+
 const SITE_PATH = /^\/(?!\/)[^\s?#\\]*$/u
 
 const W3C_DATETIME =
@@ -19,7 +21,14 @@ function normalizePath(path: string): string {
 // parser; a URL sai sem `lastmod`.
 function normalizeLastmod(lastmod: string | undefined): string | undefined {
   if (lastmod === undefined || !W3C_DATETIME.test(lastmod)) return undefined
-  return Number.isNaN(Date.parse(lastmod)) ? undefined : lastmod
+  if (Number.isNaN(Date.parse(lastmod))) return undefined
+  // Valida o calendário antes da conversão de fuso: ela pode mudar o dia.
+  const date = lastmod.slice(0, DATE_LENGTH)
+  const parsedDate = new Date(`${date}T00:00:00Z`)
+  if (Number.isNaN(parsedDate.getTime())) return undefined
+  return parsedDate.toISOString().slice(0, DATE_LENGTH) === date
+    ? lastmod
+    : undefined
 }
 
 // Valida e normaliza as entradas estáticas e dinâmicas juntas. Em caminho
