@@ -1,8 +1,8 @@
 import { Errored } from 'solid-js'
 
 import { Provider } from '@/components/atoms/Provider/index.tsx'
-import { SeoHead } from '@/components/atoms/SeoHead/index.tsx'
 import { ErrorFallback } from '@/components/organisms/ErrorFallback/index.tsx'
+import { createSeo } from '@/primitives/createSeo/index.ts'
 
 import { Router } from './router.ts'
 
@@ -13,12 +13,10 @@ export default function App() {
     <Errored fallback={() => <ErrorFallback kind="runtime" />}>
       <Provider>
         <Router>
-          {props => (
-            <>
-              <SeoHead />
-              {props.children}
-            </>
-          )}
+          {props => {
+            createSeo({ route: true })
+            return props.children
+          }}
         </Router>
       </Provider>
     </Errored>

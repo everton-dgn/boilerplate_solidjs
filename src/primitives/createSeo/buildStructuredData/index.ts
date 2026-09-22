@@ -21,8 +21,8 @@ type StructuredDataGraph = Omit<Graph, '@graph'> & {
 }
 
 // JSON-LD (schema.org) com o site, a página atual e a organização que os
-// publica, serializado para o `<script>` do `SeoHead`. Nós próprios de uma
-// página usam `createStructuredData`, em um script separado.
+// publica, serializado para o `<script>` do `createSeo`. Nós próprios de uma
+// página usam `createSeo`, em um script separado.
 export function buildStructuredData({
   seo,
   url,

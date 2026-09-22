@@ -13,7 +13,7 @@ const SITE_DESCRIPTION =
 const SITE_IMAGE_ALT = 'Logo do SolidJS sobre o título SolidJS Boilerplate'
 const ROBOTS_INDEX = 'index, follow, max-image-preview:large'
 const SOCIAL_TAGS = 'head meta[property^="og:"], head meta[name^="twitter:"]'
-// Grafo base do SeoHead mais o script próprio da página.
+// Grafo base do createSeo mais o script próprio da página.
 const SCRIPTS_WITH_PAGE_DATA = 2
 // WebSite, página e Organization; a ordem não importa em JSON-LD.
 const BASE_GRAPH_NODES = 3

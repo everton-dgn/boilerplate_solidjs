@@ -1,7 +1,7 @@
 import type { RouteDefinition } from '@solidjs/router'
 import { createMemo, createSignal, Loading } from 'solid-js'
 
-import { createStructuredData } from '@/primitives/createStructuredData/index.ts'
+import { createSeo } from '@/primitives/createSeo/index.ts'
 
 const DATA_DELAY_MS = 150
 
@@ -14,7 +14,7 @@ function loadProductName(): Promise<string> {
 
 function ProductDetails() {
   const name = createMemo(loadProductName)
-  createStructuredData(() => ({ '@type': 'Product', name: name() }))
+  createSeo({ structuredData: () => ({ '@type': 'Product', name: name() }) })
   const [clicks, setClicks] = createSignal(0)
 
   return (
