@@ -2,7 +2,6 @@ import { Errored } from 'solid-js'
 
 import { Provider } from '@/components/atoms/Provider/index.tsx'
 import { SeoHead } from '@/components/atoms/SeoHead/index.tsx'
-import { Topbar } from '@/components/molecules/Topbar/index.tsx'
 import { ErrorFallback } from '@/components/organisms/ErrorFallback/index.tsx'
 
 import { Router } from './router.ts'
@@ -17,7 +16,6 @@ export default function App() {
           {props => (
             <>
               <SeoHead />
-              <Topbar />
               {props.children}
             </>
           )}

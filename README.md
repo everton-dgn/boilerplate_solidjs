@@ -73,6 +73,14 @@ Componentes colocalizados podem ficar em pastas `components` dentro de `routes`:
 use exportações nomeadas para que eles não sejam registrados como páginas. Não é
 necessário editar `src/router.ts` ao adicionar uma página.
 
+O arquivo `src/routes/(base).tsx` define o layout compartilhado com `Topbar` e
+renderiza `props.children` com `RouteSectionProps`. Sua pasta `(base)/` contém
+`(home)/index.tsx` e `[...404].tsx`. Os grupos entre parênteses não aparecem na
+URL: a Home continua em `/` e o fallback mantém a barra de navegação. `App.tsx`
+mantém o provider, o SEO e a boundary global, que também captura falhas no
+layout. As fixtures E2E têm sua própria árvore e reexportam esse layout para as
+páginas, incluindo Home e 404.
+
 Rotas de API são módulos de `src/routes` que exportam `GET`, `POST` ou outro
 método HTTP em vez de `export default`. O `createAPIHandler` em
 `src/middleware/index.ts` responde a essas requisições antes do SSR e deixa
