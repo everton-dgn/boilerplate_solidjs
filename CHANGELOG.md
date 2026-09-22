@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.3.1 - 2026-09-21
+
+### Fixed
+
+- enforce sitemap byte limit and valid calendar dates (96a4ca6)
+
 ## 1.3.0 - 2026-09-21
 
 ### Added
