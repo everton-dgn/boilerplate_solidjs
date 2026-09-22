@@ -4,17 +4,19 @@ import * as v from 'valibot'
 
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
-import { createStructuredData } from '../index.ts'
+import { createSeo } from '../index.ts'
 
 const INSTANCES = 2
 const NodeSchema = v.record(v.string(), v.unknown())
 
-type StructuredDataAccessor = Parameters<typeof createStructuredData>[0]
+type StructuredDataAccessor = NonNullable<
+  Parameters<typeof createSeo>[0]['structuredData']
+>
 
 function mountData(accessors: StructuredDataAccessor[]): void {
   renderComponent(
     () => {
-      for (const accessor of accessors) createStructuredData(accessor)
+      for (const accessor of accessors) createSeo({ structuredData: accessor })
       return null
     },
     { providers: false }
@@ -92,7 +94,7 @@ describe('dados estruturados publicados pela página', () => {
     const [mounted, setMounted] = createSignal(true)
 
     function ProductData() {
-      createStructuredData(data)
+      createSeo({ structuredData: data })
       return null
     }
 
@@ -119,8 +121,10 @@ describe('dados estruturados publicados pela página', () => {
     const [data, setData] = createSignal<Product>()
 
     function ProductData() {
-      createStructuredData(() => ({ '@type': 'Product', name: 'Fixo' }))
-      createStructuredData(data)
+      createSeo({
+        structuredData: () => ({ '@type': 'Product', name: 'Fixo' })
+      })
+      createSeo({ structuredData: data })
       return null
     }
 

@@ -1,9 +1,9 @@
 import type { RouteDefinition } from '@solidjs/router'
 import type { Answer, FAQPage, Question } from 'schema-dts'
 
-import { createStructuredData } from '@/primitives/createStructuredData/index.ts'
+import { createSeo } from '@/primitives/createSeo/index.ts'
 
-// Página que publica JSON-LD próprio (FAQPage) ao lado do grafo base do SeoHead.
+// Página que publica JSON-LD próprio (FAQPage) ao lado do grafo base do createSeo.
 export const route = {
   info: {
     seo: {
@@ -25,10 +25,12 @@ export default function FaqPage() {
     name: 'O que é o boilerplate?',
     acceptedAnswer: answer
   }
-  createStructuredData((): FAQPage => ({
-    '@type': 'FAQPage',
-    mainEntity: [question]
-  }))
+  createSeo({
+    structuredData: (): FAQPage => ({
+      '@type': 'FAQPage',
+      mainEntity: [question]
+    })
+  })
 
   return (
     <main>

@@ -73,6 +73,14 @@ Componentes colocalizados podem ficar em pastas `components` dentro de `routes`:
 use exportações nomeadas para que eles não sejam registrados como páginas. Não é
 necessário editar `src/router.ts` ao adicionar uma página.
 
+O arquivo `src/routes/(base).tsx` define o layout compartilhado com `Topbar` e
+renderiza `props.children` com `RouteSectionProps`. Sua pasta `(base)/` contém
+`(home)/index.tsx` e `[...404].tsx`. Os grupos entre parênteses não aparecem na
+URL: a Home continua em `/` e o fallback mantém a barra de navegação. `App.tsx`
+mantém o provider, o SEO e a boundary global, que também captura falhas no
+layout. As fixtures E2E têm sua própria árvore e reexportam esse layout para as
+páginas, incluindo Home e 404.
+
 Rotas de API são módulos de `src/routes` que exportam `GET`, `POST` ou outro
 método HTTP em vez de `export default`. O `createAPIHandler` em
 `src/middleware/index.ts` responde a essas requisições antes do SSR e deixa
@@ -262,29 +270,31 @@ uma vez e seguir o sistema também quando JavaScript está desabilitado.
 ### SEO e metadados
 
 `VITE_SITE_URL` no `.env` é obrigatória e define a URL pública do site, validada
-em `env.ts`. `SeoHead`, renderizado dentro do `Router` em `App.tsx`, usa
-`useHead` do `@solidjs/web` para publicar `canonical`, `og:url`, `og:type`, a
-imagem social absoluta (Open Graph e Twitter, com dimensões e texto alternativo)
-e um `<script type="application/ld+json">` para a rota atual, inclusive na
-navegação no cliente. As tags sociais que não variam por rota (`og:locale`,
+em `env.ts`. `createSeo({ route: true })`, chamado uma vez no callback raiz do
+`Router` em `App.tsx`, usa `useHead` do `@solidjs/web` para publicar
+`canonical`, `og:url`, `og:type`, a imagem social absoluta (Open Graph e
+Twitter, com dimensões e texto alternativo) e um
+`<script type="application/ld+json">` para a rota atual, inclusive na navegação
+no cliente. As tags sociais que não variam por rota (`og:locale`,
 `og:site_name`, `twitter:card`, `twitter:site` e `twitter:creator`) também saem
-do `SeoHead`, para acompanhar a regra de `noindex` abaixo; em `Document.tsx`
-fica só `author`. Não repita no `Document.tsx` uma tag que o `SeoHead` publica,
-porque o crawler lê a primeira ocorrência.
+do `createSeo`, para acompanhar a regra de `noindex` abaixo; em `Document.tsx`
+fica só `author`. Não repita no `Document.tsx` uma tag que o `createSeo`
+publica, porque o crawler lê a primeira ocorrência.
 
 Cada página pode exportar `route.info.seo` com `title`, `description`,
 `noindex`, `type`, `image` e `article`. Isso não muda sua estratégia de
 renderização nem torna a página estática: são metadados, disponíveis também em
-rotas com parâmetros. `SeoHead` lê a cadeia de rotas ativas com
-`useRouteMatches` e publica esses campos no título, na descrição, no Open Graph,
-no Twitter e no JSON-LD usando `useHead`. A rota filha sobrescreve os campos que
-declara e herda os demais do layout; `image` é mesclada atributo a atributo
-(`path`, `width`, `height`, `alt`). Sem definição na cadeia, título, descrição e
-imagem vêm de `SITE`, `type` é `website` e `noindex` é `false`. Por isso a home
-não declara `seo`: ela usa exatamente esses padrões. Página indexável publica
-`robots` com `index, follow, max-image-preview:large`: os dois primeiros já são
-o padrão do crawler e o terceiro libera a prévia grande da imagem no Google
-Discover. Escolha do projeto: com `noindex: true`, o `SeoHead` publica só
+rotas com parâmetros. Na chamada com `route: true`, `createSeo` lê a cadeia de
+rotas ativas com `useRouteMatches` e publica esses campos no título, na
+descrição, no Open Graph, no Twitter e no JSON-LD usando `useHead`. A rota filha
+sobrescreve os campos que declara e herda os demais do layout; `image` é
+mesclada atributo a atributo (`path`, `width`, `height`, `alt`). Sem definição
+na cadeia, título, descrição e imagem vêm de `SITE`, `type` é `website` e
+`noindex` é `false`. Por isso a home não declara `seo`: ela usa exatamente esses
+padrões. Página indexável publica `robots` com
+`index, follow, max-image-preview:large`: os dois primeiros já são o padrão do
+crawler e o terceiro libera a prévia grande da imagem no Google Discover.
+Escolha do projeto: com `noindex: true`, a chamada de rota publica só
 `robots: noindex`, título e descrição. Canonical, Open Graph, Twitter (inclusive
 `og:locale`, `og:site_name` e `twitter:card`) e JSON-LD ficam de fora, inclusive
 na página 404. Neste boilerplate esses metadados só têm consumidor em páginas
@@ -302,50 +312,55 @@ JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (nó
 `publisher` e, quando a rota declara `article: { datePublished, dateModified }`
 em ISO 8601, essas datas no nó e nas metas `article:published_time` e
 `article:modified_time`. Fora de `article`, as datas são ignoradas. O JSON-LD,
-montado por `SeoHead/buildStructuredData/`, publica sempre um nó `WebSite`, o nó
-da página com URL canônica, descrição, idioma e imagem, e um nó `Organization`
-com nome, URL, logo (`SITE.logo`, ao menos 112x112 pixels) e perfis oficiais
-(`SITE.socialLinks`, em `sameAs`). `WebSite.publisher` e `Article.publisher`
-apontam para esse nó pelo `@id` `<VITE_SITE_URL>/#organization`. O grafo é
-tipado com `schema-dts`, então propriedade inválida falha no typecheck; as
-dimensões da imagem ficam só no Open Graph. O idioma vem de `SITE.locale`, que
-também alimenta o `lang` do `Document.tsx` e o `og:locale` (com sublinhado).
-`helpers/serializeJsonLd/` escapa `<`, `>` e `&` como sequências JSON para não
-encerrar o `<script>`. Os handles do Twitter saem de `SITE.twitter`
-(`twitter:site`, a conta do site) e de `SITE.author.twitter` (`twitter:creator`,
-a conta do autor). O LinkedIn não tem meta tag própria: ele lê o Open Graph para
-a prévia, e o perfil entra só no `sameAs`. Dados que o projeto não tem, como
-`hreflang`, não são publicados.
+montado pelo helper local `buildStructuredData` de `createSeo`, publica sempre
+um nó `WebSite`, o nó da página com URL canônica, descrição, idioma e imagem, e
+um nó `Organization` com nome, URL, logo (`SITE.logo`, ao menos 112x112 pixels)
+e perfis oficiais (`SITE.socialLinks`, em `sameAs`). `WebSite.publisher` e
+`Article.publisher` apontam para esse nó pelo `@id`
+`<VITE_SITE_URL>/#organization`. O grafo é tipado com `schema-dts`, então
+propriedade inválida falha no typecheck; as dimensões da imagem ficam só no Open
+Graph. O idioma vem de `SITE.locale`, que também alimenta o `lang` do
+`Document.tsx` e o `og:locale` (com sublinhado). `helpers/serializeJsonLd/`
+escapa `<`, `>` e `&` como sequências JSON para não encerrar o `<script>`. Os
+handles do Twitter saem de `SITE.twitter` (`twitter:site`, a conta do site) e de
+`SITE.author.twitter` (`twitter:creator`, a conta do autor). O LinkedIn não tem
+meta tag própria: ele lê o Open Graph para a prévia, e o perfil entra só no
+`sameAs`. Dados que o projeto não tem, como `hreflang`, não são publicados.
 
 Esse grafo base é fixo de propósito. Tipos que dependem da página (`Product`,
 `FAQPage`, `BreadcrumbList`, `Event`) entram pela primitive
-`createStructuredData`, chamada no corpo do componente da rota. Ela recebe um
-accessor `() => data` e publica um segundo `<script type="application/ld+json">`
-com `@context`. Os dados podem ser um nó ou uma lista (vira `@graph`) e são
-tipados com `schema-dts`, os tipos do schema.org mantidos pelo Google, então
-propriedade inválida falha no typecheck. A primitive acompanha as mudanças do
-accessor, remove o script ao descartar seu escopo e convive com outras
-instâncias na mesma página. Retornar `undefined` suspende a publicação; quando o
-accessor voltar a fornecer dados, o script reaparece. Para ligar o nó ao grafo
-base, use o `@id` da página (a URL canônica), do site
-(`<VITE_SITE_URL>/#website`) ou da organização
-(`<VITE_SITE_URL>/#organization`). A primitive não consulta `noindex`: uma rota
-fora do índice que a utiliza publica o JSON-LD mesmo assim.
+`createSeo({ structuredData: () => data })`, chamada no corpo do componente da
+rota. Ela publica um segundo `<script type="application/ld+json">` com
+`@context`. Os dados podem ser um nó ou uma lista (vira `@graph`) e são tipados
+com `schema-dts`, os tipos do schema.org mantidos pelo Google, então propriedade
+inválida falha no typecheck. A primitive acompanha as mudanças do accessor,
+remove o script ao descartar seu escopo e convive com outras instâncias na mesma
+página. Retornar `undefined` suspende a publicação; quando o accessor voltar a
+fornecer dados, o script reaparece. Para ligar o nó ao grafo base, use o `@id`
+da página (a URL canônica), do site (`<VITE_SITE_URL>/#website`) ou da
+organização (`<VITE_SITE_URL>/#organization`). A chamada com `structuredData`
+não consulta o router nem `noindex`: uma rota fora do índice que a utiliza
+publica o JSON-LD mesmo assim. Os dois formatos de chamada são exclusivos nos
+tipos: use `route: true` uma vez no App e `structuredData` em cada componente
+que precisa publicar dados próprios. As chamadas das páginas não registram o SEO
+global.
 
 ```tsx
-import { createStructuredData } from '@/primitives/createStructuredData/index.ts'
+import { createSeo } from '@/primitives/createSeo/index.ts'
 
 export default function FaqPage() {
-  createStructuredData(() => ({
-    '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: 'O que é o boilerplate?',
-        acceptedAnswer: { '@type': 'Answer', text: 'Uma base SolidJS.' }
-      }
-    ]
-  }))
+  createSeo({
+    structuredData: () => ({
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'O que é o boilerplate?',
+          acceptedAnswer: { '@type': 'Answer', text: 'Uma base SolidJS.' }
+        }
+      ]
+    })
+  })
 
   return (
     <main>

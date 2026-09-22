@@ -11,7 +11,7 @@ import {
 } from '@/tests/helpers/parseStructuredData/index.ts'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
-import { SeoHead } from '../index.tsx'
+import { createSeo } from '../index.ts'
 
 type RenderAtOptions = {
   pathname: string
@@ -57,12 +57,10 @@ async function renderAt({
   renderComponent(
     () => (
       <Router>
-        {props => (
-          <>
-            <SeoHead />
-            {props.children}
-          </>
-        )}
+        {props => {
+          createSeo({ route: true })
+          return props.children
+        }}
       </Router>
     ),
     { providers: false }

@@ -5,7 +5,7 @@ import type { StaticRoute } from '@/helpers/walkStaticRoutes/types.ts'
 
 import type { SitemapManifest } from '../../types.ts'
 
-// Só o que o sitemap consome, herdado pela cadeia como no SeoHead: título e
+// Só o que o sitemap consome, herdado pela cadeia como no createSeo: título e
 // descrição não são lidos.
 type RouteState = {
   noindex: boolean

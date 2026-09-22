@@ -1,7 +1,7 @@
 import { query, useSearchParams, type RouteDefinition } from '@solidjs/router'
 import { createMemo, createSignal, Loading } from 'solid-js'
 
-import { readBackend } from '../backend-error/readBackend/index.ts'
+import { readBackend } from '../../backend-error/readBackend/index.ts'
 
 const getBackend = query(readBackend, 'backend-error-fixture')
 

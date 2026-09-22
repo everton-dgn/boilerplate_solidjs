@@ -1,5 +1,7 @@
 import { buildRouteTree, PageFileSystemRouter } from 'filesystem-routing'
 
+const BASE_LAYOUT_PAGE_COUNT = 2
+
 describe('roteamento por arquivo', () => {
   it('descobre páginas dinâmicas sem registrar componentes colocalizados', async () => {
     const router = new PageFileSystemRouter({
@@ -22,10 +24,13 @@ describe('roteamento por arquivo', () => {
     const routes = await router.getRoutes()
 
     expect(routes.map(route => route.path).toSorted()).toStrictEqual([
-      '/(home)/',
-      '/*404'
+      '/(base)',
+      '/(base)/(home)/',
+      '/(base)/*404'
     ])
-    expect(routes.find(route => route.path === '/*404')?.$$route).toBeDefined()
+    expect(
+      routes.find(route => route.path === '/(base)/*404')?.$$route
+    ).toBeDefined()
   })
 
   it('remove o segmento de agrupamento da URL da página inicial', async () => {
@@ -36,10 +41,14 @@ describe('roteamento por arquivo', () => {
 
     const pages = buildRouteTree(await router.getRoutes())
 
-    expect(pages.map(page => page.path).toSorted()).toStrictEqual([
-      '/',
-      '/*404'
-    ])
-    expect(pages.find(page => page.path === '/')?.id).toBe('/(home)/')
+    expect(pages).toHaveLength(1)
+    expect(pages[0]).toMatchObject({ id: '/(base)', path: '/' })
+    expect(pages[0]?.children).toStrictEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: '/(home)/', path: '/' }),
+        expect.objectContaining({ id: '/*404', path: '/*404' })
+      ])
+    )
+    expect(pages[0]?.children).toHaveLength(BASE_LAYOUT_PAGE_COUNT)
   })
 })

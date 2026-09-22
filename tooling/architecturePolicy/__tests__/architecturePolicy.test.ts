@@ -62,7 +62,7 @@ test('a política distingue dependências permitidas e inversões de camada', ()
       },
       {
         filename: 'src/tests/fixtures/e2e/routes/index.tsx',
-        code: 'export { default } from "@/routes/(home)/index.tsx"'
+        code: 'export { default } from "@/routes/(base)/(home)/index.tsx"'
       },
       {
         filename: 'tooling/example.ts',
@@ -124,7 +124,7 @@ test('a política distingue dependências permitidas e inversões de camada', ()
       },
       {
         filename: 'src/primitives/example.ts',
-        code: 'export { default } from "@/routes/(home)/index.tsx"'
+        code: 'export { default } from "@/routes/(base)/(home)/index.tsx"'
       },
       {
         filename: 'src/primitives/example.ts',

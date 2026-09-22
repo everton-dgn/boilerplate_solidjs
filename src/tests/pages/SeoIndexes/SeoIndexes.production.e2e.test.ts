@@ -20,10 +20,12 @@ test.describe('índices na árvore real de produção', () => {
     expect(xml).toContain(
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
     )
+    expect(xml.match(/<loc>/gu)).toHaveLength(1)
     expect(xml).toContain(`<loc>${readSiteOrigin()}/</loc>`)
     expect(xml).toContain('</urlset>')
     expect(xml).not.toContain('/helpers/')
     expect(xml).not.toContain('(seo)')
+    expect(xml).not.toContain('(base)')
   })
 
   test('serve robots.txt sem redirecionamento', async ({ request }) => {

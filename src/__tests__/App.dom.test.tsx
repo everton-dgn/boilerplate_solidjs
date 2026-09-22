@@ -40,8 +40,11 @@ vi.mock(
 vi.mock(import('virtual:file-routes'), async importOriginal => {
   const manifest = await importOriginal()
 
-  for (const route of manifest.pageRoutes) {
-    if (route.path === '/') {
+  const [layout] = manifest.pageRoutes
+  assert(layout, 'O layout base precisa existir no manifesto')
+
+  for (const route of layout.children) {
+    if (route.id === '/(home)/') {
       route.$component.import = () =>
         Promise.resolve({
           default: renderHome,
