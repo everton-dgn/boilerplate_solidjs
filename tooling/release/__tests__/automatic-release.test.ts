@@ -1,11 +1,11 @@
 /* oxlint-disable vitest/no-import-node-test -- Os testes de release usam o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
-import { chmod, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { execPath } from 'node:process'
-import { describe, it } from 'node:test'
+import { describe, it, type TestContext } from 'node:test'
 import { promisify } from 'node:util'
 
 const execute = promisify(execFile)
@@ -107,8 +107,10 @@ type State = {
   release?: { tag_name: string }
 }
 
-async function fixture() {
+async function fixture(context: TestContext) {
   const directory = await mkdtemp(path.join(tmpdir(), 'solid-release-test-'))
+  // Sandbox criado pelo próprio teste: a remoção direta é o descarte correto.
+  context.after(() => rm(directory, { recursive: true, force: true }))
   const statePath = path.join(directory, 'state.json')
   await writeFile(statePath, JSON.stringify({ calls: [] }), { flag: 'wx' })
   for (const name of ['git', 'gh']) {
@@ -154,8 +156,8 @@ describe(
   'release orchestration with isolated Git and GitHub',
   { timeout: 30_000, concurrency: true },
   () => {
-    it('recovers after a release API failure without recreating commit, PR, merge or tag', async () => {
-      const f = await fixture()
+    it('recovers after a release API failure without recreating commit, PR, merge or tag', async context => {
+      const f = await fixture(context)
       try {
         await f.run('prepare')
         await f.run('prepare')
@@ -184,9 +186,9 @@ describe(
       }
     })
 
-    it('preserves a release branch updated before or during cleanup', async () => {
+    it('preserves a release branch updated before or during cleanup', async context => {
       for (const patch of [{ cleanupAdvanced: true }, { cleanupRace: true }]) {
-        const f = await fixture()
+        const f = await fixture(context)
         await f.run('prepare')
         await f.patch(patch)
         const result = await f.run('publish')
@@ -204,8 +206,8 @@ describe(
       }
     })
 
-    it('stops on invalid CI and main advancing before merge', async () => {
-      const f = await fixture()
+    it('stops on invalid CI and main advancing before merge', async context => {
+      const f = await fixture(context)
       try {
         await f.patch({ badRun: true })
         await assert.rejects(f.run('prepare'), /successful push CI/u)
@@ -224,8 +226,8 @@ describe(
       }
     })
 
-    it('does not mutate main if it advances at the protected merge boundary', async () => {
-      const f = await fixture()
+    it('does not mutate main if it advances at the protected merge boundary', async context => {
+      const f = await fixture(context)
       try {
         await f.run('prepare')
         await f.patch({ race: true })
@@ -243,9 +245,9 @@ describe(
       }
     })
 
-    it('refuses merge when main is unprotected or its CI requirement is loose', async () => {
+    it('refuses merge when main is unprotected or its CI requirement is loose', async context => {
       for (const protection of ['unprotected', 'loose'] as const) {
-        const f = await fixture()
+        const f = await fixture(context)
         await f.run('prepare')
         await f.patch({ [protection]: true })
         await assert.rejects(

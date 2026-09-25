@@ -43,6 +43,8 @@ export const fmt: NonNullable<UserConfig['fmt']> = {
     '.vercel/**',
     'coverage/**',
     'playwright-report/**',
-    'test-results/**'
+    'test-results/**',
+    '.agents/**',
+    '.claude/**'
   ]
 }

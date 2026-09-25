@@ -15,7 +15,13 @@ const TEST_FILES = [
 ]
 
 export const lint: NonNullable<UserConfig['lint']> = {
-  ignorePatterns: ['public/**', 'src/assets/**', 'src/@types/routes.d.ts'],
+  ignorePatterns: [
+    'public/**',
+    'src/assets/**',
+    'src/@types/routes.d.ts',
+    '.agents/**',
+    '.claude/**'
+  ],
   categories: {
     correctness: 'off',
     nursery: 'off',
