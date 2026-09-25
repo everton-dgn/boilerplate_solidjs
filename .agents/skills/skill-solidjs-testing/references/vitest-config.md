@@ -1,6 +1,6 @@
 # Configuração do Vitest para Solid 2
 
-As receitas foram executadas com Vitest 4 e a base registrada na skill principal ([versão](../../skill-solidjs/dev/notes/sources-and-version.md)). Depois de atualizar dependências, rode os canários antes de confiar nesta página.
+As versões verificadas constam no [frontmatter da skill](../SKILL.md). Depois de atualizar dependências, rode os canários antes de confiar nesta página.
 
 ## Postura decidida por projeto
 
@@ -70,7 +70,7 @@ Em pacote symlinkado ou monorepo, confira que `solid-js`, `@solidjs/web` e `@sol
 
 ## Canário de postura
 
-Ao criar ou alterar a configuração, ou investigar um teste que usa o build errado, confira postura, build e instância única. Reutilize o canário existente; não é necessário criar um para cada tarefa:
+Ao criar ou alterar a configuração, ou investigar um teste que usa o build errado, confira postura, build e instância única. Reutilize o canário do projeto, se houver; na falta dele, esta receita fornece a identificação:
 
 ```ts
 // support/runtime-identity.ts

@@ -21,38 +21,21 @@ Não existem `Router`, `Route`, `A`, `Navigate`, `createAsync`, `createAsyncStor
 Receita:
 
 ```tsx
-import { For, Loading, createMemo, createOptimisticStore } from "solid-js"
-import { action, createRouter, query, revalidate, useSubmissions } from "@solidjs/router"
+import { For, Loading, createMemo } from "solid-js"
+import { createRouter, query } from "@solidjs/router"
 
-type Todo = { id: string; title: string; pending?: boolean }
+type Todo = { id: string; title: string }
 
 declare function fetchTodos(): Promise<Todo[]>
-declare function saveTodo(title: string): Promise<void>
 
-const getTodos = query(() => fetchTodos(), "todos")
+const getTodos = query(fetchTodos, "todos")
 
 function Todos() {
   const todos = createMemo(() => getTodos())
-  const [optimistic, setOptimistic] = createOptimisticStore<Todo[]>(() => getTodos(), [])
-  const addTodo = action(saveTodo).onSubmit(title => {
-    setOptimistic(items => {
-      items.push({ id: `temp-${title}`, title, pending: true })
-    })
-  })
-  const submissions = useSubmissions(addTodo)
-  const lastError = () => submissions.at(-1)?.error
   return (
-    <main>
-      <Loading fallback={<p>Carregando</p>}>
-        <p>{todos().length} tarefas</p>
-        <ul>
-          <For each={optimistic}>{todo => <li aria-busy={todo.pending ? "true" : undefined}>{todo.title}</li>}</For>
-        </ul>
-      </Loading>
-      <button type="button" onClick={() => addTodo("Nova tarefa")}>Adicionar</button>
-      <button type="button" onClick={() => revalidate(getTodos.key)}>Recarregar</button>
-      <p role="alert">{lastError() ? "Falha ao salvar" : ""}</p>
-    </main>
+    <Loading fallback={<p>Carregando</p>}>
+      <ul><For each={todos()}>{todo => <li>{todo.title}</li>}</For></ul>
+    </Loading>
   )
 }
 
@@ -63,7 +46,8 @@ export const Router = createRouter({ routes: [{ path: "/", component: Todos }] }
 Regras sustentadas pelo código instalado:
 
 - `query(fn, name)` devolve função com `key` e `keyFor(...args)`; `revalidate(getTodos.key)` invalida todas as entradas, `revalidate(getTodos.keyFor(id))` só uma.
-- A action do router tem `url`, `with(...args)`, `onSubmit(hook)` e `onSettled(hook)`; a action geradora de `solid-js` (transações, `yield`) é outro contrato, sem `.with`. Não troque uma pela outra por semelhança de nome.
+- A action do router tem `url`, `with(...args)`, `onSubmit(hook)` e `onSettled(hook)`. `.onSubmit` executa dentro da transação otimista; escreva a sobreposição nesse hook. A action geradora de `solid-js` tem outro contrato, sem `.with`.
+- Chamada programática da action pode rejeitar mesmo depois de registrar o erro em `useSubmissions`; trate a Promise no handler. Observar o histórico não contém a rejeição.
 - Action que termina sem erro e sem metadados revalida todas as queries; com `X-Revalidate`, só as chaves declaradas; se lança, nenhuma (leitura do código, sem teste de runtime). `X-Revalidate: *` equivale a `REVALIDATE_ALL` de `@solidjs/web`; chaves nomeadas usam prefix-match; lista vazia não casa nada. Teste o cache depois da invalidação: checar só o header dá falso-verde.
 - Server function lida por `query` que viaja como GET precisa de `GET(fn)` no módulo servidor; sem ele, GET responde 405 com `Allow: POST`.
 

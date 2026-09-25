@@ -20,6 +20,10 @@ Receita: tags: `npm view <pacote> dist-tags`; offline, lockfile/manifesto instal
 
 Armadilha: Tag ou primeiro pacote em `.pnpm` pode escolher outra RC transitiva; Babel não elimina o compilador nativo.
 
+Na base verificada, uma cópia transitiva antiga de `@solidjs/signals` pode não exportar `ROOT_ERROR_HOOK`, `configureClientErrors` ou `isStatic`, exigidos pelo core, causando `MISSING_EXPORT`. Confira `pnpm why solid-js` e `pnpm why @solidjs/signals` antes de contornar o erro com aliases. A faixa do [manifesto do core](https://github.com/solidjs/solid/blob/9a29b1a07aa3e06ee32afd1fc4c18414b4a558bb/packages/solid/package.json) não garante alinhamento no lockfile.
+
+Eventos delegados também dependem desse alinhamento: na base verificada, o renderer usa `node._$$click`; um compilador antigo que emita `node.$$click` produz handlers que nunca disparam, sem erro de build. Ao investigar, compare a propriedade emitida no JSX compilado com a chave lida pelo renderer instalado.
+
 ## Origem das APIs e dos tipos
 
 Contrato: stores/core; renderer e tipos DOM/web. Element do core é renderizável, distinto do DOM. Use import type.
@@ -34,6 +38,8 @@ import type { ComponentProps, JSX, ValidComponent } from '@solidjs/web'
 Receita: Alias SolidElement distingue DOM. Marcadores `server-only`/`client-only` fazem o build recusar imports na direção errada.
 
 Armadilha: `solid-js/store`, `solid-js/web` e `solid-js/types/*` não são entradas desta base. Mapa público: `.`, `./refresh`, `./attribution`, `./internal` e `./package.json`, mas `internal`, `dist`, `src` e imports diretos de `@solidjs/signals` não são APIs de aplicação. `mergeProps` de web é interno ao compilador; use `merge`. Marcadores de ambiente não autorizam acesso no servidor.
+
+O antigo patch mode (`patchDriver`, `wrapPatchMode`, `registerPatch`, `registerRowOps`, `registerSlotPatch`, `patchableRaw`) foi removido do compilador e do runtime nesta base, sem substituto público equivalente.
 
 ## Configuração e builds
 

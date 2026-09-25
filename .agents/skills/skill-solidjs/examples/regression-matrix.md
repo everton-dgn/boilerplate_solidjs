@@ -12,4 +12,4 @@ Agendamento, props, granularidade e descarte estão na [matriz da skill de teste
 | Hidratação progressiva | Interagir após a shell e antes da última região do stream; conferir listeners e identidade após o término |
 | Erro de servidor | Procurar marcador sintético em HTML, chunks, RPC e logs; `throw Error` e `return Error` têm exposições diferentes |
 
-Esta lista seleciona provas; não declara que todos os cenários foram executados. Cobertura histórica em [validação](../dev/VALIDATION.md).
+Esta lista seleciona provas; não declara que todos os cenários foram executados.

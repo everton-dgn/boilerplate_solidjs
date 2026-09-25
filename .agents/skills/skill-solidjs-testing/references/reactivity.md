@@ -4,7 +4,7 @@ Contratos em [reatividade](../../skill-solidjs/references/02-reactivity-and-owne
 
 ## Receita: primitive sob createRoot
 
-Crie o modelo sob owner, registre o disposer e faça as escritas depois que `createRoot` retornar. Escrita no corpo do root lança `REACTIVE_WRITE_IN_OWNED_SCOPE`; `ownedWrite` não deve mascarar isso na fixture. O apply inicial de effect só roda depois de `flush()`.
+Crie o modelo sob owner, registre o disposer e faça as escritas depois que `createRoot` retornar. Escrita no corpo do root lança `REACTIVE_WRITE_IN_OWNED_SCOPE`; `ownedWrite` não deve mascarar isso na fixture. O apply inicial de effect espera o próximo flush, automático por microtask ou explícito com `flush()`.
 
 Primitiva que lê contexto precisa de componente sonda sob o provider. Para provar descarte, observe primeiro uma atualização bem-sucedida; só então descarte e tente atualizar outra vez.
 
@@ -12,7 +12,7 @@ Primitiva que lê contexto precisa de componente sonda sob o provider. Para prov
 
 Para granularidade de store, conte as execuções dos consumidores das folhas afetadas e não afetadas. Observar apenas o valor final perde essa diferença.
 
-Invoque a action fora do corpo de root, memo ou effect; em fixture que ainda tenha owner ambiente, use `runWithOwner(null, fn)`. A sobreposição otimista reverte também no sucesso: o teste precisa confirmar que a fonte autoritativa passou a devolver o dado após a gravação e o refresh. Apenas o caso de falha aprovaria uma action que nunca grava.
+Invoque a action após o setup, fora do corpo de root e dos computes de memo/effect; o apply de `createEffect` é fase imperativa e permite a chamada. Em fixture que ainda tenha owner ambiente, use `runWithOwner(null, fn)` para representar o handler. A sobreposição otimista reverte também no sucesso: confirme que a fonte autoritativa devolve o dado após gravação e refresh. Só testar falha aprovaria uma action que nunca grava.
 
 ## Sequências que discriminam erro
 

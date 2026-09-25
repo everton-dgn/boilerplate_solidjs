@@ -30,15 +30,9 @@ createRoot(() => {
 
 Contrato: apply, `onSettled` e código após o retorno de `createRoot` podem escrever. `ownedWrite: true` existe só em `SignalOptions`, permite escrita até em compute de memo e deve ficar restrito à infraestrutura; `StoreOptions` contém `name` e `shallow`, sem essa exceção.
 
-| Condições | Builds core/motor | Escrita no root |
-| --- | --- | --- |
-| browser + development | dev/dev | lança, `DEV` objeto |
-| browser | padrão/prod | grava silenciosamente, `DEV` undefined |
-| browser + test | padrão/dev | lança, `DEV` e `OBSERVE` undefined, sem rodapé |
-| alias core dev, sem development | dev/prod | grava, `DEV` undefined |
-| Node sem browser | servidor dev/dev | grava com `SERVER_WRITE`, sem guard cliente |
+O guard depende do motor resolvido: no cliente dev, escrita no root lança; no padrão, passa silenciosamente; no servidor, registra `SERVER_WRITE`. Misturar core e motor de builds diferentes pode deixar `DEV` indefinido com guard ativo, ou expor core dev sem o guard. A condição de exportação `test` não equivale ao modo test do Vitest; confira a [postura do runner](../../skill-solidjs-testing/references/vitest-config.md#canário-de-postura).
 
-Armadilha: silêncio e DEV undefined não provam conformidade/ausência de guard; motor resolvido decide e reexporta DEV ao core. `untrack(accessor)` equivale a `untrack(() => accessor())` e não autoriza escrita.
+Armadilha: silêncio e `DEV` indefinido não provam conformidade. `untrack(accessor)` equivale a `untrack(() => accessor())` e não autoriza escrita.
 
 ## Microtasks e flush
 

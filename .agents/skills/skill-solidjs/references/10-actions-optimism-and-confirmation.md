@@ -4,7 +4,7 @@ Contratos do runtime instalado, Solid 2 RC.9. `action` aqui vem de `solid-js`; a
 
 ## Geradores e reentrada
 
-Contrato: action coordena intenção, sobreposição opcional e reconciliação do grafo; autenticação, persistência, idempotência e concorrência remota continuam no backend. Crie o modelo sob owner e chame action no handler, tratando sua Promise, nunca durante montagem ou memo. `action(generator)` chamado de dentro de `createRoot`, `createEffect` ou `createMemo` lança `[ACTION_CALLED_IN_OWNED_SCOPE]` em dev; raízes não são isentas (`createRoot(d => action(function*(){ yield 1 })())` lança; `runWithOwner(null, () => action(...)())` não). Chame a action de um handler de evento ou envolva com `runWithOwner(null, fn)`. Gerador mantém passos síncronos na transação; `action(async () => ...)` não substitui a forma geradora. `affects` marca impacto antes da espera e refresh obtém o estado autoritativo.
+Contrato: crie o modelo sob owner e invoque a action no handler, tratando sua Promise. Invocação no corpo de componente/root ou no compute de memo/effect lança `ACTION_CALLED_IN_OWNED_SCOPE` em dev. O apply de `createEffect` e `onSettled` permitem invocação; `runWithOwner(null, fn)` serve à integração imperativa, não para disfarçar mutação durante compute. Gerador mantém passos síncronos na transação; `action(async () => ...)` não substitui essa forma. `affects` marca impacto antes da espera e `refresh` obtém o estado autoritativo.
 
 Receita:
 ```ts
@@ -84,7 +84,7 @@ Armadilha: a janela inicial de `loadingValue` permite refresh resolver com provi
 
 Contrato: dois cliques podem ocorrer antes de disabled publicar. Para serialização local use guard imperativo; para paralelismo, chave por entidade. Defina serialização, última escrita vencedora ou versão com conflito no domínio. Setters privados e comandos nomeados impedem sobreposição sem confirmação. Não use fila global para registros independentes nem booleano global para múltiplas operações.
 
-Receita: no exemplo de tarefas, `Set` comum reserva `formulario` e `tarefa:<id>` para criação e `tarefa:<id>` para conclusão antes da action. Recusa síncrona aparece em status acessível. Flag otimista por chave alimenta disabled/aria-busy; nova linha fica bloqueada enquanto servidor não conhece a ID. Concluir A enquanto B é criada permite ambas, mas revalidar fonte compartilhada pode assentar ambas juntas na tela: Promise de A terminou após seu refresh, enquanto valor/flag de A esperaram B.
+Receita: no exemplo de tarefas, `Set` comum reserva `form` e `task:<id>` para criação e `task:<id>` para conclusão antes da action. Recusa síncrona aparece em status acessível. Flag otimista por chave alimenta disabled/aria-busy; nova linha fica bloqueada enquanto servidor não conhece a ID. Concluir A enquanto B é criada permite ambas, mas revalidar fonte compartilhada pode assentar ambas juntas na tela: Promise de A terminou após seu refresh, enquanto valor/flag de A esperaram B.
 
 Armadilha: fim da Promise não garante DOM confirmado. Use ID estável cliente quando permitido ou correlação explícita; trocar chave temporária sem reconciliar desmonta linha, perde foco ou duplica entidade. Resposta obsoleta descartada não cancela efeito servidor. Backend ainda exige precondição, versão, transação ou chave idempotente.
 
@@ -133,4 +133,3 @@ return { saved: true, refreshed: true }
 Armadilha: `void action()` não trata rejeição. Não exponha mensagem bruta de servidor. No exemplo, falha de refresh informa que salvou sem atualizar lista, limpa rascunho salvo e mantém Errored da lista; falha de gravação preserva campo, remove linha otimista e não refaz lista. Na base, escrever sobreposição de store derivado e falhar seu refresh provoca outra execução da derivação no settle, sem pedido da aplicação; sem escrita otimista, não. Essa leitura extra pode recuperar lista sem reset. Conte requests com essa regra, sem generalizar a versões futuras.
 
 Contrato: descarte de tela/abort não desfaz confirmação tardia do backend; próxima leitura deve convergir. Teste ausência de assinaturas/escritas em owner morto. Compensação exige conhecimento de versão/intenção, não catch genérico. Fixe dado confirmado e indicador coerentes, não contagem histórica de commits; duplicação ou assinaturas crescentes pedem reprodução local antes de atribuir ao modelo ou aos riscos R01/R02.
-

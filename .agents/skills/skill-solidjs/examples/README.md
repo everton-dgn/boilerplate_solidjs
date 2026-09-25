@@ -1,6 +1,6 @@
 # Exemplos SolidJS 2
 
-Exemplos adaptáveis à base verificada da skill. O [registro de validação](../dev/VALIDATION.md) distingue as provas executadas de leitura de fonte e typecheck; os testes históricos não acompanham o pacote.
+Exemplos adaptáveis à base registrada no [frontmatter da skill](../SKILL.md).
 
 ## Exemplos pequenos
 

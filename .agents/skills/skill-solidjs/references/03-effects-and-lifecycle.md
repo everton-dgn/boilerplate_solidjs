@@ -85,7 +85,7 @@ function createObservedRef(onWidth: (value: number) => void) {
 
 Contrato: use a fábrica sob owner, callback no ref e APIs browser só no cliente. A receita supõe elemento estável; trocar elemento exige liberar o recurso anterior. Agendamento imperativo sem owner notifica assentamento, mas não promete cleanup do componente. Setup dentro de outro onSettled perde o lifecycle necessário: dev acusa `SETTLED_CLEANUP_UNOWNED`, produção ignora o retorno.
 
-Armadilha: async devolve Promise, dev lança cleanup inválido e, sem boundary, halt. `onMount` não é exportado; setup com cleanup pode usar `createEffect(() => {}, () => { ... })`; trabalho único pós-assentamento usa onSettled. Escritas no callback continuam no mesmo flush, mas leituras ainda veem o assentado anterior; atualizadores compõem. `flush()` ali lança em dev; dentro de apply é aviso/no-op.
+Armadilha: async devolve Promise, dev lança cleanup inválido e, sem boundary, halt. `onMount` não é exportado; para setup único pós-assentamento com cleanup, use `onSettled`. Escritas no callback continuam no mesmo flush, mas leituras ainda veem o assentado anterior; atualizadores compõem. `flush()` ali lança em dev; dentro de apply é aviso/no-op.
 
 ## Descarte e primitivas avançadas
 
@@ -99,7 +99,6 @@ Armadilha: `createTrackedEffect` é depreciado, com limitações de transição 
 
 Contrato: trabalho async imperativo exige cancelador síncrono e guarda de vigência antes de aplicar resultado. Tipo que aceita async em `onCleanup` não torna o retorno síncrono; apply e onSettled são recusados pelo tsc estrito. Para criar primitivas após espera, capture owner no setup e confira `owner && !isDisposed(owner)` imediatamente antes de reentrar. O runtime avisa owner descartado mas ainda executa callback. `isDisposed` inclui owner marcado para descarte; não cancela operação externa nem propaga contexto através de await.
 
-Receita: cancele a operação e ignore resultado obsoleto; se dado será renderizado, prefira fonte async do grafo. No servidor, effect executa compute para expor prontidão/`NotReadyError`, mas nunca apply; `ssrSource: 'client'` pula até compute. Para aplicação durante SSR, `createRenderEffect` requer `options.defer` explícito.
+Receita: cancele a operação e ignore resultado obsoleto; se dado será renderizado, prefira fonte async do grafo. No servidor, `createEffect` executa compute, nunca apply. `createRenderEffect` executa ambos por padrão; `defer: true` pula apply. `ssrSource: 'client'` pula o effect inteiro ([SSR](12-ssr-and-hydration.md#effects-no-servidor)).
 
 Armadilha: owner marcado pode ainda ter DOM retido e cleanup adiado por action. Em Chromium, trocar ramo de Show marcou owner antes de remover DOM; no commit, ramo novo entrou e cleanup ocorreu uma vez. Isso não mediu recomputações do ramo retido. Guarda de owner não comprova remoção nem cleanup concluído. DOM global no compute normal quebra SSR.
-

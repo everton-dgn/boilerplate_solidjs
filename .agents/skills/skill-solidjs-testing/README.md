@@ -6,4 +6,4 @@ Instale ao lado da [skill-solidjs](../skill-solidjs/SKILL.md), que contém os co
 
 Reutilize os helpers do projeto. As receitas de montagem, captura e identificação do runtime são alternativas para quando falta esse suporte; não exigem uma segunda infraestrutura.
 
-A evidência original consta no [histórico](dev/CHANGELOG.md). Os testes usados na verificação não acompanham a skill.
+Os testes usados na verificação não acompanham a skill.

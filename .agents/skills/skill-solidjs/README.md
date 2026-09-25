@@ -11,6 +11,3 @@ Mantenha `skill-solidjs` e `skill-solidjs-testing` lado a lado em `.agents/skill
 - [SKILL.md](SKILL.md): entrada e escolha de referência.
 - `references/`: contratos e diferenças que levam a código incorreto.
 - [examples](examples/README.md): exemplos adaptáveis e suas limitações.
-- [dev](dev/README.md): fontes, histórico e evidência, para manutenção.
-
-Os testes históricos não acompanham o pacote. Versões e limites de evidência estão no [registro de validação](dev/VALIDATION.md).

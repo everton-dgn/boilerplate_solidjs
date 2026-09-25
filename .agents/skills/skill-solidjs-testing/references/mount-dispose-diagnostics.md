@@ -22,8 +22,11 @@ export const mount = (ui: () => JSX.Element): Mounted => {
   const dispose = () => {
     if (disposed) return
     disposed = true
-    disposeRoot?.()
-    host.remove()
+    try {
+      disposeRoot?.()
+    } finally {
+      host.remove()
+    }
   }
   onTestFinished(dispose)
   disposeRoot = render(ui, host)
@@ -92,7 +95,7 @@ export const captureConsole = (): ConsoleCapture => {
 }
 ```
 
-A captura precisa cobrir `dispose()` e a microtask antes de `restore()`. Ao configurar ou investigar uma captura que retorna zero, confira o build dev e um negativo conhecido: `NO_OWNER_EFFECT` no grafo cliente, `STRICT_READ_UNTRACKED` no DOM ou `SERVER_WRITE` no servidor. Reutilize o controle do harness existente.
+A captura precisa cobrir `dispose()` e a microtask antes de `restore()`. Ao configurar ou investigar uma captura que retorna zero, confira o build dev e um negativo conhecido: `NO_OWNER_EFFECT` no grafo cliente, `STRICT_READ_UNTRACKED` no DOM ou `SERVER_WRITE` no servidor. Reutilize o controle do projeto, se houver.
 
 `Errored` no build dev registra o erro original com `console.error` quando o fallback é elemento ou função sem parâmetro, e não registra quando o fallback recebe o erro. Num teste com fallback estático, exija essa entrada exata em vez de aceitar console sujo.
 
@@ -103,5 +106,5 @@ Um erro não contido em effect ou cálculo interrompe o agendador do módulo int
 - `render()` reseta o halt ao montar, só no build dev. `createRoot` nunca reseta: teste de primitive não se recupera sozinho.
 - Teste que provoca halt de propósito registra `onTestFinished(() => resetErrorHalt())`. Quando o halt não é o assunto, contenha o erro com `Errored` e fallback que recebe o erro.
 - Nós criados durante o halt ficam instáveis depois do reset; recrie a árvore.
-- No Chromium o halt chega a `reportError`: o run sai com código 1 e o teste verde. Num teste de browser que provoca halt de propósito, escute `error` em `globalThis`, chame `preventDefault()` e remova o listener num `onTestFinished`.
-- Sem `test.concurrent` nem `describe.concurrent` em arquivos que tocam o grafo: um teste em voo herda o halt de outro.
+- No Chromium o halt chega a `reportError`: o run pode sair com código 1 mesmo com o teste verde. Num teste que provoca halt de propósito, escute `error` em `globalThis` e chame `preventDefault()` apenas quando `event.error` for a causa esperada; o runtime reporta o erro original, não o texto `REACTIVITY_HALTED`. Afirme que o evento esperado ocorreu e remova o listener num `onTestFinished`. Erros diferentes continuam sem supressão.
+- Não execute concorrentemente testes que provocam halt, capturam console ou alteram estado global do motor: a falha ou o reset de um contamina o outro.

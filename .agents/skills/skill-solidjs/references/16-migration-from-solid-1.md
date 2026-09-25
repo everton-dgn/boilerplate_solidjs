@@ -15,7 +15,7 @@ Nenhum destes nomes é exportado por `solid-js` na rc.9, nos builds dev e defaul
 | `Index` | `<For keyed={false}>` | Item accessor, índice número |
 | `mergeProps` | `merge` | `@solidjs/web` exporta `mergeProps` só como helper interno do compilador |
 | `splitProps` | `omit` | Filtra chaves; não devolve a mesma tupla |
-| `onMount` | `onSettled`; em fixture de teste, `createEffect(() => undefined, setup)` roda o setup uma vez sem rastrear | Cleanup retornado |
+| `onMount` | `onSettled` | Setup após assentamento, com cleanup retornado |
 | `createSelector` | `createProjection` | Seleção granular por chave |
 | `createResource` | Memo ou fonte assíncrona sob `Loading` | Sem `loading`, `mutate` nem `refetch` |
 | `createComputed` | Memo, fonte derivada ou effect split | Depende da intenção |
@@ -25,7 +25,7 @@ Nenhum destes nomes é exportado por `solid-js` na rc.9, nos builds dev e defaul
 | `createDeferred` | Removido; o batching já coalesce por microtask | Não recriar por alias |
 | `isRefreshing` | `refresh(target)` devolve Promise; `yield refresh(target)` numa action reexecuta a fonte e espera o assentamento | Não expõe fase a cálculo puro; combine com `affects(target)` ou flag otimista |
 | `setStore("a", 0, "b", v)`, `setStore(path, reconcile(...))` | `setStore(d => { d.a[0].b = v })` | Setter por caminho e com objeto lançam `TypeError`: `StoreSetter` só aceita função |
-| `createEffect(fn)` | `createEffect(compute, apply)` | No cliente, `createEffect(fn)` lança antes do compute (`MISSING_EFFECT_FN` em dev; `TypeError` sem código no default); `createRenderEffect(fn)` roda o compute e depois falha com `TypeError`, escalando para `REACTIVITY_HALTED` (exige `resetErrorHalt()`). No build de servidor os dois executam o compute uma vez sem erro: SSR e testes com `environment: 'node'` não acusam o padrão |
+| `createEffect(fn)` | `createEffect(compute, apply)` | No cliente, `createEffect(fn)` lança antes do compute (`MISSING_EFFECT_FN` em dev; `TypeError` sem código no default); `createRenderEffect(fn)` roda o compute e depois falha com `TypeError`, escalando para `REACTIVITY_HALTED` (o teste precisa isolar/resetar o motor). No build de servidor os dois executam o compute uma vez sem erro: SSR e testes com `environment: 'node'` não acusam o padrão |
 
 Numa migração, procure no projeto imports desses nomes, subcaminhos como `solid-js/web` e `solid-js/store`, setter de store por caminho, effect de um argumento e exports antigos do router. Router: [mapa próprio](14-routing-and-architecture.md#mapa-de-migração-do-router).
 
@@ -79,7 +79,5 @@ Armadilha: issue fechada não prova correção no pacote instalado; a semântica
 ## APIs que induzem a erro
 
 `storePath` e `markRaw` não são exports públicos desta base. Para valor cru, confira `snapshot` e seus limites; `deep` faz leitura rastreada, não o oposto. Não importe `$PROXY`, `$TRACK`, `sharedConfig` ou campos de hidratação para substituir APIs removidas.
-
-Para props e tipos de elementos DOM, `ComponentProps`, `ValidComponent` e `JSX` vêm de `@solidjs/web`. Tipos homônimos do core não oferecem o mesmo contrato.
 
 `resetErrorHalt` serve ao [harness de testes](../../skill-solidjs-testing/references/mount-dispose-diagnostics.md#halt-reativo); não é recuperação de erro da aplicação.

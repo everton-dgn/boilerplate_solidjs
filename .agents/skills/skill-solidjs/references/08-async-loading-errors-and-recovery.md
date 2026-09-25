@@ -15,7 +15,7 @@ const combined = createMemo(() => {
 })
 ```
 
-Armadilha: fetch em cada JSX ou effect imitando `createResource` multiplica trabalho. Ler fonte ainda não resolvida depois de `await` gera, em desenvolvimento, erro de leitura assíncrona após espera (trecho literal: ``Read of an unresolved async source after an `await` ``): vai ao braço `error` do effect ou à boundary; render effect sem boundary causa `REACTIVITY_HALTED`, e `createEffect` sem braço de erro apenas registra no console. No build padrão, o dependente trava silenciosamente com `isPending` falso. Não interprete isso como sucesso.
+Armadilha: fetch em cada JSX ou effect imitando `createResource` multiplica trabalho. Ler fonte ainda pendente após `await` pode interromper o consumidor: veja os [canais de erro por build e leitor](02-reactivity-and-ownership.md#leituras-assíncronas). No build padrão, ele pode travar com `isPending` falso.
 
 ## Loading e leitura que lança
 

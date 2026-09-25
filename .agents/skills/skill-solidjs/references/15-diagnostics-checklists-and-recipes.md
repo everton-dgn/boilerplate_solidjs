@@ -12,7 +12,7 @@ Armadilha: silêncio no build default não prova ausência de problema. Confirme
 
 ## Diagnósticos de corretude e reparo
 
-O pacote `solid-js` contém `skills/reactivity-diagnostics/SKILL.md` e `CHEATSHEET.md`. Consulte o código de erro ali e confira as [divergências documentais](16-migration-from-solid-1.md#divergências-encontradas-na-própria-documentação). Os casos que merecem atenção adicional:
+Consulte o código no guia instalado e confira as [divergências documentais](16-migration-from-solid-1.md#divergências-encontradas-na-própria-documentação). Os casos que merecem atenção adicional:
 
 | Código | Armadilha |
 | --- | --- |

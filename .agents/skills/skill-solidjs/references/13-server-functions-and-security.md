@@ -62,13 +62,17 @@ Contrato: configureServerFunctionsClient.prepareRequest é hook único; componha
 Receita:
 ```ts
 configureServerFunctionsClient({
-  prepareRequest: init => ({ ...init, headers: { ...init.headers, ...sessionHeaders() } })
+  prepareRequest: init => {
+    const headers = new Headers(init.headers)
+    new Headers(sessionHeaders()).forEach((value, name) => headers.set(name, value))
+    return { ...init, headers }
+  }
 })
 // Chamada com cancelamento:
 invoke(save, { signal: controller.signal, keepalive: true, priority: "high" }, input)
 ```
 
-Armadilha: init sem signal passa no guard se method correto, perdendo cancelamento. Invoke com method/headers/body/timeout lança indicando GET/prepareRequest/argumentos. Timeout usa AbortSignal composto quando suportado; retry/dedupe são da camada de dados. Abort rejeita/cancela transporte sem desfazer backend; repetição não idempotente exige contrato.
+Armadilha: `headers` aceita objeto, pares ou `Headers`; spread de objeto não preserva todas essas formas. Init sem signal passa no guard se method correto, perdendo cancelamento. Invoke com method/headers/body/timeout lança indicando GET/prepareRequest/argumentos. Timeout usa AbortSignal composto quando suportado; retry/dedupe são da camada de dados. Abort rejeita/cancela transporte sem desfazer backend; repetição não idempotente exige contrato.
 
 ## Codecs e framing
 

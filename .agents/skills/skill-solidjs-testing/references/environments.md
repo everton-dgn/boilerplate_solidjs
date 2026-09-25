@@ -1,6 +1,6 @@
 # Ambientes: happy-dom, jsdom e browser mode
 
-Escolha pela [prova necessária](../SKILL.md#escolha-pela-prova-necessária); configuração em [Vitest](vitest-config.md).
+Escolha pela [prova necessária](../SKILL.md#escolha-pela-prova-necessária); configuração em [Vitest](vitest-config.md). As limitações abaixo foram observadas no ambiente de verificação da skill. Atualizar o emulador, o plugin ou o navegador exige conferir o comportamento relevante novamente.
 
 ## happy-dom
 
@@ -8,7 +8,6 @@ Escolha pela [prova necessária](../SKILL.md#escolha-pela-prova-necessária); co
 - Não há `reportError`; confira o [canal do halt](mount-dispose-diagnostics.md#halt-reativo) no navegador.
 - O plugin injeta `@testing-library/jest-dom/vitest` em `setupFiles` quando instalado, exceto se um caminho de setup já contém `jest-dom`. Não registre os matchers duas vezes.
 - `toHaveTextContent('n=1')` aceita `n=10`, inclusive em `expect.element`. Para valor exato, use `textContent` com `toBe` ou regex ancorada.
-
 - Um `PointerEvent` sintético só atravessa shadow root com `composed: true`. A restauração de foco após reordenar `For` foi observada em happy-dom e Chromium; isso não cobre todo comportamento de foco.
 
 ## jsdom

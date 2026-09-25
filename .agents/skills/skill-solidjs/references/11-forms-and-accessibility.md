@@ -35,7 +35,7 @@ const id = createUniqueId();
 </>
 ```
 
-Armadilha: booleano ARIA falha no typecheck, mesmo com cast. Texto false comunica estado. No nativo, disabled="false" desabilita, disabled={false} remove.
+Armadilha: em `aria-pressed` e `aria-busy`, `true` booleano é rejeitado pelo tipo; `false` booleano é aceito para remover o atributo. Use as strings `"true"` e `"false"` para comunicar o estado. Um cast só oculta o erro de tipo. Em atributo booleano nativo, `disabled="false"` desabilita e `disabled={false}` remove.
 
 ## Anúncios
 

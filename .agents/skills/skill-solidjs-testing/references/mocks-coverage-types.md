@@ -10,7 +10,7 @@ No projeto servidor, o plugin faz inline de `solid-js` e `@solidjs/web`. `vi.res
 
 ## Bibliotecas auxiliares
 
-- Não deduza compatibilidade de `@solidjs/testing-library` pelo nome ou tag: confira os peers publicados para o Solid instalado. Na versão de Solid 2 examinada, `fireEvent.click` ainda espera `flush()`, cleanup automático exige `globals: true` e `render(..., { hydrate: true })` lança na postura de teste. O [helper de montagem](mount-dispose-diagnostics.md#montar-com-descarte-garantido) atende ao caso comum.
+- Confira os peers de `@solidjs/testing-library` para o Solid instalado. Na [prévia examinada](https://www.npmjs.com/package/@solidjs/testing-library/v/1.0.0-beta.3), `fireEvent.click` ainda espera `flush()`, cleanup automático exige `globals: true` e `render(..., { hydrate: true })` lança na postura de teste; a compatibilidade atual não foi verificada. O [helper de montagem](mount-dispose-diagnostics.md#montar-com-descarte-garantido) atende ao caso comum.
 - `@solidjs/diagnostics` exige build dev e versão compatível do motor; confira os exports instalados antes de importar matchers.
 
 ## Testes de tipo

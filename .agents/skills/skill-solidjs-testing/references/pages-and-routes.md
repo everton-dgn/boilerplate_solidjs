@@ -4,7 +4,7 @@ Router em memória testa página, parâmetros e navegação sem servidor. SSR, h
 
 ## Router em memória
 
-O router é criado por teste, com rota inicial no histórico e children explícitos:
+Crie o router por teste, com rota inicial no histórico e children explícitos. `mount` representa o helper do projeto; ajuste o import à sua localização. Na falta dele, adapte a [receita de montagem](mount-dispose-diagnostics.md#montar-com-descarte-garantido):
 
 ```tsx
 import { createRouter, memoryHistory } from '@solidjs/router'
@@ -16,8 +16,6 @@ const Router = createRouter({
 })
 mount(() => <Router>{props => props.children}</Router>)
 ```
-
-Prefira o helper de render do projeto para prover contexto e registrar descarte; há uma [receita de fallback](mount-dispose-diagnostics.md#montar-com-descarte-garantido). Não use APIs de router do Solid 1 nas fixtures.
 
 - A resolução da rota é assíncrona mesmo sem dados: espere o conteúdo inicial com `vi.waitFor`.
 - O cache de `query` vive no módulo e atravessa testes. Outro teste com a mesma chave pode receber o cache sem chamar o mock. Use parâmetros distintos ou `revalidate(getUser.key)`; limpe também a fila do mock com `mockReset()`, pois uma resposta `mockResolvedValueOnce` não consumida pode vazar para o caso seguinte.

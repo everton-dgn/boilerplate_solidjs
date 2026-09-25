@@ -37,4 +37,4 @@ Os contratos da API ficam na [skill-solidjs](../skill-solidjs/SKILL.md); esta sk
 | Fake timers e ordem entre Promises | [Assentamento e espera](references/settle-and-wait.md) |
 | Tipos e bibliotecas auxiliares | [Mocks e tipos](references/mocks-coverage-types.md); `vitest run` sozinho não verifica `expectTypeOf` |
 
-Canários e controles negativos servem para conferir um harness novo ou investigar falso positivo. Reutilize os já existentes; uma alteração comum não exige criar outro canário, mutante ou relatório padronizado.
+Canários e controles negativos servem para conferir um harness novo ou investigar falso positivo. Reutilize os do projeto quando existirem; uma alteração comum não exige criar canário, mutante ou relatório padronizado.

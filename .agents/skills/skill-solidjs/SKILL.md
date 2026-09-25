@@ -11,7 +11,7 @@ metadata:
 
 # SolidJS 2
 
-A base de evidência está no frontmatter e no [recorte verificado](dev/notes/sources-and-version.md#recorte). As ressalvas de runtime valem para essa base; confirme exports e tipos instalados antes de aplicá-las a outra versão. Documentação de Solid 1 e código em `next` podem descrever APIs ausentes no pacote.
+A base de evidência está no frontmatter ([tag verificada](https://github.com/solidjs/solid/releases/tag/solid-js%402.0.0-rc.9)). As ressalvas de runtime valem para essa base; confirme exports e tipos instalados antes de aplicá-las a outra versão. Documentação de Solid 1 e código em `next` podem descrever APIs ausentes no pacote.
 
 ## Erros que o modelo tende a introduzir
 
@@ -24,10 +24,6 @@ A base de evidência está no frontmatter e no [recorte verificado](dev/notes/so
 - Fontes async são memos/stores lidos sob `Loading`; capture dependências antes de `await`. `refresh` recebe a fonte original. `Loading.on` compara o valor: `on={id()}`. `Show` por status não protege um memo que lança; o leitor precisa de `Errored`.
 - Actions são geradores. Depois de `await`, faça `yield` vazio antes de escrever ou criar outra espera. Estado otimista reverte no assentamento, mesmo em sucesso; escrita comum no mesmo tick da action pode ficar retida. Consulte a referência antes de implementar confirmação ou envios sobrepostos.
 - APIs conhecidas do Solid 1 mudaram: `Suspense → Loading`, `ErrorBoundary → Errored`, `onMount → onSettled`, `mergeProps → merge`, `splitProps → omit`. `createResource`, `batch` e setter de store por caminho não são a API desta base. O contexto é o próprio provider: `<Context value={value}>`, sem `.Provider`.
-- Em SSR, `createEffect` executa compute, nunca apply; `createRenderEffect` executa ambos, salvo `defer: true`. `ssrSource: "client"` pula o effect inteiro.
-- Falha síncrona de render sem boundary escapa antes de existir stream ou hook de erro. Proteja a chamada e a criação da resposta; `createSSRResponse` com stream vazio pode não assentar. No plugin, `ssr` é irmão de `start`: `solid({ start: true, ssr: true })`.
-- Server functions: `GET(fn)` dispensa CSRF por padrão; `csrf.protectDeclaredReads: true` o reativa. Retornar `Error` como dado expõe suas propriedades; converta falhas em erros públicos antes de entregá-las ao Solid.
-- Alternar `0` ou `NaN` com outro conteúdo como filho único acumula nós na base verificada. Consulte [R13](references/17-known-risks.md#r13-zero-ou-nan-como-filho-único-acumula-nós-de-texto-ao-alternar) antes de contornar o sintoma.
 
 ## Leia conforme a tarefa
 
@@ -51,4 +47,4 @@ A base de evidência está no frontmatter e no [recorte verificado](dev/notes/so
 | Migração ou padrão antigo | [16 migração](references/16-migration-from-solid-1.md): APIs removidas e divergências da documentação |
 | Sintoma específico da base | [17 riscos](references/17-known-risks.md): limitações observadas, hipóteses e status histórico upstream |
 
-Para testes, use [skill-solidjs-testing](../skill-solidjs-testing/SKILL.md). Exemplos adaptáveis ficam em [examples](examples/README.md). Fontes, histórico e limites de validação ficam em [dev](dev/README.md), para manutenção da skill; os testes históricos não acompanham o pacote.
+Para testes, use [skill-solidjs-testing](../skill-solidjs-testing/SKILL.md). Exemplos adaptáveis ficam em [examples](examples/README.md). As referências distinguem comportamento observado, documentação e inferência; os testes históricos não acompanham o pacote.
