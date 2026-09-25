@@ -1,6 +1,6 @@
 # Cancelamento e fontes vivas
 
-RC.9.
+Base: [revisão verificada](../SKILL.md).
 
 ## Responsabilidade e limpeza
 

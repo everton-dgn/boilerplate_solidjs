@@ -1,6 +1,6 @@
 # Roteamento, integrações e arquitetura
 
-Base: `solid-js` e `@solidjs/web` 2.0.0-rc.9 com `@solidjs/router` 2.0.0-next.26. Versão diferente exige nova prova.
+Base: [manifestos da verificação](../../skill-solidjs-testing/SKILL.md). Versão diferente exige nova prova.
 
 ## Compatibilidade por pacote
 
@@ -77,7 +77,7 @@ Armadilha: em `<form action>` com action vinculada, os argumentos vão serializa
 
 ## Leitura granular, identidade e ingestão
 
-Contrato: leia as folhas que o componente precisa. Desde `@solidjs/web` rc.8, `style={state.style}` e `class={row.classes}` com expressão não inline passam por `readShallow`: mudar uma chave do objeto já reativa o binding. Trocar a identidade segue como caminho mais barato para mudanças grandes.
+Contrato: leia as folhas que o componente precisa. Na base verificada de `@solidjs/web`, `style={state.style}` e `class={row.classes}` com expressão não inline passam por `readShallow`: mudar uma chave do objeto já reativa o binding. Trocar a identidade segue como caminho mais barato para mudanças grandes.
 
 Armadilha: `deep` na store inteira, seletor que percorre milhares de registros por tecla ou snapshot para espalhar tudo eliminam a granularidade; desestruturar no corpo para "otimizar" remove atualizações; envolver tudo em `createMemo` custa nós. Comparar cada linha de uma lista grande contra um signal de seleção cria fan-out amplo; um mapa derivado por chave ou uma projection reduz invalidações, mas só com problema medido, e teste a fidelidade da seleção depois.
 

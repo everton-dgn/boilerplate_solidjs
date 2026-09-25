@@ -7,14 +7,18 @@ Router em memória testa página, parâmetros e navegação sem servidor. SSR, h
 Crie o router por teste, com rota inicial no histórico e children explícitos. `mount` representa o helper do projeto; ajuste o import à sua localização. Na falta dele, adapte a [receita de montagem](mount-dispose-diagnostics.md#montar-com-descarte-garantido):
 
 ```tsx
+import { expect, it, vi } from 'vitest'
 import { createRouter, memoryHistory } from '@solidjs/router'
 import { mount } from '../support/mount.tsx'
 
-const Router = createRouter({
-  routes: [{ path: '/users/:id', component: () => <h1>User</h1> }],
-  history: memoryHistory('/users/7')
+it('renders the initial route', async () => {
+  const Router = createRouter({
+    routes: [{ path: '/users/:id', component: () => <h1>User</h1> }],
+    history: memoryHistory('/users/7')
+  })
+  const { host } = mount(() => <Router>{props => props.children}</Router>)
+  await vi.waitFor(() => expect(host.querySelector('h1')?.textContent).toBe('User'))
 })
-mount(() => <Router>{props => props.children}</Router>)
 ```
 
 - A resolução da rota é assíncrona mesmo sem dados: espere o conteúdo inicial com `vi.waitFor`.

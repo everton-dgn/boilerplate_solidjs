@@ -1,6 +1,6 @@
-# Riscos conhecidos da rc.9
+# Riscos conhecidos da base verificada
 
-Base: `solid-js` e `@solidjs/web` 2.0.0-rc.9. Os status abaixo pertencem ao recorte de evidência da skill: nele, as correções citadas em `next` ainda não estavam publicadas. Não são uma consulta atual ao registro. Issue fechada, PR integrado ou versão em `package.json` de branch não provam correção no pacote instalado. Esta é a única referência com status upstream; as demais apontam para a entrada R. Não é lista exaustiva nem recomendação de upgrade. As fontes upstream estão junto de cada risco; os testes upstream não foram executados localmente.
+Base: [revisão verificada](../SKILL.md). Os status abaixo pertencem ao recorte de evidência da skill: nele, as correções citadas em `next` ainda não estavam publicadas. Não são uma consulta atual ao registro. Issue fechada, PR integrado ou versão em `package.json` de branch não provam correção no pacote instalado. Esta é a única referência com status upstream; as demais apontam para a entrada R. Não é lista exaustiva nem recomendação de upgrade. As fontes upstream estão junto de cada risco; os testes upstream não foram executados localmente.
 
 ## R01: retenção de assinaturas durante action pendente
 
@@ -54,7 +54,7 @@ Contrato: com `renderToString`, um memo assíncrono que rejeita depois de o rend
 
 Limites: `renderToStream().pipe()` e `await renderToStream()` sob `<Errored>` não reproduziram (observação, não mitigação certificada); `pipeTo` não foi exercitado. A sanitização de falhas de render sob boundary não cobre esse caminho.
 
-Conduta: no servidor, converta falhas esperadas em resultado ou erro público antes de devolvê-las ao grafo; um `Errored` no cliente não protege o processo. Trate saída do processo como sintoma deste risco antes de suspeitar do adapter. Reproduza o cenário num servidor descartável: na rc.9, ele derruba os testes seguintes com `ECONNRESET`.
+Conduta: no servidor, converta falhas esperadas em resultado ou erro público antes de devolvê-las ao grafo; um `Errored` no cliente não protege o processo. Trate saída do processo como sintoma deste risco antes de suspeitar do adapter. Reproduza o cenário num servidor descartável: na base verificada, ele derruba os testes seguintes com `ECONNRESET`.
 
 ## R09: leitura logo após escrita numa store derivada muda depois de um `latest`
 

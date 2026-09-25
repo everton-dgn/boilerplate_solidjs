@@ -1,6 +1,6 @@
 # Formulários e acessibilidade
 
-RC.9.
+Base: [revisão verificada](../SKILL.md).
 
 ## Estado e entradas
 

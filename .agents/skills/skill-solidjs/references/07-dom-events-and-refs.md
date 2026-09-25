@@ -81,7 +81,7 @@ function Link(props: LinkProps) {
 
 Contrato: substitua directive por fábrica `ref={behavior(value)}` ou array; effect/cleanup ficam na fábrica, callback guarda elemento. Leia reativos no compute, pois leitura no callback não assina e pode avisar STRICT_READ_UNTRACKED. Fábrica retorna função/array em todo caminho; compilador ignora demais retornos, inclusive undefined, sem diagnóstico. Condição inicial usa `condition ? callback : undefined`; mudanças reativas usam lifecycle.
 
-Armadilha: fábrica executa no SSR, callback não recebe elemento. Compute do effect também executa no servidor; só apply é pulado. `ssrSource: 'client'` pula compute. Window/document na fábrica ou compute normal causa ReferenceError. Na rc.9, composição/opcional/atualização/remoção foram observadas em Chromium; fases SSR cobrem default e dev. Isso não prova hidratação composta/performance.
+Armadilha: fábrica executa no SSR, callback não recebe elemento. Compute do effect também executa no servidor; só apply é pulado. `ssrSource: 'client'` pula compute. Window/document na fábrica ou compute normal causa ReferenceError. Na base verificada, composição/opcional/atualização/remoção foram observadas em Chromium; fases SSR cobrem default e dev. Isso não prova hidratação composta/performance.
 
 ## Texto e hidratação
 

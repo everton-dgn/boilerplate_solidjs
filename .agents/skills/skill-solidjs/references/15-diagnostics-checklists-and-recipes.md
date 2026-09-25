@@ -1,6 +1,6 @@
 # Diagnósticos e reparo
 
-Base: `solid-js` e `@solidjs/web` 2.0.0-rc.9. Como testar (Vitest, assentamento, fake timers, montagem, oráculos, captura de avisos) fica na skill `skill-solidjs-testing`.
+Base: [revisão verificada](../SKILL.md). Como testar (Vitest, assentamento, fake timers, montagem, oráculos, captura de avisos) fica na skill `skill-solidjs-testing`.
 
 ## Onde os diagnósticos aparecem
 
@@ -31,7 +31,7 @@ Armadilha: não há lint confiável para leitura reativa depois de `await`, porq
 
 ## Diagnósticos de custo
 
-Vêm do gravador de atribuição e descrevem custo, não erro. `HUGE_FAN_OUT` sugere publicação ampla; `WIDE_WRITE` consta na união mas nenhum artefato da rc.9 o emite. `HUGE_FAN_IN` e `WIDE_SCOPE_DEPS` apontam escopo que lê demais. `HOT_SCOPE_RERUNS`, `HOT_SCOPE_FANOUT` e `HOT_SCOPE_TIME` diferenciam frequência, multiplicação e tempo. `UNSTABLE_MEMO_OUTPUT` aponta memo que devolve objeto ou array novo mas shallow-equivalente por `unstableMemos` execuções seguidas (padrão 4; `enable({ unstableMemos: n })` ajusta, `false` desliga; `Promise`, `Date` e `Map` são ignorados). `ASYNC_WATERFALL` indica cadeia observada, não prova paralelismo possível; profundidade 2 é `info`, fora do console.
+Vêm do gravador de atribuição e descrevem custo, não erro. `HUGE_FAN_OUT` sugere publicação ampla; `WIDE_WRITE` consta na união mas nenhum artefato da base verificada o emite. `HUGE_FAN_IN` e `WIDE_SCOPE_DEPS` apontam escopo que lê demais. `HOT_SCOPE_RERUNS`, `HOT_SCOPE_FANOUT` e `HOT_SCOPE_TIME` diferenciam frequência, multiplicação e tempo. `UNSTABLE_MEMO_OUTPUT` aponta memo que devolve objeto ou array novo mas shallow-equivalente por `unstableMemos` execuções seguidas (padrão 4; `enable({ unstableMemos: n })` ajusta, `false` desliga; `Promise`, `Date` e `Map` são ignorados). `ASYNC_WATERFALL` indica cadeia observada, não prova paralelismo possível; profundidade 2 é `info`, fora do console.
 
 Receita: nomeie memos e effects investigados; `why(scope)` e `subscriptions(scope)` dão causas e dependências, `costs()` o custo atribuído. Caminhos de owner indicam origem de execução; caminhos de boundary, onde o erro foi tratado. Compare tempo absoluto no profiler do artefato de produção; passes reativos intermediários não provam frame pintado. Leitura: [depuração](https://v2.solidjs.com/guides/debugging-reactivity#something-updates-too-often) e [performance](https://v2.solidjs.com/guides/performance#measure-before-changing).
 

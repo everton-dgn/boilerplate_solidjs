@@ -1,6 +1,6 @@
 # Async, Loading, erros e recuperação
 
-Contratos do runtime instalado, Solid 2 RC.9. Os limites indicados não são garantias de outros ambientes.
+Contratos do runtime da [base verificada](../SKILL.md). Os limites indicados não são garantias de outros ambientes.
 
 ## Fontes assíncronas e dependências
 

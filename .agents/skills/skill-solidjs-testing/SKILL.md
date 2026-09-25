@@ -4,14 +4,12 @@ description: "Testes de SolidJS 2 no Vitest (happy-dom, jsdom, browser mode, SSR
 metadata:
   compatibility: "Vitest e @solidjs/vite-plugin do projeto; browser mode exige provider e navegador já instalados. Use com a skill-solidjs. Não instala ferramentas."
   versao-da-skill: "2.3.0"
-  solid-verificado: "2.0.0-rc.9"
-  vitest-verificado: "4.1.11"
   data-da-verificacao: "2026-09-25"
 ---
 
 # Testes de SolidJS 2 com Vitest
 
-Os contratos da API ficam na [skill-solidjs](../skill-solidjs/SKILL.md); esta skill cobre as armadilhas ao observá-los em testes. A base verificada consta no frontmatter. Ao mudar plugin ou runner, confira a [postura de cada projeto](references/vitest-config.md#canário-de-postura).
+Os contratos da API ficam na [skill-solidjs](../skill-solidjs/SKILL.md); esta skill cobre as armadilhas ao observá-los em testes. A base histórica está no [manifesto](https://github.com/everton-dgn/boilerplate_solidjs/blob/eeaed3ff596fa201a7a3fb7aa10afcee63a77489/package.json) e no [lockfile da verificação](https://github.com/everton-dgn/boilerplate_solidjs/blob/eeaed3ff596fa201a7a3fb7aa10afcee63a77489/pnpm-lock.yaml); versões atuais vêm dos manifestos do projeto. Ao mudar plugin ou runner, confira a [postura de cada projeto](references/vitest-config.md#canário-de-postura).
 
 ## Armadilhas que falsificam o resultado
 

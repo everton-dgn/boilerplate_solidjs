@@ -1,6 +1,6 @@
 # Server functions e segurança
 
-Base: Solid 2 RC.9.
+Base: [revisão verificada](../SKILL.md).
 
 ## Compilação e corpo registrado
 
@@ -110,4 +110,4 @@ Contrato: prévia fora da estabilidade 2.0. Adoção explícita: tarefa de UI n�
 
 Receita: `serverFunctions: { components: true }`, ou components "external" com ligação documental pelo host. Reutiliza endpoint/compilação/segurança RPC. Start SSR gerado chama installServerComponents de @solidjs/web/frames antes de hydrate; entrada autoral chama uma vez e servidor recebe plugin de render de frames.
 
-Armadilha: sideEffects false em @solidjs/web permite remover import sem chamada. Sem use client/convenções Next.js inventadas. Alinhe cliente/servidor/codec; teste produção/HMR e manifesto completo. Markup/props podem vazar dados. Router instalado (`2.0.0-next.26`) não tem `serverRouteComponent`; o registro anterior situa a chegada experimental em `2.0.0-next.27`, sem validação nesta skill. UI/formulários comuns podem usar componentes cliente/async/SSR/RPC.
+Armadilha: sideEffects false em @solidjs/web permite remover import sem chamada. Sem use client/convenções Next.js inventadas. Alinhe cliente/servidor/codec; teste produção/HMR e manifesto completo. Markup/props podem vazar dados. O router da base verificada não exporta `serverRouteComponent`; sua chegada em prévia posterior não foi validada nesta skill. UI/formulários comuns podem usar componentes cliente/async/SSR/RPC.

@@ -92,6 +92,7 @@ function createTasksModel(api: TasksApi) {
 
   async function run({ keys, refusalMessage, failureMessage, start }: Operation): Promise<boolean> {
     if (!pendingOperations.reserve(keys)) {
+      setFailure(null)
       setNotice(refusalMessage)
       return false
     }
@@ -114,6 +115,7 @@ function createTasksModel(api: TasksApi) {
     const text = title.trim()
 
     if (text.length === 0 || text.length > 120) {
+      setNotice("")
       setFailure("Informe um título com até 120 caracteres.")
       return Promise.resolve(false)
     }

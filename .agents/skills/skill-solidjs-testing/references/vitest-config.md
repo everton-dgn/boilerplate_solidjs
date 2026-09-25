@@ -1,6 +1,6 @@
 # Configuração do Vitest para Solid 2
 
-As versões verificadas constam no [frontmatter da skill](../SKILL.md). Depois de atualizar dependências, rode os canários antes de confiar nesta página.
+A base verificada está nos [manifestos vinculados pela skill](../SKILL.md). Depois de atualizar dependências, rode os canários antes de confiar nesta página.
 
 ## Postura decidida por projeto
 
@@ -42,10 +42,12 @@ export default defineConfig({
         test: { name: 'client-graph', include: ['tests/**/*.graph.test.ts'] }
       },
       {
+        extends: true,
         plugins: [solid()],
         test: { name: 'dom', environment: 'happy-dom', include: ['tests/**/*.dom.test.{ts,tsx}'] }
       },
       {
+        extends: true,
         plugins: [solid()],
         test: {
           name: 'browser',
@@ -54,6 +56,7 @@ export default defineConfig({
         }
       },
       {
+        extends: true,
         plugins: [solid()],
         test: { name: 'server', environment: 'node', include: ['tests/**/*.server.test.{ts,tsx}'] }
       }

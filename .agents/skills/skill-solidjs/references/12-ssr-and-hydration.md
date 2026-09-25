@@ -1,6 +1,6 @@
 # SSR e hidratação
 
-Contratos do runtime instalado, Solid 2 RC.9. Separe compilador, runtime, adapter e fase; a skill não certifica todas as combinações de um projeto.
+Contratos do runtime da [base verificada](../SKILL.md). Separe compilador, runtime, adapter e fase; a skill não certifica todas as combinações de um projeto.
 
 ## Render e consumo
 

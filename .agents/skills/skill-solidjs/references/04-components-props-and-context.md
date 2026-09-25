@@ -62,7 +62,7 @@ const PreferencesProvider: ParentComponent = props => {
 }
 ```
 
-Armadilha: não importe a classe para instanceof; identifique constructor.name ou trate falha de useContext como ausência. Não há `createContextProvider`/`createOptionalContextProvider` públicos; são helpers de outras libs. Default fake não deve esconder provider obrigatório. Estado pertence à instância do provider ou request SSR. Objeto com accessors/stores/ações permanece estável.
+Armadilha: não importe a classe para instanceof; se precisar distinguir a ausência de provider, trate somente `ContextNotFoundError` por `constructor.name` e propague os demais erros. Contexto opcional usa default `null`; `NoOwnerError` continua sendo erro de ciclo de vida. Não há `createContextProvider`/`createOptionalContextProvider` públicos; são helpers de outras libs. Default fake não deve esconder provider obrigatório. Estado pertence à instância do provider ou request SSR. Objeto com accessors/stores/ações permanece estável.
 
 ## Estado próprio
 

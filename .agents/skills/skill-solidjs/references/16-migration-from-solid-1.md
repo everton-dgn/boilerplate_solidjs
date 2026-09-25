@@ -1,12 +1,12 @@
 # Migração do Solid 1 e divergências
 
-Base: `solid-js` e `@solidjs/web` 2.0.0-rc.9. Entra só em tarefa de migração ou quando um padrão antigo aparece no código; a coluna de legado não faz parte da API do Solid 2 e as receitas da skill usam só o contrato v2.
+Base: [revisão verificada](../SKILL.md). Entra só em tarefa de migração ou quando um padrão antigo aparece no código; a coluna de legado não faz parte da API do Solid 2 e as receitas da skill usam só o contrato v2.
 
 Contrato: API depreciada pode seguir exportada por compatibilidade sem ser recomendada. API presente só no motor interno, em tipos ou em comentários não ganha export público por isso. Se o pedido é corrigir um bug em Solid 1, informe o limite e use a documentação da versão instalada; migração de major é outra tarefa.
 
 ## APIs do Solid 1 ausentes na base
 
-Nenhum destes nomes é exportado por `solid-js` na rc.9, nos builds dev e default; os substitutos da coluna Solid 2 existem.
+Nenhum destes nomes é exportado por `solid-js` na base verificada, nos builds dev e default; os substitutos da coluna Solid 2 existem.
 
 | Solid 1 | Solid 2 | Observação |
 | --- | --- | --- |
@@ -70,11 +70,11 @@ Armadilha: não faça substituição global. Import pode ser mecânico, mas life
 
 ## Mudanças entre prévias e processo seguro
 
-Não trate duas RCs como iguais: a rc.9 altera diagnóstico, exports, stores, streaming, erros e integrações. Ao migrar de beta ou RC anterior, revise lazy com export nomeado, opções de `dynamic`, `onError` de servidor e setters assíncronos. Lazy nomeado: `lazy(() => import(...), { export: "Nome" })`; um wrapper que produz `{ default: modulo.Nome }` em runtime pode quebrar a identificação síncrona da hidratação. O terceiro argumento (`moduleUrl`) é contexto de integração.
+Não trate duas RCs como iguais: cada prévia pode alterar diagnóstico, exports, stores, streaming, erros e integrações. Ao migrar de beta ou RC anterior, revise lazy com export nomeado, opções de `dynamic`, `onError` de servidor e setters assíncronos. Lazy nomeado: `lazy(() => import(...), { export: "Nome" })`; um wrapper que produz `{ default: modulo.Nome }` em runtime pode quebrar a identificação síncrona da hidratação. O terceiro argumento (`moduleUrl`) é contexto de integração.
 
 Processo: congele uma base com testes, liste imports removidos, migre uma feature representativa com async e formulário, verifique DOM cliente e SSR, então amplie. Não desative todos os diagnósticos na transição; cada exceção temporária tem motivo, escopo e teste.
 
-Armadilha: issue fechada não prova correção no pacote instalado; a semântica de `Loading.on` muda em `next` ([R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold)); uma resposta antiga pode descrever hook planejado que a rc.9 já tem; um gate encerrado por sinal pode parecer sucesso. Nada disso autoriza importar campo privado ou aplicar patch de comentário.
+Armadilha: issue fechada não prova correção no pacote instalado; a semântica de `Loading.on` muda em `next` ([R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold)); uma resposta antiga pode descrever hook planejado que a base verificada já tem; um gate encerrado por sinal pode parecer sucesso. Nada disso autoriza importar campo privado ou aplicar patch de comentário.
 
 ## APIs que induzem a erro
 

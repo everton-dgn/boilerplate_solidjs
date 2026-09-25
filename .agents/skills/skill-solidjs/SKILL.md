@@ -4,14 +4,13 @@ description: "SolidJS 2 / Solid 2.0 (solid-js, @solidjs/web): criar, revisar, de
 metadata:
   compatibility: "SolidJS 2 com @solidjs/web. Consulte exports e tipos do pacote instalado."
   versao-da-skill: "1.7.0"
-  solid-verificado: "2.0.0-rc.9"
   data-da-verificacao: "2026-09-23"
   commit-base: "9a29b1a07aa3e06ee32afd1fc4c18414b4a558bb"
 ---
 
 # SolidJS 2
 
-A base de evidência está no frontmatter ([tag verificada](https://github.com/solidjs/solid/releases/tag/solid-js%402.0.0-rc.9)). As ressalvas de runtime valem para essa base; confirme exports e tipos instalados antes de aplicá-las a outra versão. Documentação de Solid 1 e código em `next` podem descrever APIs ausentes no pacote.
+A base de evidência está no frontmatter ([manifesto da revisão verificada](https://github.com/solidjs/solid/blob/9a29b1a07aa3e06ee32afd1fc4c18414b4a558bb/packages/solid/package.json)). As ressalvas de runtime valem para essa base; confirme exports e tipos instalados antes de aplicá-las a outra versão. Documentação de Solid 1 e código em `next` podem descrever APIs ausentes no pacote.
 
 ## Erros que o modelo tende a introduzir
 
