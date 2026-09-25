@@ -12,14 +12,6 @@ Armadilha: copiar/desestruturar props no setup congela o valor. Leitura em event
 
 Contrato: `createSignal(value)` guarda estado independente; `createMemo(fn)` deriva leitura; `createSignal(fn)` permite sobrescrita temporária; store permite escrita por propriedade; projection deriva estrutura sem setter; optimistic guarda tentativa transitória; effect sincroniza sistema externo. Seleção granular pode usar projection por ID.
 
-Receita:
-
-```ts
-const [quantity, setQuantity] = createSignal(1)
-const [unitPrice, setUnitPrice] = createSignal(10)
-const total = createMemo(() => quantity() * unitPrice())
-```
-
 Armadilha: mantenha essas primitivas sob o owner apropriado. `Accessor<T>` é `() => T`; `SourceAccessor<T>` também identifica a fonte, necessária para `refresh`. Encapsular numa função qualquer perde essa identidade. Setter retorna o valor escrito: apply com arrow sem chaves pode recebê-lo como cleanup inválido. Evite signal espelhado para derivação.
 
 ## Escritas e pureza
@@ -156,9 +148,4 @@ Armadilha: `untrack` não isola contexto de hidratação. Escrita seguida de lei
 
 ## APIs retiradas
 
-Contrato: `createComputed`, `createSelector`, `batch`, `on`, `from` e `createResource` não são exports do core. Derivação usa memo/store/projection; seleção usa projection por chave; agrupamento é automático; compute declara dependências pelas leituras; async usa memo/store que produz Promise/AsyncIterable.
-
-Receita: escolha pela intenção e só faça migração quando pedida.
-
-Armadilha: recriar aliases antigos ou importar o motor para recuperar `from`/outra API ignora o contrato público.
-
+Consulte o [mapa de migração](16-migration-from-solid-1.md#apis-do-solid-1-ausentes-na-base). Imports do motor ou aliases não recuperam o contrato público antigo.

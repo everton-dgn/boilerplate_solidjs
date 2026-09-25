@@ -1,6 +1,6 @@
 # Riscos conhecidos da rc.9
 
-Base: `solid-js` e `@solidjs/web` 2.0.0-rc.9. Vários riscos já têm correção integrada na branch `next` do Solid, mas nenhuma está publicada: a dist-tag `next` de `solid-js` e `@solidjs/signals` ainda aponta a base. Issue fechada, PR integrado ou versão em `package.json` de branch não provam correção no pacote instalado. Esta é a única referência com status upstream; as demais apontam para a entrada R. Não é lista exaustiva nem recomendação de upgrade. Números de issue ficam em `dev/sources.json`, marcados com a entrada R.
+Base: `solid-js` e `@solidjs/web` 2.0.0-rc.9. Os status abaixo pertencem ao recorte de evidência da skill: nele, as correções citadas em `next` ainda não estavam publicadas. Não são uma consulta atual ao registro. Issue fechada, PR integrado ou versão em `package.json` de branch não provam correção no pacote instalado. Esta é a única referência com status upstream; as demais apontam para a entrada R. Não é lista exaustiva nem recomendação de upgrade. Números de issue ficam em `dev/sources.json`, marcados com a entrada R.
 
 ## R01: retenção de assinaturas durante action pendente
 
@@ -22,19 +22,11 @@ Em `next`, não publicado, `on` vira lista de dependências sem comparação de 
 
 Conduta: escreva para o pacote instalado. Não prometa que `on={latest(x)}` força fallback imediato e teste com leitores irmãos. Não use contadores mutáveis ou objetos sempre novos na leitura de `on`. Ao atualizar para uma RC com a nova semântica, repita a matriz de [boundaries](08-async-loading-errors-and-recovery.md) antes de mudar orientação.
 
-## R04: suspeita de hidratação que foi revisada
-
-A suspeita de bug de hidratação no core foi descartada: o adapter lia estado versionado alterado no mesmo setup durante o snapshot de hidratação. Conclusão revisada, não bug aberto. Ao investigar, separe lookup de cache de leitura reativa; não repita a hipótese original como causa.
-
 ## R05: chamadas de server function entre origens
 
 Contrato: o runtime recusa requisição marcada same-site/cross-site antes de consultar o matcher de origem, e falta a política CORS desse fluxo. Corrigido em `next`, não publicado.
 
 Conduta: não prometa que endpoint absoluto e `csrf.origin` bastam para cliente em outra origem. Não desligue CSRF para resolver um 403. Valide transporte, preflight, origem e credenciais no ambiente real; um `curl` que chama o endpoint não prova que o navegador pode lê-lo.
-
-## R06: teste de integração com compilador antigo
-
-Uma fixture que atualizou o runtime sem o compilador produziu cliques inertes, e um runner morto por sinal aparentou sucesso; o gate upstream foi corrigido. Alerta de verificação, não bug atual: a correção do gate não declara compatibilidade geral do adapter.
 
 ## R07: `textContent` perde o zero numérico no HTML de SSR
 
@@ -81,23 +73,3 @@ Conduta: com `hybrid` e stream, teste a hidratação no navegador observando o p
 Contrato: alternar entre `0` (ou `NaN`) e `<span>elem</span>` como filho único acumula `"0"`, `"00"`, `"000"` no `innerHTML`, sem limite, como em `{n() || <Empty />}`; um controle com a string `"zero"` não acumula. Não publicado.
 
 Conduta: evite `{n() || <Empty />}` com número que pode ser zero. Uma condição que nunca deixa `0` ou `NaN` como texto do buraco, como `n() > 0 ? n() : <Empty />`, fica fora do caso (inferência, sem teste). O happy-dom apaga o zero de `textContent` por conta própria, então reproduzir o caso pede navegador real.
-
-## R14: `createEffect(..., { defer: true })` não tem efeito nenhum no SSR
-
-Contrato: no servidor, `createEffect(compute, apply, options)` chama o efeito de servidor com `effectFn` já `undefined`, então `apply` nunca roda, com ou sem `defer`. `createRenderEffect(compute, effectFn, options)` passa `effectFn` de verdade, e ali `options.defer` realmente controla o `apply`.
-
-Conduta: para controlar se o `apply` roda na renderização do servidor, use `createRenderEffect`.
-
-## R15: reconciliação de `For`/`Show` pode tirar o foco do elemento editado
-
-Contrato: a reconciliação usa `replaceChild` e reinserção quando a ordem muda, o que dispara `blur` no elemento focado mesmo quando o nó lógico é o mesmo pela chave. `Element.moveBefore` resolveria sem `blur`, mas não existe no Safari, então a rc.9 não migrou; os mantenedores fecharam o caso sem correção geral.
-
-Conduta: em `<For>` reordenável com inputs editáveis, salve o id do elemento focado antes de reordenar e restaure o foco por id depois. Na rc.9, o nó focado que se move perde o foco, e a restauração explícita funciona em happy-dom e Chromium. A troca de duas linhas keyed manteve o foco em Chromium: o `blur` depende da operação de DOM que a reconciliação escolhe, não da chave.
-
-## Ferramenta de recuperação: `resetErrorHalt`
-
-`resetErrorHalt()` é exportado por `solid-js` no cliente e por `solid-js/server` como no-op. Use em dev, depois de capturar `REACTIVITY_HALTED`, para reviver o HMR sem recarregar a página.
-
-## Critérios para aposentar um alerta
-
-Confirme merge, presença do commit na tag de destino, publicação do pacote e resultado no cenário relevante; só então mude o status. Se a correção chega numa nova RC, revalide os demais contratos em vez de trocar só a string de versão. Uma mitigação precisa registrar custo, escopo, teste de não regressão e condição de retirada; as estratégias sugeridas aqui são hipóteses de engenharia, não patches certificados.

@@ -43,6 +43,8 @@ Armadilha: guardar resultado de children numa constante não reativa o congela. 
 
 ## Contexto
 
+`useContext` exige owner: sem ele, lança `NoOwnerError`, mesmo que o contexto tenha default. A classe não é exportada.
+
 Contrato: o contexto é o provider, sem `.Provider`; `Context<T>` estende `ContextProviderComponent<T>`. Sem default, `useContext` retorna T e lança quando falta provider. O erro tem `constructor.name === 'ContextNotFoundError'`, mas a classe não é exportada. Ausência legítima usa `createContext<T | null>(null)` e guard de null.
 
 Receita:
@@ -62,11 +64,6 @@ const PreferencesProvider: ParentComponent = props => {
 
 Armadilha: não importe a classe para instanceof; identifique constructor.name ou trate falha de useContext como ausência. Não há `createContextProvider`/`createOptionalContextProvider` públicos; são helpers de outras libs. Default fake não deve esconder provider obrigatório. Estado pertence à instância do provider ou request SSR. Objeto com accessors/stores/ações permanece estável.
 
-## Contratos reutilizáveis e estado próprio
+## Estado próprio
 
-Contrato: entradas tipadas/callbacks de intenção/operações restritas explicitam domínio. Use componente controlado quando o pai já tem a fonte de verdade. Helper de modelo roda sob owner, sem imitar React. Hooks React, arrays de dependências, useMemo/useCallback e rerender não justificam estrutura Solid.
-
-Receita: biblioteca sobre registros otimistas lê campos de negócio diretamente das props e mantém seleção/medidas numa store comum por ID. Junção acontece na leitura.
-
-Armadilha: copiar coleção inteira para normalizar ou mutar registros recebidos para guardar seleção mistura ciclos de vida. Não exponha todos os setters quando basta callback específico.
-
+Estado visual de uma lista não deve depender da duração da sobreposição otimista. Mantenha seleção e medidas por ID conforme o [contrato de estado visual](06-lists-control-flow-and-local-state.md#estado-visual-por-identidade).

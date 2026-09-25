@@ -85,13 +85,11 @@ Contrato: no runtime instalado, `Loading.on` compara valor. Passe `on={id()}`; `
 | `on` com dado async e refresh | fallback a cada refetch | grafo |
 | `on` com id e refresh do mesmo assunto | conteúdo antigo | grafo |
 
-Armadilha: `on={latest(id)}` também espera a irmã; sozinha mostra fallback. Não misture título de B com dados confirmados de A sem indicar a diferença. Não incremente contador nem crie objeto novo ao avaliar `on`. `flush()` só drena trabalho síncrono elegível, sem resolver rede ou forçar transação arbitrária. Para investigar, carregue duas boundaries com portões, espere sinal positivo de voo dentro da boundary, registre requests por chave e compare fontes compartilhadas/independentes, chave confirmada/adiantada, sem `on`, remount e children por função. Separe transporte, espera por leitor e recomputação.
+Armadilha: `on={latest(id)}` também espera a irmã; sozinha mostra fallback. Não misture título de B com dados confirmados de A sem indicar a diferença. Não incremente contador nem crie objeto novo ao avaliar `on`. `flush()` só drena trabalho síncrono elegível, sem resolver rede ou forçar transação arbitrária.
 
 ## Aninhamento e Reveal
 
-Contrato: `Loading` interna contém a leitura inicial e deixa a shell externa aparecer; leitura pendente diretamente sob a externa mostra fallback externo. `Reveal` externo sequencial retém grupo interno `order="natural"` até liberar seu slot; então o item interno pronto aparece mesmo com irmão interno pendente. Em grupo de três, `order="together"` espera o último e revela todos; sequencial com `collapsed` mostra fallback só na fronteira e mantém slots seguintes vazios, mesmo já resolvidos.
-
-Armadilha: boundary em todo componente reutilizável muda composição. Não atribua ao grupo natural interno poder de liberar espera externa. Não extrapole para todas as atualizações posteriores, `order` reativo, SSR ou hidratação.
+`Loading` interna contém sua leitura inicial e deixa a shell externa aparecer. Uma leitura pendente diretamente sob a externa mostra o fallback externo. Para ordem e colapso entre boundaries, veja [Reveal](06-lists-control-flow-and-local-state.md#loading-errored-e-reveal); um grupo natural interno não libera a espera do sequencial externo.
 
 ## SSR e superfície disponível
 
@@ -119,7 +117,4 @@ Armadilha: fallback reativo pode reexecutar e duplicar telemetria; não dependa 
 
 ## Limite de atualização
 
-Contrato: o modelo posterior descrito para `next`, ainda não publicado na base, trata `on` como lista de dependências: qualquer escrita em fonte lida libera a boundary, sem comparar retorno. Fallback acompanha o frame causador, imediato se livre ou junto da página nova se retida; leitura externa da mesma fonte gera `LOADING_ON_OUTSIDE_HOLD` em dev. `Errored` não recebe `on`. Correção estrutural preferida é mover leitor externo para dentro ou mostrar pending/otimismo; `on={latest(id)}` é capacidade, não receita padrão.
-
-Armadilha: isso não descreve RC.9 nem o dist-tag `next` que apontava para ela na base. Refaça a matriz contra pacote publicado antes de mudar implementação; não use casts, remount geral ou desative boundaries para imitar outro runtime.
-
+A semântica de `Loading.on` descrita para código posterior difere da base verificada. Consulte [R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold) antes de aplicar exemplos de outra versão.

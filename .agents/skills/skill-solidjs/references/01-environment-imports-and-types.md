@@ -2,7 +2,7 @@
 
 ## Pacotes e compatibilidade
 
-Contrato: confira pacote compilado, `packageManager`, lockfile, scripts, Vite e tsconfig estendido. Distinga pacotes locais/registro: faixa declarada e instalação antiga podem divergir do lockfile. Confira core/renderer/compilador/plugin/TS/roteador/testes/runtime de produção. No recorte: Node >=22.12.0 prevalece sobre piso do plugin; peers do plugin: Vite 8/9 e core 2. Tipos exigem recursos modernos (NoInfer).
+Core, renderer, plugin e compilador precisam resolver para um conjunto compatível. Confira as versões resolvidas e os peers ao mudar esse conjunto; a faixa do manifesto não prova a resolução instalada.
 
 Receita: fixe versões exatas e lockfile ao atualizar; confira a resolução do plugin com `pnpm why @solidjs/compiler -r`. Monorepo com vários pacotes Solid, em cliente/SSR/Vitest:
 
@@ -37,7 +37,7 @@ Armadilha: `solid-js/store`, `solid-js/web` e `solid-js/types/*` não são entra
 
 ## Configuração e builds
 
-Contrato: TSX web compilado usa `jsx: 'preserve'` e `jsxImportSource: '@solidjs/web'`. Mescle à configuração existente: base DOM target/lib ES2022, DOM e DOM.Iterable, module ESNext, resolução Bundler, `strict`, `noEmit`, `verbatimModuleSyntax` e `isolatedModules`. Tipos Node e browser pertencem aos respectivos projetos. Adote noUncheckedIndexedAccess/exactOptionalPropertyTypes incrementalmente nos existentes; recomende em novos.
+TSX web compilado usa `jsx: 'preserve'` e `jsxImportSource: '@solidjs/web'`, com `@solidjs/vite-plugin`:
 
 Receita:
 
@@ -77,7 +77,7 @@ Armadilha: redefinir class/disabled/children perde contrato nativo. Para atribut
 
 ## Narrowing, signals e callbacks
 
-Contrato: TS trata cada chamada reativa como nova. Use callback estreitado de `Show` ou capture dentro do escopo rastreado; `if (user()) user().name` não garante narrowing. noUncheckedIndexedAccess: índice pode faltar; busque ID e faça guard, inclusive em remoção concorrente/lista vazia. Tipos locais ficam junto ao consumidor; separe contratos compartilhados/públicos e schemas quando reduzir acoplamento. Trinta linhas sugerem revisão, não extração automática.
+Contrato: TS trata cada chamada reativa como nova. Use callback estreitado de `Show` ou capture dentro do escopo rastreado; `if (user()) user().name` não garante narrowing.
 
 Receita: inicialize de verdade quando possível; explicite `createSignal<Item[]>([])`. `createSignal<T>()` admite ausência e, quando T inclui `undefined`, o setter pode ser chamado sem argumento para limpar. Preserve essa sobrecarga em wrappers. Valor recebe `Exclude<T, Function>`; propague esse limite em primitivas genéricas. Funções armazenadas exigem camada de função na criação e no setter. Fonte async entrega `Accessor<T>` resolvido pelo grafo, não `Promise<T>`.
 
@@ -89,7 +89,6 @@ Contrato: TS aceita async em posição apenas `() => void`, como `onCleanup`. Ap
 
 Contrato: use `JSX.EventHandler<T, E>` ou `InputEventHandler`, `ChangeEventHandler`, `FocusEventHandler`, importando JSX do renderer. `JSX.InputEventHandler<HTMLInputElement, InputEvent>` detecta elemento/evento incompatível melhor que cast de `Event`. Fallback de `Errored` recebe `ErrorAccessor`: leia `err()`. `JSX.Element` exclui funções; inclui elemento renderizado, arrays, string, number, boolean, null e undefined; o elemento renderizado recusa objetos com `call`, `apply` ou `bind`.
 
-Receita: invoque a função que devolve JSX explicitamente ou use um componente dinâmico, sem inserir referência crua. Trate JSON/URL/storage/FormData/WebSocket/argumentos RPC como `unknown`, valide e produza domínio. Use união discriminada para resultado esperado e schema existente para payload extenso.
+Receita: invoque a função que devolve JSX explicitamente ou use um componente dinâmico, sem inserir referência crua.
 
-Armadilha: `response.json()` e tipos não validam dados remotos. Não devolva stack, detalhes de banco ou tokens; erro capturado fora do grafo não chega automaticamente a `Errored`. Prefira callback de intenção a setter irrestrito.
-
+Erro capturado fora do grafo não chega automaticamente a `Errored`.

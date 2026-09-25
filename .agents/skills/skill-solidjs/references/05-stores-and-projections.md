@@ -122,24 +122,4 @@ Armadilha: mutar folha não rastreada é silencioso. Não reaproveite objeto ent
 
 ## API pública e comandos de domínio
 
-Contrato: nenhum build/tipo público do core exporta `storePath`; declaração residual de servidor inacessível por exports não é API. Import do motor exige dependência direta em gerenciador estrito; não o adicione para recuperar API legada.
-
-Receita: encapsule setter em operações nomeadas, com estado por instância:
-
-```ts
-function createTodos() {
-  const [todos, setTodos] = createStore<Todo[]>([])
-  return {
-    todos,
-    add: (text: string) => setTodos(draft => { draft.push({ id: crypto.randomUUID(), text, done: false }) }),
-    remove: (id: string) => setTodos(draft => draft.filter(item => item.id !== id)),
-    toggle: (id: string) => setTodos(draft => {
-      const item = draft.find(item => item.id === id)
-      if (item) item.done = !item.done
-    })
-  }
-}
-```
-
-Armadilha: path-setters de exemplos antigos lançam `fn is not a function`; não exponha setter inteiro sem necessidade. Merge/omit servem a views de props e não recuperam path-setter.
-
+`storePath` não é export público do core; uma declaração residual do servidor não o torna acessível. Use o setter por draft. `merge` e `omit` criam views de props e não recuperam o setter por caminho.

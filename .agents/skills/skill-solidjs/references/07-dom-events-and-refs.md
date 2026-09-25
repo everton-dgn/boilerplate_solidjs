@@ -18,7 +18,7 @@ Receita:
 <div class={['card', { selected: props.selected }]} style={{ 'background-color': color(), '--space': space() }} />
 ```
 
-Armadilha: classList não é API JSX atual. Snapshot de classes não torna cru reativo. Prefira CSS para regras estáticas e preserve CSS Modules/Tailwind/CSS existente. Tailwind exige grafias completas/configuração suportada; confira CSS produzido. Tokens CSS exigem definição, referências e fallback apropriado; lint JS/TS e troca ESLint/Biome não validam `var(--missing-token)`.
+Armadilha: classList não é API JSX atual. Snapshot de classes não torna cru reativo.
 
 ## Eventos e propagação
 
@@ -85,30 +85,14 @@ Armadilha: fábrica executa no SSR, callback não recebe elemento. Compute do ef
 
 ## Texto e hidratação
 
-Contrato: textContent serve a texto e pode compilar para Text atualizado por data; JSX usa inserção geral. Caminho próprio não prova velocidade/reuso exclusivo. Não combine com children: filhos explícitos suprimem textContent na compilação; ordem de atributos children/textContent também decide saída.
-
-Receita: use JSX quando mais claro. Teste HTML inicial, zero, vazio, marcação literal e atualização hidratada; meça na carga real.
-
-Armadilha: SSR hidratável instalado emite `escape(value || ' ')` em ambos os compiladores: zero vira espaço. JSX comum evita esse caminho. Happy-dom mínimo com seed síncrono recuperou zero ao hidratar/preservou nó atualizado, sem provar snapshots/streaming/Chromium. Build completo Chromium dev/produção manteve espaço até primeira atualização; depois marcação textual, vazio e zero funcionaram. Mismatch estrutural não prova detecção textual; render cliente não prova hidratação serializada. Testes upstream de reuso na inserção geral foram lidos, não executados.
+Children explícitos suprimem `textContent` na compilação; não combine as duas formas. Em SSR hidratável, `textContent` numérico pode perder o zero e a hidratação preservar o espaço até a primeira atualização. Detalhes e limites em [R07](17-known-risks.md#r07-textcontent-perde-o-zero-numérico-no-html-de-ssr). Esse caminho não sustenta uma recomendação geral de performance.
 
 ## Número como filho único
 
-Contrato: filho numérico único usa textContent inicialmente e firstChild.data depois. Happy-dom converte 0 em vazio sem Text; atualização lança `TypeError: Cannot set properties of null (setting 'data')` (atribuição de data em null) e `REACTIVITY_HALTED`. Chromium mantém '0' e atualiza. Número ao lado de texto estático usa marcador e funciona desde zero.
+`<output>{total()}</output>` começando em zero funciona no Chromium, mas quebra em happy-dom na base verificada. `{String(total())}` preservou 0/5/0 nos dois ambientes; converter muda o caminho exercitado, então não faça isso no teste de comportamento numérico. Veja [ambientes de teste](../../skill-solidjs-testing/references/environments.md#happy-dom).
 
-Receita:
+Alternar número falso e elemento como filho único tem outro defeito de runtime: [R13](17-known-risks.md#r13-zero-ou-nan-como-filho-único-acumula-nós-de-texto-ao-alternar).
 
-```tsx
-<output>{String(total())}</output>
-<p>Total: {total()}</p>
-```
+## Namespace
 
-Armadilha: String no componente preservou 0/5/0 em happy-dom/Chromium sem diagnóstico. Não converta no teste do caminho numérico: muda o contrato observado.
-
-## HTML, namespace e segurança
-
-Contrato: JSX textual não autoriza HTML executável/URL javascript/CSS arbitrário. Sanitização para innerHTML de usuário, validação contextual de URL; sem segredos em data attributes.
-
-Receita: em tags ambíguas HTML/SVG (a, script, style, title), confira namespace explícito na criação dinâmica. Teste SVG/custom elements/hidratação além de HTML trivial.
-
-Armadilha: namespace é definido na criação; trocar tag lógica não o corrige.
-
+Tags ambíguas entre HTML e SVG (`a`, `script`, `style`, `title`) precisam do namespace correto na criação dinâmica. Trocar a tag lógica depois não corrige o namespace.

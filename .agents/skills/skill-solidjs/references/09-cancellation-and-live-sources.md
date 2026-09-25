@@ -4,15 +4,7 @@ RC.9.
 
 ## Responsabilidade e limpeza
 
-Contrato: JSX usa memo/projection async sob Loading/Errored; derivação é pura; gravação usa handler/action; widget usa effect split; assinatura pós-montagem usa onSettled com cleanup síncrono. Compute aceita async; apply retorna void/cleanup. Setter é síncrono: draft fecha ao retornar. Promise no setter lança ASYNC_STORE_SETTER em dev; padrão não verifica e perde escritas pós-await.
-
-Receita:
-```ts
-const result = await api.read()
-if (isCurrent()) setState(draft => { draft.result = result })
-```
-
-Armadilha: apply/onSettled async não entregam cleanup síncrono, mesmo com cast. Não guarde draft em closure/ref/timer/Promise. Draft de projection usado após retorno perde escrita silenciosamente; mudança posterior de projections/stores derivadas não vale nesta base. Action após await exige yield vazio antes de escrita/leitor, inclusive yield until; utilitário genérico não conhece transação Solid.
+Use fonte async do grafo para dados renderizados; effect split para integração imperativa. O apply precisa devolver cleanup síncrono. Draft de setter ou projection retido depois da execução perde escritas; não o capture em timer ou Promise. Reentrada de action após `await` tem [contrato próprio](10-actions-optimism-and-confirmation.md#geradores-e-reentrada).
 
 ## Operação imperativa
 
@@ -44,9 +36,7 @@ Armadilha: perder leitor não reverte servidor. Teste requests concorrentes com 
 
 ## Origem e CORS
 
-Contrato: Sec-Fetch-Site presente decide: same-origin libera; same-site/cross-site/none recusam sem consultar csrf.origin. Sem header, Origin/Referer usam matcher string/array/função. withCSRFVary acrescenta Vary: Sec-Fetch-Site, Origin, Referer. csrf.allowCredentials não existe. Fetch cross-site browser envia metadados; matcher só amplia aceitação sem eles, como proxy/node:http/bots.
-
-Armadilha: endpoint absoluto/matcher/token não comprovam fluxo browser cross-origin. Separe autenticação/autorização/CSRF/CORS/roteamento; não remova proteção, forje headers ou libere todas as origens com credenciais. Em Capacitor/extensão/widget, teste host, OPTIONS de preflight, cookie/bearer e leitura da resposta. Mudança posterior não certifica pacote instalado.
+`Sec-Fetch-Site` pode recusar a chamada antes de consultar `csrf.origin`: veja [configuração e origem](13-server-functions-and-security.md#configuração-e-origem). Aceitação num cliente HTTP fora do navegador não prova o fluxo com preflight e credenciais.
 
 ## Hooks e invocação
 
@@ -65,10 +55,3 @@ Armadilha: não é SSE/WebSocket pronto nem persistência durável. Identifique 
 Contrato: collectFlightData participa de POST com script/header single-flight/coletor registrado, após transformResult, em retorno ou Response/envelope lançado como controle. Erro comum lançado não coleta. foldFlightData retorna logo em Response com corpo próprio. Falha de coleta não desfaz gravação confirmada. Separe domínio/invalidação/dados adicionais, preserve Set-Cookie separado e use adapter, sem remontar protocolo privado.
 
 Armadilha: configurar hook/chamar direto não prova coleta HTTP. Catch da coleta loga erro original via console.error inclusive em produção, fora da proteção da invocação. Normalize dentro da coleta e represente fatia indisponível conforme adapter; não devolva erro bruto nem substitua console global. Esse caminho não prova vazamento de aplicação concreta. Reconciliação não deve reenviar mutação confirmada.
-
-## Aceite
-
-Contrato: teste isolamento, método/entrada/origem inválidos, cancelamento, sanitização, reconexão live e gravação confirmada com coleta falha. Capture logs/payload; confirme gravação com fatia indisponível.
-
-Armadilha: stub não cobre HTTP compilado; ausência de marcador no corpo não prova log seguro. Teste contenção/cancelamento/rollback separadamente.
-

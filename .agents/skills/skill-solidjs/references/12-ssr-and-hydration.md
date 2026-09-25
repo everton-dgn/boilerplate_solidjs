@@ -105,22 +105,6 @@ Contrato: entry-server autoral exporta `render(request?, context?)`, retornando 
 
 Armadilha: se não precisa do handler/entradas/endpoint do plugin, render/hydrate com servidor próprio ou HTTP comum bastam. Build verde não comprova contrato de entrada.
 
-## Opções start e host
-
-Contrato: documental, salvo entradas acima.
-
-| Opção | Comportamento |
-| --- | --- |
-| renderMode | `"stream"` padrão envia shell/fallback e scripts de troca; `"async"` espera boundaries e entrega documento completo sem esses fallbacks/scripts, com custo de TTFB/memória e Location do render virando 3xx real. Módulo pode decidir por request; handleRequest(request,{renderMode}) sobrescreve ambos. |
-| middleware | Default função `(request,next)` ou lista; roda em request scope para página/RPC, dev/produção. Decore locals antes de next; Response continua mutável após next até middleware externo retornar. Trate com try/await/catch. composeMiddleware recusa next duplo com `next() called multiple times`. |
-| setup | Por request após middleware e antes de renderToStream, mesmo evento; só entradas geradas. Com entry-server autoral é erro. |
-| instrument | Carrega antes do grafo servidor para instrumentar módulos antes do import. |
-| errorBoundary | Ligada por padrão em produção com entradas geradas; desligue quando middleware tratar erro. Não afeta entrada autoral. |
-| env | Schema env.ts validado no build; virtual:env/client contém só VITE_ e entra no cliente; virtual:env/server lê process.env no boot. Sem segredos em client. |
-| node: true | Emite dist/server/node.js com listener/createListener/serve. Serve dist/client, cache imutável em hash, HEAD, recusa `..`, resto vai ao handleRequest com IncomingMessage em nativeEvent. Em host próprio, use handleRequest(request,{event:{nativeEvent:req}}). |
-
-Armadilha: não considere essas opções executadas nesta base. Antes de depender delas, teste stream lento contra async completo, locals em página/RPC, header pós-next, next duplo, GET/HEAD com mesmos headers, rota ausente, `..` e desconexão durante stream.
-
 ## Status, headers, cookies e cache
 
 Contrato: httpStatus(code,text?) e httpHeader(name,value,{append}) declaram estado pela vida do escopo reativo. No request escrevem event.response; renderToString/renderToStream aguardado comitam na conclusão e createSSRResponse(html,event) transporta status/headers. Depois do commit, declarações são ignoradas. Retração em qualquer ordem remove só escopo descartado: cookies vivos permanecem separados, status volta à última declaração viva ou base 200. Passe de Loading descartado retrai declarações sem remover 404 externo.
@@ -162,15 +146,8 @@ Armadilha: fallback genérico e transporte sanitizado não contêm toda exceçã
 
 ## Falhas tardias e artefato real
 
-Contrato: dois arranjos da base encerraram Node isolado com código 1: renderToString devolvendo fallback de Loading seguido de rejeição async, mesmo com Errored externa; e rejeição como filha direta de Loading sem Errored, com onError chamado e falha secundária de emit em traceMetaMarkup. Leitura rejeitada dentro de elemento sob Loading teve outro resultado: handling client e stream aguardado resolvido. Preserve árvore, modo e momento; não generalize queda para toda rejeição nem considere Errored suficiente para o primeiro caso.
+Rejeições tardias em certos arranjos encerram o processo Node mesmo depois de enviar uma resposta: [R08](17-known-risks.md#r08-rejeição-assíncrona-tardia-durante-ssr-derruba-o-processo-node). Preserve árvore, modo e momento ao reproduzir em processo descartável.
 
 Armadilha: mudanças posteriores não publicadas não removem esses riscos. Execute regressão em processo filho, registrando saída, código, sinal e timeout; não engula unhandledRejection globalmente. Teste shell/região 1, hidrate com região 2 pendente, altere cache, conclua stream e observe identidade, listeners e criação/destruição de recursos. HTML totalmente aguardado não testa essa janela. Inclua falha tardia, abort e navegação para outro owner.
 
 Contrato: produção precisa ser servida pelo adapter real de teste. Source/dev não cobrem campos entre pacotes renomeados na otimização. Botão inerte exige conferir core/web/plugin/compilador/binário nativo resolvidos antes da lógica de evento; não corrija atributos privados. Fixtures use server precisam entrar no filtro efetivo, cujo padrão é src/**; build verde pode manter corpo servidor no cliente se fora dele. Confira referência gerada, registro HTTP, marcador sintético ausente em bundle/chunks/sourcemaps públicos e chamada real. Um marcador ausente não prova ausência de todo segredo. Skip, sinal de término ou erro de spawn não são aprovação.
-
-## Validação mínima
-
-Contrato: compare carga direta/navegação, dado imediato/lento/rejeitado, sem sessão/cookie novo e dois usuários simultâneos. Verifique headers antes do commit, cookies separados, CSP, desconexão, HTML parcial e interação hidratada em produção. Inclua 500 público síncrono, render vazio com timeout, retração de passe descartado e escape por parse. Não use internos solid-js/internal, _parent, _flags ou _snapshotValue em produto.
-
-Armadilha: snapshot de HTML, nó preservado ou teste upstream apenas lido não provam hidratação ou integração. Conteúdo reconstruído pode ser legítimo; defina identidade de produto que precisa permanecer e teste-a.
-

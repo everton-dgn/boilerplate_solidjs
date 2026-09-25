@@ -39,8 +39,6 @@ function reorder(nextRows: Row[]) {
 
 Armadilha: queueMicrotask deixa intervalo sem foco quando outro código/teste drena sincronicamente antes; sem esse flush, auto-flush ocorre antes da microtask e restauração adiada funciona. Receita síncrona funciona com action pendente em outra linha e each otimista: reordenação comum aplica no flush e não move novamente ao assentar. Cursor/seleção não foram medidos; guarde selectionStart/selectionEnd se necessário. Teste mover, inserir no início, excluir no meio e atualizar mesma chave com input/estado local.
 
-Contrato: medição Chromium: perda levou activeElement a BODY; MutationObserver viu remoção/reinserção em 3/3 execuções. `[a,b,c]` para `[b,a,c]` com a focado mudou índice sem retirar a, portanto não prova preservação se o próprio nó for removido.
-
 ## Callback estrutural, Show e Repeat
 
 Contrato: corpos de For e Show não keyed rodam uma vez por item/ramo, sob owner sem tracking. Leituras de índice ou `current().name` no topo congelam valor e dev emite `STRICT_READ_UNTRACKED` por callback, rotulado For/Show; produção fica silenciosa. JSX/memo/effect mantêm leitura viva. Match usa o mesmo caminho, sem teste próprio.
@@ -95,7 +93,7 @@ Contrato: clientOnly/web impede import no servidor; mostra fallback SSR, trocado
 
 Receita: use clientOnly para módulo que acessa browser já no import. Deixe mount padrão de Portal quando document.body não puder ser avaliado no SSR.
 
-Contrato: em Chromium cliente com alvo externo, render+flush põe conteúdo só no alvo; contexto vem da árvore lógica e atualiza. Portals no mesmo alvo, dentro/fora de provider, leem contextos respectivos. Clique delegado funciona. Show falso remove só conteúdo daquele Portal, preservando nós anteriores; dispose restaura exatamente o alvo anterior, delimitado por marcadores.
+Portal conserva o contexto e a propagação delegada da árvore lógica. O descarte remove só seus nós, preservando o conteúdo anterior do alvo; observado no Chromium cliente.
 
 Armadilha: if depois do import não evita efeito de módulo. Portal não lança necessariamente no servidor. Ler props.children em when de Show constrói árvore extra e Portal duplicado; use `<Show when={condition()}>{props.children}</Show>`. Na construção medida, descarte limpou ambas as instâncias sem vazamento. Portal em happy-dom, hidratação, ShadowRoot e foco não foram testados; contexto/limpeza cliente não provam esses casos.
 
@@ -109,9 +107,8 @@ Armadilha: readonly restringe TS, sem congelamento/sandbox/validação. Não fa�
 
 ## Exclusão, sessão e integração otimista
 
-Contrato: filtre/pagine/reordene/atualize/remonte sem presumir exclusão. Defina persistência da seleção; virtualização não implica apagar seleção. Apague ID local no comando/confirmação de exclusão real para evitar crescimento infinito. Página parcial não prova exclusão. Novo tenant/documento/workspace exige avaliar owner/limpeza; não reuse seleção/permissões/cache entre sessões.
+Filtrar ou paginar não prova exclusão de uma entidade. A duração da seleção por ID é independente da presença da linha e da transação otimista.
 
 Receita: teste título otimista/rollback mantendo seleção, novos objetos do mesmo ID e reordenação por registro. Para estado visual imediato, escreva e faça flush antes de chamar action, no mesmo handler. Adiar action atrasa prévia otimista.
 
 Armadilha: signal/store comum escrito no mesmo tick da chamada aguarda assentamento; actions sobrepostas que revalidam a mesma fonte podem assentar juntas. Escrita independente num tick posterior publicou durante espera. Arraste: compare dados/instâncias DOM por ID; a base tem relato de duplicação visual sob sobreposição, correção ainda não publicada no recorte. Não descarte dados válidos, use chave aleatória ou reescreva backend para ocultar defeito visual.
-

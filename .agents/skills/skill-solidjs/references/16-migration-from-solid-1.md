@@ -1,4 +1,4 @@
-# Migração do Solid 1, inventário de APIs e divergências
+# Migração do Solid 1 e divergências
 
 Base: `solid-js` e `@solidjs/web` 2.0.0-rc.9. Entra só em tarefa de migração ou quando um padrão antigo aparece no código; a coluna de legado não faz parte da API do Solid 2 e as receitas da skill usam só o contrato v2.
 
@@ -58,36 +58,6 @@ Armadilha: não faça substituição global. Import pode ser mecânico, mas life
 
 `createDeferred`, `enableScheduling`, `writeSignal` e `resetErrorBoundaries` não devem ser recriados por alias. Para `from`/observable, async iterables e effects são direções possíveis, mas um Observable externo nem sempre é AsyncIterable: adapte o protocolo e possua o cancelamento.
 
-## Contratos do Solid 1 que continuam
-
-Continuar exportado não garante a mesma semântica em todo detalhe. `observado na rc.9` marca linha verificada com testes locais retirados em 25/09/2026; linha sem teste fica como não verificada.
-
-| Contrato do Solid 1 | Na base | Verificação |
-| --- | --- | --- |
-| Corpo do componente roda uma vez; só leituras reativas reexecutam | Continua | observado na rc.9 |
-| Props chegam como getters; desestruturar no parâmetro lê uma vez e congela | Continua. Em dev a leitura solta avisa `STRICT_READ_UNTRACKED`; no default fica em silêncio | observado na rc.9 |
-| `untrack` lê sem assinar | Continua | observado na rc.9 |
-| `onCleanup` roda no descarte do owner e antes de um memo recalcular | Continua. A ordem entre cleanups de pai e filho difere entre dev e default ([ownership](02-reactivity-and-ownership.md)) | observado na rc.9 |
-| `createRoot` cria escopo com `dispose` próprio | Muda: root criado sob outro owner é descartado com o pai; no Solid 1 ficava fora da lista de filhos | observado na rc.9 |
-| Atualizador funcional compõe escritas seguidas | Continua | observado na rc.9 |
-| `useContext` lê o provider mais próximo e, sem provider, o default; `runWithOwner(getOwner())` restaura o contexto | Continua, com três mudanças: o contexto é o próprio provider (`<Ctx value>`); `useContext` sem owner lança `NoOwnerError` (Solid 1 devolvia o default); `createContext()` sem default e sem provider lança `ContextNotFoundError` (Solid 1 devolvia `undefined`). Nenhuma das classes é exportada | observado na rc.9 |
-| `mapArray` e `For` preservam a linha pela referência do item ao reordenar | Continua | observado na rc.9 |
-| `Show`, `Switch` e `Match` existem | Continuam. O callback de `Show` não keyed é owner: leitura no topo congela e avisa, leitura no JSX segue viva | observado na rc.9 |
-| `Portal` renderiza no alvo externo e mantém o contexto do ramo lógico | Continua. Clique delegado sobe pelos ancestrais lógicos; listener nativo segue a árvore física | observado na rc.9 |
-| `ref` callback recebe o elemento | Continua. Array de refs compõe; item não chamável lança | observado na rc.9 |
-| `lazy(() => import(...))` com export default | Continua nos tipos; export nomeado usa `{ export: "Nome" }` | tipos; runtime não verificado |
-| `children()` resolve filhos | Exportado | Comportamento não verificado |
-
-Ao atualizar o Solid, confira as duas tabelas contra os exports, os tipos e a documentação da versão nova. Atualize as tabelas antes de mudar a orientação.
-
-Refutações delimitadas, observadas na rc.9:
-
-- Store derivada com push otimista de três itens e refetch de cinco não produziu `undefined` no `mapArray` final; sem garantia geral sobre refetch.
-- `input value={undefined}` e reuso do mesmo nó entre fallback e children de `Show` não reproduziram os defeitos antigos.
-- SSR distingue sanitização no build padrão e exposição em dev; boundaries e transporte têm contratos separados.
-- Effect com boundary ancestral pode ser capturado; sem boundary, a falha para a reatividade. Escrita na dependência do próprio memo lança em dev; o build padrão pode deixar o memo dessincronizado sem loop.
-- Cópias físicas independentes de Solid e da engine quebram rastreamento cruzado.
-
 ## Divergências encontradas na própria documentação
 
 - D01 `storePath`: MIGRATION, CHEATSHEET e RFC de stores ainda o mostram; o core não o exporta. Escreva setters com draft; não importe de `@solidjs/signals` nem de caminho interno.
@@ -106,40 +76,10 @@ Processo: congele uma base com testes, liste imports removidos, migre uma featur
 
 Armadilha: issue fechada não prova correção no pacote instalado; a semântica de `Loading.on` muda em `next` ([R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold)); uma resposta antiga pode descrever hook planejado que a rc.9 já tem; um gate encerrado por sinal pode parecer sucesso. Nada disso autoriza importar campo privado ou aplicar patch de comentário.
 
-## Inventário de APIs por responsabilidade
+## APIs que induzem a erro
 
-Mapa de seleção, não enumeração completa. Export existir não garante API pública estável (há marcas internal, entradas de integração e experimentais). Desconsidere o bloco comentado `Not Implemented` do core e não deduza `storePath` dos tipos de path exportados. Para chamada menos usual, abra a declaração instalada antes de gerar argumentos.
+`storePath` e `markRaw` não são exports públicos desta base. Para valor cru, confira `snapshot` e seus limites; `deep` faz leitura rastreada, não o oposto. Não importe `$PROXY`, `$TRACK`, `sharedConfig` ou campos de hidratação para substituir APIs removidas.
 
-Reatividade do core (`solid-js`):
+Para props e tipos de elementos DOM, `ComponentProps`, `ValidComponent` e `JSX` vêm de `@solidjs/web`. Tipos homônimos do core não oferecem o mesmo contrato.
 
-| Família | APIs |
-| --- | --- |
-| Fontes e derivação | `createSignal`, `createMemo` (síncrono ou assíncrono) |
-| Estruturas e projeção | `createStore`, `createProjection` |
-| Otimismo coordenado por action | `createOptimistic`, `createOptimisticStore` |
-| Efeito externo e setup | `createEffect` (compute + apply), `onSettled` (cleanup retornado), `onCleanup` |
-| Integração de efeito | `createRenderEffect`, `createReaction` |
-| Ação e impacto | `action`, `affects` |
-| Prontidão e espera | `isPending`, `latest`, `resolve`, `until` |
-| Invalidação e agendamento | `refresh`, `flush` |
-| Views de objeto | `merge`, `omit` |
-| Reconciliação | `reconcile`, `snapshot`, `deep` |
-| Rastreamento | `untrack`, `getObserver` |
-| Ownership | `createRoot`, `createOwner`, `getOwner`, `runWithOwner`, `isDisposed` |
-| Contexto e conteúdo | `createContext`, `useContext`, `children`, `createUniqueId`, `lazy` |
-| Iteração e inspeção de baixo nível | `mapArray`, `repeat`, `isEqual`, `isStatic`, `isWrappable`, `flatten` (conferir contrato) |
-| Boundaries de baixo nível | `createErrorBoundary`, `createLoadingBoundary`, `createRevealOrder` (em UI prefira os componentes) |
-| Erros de prontidão | `NotReadyError`, `TimeoutError` |
-| Observabilidade | `configureClientErrors`, `OBSERVE`, `DEV` |
-
-`createOptimistic(value | (() => T), options?)` e `createOptimisticStore(initial | (() => initial), seed?, options?)` aceitam forma plana e derivada; ambos revertem ao fim da action. `createTrackedEffect` está depreciado. `resetErrorHalt` não é rotina a chamar em loop. `enforceLoadingBoundary` e `enableExternalSource` são configuração avançada. Não use `$PROXY`, `$TRACK`, `$DEVCOMP`, `sharedConfig` ou IDs internos. `markRaw` não existe: embrulhe num getter (`createSignal(() => ({ raw }))`) ou use `snapshot(target)`; `deep(target)` faz o oposto e não tem segundo argumento. O patch mode foi removido sem substituto público.
-
-Componentes de fluxo de `solid-js`: `For`, `Repeat`, `Show`, `Switch`, `Match`, `Loading`, `Errored`, `Reveal`, `NoHydration`, `Hydration`. Os parâmetros de callback são parte do contrato; não os derive do nome nem de exemplo v1.
-
-Renderer web (`@solidjs/web`): montagem `render`, `hydrate`; SSR `renderToString`, `renderToStream`; bootstrap `HydrationScript`, `generateHydrationScript`; componentes DOM `Portal`, `dynamic`, `clientOnly`; constantes `isServer`, `isDev`; tipos `JSX`, `ComponentProps`, `ValidComponent`, `IntrinsicElement`; request `getRequestEvent`, `createRequestEvent`; resposta `createSSRResponse`, `commitEventResponse`; HTTP declarativo `httpStatus`, `httpHeader`; resultado `respond`, `redirect`, `reload`; cookies `parseCookieHeader`, `serializeCookie`; erros `configureServerErrors`, `getTraceContext`. `Dynamic` e `DynamicProps` estão depreciados. Helpers de template, inserção, spread, delegação e serialização servem ao compilador, não a renderer manual; `mergeProps` de `@solidjs/web` é `@internal`.
-
-Entradas especializadas: `@solidjs/web/storage` (`provideRequestEvent`); `@solidjs/web/server-functions` (configuração, chamada e RPC por lado: `GET`, `withMeta`, `getServerFunctionMetadata`, `isServerFunction`, `invoke`; `prepareRequest` é hook de configuração, não API global); `/server-functions/rich-args`; `/client` e `/server` para integrações; `/serialization` e `/frames` são infraestrutura fora da garantia geral. Para codecs, use as exportações da própria instância do runtime; não importe uma segunda cópia de serializador.
-
-Tipos principais: `Accessor<T>` (`() => T`), `SourceAccessor<T>` (identidade de fonte), `Setter<T>`, `Signal<T>`, `Store<T>` (view, não função), `StoreSetter<T>` (draft), `MemoOptions`/`SignalOptions`/`EffectOptions` (não intercambiáveis), `StoreOptions`/`ProjectionOptions`, `EffectBundle` (braços effect e error), `Component`/`ParentComponent`/`VoidComponent`/`FlowComponent` e `ParentProps`/`VoidProps`/`FlowProps` (contratos de children), `Element` (core) e `JSX.Element`/`JSX.EventHandler` (renderer). Para `ComponentProps<"input">`, use `@solidjs/web`.
-
-Antes de usar uma API rara: está exportada e tipada na versão instalada? É pública, de integração ou experimental? Qual owner exige? Pode suspender, escrever ou precisar de cleanup? Funciona no servidor, no cliente ou é stub de um lado? Um teste pequeno responde melhor que uma assinatura de memória.
+`resetErrorHalt` serve ao [harness de testes](../../skill-solidjs-testing/references/mount-dispose-diagnostics.md#halt-reativo); não é recuperação de erro da aplicação.

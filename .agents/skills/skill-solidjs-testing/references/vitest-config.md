@@ -4,7 +4,7 @@ As receitas foram executadas com Vitest 4 e a base registrada na skill principal
 
 ## Postura decidida por projeto
 
-O `@solidjs/vite-plugin` decide a postura no hook `config`, a partir do `test.environment` declarado no próprio projeto. Cada projeto precisa da sua instância de `solid()`; não mova o plugin para a raiz.
+O `@solidjs/vite-plugin` decide a postura no hook `config`, a partir do `test.environment` declarado no próprio projeto. Projetos que transformam TSX ou exercitam o runtime Solid precisam da sua instância de `solid()`. Um projeto Node de módulos sem TSX nem grafo pode dispensá-la.
 
 | Projeto | Postura | Use para |
 | --- | --- | --- |
@@ -70,7 +70,7 @@ Em pacote symlinkado ou monorepo, confira que `solid-js`, `@solidjs/web` e `@sol
 
 ## Canário de postura
 
-O primeiro teste de cada projeto confirma postura, build e instância única antes de qualquer outra asserção:
+Ao criar ou alterar a configuração, ou investigar um teste que usa o build errado, confira postura, build e instância única. Reutilize o canário existente; não é necessário criar um para cada tarefa:
 
 ```ts
 // support/runtime-identity.ts

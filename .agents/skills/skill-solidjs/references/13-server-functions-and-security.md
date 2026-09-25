@@ -12,21 +12,7 @@ Receita: confira referência cliente, ausência de marcador sintético do corpo 
 
 ## Validação e autorização
 
-Contrato: valide estrutura/tipo/tamanho, negócio, sessão, tenant, permissão/propriedade no HTTP forjado. TS/UI não validam runtime; usuário/isAdmin/metadata/cookie não verificado/header do chamador não provam identidade. Decodificação remove recursivamente __proto__/constructor/prototype em objetos e entradas Map/Set, controlando ciclos; chaves seguras com conteúdo malicioso continuam exigindo schema.
-
-Receita, com readSessionUserId e findProject implementados na camada servidor:
-```ts
-type PublicProject = { id: string; name: string }
-export const getProject = GET(async (projectId: unknown): Promise<PublicProject | undefined> => {
-  "use server"
-  const userId = readSessionUserId()
-  if (!userId || typeof projectId !== "string" || projectId.length > 64) return undefined
-  const project = await findProject({ projectId, ownerId: userId })
-  return project ? { id: project.id, name: project.name } : undefined
-})
-```
-
-Armadilha: select não autoriza ID. Renomear exige sessão (401 público), projectId/name strings, nome aparado não vazio, entrada até 80 caracteres (400 público por campo). Update usa projectId/ownerId; ausente/alheio dá mesmo 404; saída só id/name, sem internalNotes. Middleware valida sessão antes de locals.userId; confira tipo em getRequestEvent. Limites são da receita; exemplo com banco declarado só foi tipado, sem compilação/HTTP.
+Validação e autorização pertencem ao corpo efetivamente registrado, inclusive para chamada HTTP forjada. O decoder remove recursivamente `__proto__`, `constructor` e `prototype` de objetos e entradas Map/Set, mas não valida domínio ou permissão. Um wrapper que protege só a referência cliente não protege o endpoint.
 
 ## Métodos, limites e metadados
 
@@ -121,12 +107,3 @@ Contrato: prévia fora da estabilidade 2.0. Adoção explícita: tarefa de UI n�
 Receita: `serverFunctions: { components: true }`, ou components "external" com ligação documental pelo host. Reutiliza endpoint/compilação/segurança RPC. Start SSR gerado chama installServerComponents de @solidjs/web/frames antes de hydrate; entrada autoral chama uma vez e servidor recebe plugin de render de frames.
 
 Armadilha: sideEffects false em @solidjs/web permite remover import sem chamada. Sem use client/convenções Next.js inventadas. Alinhe cliente/servidor/codec; teste produção/HMR e manifesto completo. Markup/props podem vazar dados. Router instalado (`2.0.0-next.26`) não tem `serverRouteComponent`; o registro anterior situa a chegada experimental em `2.0.0-next.27`, sem validação nesta skill. UI/formulários comuns podem usar componentes cliente/async/SSR/RPC.
-
-## Critérios de aceite
-
-Contrato: teste HTTP sem sessão, outro tenant/ID alheia, campos extras, payload excessivo, métodos errados/HEAD, origem, cancelamento e replay; confira cache inclusive erro/redirect, destinos //evil.example e /a/..//evil.example e ausência de credenciais/schema secreto/banco no cliente. Endpoint real deve ser isolado, sem mutação automática de produção. Query/action de dados vêm do router; router instalado não exporta useSubmission singular, e createServerFn é de outro framework.
-
-Contrato: experimento exige testar argumentos/refetch/slots/estado, erro/parcial/cancelamento/navegação, duas instâncias/requests e A/B invertidas em hidratação/prefetch. Artigo/dynamic não certifica protocolo. Meça payload/servidor/waterfall/cache/erro, sem prometer bundle/latência/backend menores; registre versões/migração.
-
-Armadilha: função local não prova HTTP/isolamento; experimento não herda certificação do core.
-

@@ -4,17 +4,9 @@ RC.9.
 
 ## Estado e entradas
 
-Contrato: separe fonte/rascunho/validação/envio/resposta; sobrescreva edição só por política explícita. createSignal(fn) é derivado gravável, não leitura única. Value/checked vêm do estado, evento escreve nele; defaultValue/defaultChecked são iniciais. Um dono por campo.
+`createSignal(() => props.value)` cria derivação gravável: sobrescrita local dura até a origem mudar. Para rascunho independente, não use essa forma como inicializador único.
 
-Receita:
-```tsx
-<>
-<input value={text()} onInput={event => setText(event.currentTarget.value)} />
-<input type="checkbox" checked={checked()} onChange={event => setChecked(event.currentTarget.checked)} />
-</>
-```
-
-Armadilha: checkbox usa checked; valueAsNumber pode ser NaN, vazio não é zero. Datas/arquivos/select múltiplo pedem parsing próprio. Preserve cursor, digitação intermediária e IME em busca/envio por tecla. Capture valor/referência antes de await: currentTarget não é permanente. Promise tratada dispensa handler async.
+`value`/`checked` são controlados; `defaultValue`/`defaultChecked` são iniciais. Eventos são nativos: capture `event.currentTarget` antes de `await`.
 
 ## Select com opções tardias
 
@@ -28,12 +20,6 @@ Receita:
 ```
 
 Armadilha: só value deixa primeira opção visível quando opções chegam depois, mesmo com outro valor no estado. Multiple/hidratação não testados.
-
-## Envio e validação
-
-Contrato: submit envia; button auxilia. PreventDefault não implementa progressive enhancement. Button comum com name/value/aria-pressed fica fora de FormData; submit entra com `new FormData(form, submitter)`. Checkbox visualmente oculto entra se nomeado, marcado e habilitado.
-
-Armadilha: disabled não trava concorrência; complemente com guard local e idempotência/autorização servidor. Preserve campos em falha. Cliente valida UX; servidor valida HTTP, separando campo/global/conflito sem banco/stack brutos. FormData tem string/File/ausência: sem cast, limite tamanho/quantidade/conteúdo de arquivos.
 
 ## Rótulos e atributos
 
@@ -49,7 +35,7 @@ const id = createUniqueId();
 </>
 ```
 
-Armadilha: booleano ARIA falha no typecheck, mesmo com cast. Texto false comunica estado. No nativo, disabled="false" desabilita, disabled={false} remove. Cor/classes não bastam como feedback; classes condicionais precisam existir no CSS de produção.
+Armadilha: booleano ARIA falha no typecheck, mesmo com cast. Texto false comunica estado. No nativo, disabled="false" desabilita, disabled={false} remove.
 
 ## Anúncios
 
@@ -67,7 +53,4 @@ Armadilha: Show remove nó ao limpar erro; novo nó preenchido pode não anuncia
 
 ## Foco e ciclo do formulário
 
-Contrato: preserve foco em reorder/modal/recuperação. Portal segue contexto/evento delegado lógico; listener nativo segue DOM físico. Não fornece foco/Escape/inert/diálogo. Prefira controles nativos/biblioteca acessível compatível em UI complexa. Foco/inert/leitor de tela em Portal e foco/seleção anteriores ao clique de formatação não foram medidos: teste browser real.
-
-Armadilha: rascunho/intenção de formulário aberto são persistentes, flag otimista é transitória. No exemplo, formulário fora das boundaries permite digitar em carga/falha; flag por ID nasce na action e mensagens comuns após sua Promise, pois mesmo tick retém escrita comum. Recusa duplicada usa status desde montagem. Teste teclado/Enter, falha, duplo clique, confirmação tardia/edição concorrente/troca de tela; confira rótulos/foco/conteúdo, hidratação inicial e restore browser.
-
+Keyed preserva a identidade, mas mover o nó focado pode causar blur. Use a [restauração de foco](06-lists-control-flow-and-local-state.md#foco-ao-reordenar) após o flush. Formulário e rascunho fora de `Loading`/`Errored` continuam editáveis durante carga e falha; mensagens imediatas no clique seguem o [agendamento da action](10-actions-optimism-and-confirmation.md#indicador-de-operação-e-publicação-no-clique).
