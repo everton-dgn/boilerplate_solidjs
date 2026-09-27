@@ -9,10 +9,6 @@ async function loadCacheControl(production: boolean): Promise<string> {
 }
 
 describe('cache-control das rotas geradas do manifesto', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs()
-  })
-
   it('não guarda nada fora de produção', async () => {
     expect(SITE_CACHE_CONTROL).toBe('no-store')
     await expect(loadCacheControl(false)).resolves.toBe('no-store')

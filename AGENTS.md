@@ -151,6 +151,19 @@ release. Add a tool name to select part of the graph. For example, run
   ficam como o contrato exige, sem adaptação: middlewares `(request, next)` em
   `src/middleware/index.ts`, callbacks de teste e hooks de plugin do Vite.
 
+## Funções que retornam Promise
+
+- Quando uma função apenas repassar uma Promise, retorne-a diretamente, sem
+  `async`, preservando o tipo de retorno `Promise<T>` quando explícito.
+  Isso também vale para handlers HTTP como `GET`.
+- Use `async` quando precisar de `await` para consumir o resultado ou tratar
+  a rejeição com `try/catch`. Preserve também `async` quando o contrato exigir
+  que erros síncronos do corpo sejam convertidos em rejeições da Promise.
+- O lint mantém `typescript/promise-function-async` desativada para permitir
+  esse retorno direto. Preserve `typescript/require-await` e
+  `typescript/return-await`; não adicione `await` ou comentários de disable
+  apenas para satisfazer a antiga exigência de `async`.
+
 ## Nomes de signal
 
 - O par desestruturado de `createSignal` usa `[x, setX]`: o nome do setter é o

@@ -36,13 +36,13 @@ jobs:
       - name: Read toolchain versions
         id: toolchain
         run: |
-          vite_plus_version=$(jq -er '.devDependencies["vite-plus"]' package.json)
+          vite_plus_version=$(yq -e '.catalog."vite-plus"' pnpm-workspace.yaml)
           node_version=$(jq -er '.devEngines.runtime.version' package.json)
           echo "vite-plus=$vite_plus_version" >> "$GITHUB_OUTPUT"
           echo "node=$node_version" >> "$GITHUB_OUTPUT"
 
       - name: Set up Vite+
-        uses: voidzero-dev/setup-vp@49c3e4e92c52e7f8392712a9267bbe71c5ab30e5 # v1.19.0
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
           version: ${{ steps.toolchain.outputs.vite-plus }}
           node-version: ${{ steps.toolchain.outputs.node }}
@@ -70,6 +70,19 @@ jobs:
       - name: Test production routes
         run: pnpm test:e2e:production
 
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-artifacts-${{ github.run_attempt }}
+          path: |
+            test-results/
+            playwright-report/
+            .vitest/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 14
+
   deploy:
     needs: check
     if: >-
@@ -93,13 +106,13 @@ jobs:
       - name: Read toolchain versions
         id: toolchain
         run: |
-          vite_plus_version=$(jq -er '.devDependencies["vite-plus"]' package.json)
+          vite_plus_version=$(yq -e '.catalog."vite-plus"' pnpm-workspace.yaml)
           node_version=$(jq -er '.devEngines.runtime.version' package.json)
           echo "vite-plus=$vite_plus_version" >> "$GITHUB_OUTPUT"
           echo "node=$node_version" >> "$GITHUB_OUTPUT"
 
       - name: Set up Vite+
-        uses: voidzero-dev/setup-vp@49c3e4e92c52e7f8392712a9267bbe71c5ab30e5 # v1.19.0
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
           version: ${{ steps.toolchain.outputs.vite-plus }}
           node-version: ${{ steps.toolchain.outputs.node }}

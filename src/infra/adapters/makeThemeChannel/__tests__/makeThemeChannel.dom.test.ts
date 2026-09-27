@@ -25,8 +25,6 @@ function setup(): void {
 }
 
 function cleanup(): void {
-  vi.restoreAllMocks()
-  vi.unstubAllGlobals()
   document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
 }
 

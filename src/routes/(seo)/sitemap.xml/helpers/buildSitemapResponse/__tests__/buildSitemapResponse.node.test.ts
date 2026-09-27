@@ -12,14 +12,30 @@ const HTTP_SERVICE_UNAVAILABLE = 503
 const SITEMAP_BYTE_LIMIT = 52_428_800
 const BASE_PATH_LENGTH = 1200
 
-function entriesAtByteSize(size: number): SitemapEntry[] {
-  const entries = Array.from({ length: 40_000 }, (_, index) => ({
+function baseEntries(): SitemapEntry[] {
+  return Array.from({ length: 40_000 }, (_, index) => ({
     path: `/page-${index}-${'a'.repeat(BASE_PATH_LENGTH)}`
   }))
-  const bytes = new TextEncoder().encode(
-    buildSitemap({ entries, siteUrl: SITE_URL })
-  ).byteLength
-  const padding = size - bytes
+}
+
+function sitemapBytes(entries: SitemapEntry[]): number {
+  return new TextEncoder().encode(buildSitemap({ entries, siteUrl: SITE_URL }))
+    .byteLength
+}
+
+// Os caminhos são ASCII, então cada byte do XML vem da moldura, do custo fixo
+// de uma URL ou de um caractere do caminho. Montar o XML base só para medi-lo
+// custaria dezenas de MB por teste.
+function computeBaseBytes(entries: SitemapEntry[]): number {
+  const frame = sitemapBytes([])
+  const perEntry = sitemapBytes([{ path: '/' }]) - frame - '/'.length
+  const paths = entries.reduce((total, { path }) => total + path.length, 0)
+  return frame + entries.length * perEntry + paths
+}
+
+function entriesAtByteSize(size: number): SitemapEntry[] {
+  const entries = baseEntries()
+  const padding = size - computeBaseBytes(entries)
   const perEntry = Math.floor(padding / entries.length)
   for (const entry of entries) entry.path += 'a'.repeat(perEntry)
   const [first] = entries

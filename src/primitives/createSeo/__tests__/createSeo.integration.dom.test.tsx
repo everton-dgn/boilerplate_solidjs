@@ -7,6 +7,8 @@ import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { createSeo } from '../index.ts'
 
+// vi.waitUntil não lê test.expect.poll e espera 50ms por padrão.
+const POLL = { interval: 10 }
 const DATA_SCRIPTS = 2
 const ALL_SCRIPTS = 3
 
@@ -37,7 +39,7 @@ function expectGlobalTags(): void {
 
 describe('seo de rota e dados próprios no mesmo Router', () => {
   it('atualiza e descarta owners independentes durante navegação e noindex', async () => {
-    await vi.waitUntil(() => scripts().length === 0)
+    await vi.waitUntil(() => scripts().length === 0, POLL)
     const history = memoryHistory('/publica')
     const [data, setData] = createSignal<Product | undefined>({
       '@type': 'Product',
@@ -89,20 +91,24 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
       { providers: false }
     )
 
-    await vi.waitUntil(() => scripts().length === ALL_SCRIPTS)
+    await vi.waitUntil(() => scripts().length === ALL_SCRIPTS, POLL)
     expectGlobalTags()
 
     setData({ '@type': 'Product', name: 'Atualizado' })
     await vi.waitUntil(
-      () => hasScript('Atualizado') && scripts().length === ALL_SCRIPTS
+      () => hasScript('Atualizado') && scripts().length === ALL_SCRIPTS,
+      POLL
     )
     setData(undefined)
-    await vi.waitUntil(() => scripts().length === DATA_SCRIPTS)
+    await vi.waitUntil(() => scripts().length === DATA_SCRIPTS, POLL)
     setData({ '@type': 'Product', name: 'Retomado' })
-    await vi.waitUntil(() => scripts().length === ALL_SCRIPTS)
+    await vi.waitUntil(() => scripts().length === ALL_SCRIPTS, POLL)
 
     history.set({ value: '/restrita', scroll: false })
-    await vi.waitUntil(() => scripts().length === DATA_SCRIPTS && !canonical())
+    await vi.waitUntil(
+      () => scripts().length === DATA_SCRIPTS && !canonical(),
+      POLL
+    )
     expect(
       document.head
         .querySelector('meta[name="robots"]')
@@ -114,22 +120,24 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
     ])
 
     setVisible(false)
-    await vi.waitUntil(() => scripts().length === 1)
+    await vi.waitUntil(() => scripts().length === 1, POLL)
     expect(scripts()[0]).toContain('Fixo')
     setVisible(true)
-    await vi.waitUntil(() => scripts().length === DATA_SCRIPTS)
+    await vi.waitUntil(() => scripts().length === DATA_SCRIPTS, POLL)
 
     history.set({ value: '/publica', scroll: false })
     await vi.waitUntil(
       () =>
         canonical() === `${SITE.url}/publica` &&
-        scripts().length === ALL_SCRIPTS
+        scripts().length === ALL_SCRIPTS,
+      POLL
     )
     expectGlobalTags()
 
     history.set({ value: '/vazia', scroll: false })
     await vi.waitUntil(
-      () => canonical() === `${SITE.url}/vazia` && scripts().length === 1
+      () => canonical() === `${SITE.url}/vazia` && scripts().length === 1,
+      POLL
     )
     expect([hasScript('Retomado'), hasScript('Fixo')]).toStrictEqual([
       false,
@@ -137,7 +145,7 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
     ])
 
     setMounted(false)
-    await vi.waitUntil(() => scripts().length === 0 && !canonical())
+    await vi.waitUntil(() => scripts().length === 0 && !canonical(), POLL)
     expect(document.head.querySelector('meta[name="robots"]')).toBeNull()
   })
 })

@@ -59,7 +59,9 @@ const config = {
     'src/infra/server/requestJson/index.ts!',
     'tooling/testing/server-only.ts',
     'env.ts!',
-    'tooling/testing/error-backend.ts'
+    'tooling/testing/error-backend.ts',
+    // Testes de tipo: checados pelo tsc, sem execução no Vitest.
+    'src/**/*.test-d.{ts,tsx}'
   ],
   project: [
     'src/**/*.{ts,tsx}!',
@@ -83,8 +85,8 @@ const config = {
     'stylelint-declaration-strict-value',
     'stylelint-use-nesting'
   ],
-  // O Kingfisher é instalado externamente; o vp vem de uma devDependency.
-  ignoreBinaries: ['kingfisher', 'vp!'],
+  // O Kingfisher é externo; vp e knip são ferramentas de desenvolvimento.
+  ignoreBinaries: ['kingfisher', 'vp!', 'knip!'],
   treatConfigHintsAsErrors: true
 } satisfies KnipConfig
 

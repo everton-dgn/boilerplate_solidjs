@@ -6,6 +6,8 @@ import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { createSeo } from '../index.ts'
 
+// vi.waitUntil não lê test.expect.poll e espera 50ms por padrão.
+const POLL = { interval: 10 }
 const INSTANCES = 2
 const NodeSchema = v.record(v.string(), v.unknown())
 
@@ -35,7 +37,7 @@ function parseNode(json: string | undefined): Record<string, unknown> {
 
 // O registro do head aplica e remove as tags em microtask após os efeitos.
 async function waitForScripts(count: number): Promise<string[]> {
-  await vi.waitUntil(() => readScripts().length === count)
+  await vi.waitUntil(() => readScripts().length === count, POLL)
   return readScripts()
 }
 
@@ -109,7 +111,7 @@ describe('dados estruturados publicados pela página', () => {
     await waitForScripts(1)
 
     setData({ '@type': 'Product', name: 'Depois' })
-    await vi.waitUntil(() => readScripts()[0]?.includes('Depois'))
+    await vi.waitUntil(() => readScripts()[0]?.includes('Depois'), POLL)
     expect(readScripts()).toHaveLength(1)
 
     setMounted(false)

@@ -24,10 +24,10 @@ const EntrySchema = v.object({
 const EntriesSchema = v.array(EntrySchema)
 
 // Uma fonte síncrona vira promise para correr junto com as demais.
-function readSource(
+async function readSource(
   source: SitemapRouteInfo
 ): Promise<readonly SitemapEntry[]> {
-  return Promise.resolve(source())
+  return source()
 }
 
 // Todas as fontes rodam em paralelo, com um prazo total; o timer é limpo ao

@@ -21,11 +21,6 @@ describe('canal genérico entre abas', () => {
     )
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-    vi.unstubAllGlobals()
-  })
-
   it('entrega a mensagem recebida sem interpretar o conteúdo', () => {
     const receive = vi.fn<() => void>()
     const connection = makeBroadcastChannel({ name: CHANNEL_NAME, receive })

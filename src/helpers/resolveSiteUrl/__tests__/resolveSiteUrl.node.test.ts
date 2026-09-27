@@ -11,10 +11,6 @@ async function loadResolveSiteUrl(siteUrl: string): Promise<ResolveSiteUrl> {
 }
 
 describe('resolução da URL pública', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs()
-  })
-
   it('resolve o caminho contra VITE_SITE_URL e mantém a barra final na raiz', async () => {
     const resolveSiteUrl = await loadResolveSiteUrl('https://example.com')
 

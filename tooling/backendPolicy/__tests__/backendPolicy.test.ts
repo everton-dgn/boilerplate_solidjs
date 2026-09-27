@@ -293,6 +293,8 @@ test('a política preserva APIs públicas, testes e logging do tooling', context
         'console.warn("fixture"); void import(`@solidjs/web/server-functions/server`)',
       'src/example.d.ts':
         'type Safe = typeof import("@solidjs/web").markSafeError',
+      'src/transport.test-d.ts':
+        'import type { WrapInvocationHook } from "@solidjs/web/server-functions/server"; export type Hook = WrapInvocationHook',
       'src/example.d.mts':
         'import { markSafeError } from "@solidjs/web"; export type Safe = typeof markSafeError',
       'src/example.d.cts':

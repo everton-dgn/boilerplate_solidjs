@@ -2,14 +2,11 @@ import { provideRequestEvent } from '@solidjs/web/storage'
 
 import middleware from '../index.ts'
 
+const TEST_ORIGIN = 'http://localhost'
 const REQUEST_CONTEXT_INDEX = 2
 const API_HANDLER_INDEX = 3
 
 describe('middlewares de requisição', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
   it('mede o tempo e preserva a resposta do próximo handler', async () => {
     const started = 100
     const finished = 112.5
@@ -21,9 +18,9 @@ describe('middlewares de requisição', () => {
     const [requestTiming] = middleware
     if (!requestTiming) throw new Error('Request timing middleware not found')
 
-    await expect(
-      requestTiming(new Request('http://localhost'), next)
-    ).resolves.toBe(response)
+    await expect(requestTiming(new Request(TEST_ORIGIN), next)).resolves.toBe(
+      response
+    )
     expect(response.headers.get('server-timing')).toBe('app;dur=12.5')
     expect(next).toHaveBeenCalledExactlyOnceWith()
   })
@@ -36,9 +33,9 @@ describe('middlewares de requisição', () => {
       throw new Error('Security headers middleware not found')
     }
 
-    await expect(
-      securityHeaders(new Request('http://localhost'), next)
-    ).resolves.toBe(response)
+    await expect(securityHeaders(new Request(TEST_ORIGIN), next)).resolves.toBe(
+      response
+    )
     expect(response.headers.get('x-content-type-options')).toBe('nosniff')
     expect(response.headers.get('referrer-policy')).toBe(
       'strict-origin-when-cross-origin'
@@ -50,7 +47,7 @@ describe('middlewares de requisição', () => {
     const requestId = '12345678-1234-4234-8234-123456789abc'
     vi.spyOn(crypto, 'randomUUID').mockReturnValue(requestId)
     const event = {
-      request: new Request('http://localhost'),
+      request: new Request(TEST_ORIGIN),
       locals: {} as { requestId?: string },
       response: { headers: new Headers() }
     }
@@ -76,22 +73,33 @@ describe('middlewares de requisição', () => {
     const apiHandler = middleware[API_HANDLER_INDEX]
     if (!apiHandler) throw new Error('API handler middleware not found')
 
-    await expect(
-      apiHandler(new Request('http://localhost/pagina'), next)
-    ).resolves.toBe(response)
+    const request = new Request(new URL('/pagina', TEST_ORIGIN))
+
+    await expect(apiHandler(request, next)).resolves.toBe(response)
     expect(next).toHaveBeenCalledOnce()
   })
 
   it('continua a requisição mesmo sem contexto', async () => {
+    // Em produção o servidor instala o armazenamento do contexto antes da
+    // primeira requisição. Um escopo vazio faz o mesmo aqui, sem depender da
+    // ordem em que os testes rodam.
+    provideRequestEvent(
+      {
+        request: new Request(TEST_ORIGIN),
+        locals: {},
+        response: { headers: new Headers() }
+      },
+      vi.fn()
+    )
     const warn = vi.spyOn(console, 'warn').mockImplementation(vi.fn())
     const response = new Response()
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
     const requestContext = middleware[REQUEST_CONTEXT_INDEX]
     if (!requestContext) throw new Error('Request context middleware not found')
 
-    await expect(
-      requestContext(new Request('http://localhost'), next)
-    ).resolves.toBe(response)
+    await expect(requestContext(new Request(TEST_ORIGIN), next)).resolves.toBe(
+      response
+    )
     expect(next).toHaveBeenCalledExactlyOnceWith()
     expect(warn).toHaveBeenCalledExactlyOnceWith(
       expect.stringContaining('RequestEvent is missing.')

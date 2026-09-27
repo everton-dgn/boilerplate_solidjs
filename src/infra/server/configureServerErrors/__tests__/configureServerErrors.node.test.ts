@@ -21,7 +21,6 @@ function invoke(wrap: WrapInvocationHook, run: () => unknown): unknown {
 }
 
 function throwValue(value: unknown): never {
-  // oxlint-disable-next-line typescript/only-throw-error -- Sinais de controle do Solid são Response, não Error.
   throw value
 }
 
@@ -40,7 +39,6 @@ describe('registro central da política de erros', () => {
     wrap = registered.wrapInvocation
   })
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
-  afterEach(() => vi.restoreAllMocks())
 
   it('registra somente wrapInvocation e preserva sinais de controle', () => {
     expect(Object.keys(config ?? {})).toStrictEqual(['wrapInvocation'])

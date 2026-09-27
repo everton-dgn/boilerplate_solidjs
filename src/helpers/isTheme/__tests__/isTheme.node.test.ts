@@ -1,4 +1,3 @@
-/* oxlint-disable vitest/prefer-to-be-truthy, vitest/prefer-to-be-falsy -- Mantém os booleanos exatos exigidos pelo prefer-strict-boolean-matchers. */
 import { isTheme } from '../index.ts'
 
 describe('validação da preferência de tema', () => {

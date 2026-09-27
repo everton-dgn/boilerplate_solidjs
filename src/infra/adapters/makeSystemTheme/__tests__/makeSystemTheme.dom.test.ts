@@ -8,11 +8,6 @@ describe('preferência de tema do sistema', () => {
     vi.stubGlobal('matchMedia', () => media)
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-    vi.unstubAllGlobals()
-  })
-
   it('informa a preferência atual ao iniciar', () => {
     const receive = vi.fn<() => void>()
     const system = makeSystemTheme(receive)

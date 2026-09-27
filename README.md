@@ -574,6 +574,8 @@ build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
 | `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)                  |
 | `pnpm test:browser:install` | Baixar o Chromium do Playwright                             |
 | `pnpm test:watch`           | Testes em modo de observação                                |
+| `pnpm test:shuffle`         | Testes em ordem aleatória, para achar dependência de ordem  |
+| `pnpm test:ui`              | Vitest UI com cobertura; use a URL impressa (traz o token)  |
 | `pnpm validate`             | check:ci + typecheck:node + test:coverage + tooling + build |
 | `pnpm commitlint`           | Validar mensagem de commit                                  |
 
@@ -581,20 +583,35 @@ Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
 comando embutido; `vp run <script>` executa um script do `package.json`. Os dois
 podem divergir, então confira o `package.json` antes de rodar direto.
 
-`pnpm lint` e `pnpm check:ci` usam as tarefas `lint-project` e `check-project`
-do `vite.config.ts`. O Vite+ reaproveita resultados bem-sucedidos quando os
-arquivos lidos, as listagens de diretórios, os argumentos e as variáveis de
-ambiente selecionadas continuam iguais. O rastreamento de arquivos permanece
-automático, incluindo dependências e tipos gerados. As tarefas incluem
-`NODE_ENV`, `NODE_OPTIONS` e `PATH` na chave do cache; o Vite também registra as
-variáveis que carrega. A configuração do servidor limita `loadEnv` aos prefixos
-`HOST` e `PORT`, para não registrar todo o ambiente. Variáveis de sessão sem
-relação com essas verificações não invalidam o resultado.
+`pnpm lint`, `pnpm lint:css`, `pnpm check:ci` e `pnpm dead-code` usam as tarefas
+com cache `lint-project`, `lint-css`, `check-project` e `dead-code-project` do
+`vite.config.ts`. `pnpm typecheck` usa `typecheck-app` e `typecheck-node`, e
+`pnpm typecheck:node` executa somente a segunda tarefa; `pnpm test:tooling` usa
+a tarefa `test-tooling`, sem cache, porque os testes dependem de diretórios
+temporários que o cache não rastreia. O Vite+ reaproveita resultados
+bem-sucedidos quando os arquivos lidos, as listagens de diretórios, os
+argumentos e as variáveis de ambiente selecionadas continuam iguais. As tarefas
+de lint incluem `NODE_ENV` na chave do cache; `PATH` e `NODE_OPTIONS` chegam ao
+processo sem invalidar o resultado. O Vite também registra as variáveis que
+carrega. A configuração do servidor limita `loadEnv` aos prefixos `HOST` e
+`PORT`, para não registrar todo o ambiente.
+
+O rastreamento automático registra os arquivos que o lint type-aware lê,
+inclusive os tipos em `node_modules`, mas não vê as leituras do `tsc` nativo.
+Por isso `typecheck-app` e `typecheck-node` declaram as entradas explicitamente,
+incluindo fontes, configurações, manifests e locks. O arquivo
+`node_modules/.pnpm/lock.yaml` representa os tipos instalados. O Knip combina
+rastreamento automático com entradas explícitas de fontes, ferramentas e
+dependências, incluindo a descoberta de novas rotas. Ao criar uma tarefa com
+cache, confira com duas execuções que uma mudança num arquivo lido invalida o
+resultado.
 
 O cache mantém `typeAware` e `typeCheck` ativos e identifica na saída quando
 reproduz um resultado anterior. Para executar tudo novamente, use
-`vp run --no-cache lint` ou `vp run --no-cache check:ci`. `check:fix`,
-`typecheck` e as suítes de testes mantêm seus comandos próprios.
+`vp run --no-cache lint` ou `vp run --no-cache check:ci`. Para ignorar o cache
+das outras tarefas, use `vp run --no-cache typecheck`,
+`vp run --no-cache lint:css` ou `vp run --no-cache dead-code`. `check:fix`,
+build e as suítes do Vitest mantêm seus comandos próprios.
 
 <br />
 
@@ -627,17 +644,34 @@ teste, cobertura, UI e watch.
 | `*.dom.test.{ts,tsx}`     | happy-dom     | Componentes sem dependência de browser real |
 | `*.browser.test.{ts,tsx}` | Chromium real | Interação, layout e APIs de browser         |
 
+Testes só de tipos (`expectTypeOf`) usam `Nome[.qualificador].test-d.ts`. Nenhum
+projeto do Vitest inclui esse sufixo, e o `pnpm typecheck` verifica esses
+arquivos. Rodar um deles no Vitest falharia no `expect.requireAssertions`,
+porque `expectTypeOf` não conta como asserção em runtime.
+
 Os projetos `node` e `dom` usam `pool: 'threads'` e `css: false`. O projeto
 `node` não carrega happy-dom nem os plugins de componentes. O projeto `dom`
 carrega happy-dom, Solid e ícones, sem Nitro ou a configuração de SSR. O projeto
-`browser` usa Chromium com CSS habilitado e o mesmo PostCSS da aplicação.
+`browser` usa Chromium com CSS habilitado e o mesmo Lightning CSS da aplicação.
 Importe o CSS no teste quando precisar validar estilos.
 
-A configuração compartilhada limpa o histórico de mocks entre testes e exclui
-arquivos E2E, `node_modules` e `playwright`. `passWithNoTests: false` faz a
-execução falhar quando nenhum teste é encontrado. Os projetos declaram suas
-opções compartilhadas explicitamente, sem herdar a configuração raiz por
-`extends`.
+A configuração compartilhada limpa o histórico de mocks e, antes de cada teste,
+restaura spies, globais e variáveis de ambiente substituídos (`restoreMocks`,
+`unstubGlobals` e `unstubEnvs`), então os testes não precisam de `afterEach`
+para isso. `expect.requireAssertions` faz falhar o teste que termina sem nenhuma
+asserção. `expect.poll.interval` baixa de 50ms para 10ms o intervalo entre
+checagens de `expect.poll` e `expect.element`; `vi.waitUntil` não lê essa opção
+e recebe o intervalo em cada chamada. `fsModuleCache` guarda as transformações
+em `node_modules/.vitest-cache`, então só a primeira execução após uma mudança
+paga o custo. O isolamento por arquivo (`isolate`, padrão do Vitest) é
+intencional: não use `isolate: false`, mesmo quando o Vitest sugerir o ganho de
+tempo. Com ele, arquivos passam a compartilhar `document`, cookies e o estado
+dos módulos, e um teste pode passar ou falhar conforme a ordem. No GitHub
+Actions, o reporter `github-actions` anota as falhas no PR. A configuração
+também exclui arquivos E2E, `node_modules` e `playwright`.
+`passWithNoTests: false` faz a execução falhar quando nenhum teste é encontrado.
+Essas opções ficam na configuração raiz, e os projetos as herdam pelo `extends`
+padrão do Vitest, declarando só o que muda.
 
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
 `vite-plus/prefer-vite-plus-imports` bloqueia o import direto). O contexto de
@@ -650,10 +684,17 @@ requisição dos middlewares é testado com `provideRequestEvent` de
 
 ## Processamento de CSS
 
-`vite.config.ts` usa `postcss-preset-env` com stage 3, Autoprefixer e custom
-properties habilitados, seguindo as opções do DevInsights. O Vite+ cuida dos
-imports de CSS e da minificação no build. A configuração é carregada em
-`css.postcss` e também se aplica aos builds Nitro para Node e Vercel.
+`vite.config.ts` usa o Lightning CSS (`css.transformer: 'lightningcss'`) para
+transpilar nesting, `light-dark()` e prefixos para os navegadores do Baseline
+padrão do Vite, rebaixando cores modernas só quando o alvo exigir.
+`light-dark()` vira variáveis `--lightningcss-light`/`--lightningcss-dark`,
+alternadas pela media query `prefers-color-scheme` e pelas regras
+`.light`/`.dark` de `src/theme/tokens/colors.css`. O `color-scheme` inline
+aplicado por `applyTheme` não altera essas variáveis: a troca manual de tema
+depende das classes no `<html>`, então mantenha a declaração de `color-scheme`
+nessas regras. O Vite+ cuida dos imports de CSS e da minificação no build, e a
+mesma configuração vale para os builds Nitro e para o projeto `browser` do
+Vitest.
 
 ## SVGs locais como componentes
 
@@ -748,8 +789,10 @@ os hooks.
 - As versões de dependências são fixadas sem `^` (`savePrefix` vazio) para
   evitar quebras silenciosas. Consulte os arquivos de dependências para saber
   quais estão instaladas.
-- `vite` e `vitest` vêm do catálogo em `pnpm-workspace.yaml`; `vite` resolve
-  para o core do Vite+. Atualize os dois lá, não no `package.json`.
+- `vite-plus`, `vite`, `vitest` e os pacotes `@vitest/*` vêm do catálogo em
+  `pnpm-workspace.yaml`; `vite` resolve para o core do Vite+. Atualize as
+  versões lá, não no `package.json`, e mantenha os `@vitest/*` na versão exata
+  do Vitest embutido no Vite+. O CI lê a versão do Vite+ desse catálogo.
 - Commits devem seguir Conventional Commits.
 - O lint é type-aware e roda com `typeCheck: true`; erros de tipo aparecem no
   `pnpm lint` além do `pnpm typecheck`.

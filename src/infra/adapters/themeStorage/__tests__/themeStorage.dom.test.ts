@@ -1,5 +1,4 @@
 /* oxlint-disable unicorn/no-document-cookie -- Os testes exercitam a persistência e o bloqueio de cookie diretamente. */
-/* oxlint-disable vitest/prefer-to-be-truthy, vitest/prefer-to-be-falsy -- Mantém os booleanos exatos exigidos pelo prefer-strict-boolean-matchers. */
 import { THEME_COOKIE_NAME } from '@/constants/theme.ts'
 import { blockCookie } from '@/tests/helpers/blockCookie/index.ts'
 
@@ -11,8 +10,6 @@ describe('persistência da preferência no cookie', () => {
   })
 
   afterEach(() => {
-    vi.restoreAllMocks()
-    vi.unstubAllGlobals()
     document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
   })
 

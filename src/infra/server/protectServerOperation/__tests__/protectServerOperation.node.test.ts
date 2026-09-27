@@ -22,7 +22,6 @@ function thrownValue(invocation: Invocation): unknown {
 }
 
 function throwValue(value: unknown): never {
-  // oxlint-disable-next-line typescript/only-throw-error -- Exercita também valores arbitrários lançados por terceiros e sinais de controle.
   throw value
 }
 
@@ -40,7 +39,6 @@ function expectPublicFailure(error: unknown): void {
 
 describe('proteção de operações no servidor', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
-  afterEach(() => vi.restoreAllMocks())
 
   it('preserva o retorno síncrono e remove detalhes de exceções', () => {
     const data = { ok: true }
@@ -225,7 +223,6 @@ describe('proteção de operações no servidor', () => {
 
 describe('estrutura dos dados públicos', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
-  afterEach(() => vi.restoreAllMocks())
 
   it('inspeciona setters, chaves Symbol e propriedades não enumeráveis', () => {
     const secret = Symbol('secret')
