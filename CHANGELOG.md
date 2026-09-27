@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 1.6.0 - 2026-09-27
+
+### Added
+
+- enable isolate mode for tests (c9ae7d9)
+
+### Fixed
+
+- return forwarded promises directly (b6f9253)
+
 ## 1.5.0 - 2026-09-25
 
 ### Added
