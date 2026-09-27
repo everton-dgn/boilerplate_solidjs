@@ -193,6 +193,7 @@ export default defineConfig(({ mode }) => {
     lint,
     test: {
       pool: 'threads',
+      isolate: true,
       css: false,
       globals: true,
       passWithNoTests: false,
