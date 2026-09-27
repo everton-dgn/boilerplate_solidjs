@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.5.0 - 2026-09-25
+
+### Added
+
+- add route metadata, structured data and discovery endpoints (6969812)
+
+### Fixed
+
+- address SolidJS review findings (18d69b4)
+- improve sandbox cleanup in release tests (db1b053)
+
 ## 1.4.0 - 2026-09-22
 
 ### Added
