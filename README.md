@@ -583,28 +583,35 @@ Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
 comando embutido; `vp run <script>` executa um script do `package.json`. Os dois
 podem divergir, então confira o `package.json` antes de rodar direto.
 
-`pnpm lint`, `pnpm check:ci` e `pnpm typecheck:node` usam as tarefas com cache
-`lint-project`, `check-project` e `typecheck-node` do `vite.config.ts`;
-`pnpm test:tooling` usa a tarefa `test-tooling`, sem cache, porque os testes
-dependem de diretórios temporários que o cache não rastreia. O Vite+ reaproveita
-resultados bem-sucedidos quando os arquivos lidos, as listagens de diretórios,
-os argumentos e as variáveis de ambiente selecionadas continuam iguais. As
-tarefas de lint incluem `NODE_ENV` na chave do cache; `PATH` e `NODE_OPTIONS`
-chegam ao processo sem invalidar o resultado. O Vite também registra as
-variáveis que carrega. A configuração do servidor limita `loadEnv` aos prefixos
-`HOST` e `PORT`, para não registrar todo o ambiente.
+`pnpm lint`, `pnpm lint:css`, `pnpm check:ci` e `pnpm dead-code` usam as tarefas
+com cache `lint-project`, `lint-css`, `check-project` e `dead-code-project` do
+`vite.config.ts`. `pnpm typecheck` usa `typecheck-app` e `typecheck-node`, e
+`pnpm typecheck:node` executa somente a segunda tarefa; `pnpm test:tooling` usa
+a tarefa `test-tooling`, sem cache, porque os testes dependem de diretórios
+temporários que o cache não rastreia. O Vite+ reaproveita resultados
+bem-sucedidos quando os arquivos lidos, as listagens de diretórios, os
+argumentos e as variáveis de ambiente selecionadas continuam iguais. As tarefas
+de lint incluem `NODE_ENV` na chave do cache; `PATH` e `NODE_OPTIONS` chegam ao
+processo sem invalidar o resultado. O Vite também registra as variáveis que
+carrega. A configuração do servidor limita `loadEnv` aos prefixos `HOST` e
+`PORT`, para não registrar todo o ambiente.
 
 O rastreamento automático registra os arquivos que o lint type-aware lê,
 inclusive os tipos em `node_modules`, mas não vê as leituras do `tsc` nativo.
-Por isso `typecheck-node` declara as entradas explicitamente, com
-`node_modules/.pnpm/lock.yaml` representando os tipos instalados. Ao criar uma
-tarefa com cache, confira com duas execuções que uma mudança num arquivo lido
-invalida o resultado.
+Por isso `typecheck-app` e `typecheck-node` declaram as entradas explicitamente,
+incluindo fontes, configurações, manifests e locks. O arquivo
+`node_modules/.pnpm/lock.yaml` representa os tipos instalados. O Knip combina
+rastreamento automático com entradas explícitas de fontes, ferramentas e
+dependências, incluindo a descoberta de novas rotas. Ao criar uma tarefa com
+cache, confira com duas execuções que uma mudança num arquivo lido invalida o
+resultado.
 
 O cache mantém `typeAware` e `typeCheck` ativos e identifica na saída quando
 reproduz um resultado anterior. Para executar tudo novamente, use
-`vp run --no-cache lint` ou `vp run --no-cache check:ci`. `check:fix`,
-`typecheck` e as suítes do Vitest mantêm seus comandos próprios.
+`vp run --no-cache lint` ou `vp run --no-cache check:ci`. Para ignorar o cache
+das outras tarefas, use `vp run --no-cache typecheck`,
+`vp run --no-cache lint:css` ou `vp run --no-cache dead-code`. `check:fix`,
+build e as suítes do Vitest mantêm seus comandos próprios.
 
 <br />
 

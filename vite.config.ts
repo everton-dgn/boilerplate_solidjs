@@ -100,6 +100,27 @@ export default defineConfig(({ mode }) => {
   return {
     run: {
       tasks: {
+        'lint-css': {
+          command: 'node tooling/css/check.ts',
+          cache: { env: ['NODE_ENV'] }
+        },
+        'dead-code-project': {
+          command:
+            'pnpm knip --config tooling/knip.ts && pnpm knip --config tooling/knip.ts --strict && pnpm knip --config tooling/knip.ts --cycles',
+          cache: {
+            env: ['NODE_ENV'],
+            input: [
+              { auto: true },
+              'src/**',
+              'tooling/**',
+              'package.json',
+              'pnpm-workspace.yaml',
+              'pnpm-lock.yaml',
+              'node_modules/.pnpm/lock.yaml'
+            ],
+            output: []
+          }
+        },
         'lint-project': {
           command: 'node tooling/css/check.ts && vp lint',
           cache: { env: ['NODE_ENV'] }
@@ -111,6 +132,24 @@ export default defineConfig(({ mode }) => {
         // O rastreamento automático não vê as leituras do tsc nativo, então as
         // entradas ficam explícitas. O lock do node_modules muda a cada install,
         // cobrindo os tipos instalados. Com noEmit, nada precisa ser restaurado.
+        'typecheck-app': {
+          command: 'tsc --project tsconfig.json',
+          cache: {
+            input: [
+              'src/**',
+              'env.ts',
+              'solid-env.d.ts',
+              'tsconfig.json',
+              'vite.config.ts',
+              'tooling/**/*.ts',
+              'package.json',
+              'pnpm-workspace.yaml',
+              'pnpm-lock.yaml',
+              'node_modules/.pnpm/lock.yaml'
+            ],
+            output: []
+          }
+        },
         'typecheck-node': {
           command: 'tsc --project tsconfig.node.json',
           cache: {
@@ -120,6 +159,8 @@ export default defineConfig(({ mode }) => {
               'vite.config.ts',
               'tooling/**/*.ts',
               'package.json',
+              'pnpm-workspace.yaml',
+              'pnpm-lock.yaml',
               'node_modules/.pnpm/lock.yaml'
             ],
             output: []
