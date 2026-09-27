@@ -677,15 +677,16 @@ requisição dos middlewares é testado com `provideRequestEvent` de
 ## Processamento de CSS
 
 `vite.config.ts` usa o Lightning CSS (`css.transformer: 'lightningcss'`) para
-transpilar nesting, `light-dark()` e prefixos para os mesmos navegadores-alvo do
-JavaScript, rebaixando cores modernas só quando o alvo exigir. `light-dark()`
-vira variáveis `--lightningcss-light`/`--lightningcss-dark`, alternadas pela
-media query `prefers-color-scheme` e pelas regras `.light`/`.dark` de
-`src/theme/tokens/colors.css`. O `color-scheme` inline aplicado por `applyTheme`
-não altera essas variáveis: a troca manual de tema depende das classes no
-`<html>`, então mantenha a declaração de `color-scheme` nessas regras. O Vite+
-cuida dos imports de CSS e da minificação no build, e a mesma configuração vale
-para os builds Nitro e para o projeto `browser` do Vitest.
+transpilar nesting, `light-dark()` e prefixos para os navegadores do Baseline
+padrão do Vite, rebaixando cores modernas só quando o alvo exigir.
+`light-dark()` vira variáveis `--lightningcss-light`/`--lightningcss-dark`,
+alternadas pela media query `prefers-color-scheme` e pelas regras
+`.light`/`.dark` de `src/theme/tokens/colors.css`. O `color-scheme` inline
+aplicado por `applyTheme` não altera essas variáveis: a troca manual de tema
+depende das classes no `<html>`, então mantenha a declaração de `color-scheme`
+nessas regras. O Vite+ cuida dos imports de CSS e da minificação no build, e a
+mesma configuração vale para os builds Nitro e para o projeto `browser` do
+Vitest.
 
 ## SVGs locais como componentes
 

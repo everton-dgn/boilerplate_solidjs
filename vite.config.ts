@@ -74,8 +74,8 @@ const appPlugins = (mode: string) =>
     ]
   })
 
-// O Lightning CSS transpila nesting, light-dark() e prefixos para os mesmos
-// navegadores-alvo do JavaScript (Baseline do Vite).
+// O Lightning CSS transpila nesting, light-dark() e prefixos para os navegadores
+// do Baseline padrão do Vite.
 const css = {
   transformer: 'lightningcss'
 } as const
