@@ -1,4 +1,4 @@
-import type { JSX } from '@solidjs/web'
+import { render, type JSX } from '@solidjs/web'
 import { Loading } from 'solid-js'
 
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
@@ -41,7 +41,6 @@ vi.mock(import('virtual:file-routes'), async importOriginal => {
   const manifest = await importOriginal()
 
   const [layout] = manifest.pageRoutes
-  assert(layout, 'O layout base precisa existir no manifesto')
 
   for (const route of layout.children) {
     if (route.id === '/(home)/') {
@@ -56,6 +55,10 @@ vi.mock(import('virtual:file-routes'), async importOriginal => {
   return manifest
 })
 
+// Prazo do aquecimento: cobre o carregamento a frio dos módulos, não o
+// comportamento verificado pelos casos.
+const WARM_UP_TIMEOUT_MS = 5000
+
 // TODO: Em desenvolvimento, o Errored do Solid registra no console o erro que a
 // boundary capturou quando o fallback não recebe
 // parâmetros. O teste fixa esse comportamento em vez de deixá-lo no stderr.
@@ -68,8 +71,45 @@ function expectBoundaryReport(message: string): void {
 }
 
 describe('feedback de erro da aplicação', () => {
+  // O primeiro render do Router carrega as rotas lazy. Sem aquecimento, esse
+  // custo cai no primeiro caso que chega ao layout e estoura o expect.poll
+  // quando a suíte roda em paralelo com cobertura.
+  beforeAll(async () => {
+    const consoleError = vi.spyOn(console, 'error')
+    renderHome.mockReturnValue(<h1>Página inicial</h1>)
+    const host = document.createElement('div')
+    document.body.append(host)
+    const dispose = render(
+      () => (
+        <Loading>
+          <App />
+        </Loading>
+      ),
+      host
+    )
+    try {
+      await vi.waitFor(
+        () => {
+          assert(
+            host.querySelector('h1'),
+            'A página inicial precisa renderizar'
+          )
+        },
+        { timeout: WARM_UP_TIMEOUT_MS }
+      )
+      assert.lengthOf(
+        consoleError.mock.calls,
+        0,
+        'O aquecimento não pode reportar erros'
+      )
+    } finally {
+      dispose()
+      host.remove()
+      renderHome.mockReset()
+      consoleError.mockRestore()
+    }
+  })
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
-  afterEach(() => vi.restoreAllMocks())
 
   it.each([
     ['provider', checkProvider],

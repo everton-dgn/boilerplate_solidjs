@@ -28,7 +28,8 @@ describe('test filename policy', () => {
     'tooling/release/__tests__/automatic-release.test.ts',
     'tooling/css/__tests__/cssPolicy.test.ts',
     'tooling/css/__tests__/testFilename.test.ts',
-    'src/components/NewWidget/__tests__/NewWidget.focus.dom.test.tsx'
+    'src/components/NewWidget/__tests__/NewWidget.focus.dom.test.tsx',
+    'src/primitives/createSeo/__tests__/createSeo.test-d.ts'
   ]
 
   const invalidTestPaths = [
@@ -54,7 +55,12 @@ describe('test filename policy', () => {
     'src/Unknown.dom.test.tsx',
     'src/components/Button/__tests__/index.ts',
     'tooling/release/__tests__/automaticRelease.test.ts',
-    'tooling/css/__tests__/audit.test.ts'
+    'tooling/css/__tests__/audit.test.ts',
+    'src/primitives/createSeo/__tests__/seo.test-d.ts',
+    'src/tests/pages/Home/Home.test-d.ts',
+    'tooling/release/__tests__/versioning.test-d.ts',
+    'src/Unknown.test-d.ts',
+    'tooling/release/versioning.test-d.ts'
   ]
 
   const ignoredPaths = [

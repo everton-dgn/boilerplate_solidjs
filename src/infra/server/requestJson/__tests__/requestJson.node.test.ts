@@ -23,10 +23,6 @@ function fetchMock(
 
 describe('transporte JSON protegido', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
-  afterEach(() => {
-    vi.restoreAllMocks()
-    vi.unstubAllGlobals()
-  })
 
   it('omite campos extras no sucesso e repassa url, init e timeout ao fetch', async () => {
     const mock = fetchMock(

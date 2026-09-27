@@ -43,6 +43,7 @@ type Context = {
   source: string
   root: string
   date: string
+  manifest: Record<string, unknown>
 }
 type Prepared = {
   plan: ReleasePlan
@@ -88,7 +89,10 @@ async function context(): Promise<Context> {
   const trusted = await git('rev-parse', 'HEAD')
   await git('merge-base', '--is-ancestor', trusted, 'origin/main')
   const date = await git('show', '-s', '--format=%cI', source)
-  return { repository, root, source, date }
+  const rawManifest = await git('show', `${source}:package.json`)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- O manifest é lido do commit validado pela CI; a versão é validada no createPlan.
+  const manifest = JSON.parse(rawManifest) as Record<string, unknown>
+  return { repository, root, source, date, manifest }
 }
 
 async function mainSha(ctx: Context): Promise<string> {
@@ -97,10 +101,10 @@ async function mainSha(ctx: Context): Promise<string> {
 }
 
 async function createPlan(ctx: Context): Promise<ReleasePlan | undefined> {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- O manifest é lido do commit validado pela CI; a versão é validada pelo planRelease.
-  const manifest = JSON.parse(
-    await git('show', `${ctx.source}:package.json`)
-  ) as { version: string }
+  const { version } = ctx.manifest
+  if (typeof version !== 'string') {
+    throw new TypeError('Invalid package.json version.')
+  }
   const tags = await git(
     'tag',
     '--merged',
@@ -121,7 +125,7 @@ async function createPlan(ctx: Context): Promise<ReleasePlan | undefined> {
     })
   }
   const plan = planRelease({
-    currentVersion: manifest.version,
+    currentVersion: version,
     baselineTag,
     commits,
     changelog: await git('show', `${ctx.source}:CHANGELOG.md`),
@@ -148,14 +152,10 @@ async function expectedFiles(
   ctx: Context,
   plan: ReleasePlan
 ): Promise<{ path: string; content: string }[]> {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- O manifest é lido do commit validado pela CI; a versão é validada pelo planRelease.
-  const manifest = JSON.parse(
-    await git('show', `${ctx.source}:package.json`)
-  ) as Record<string, unknown>
   const files = [
     {
       path: 'package.json',
-      content: `${JSON.stringify({ ...manifest, version: plan.version }, null, JSON_INDENT)}\n`
+      content: `${JSON.stringify({ ...ctx.manifest, version: plan.version }, null, JSON_INDENT)}\n`
     },
     { path: 'CHANGELOG.md', content: plan.changelog }
   ]

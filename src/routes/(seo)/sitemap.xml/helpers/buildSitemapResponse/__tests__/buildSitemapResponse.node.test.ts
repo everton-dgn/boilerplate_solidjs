@@ -12,14 +12,26 @@ const HTTP_SERVICE_UNAVAILABLE = 503
 const SITEMAP_BYTE_LIMIT = 52_428_800
 const BASE_PATH_LENGTH = 1200
 
-function entriesAtByteSize(size: number): SitemapEntry[] {
-  const entries = Array.from({ length: 40_000 }, (_, index) => ({
+function baseEntries(): SitemapEntry[] {
+  return Array.from({ length: 40_000 }, (_, index) => ({
     path: `/page-${index}-${'a'.repeat(BASE_PATH_LENGTH)}`
   }))
-  const bytes = new TextEncoder().encode(
-    buildSitemap({ entries, siteUrl: SITE_URL })
+}
+
+// O XML base tem dezenas de MB; medir uma vez evita repetir o custo em cada
+// teste de limite.
+let baseBytes: number | undefined
+
+function measureBaseBytes(): number {
+  baseBytes ??= new TextEncoder().encode(
+    buildSitemap({ entries: baseEntries(), siteUrl: SITE_URL })
   ).byteLength
-  const padding = size - bytes
+  return baseBytes
+}
+
+function entriesAtByteSize(size: number): SitemapEntry[] {
+  const entries = baseEntries()
+  const padding = size - measureBaseBytes()
   const perEntry = Math.floor(padding / entries.length)
   for (const entry of entries) entry.path += 'a'.repeat(perEntry)
   const [first] = entries

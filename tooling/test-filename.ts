@@ -21,7 +21,7 @@ function testFilenameError(file: string): string | undefined {
   const inPages =
     directory === 'src/tests/pages' || directory.startsWith('src/tests/pages/')
   const inTests = directory.split('/').includes('__tests__') || inPages
-  if (!/\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(basename) && !inTests) {
+  if (!/\.(?:test|spec|test-d)\.[cm]?[jt]sx?$/u.test(basename) && !inTests) {
     return undefined
   }
   const tooling = normalized.startsWith('tooling/')
@@ -29,11 +29,11 @@ function testFilenameError(file: string): string | undefined {
     ? /^(?<subject>[^.]+)(?<qualifiers>(?:\.[a-z][a-zA-Z0-9]*)*)\.test\.ts$/u.exec(
         basename
       )
-    : /^(?<subject>[^.]+)(?<qualifiers>(?:\.[a-z][a-zA-Z0-9]*)*)\.(?<environment>node|dom|browser|e2e)\.test\.tsx?$/u.exec(
+    : /^(?<subject>[^.]+)(?<qualifiers>(?:\.[a-z][a-zA-Z0-9]*)*)(?:\.(?<environment>node|dom|browser|e2e)\.test|\.test-d)\.tsx?$/u.exec(
         basename
       )
   if (!match?.groups) {
-    return 'Use Nome[.qualificador].ambiente.test.ts(x) em src ou Nome[.qualificador].test.ts em tooling.'
+    return 'Use Nome[.qualificador].ambiente.test.ts(x) ou Nome[.qualificador].test-d.ts(x) para tipos em src, ou Nome[.qualificador].test.ts em tooling.'
   }
   const { subject, environment } = match.groups
   if (inPages && environment !== 'e2e') {

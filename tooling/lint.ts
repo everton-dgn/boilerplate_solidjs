@@ -7,6 +7,8 @@ import backendPolicy, {
 const TEST_FILES = [
   '**/*.test.ts',
   '**/*.test.tsx',
+  '**/*.test-d.ts',
+  '**/*.test-d.tsx',
   '**/*.spec.ts',
   '**/*.spec.tsx',
   '**/test/**',
@@ -43,7 +45,9 @@ export const lint: NonNullable<UserConfig['lint']> = {
   ],
   options: {
     typeAware: true,
-    typeCheck: true
+    typeCheck: true,
+    denyWarnings: true,
+    reportUnusedDisableDirectives: 'error'
   },
   overrides: [
     ...backendPolicy,
@@ -61,7 +65,11 @@ export const lint: NonNullable<UserConfig['lint']> = {
       rules: { 'import/no-nodejs-modules': 'off' }
     },
     {
-      files: ['src/**/*.test.{ts,tsx}', 'tooling/**/*.test.ts'],
+      files: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.test-d.{ts,tsx}',
+        'tooling/**/*.test.ts'
+      ],
       rules: { 'unicorn/filename-case': 'off' }
     },
     {
@@ -627,7 +635,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'typescript/prefer-includes': 'error',
     'typescript/prefer-literal-enum-member': 'error',
     'typescript/prefer-namespace-keyword': 'error',
-    'typescript/prefer-nullish-coalescing': 'off',
+    'typescript/prefer-nullish-coalescing': 'error',
     'typescript/prefer-optional-chain': 'error',
     'typescript/prefer-promise-reject-errors': 'error',
     'typescript/prefer-readonly': 'error',
@@ -644,7 +652,14 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'typescript/restrict-plus-operands': 'error',
     'typescript/restrict-template-expressions': 'error',
     'typescript/return-await': 'error',
-    'typescript/strict-boolean-expressions': 'off',
+    'typescript/strict-boolean-expressions': [
+      'error',
+      {
+        allowNullableBoolean: true,
+        allowNullableString: true,
+        allowNullableNumber: true
+      }
+    ],
     'typescript/strict-void-return': 'off',
     'typescript/switch-exhaustiveness-check': 'error',
     'typescript/triple-slash-reference': 'error',

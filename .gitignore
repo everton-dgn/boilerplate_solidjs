@@ -15,7 +15,6 @@ dist-ssr
 coverage
 playwright-report
 test-results
-.vitest-attachments/
 /plans/
 .tsbuild
 solid-env.d.ts
@@ -33,3 +32,4 @@ solid-env.d.ts
 *.sw?
 
 !.env*
+.vitest/

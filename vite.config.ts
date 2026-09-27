@@ -1,7 +1,6 @@
 import { env, loadEnvFile } from 'node:process'
 import { fileURLToPath } from 'node:url'
 
-import postcssPresetEnv from 'postcss-preset-env'
 import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
@@ -9,15 +8,6 @@ import { fmt } from './tooling/fmt.ts'
 import { lint } from './tooling/lint.ts'
 
 const resolve = { tsconfigPaths: true }
-
-const shared = {
-  pool: 'threads',
-  css: false,
-  globals: true,
-  passWithNoTests: false,
-  clearMocks: true,
-  exclude: ['**/node_modules/**', '**/playwright/**', '**/*.e2e.test.{ts,tsx}']
-}
 
 // Os plugins do Vite só são importados quando o Vite roda de fato. vp lint,
 // fmt, check, staged e o tooling do editor leem a config sem pagar esse custo
@@ -84,20 +74,11 @@ const appPlugins = (mode: string) =>
     ]
   })
 
+// O Lightning CSS transpila nesting, light-dark() e prefixos para os mesmos
+// navegadores-alvo do JavaScript (Baseline do Vite).
 const css = {
-  postcss: {
-    plugins: [
-      postcssPresetEnv({
-        stage: 3,
-        autoprefixer: {},
-        features: {
-          'custom-properties': true,
-          'light-dark-function': true
-        }
-      })
-    ]
-  }
-}
+  transformer: 'lightningcss'
+} as const
 
 export default defineConfig(({ mode }) => {
   const localEnv = loadEnv(mode, import.meta.dirname, ['HOST', 'PORT'])
@@ -118,17 +99,38 @@ export default defineConfig(({ mode }) => {
 
   return {
     run: {
-      cache: {
-        scripts: true
-      },
       tasks: {
         'lint-project': {
           command: 'node tooling/css/check.ts && vp lint',
-          env: ['NODE_ENV', 'NODE_OPTIONS', 'PATH']
+          cache: { env: ['NODE_ENV'] }
         },
         'check-project': {
           command: 'node tooling/css/check.ts && vp check',
-          env: ['NODE_ENV', 'NODE_OPTIONS', 'PATH']
+          cache: { env: ['NODE_ENV'] }
+        },
+        // O rastreamento automático não vê as leituras do tsc nativo, então as
+        // entradas ficam explícitas. O lock do node_modules muda a cada install,
+        // cobrindo os tipos instalados. Com noEmit, nada precisa ser restaurado.
+        'typecheck-node': {
+          command: 'tsc --project tsconfig.node.json',
+          cache: {
+            input: [
+              'tsconfig.json',
+              'tsconfig.node.json',
+              'vite.config.ts',
+              'tooling/**/*.ts',
+              'package.json',
+              'node_modules/.pnpm/lock.yaml'
+            ],
+            output: []
+          }
+        },
+        // Os testes criam repositórios e fixtures em diretórios temporários que
+        // o cache não rastreia; cada execução precisa rodar de verdade.
+        'test-tooling': {
+          command:
+            "node --test --test-timeout=60000 'tooling/**/__tests__/*.test.ts'",
+          cache: false
         }
       }
     },
@@ -141,13 +143,27 @@ export default defineConfig(({ mode }) => {
     },
     css,
     resolve,
-    server,
+    // Repassa ao terminal os erros e avisos do navegador durante o vp dev.
+    server: { ...server, forwardConsole: true },
     preview: server,
     plugins: mode === 'test' ? [] : appPlugins(mode),
     fmt,
     lint,
     test: {
-      ...shared,
+      pool: 'threads',
+      css: false,
+      globals: true,
+      passWithNoTests: false,
+      clearMocks: true,
+      restoreMocks: true,
+      unstubGlobals: true,
+      unstubEnvs: true,
+      expect: { requireAssertions: true },
+      exclude: [
+        '**/node_modules/**',
+        '**/playwright/**',
+        '**/*.e2e.test.{ts,tsx}'
+      ],
       env: testEnv,
       coverage: {
         provider: 'v8',
@@ -164,13 +180,18 @@ export default defineConfig(({ mode }) => {
           'src/**/{constants,types,@types}/**',
           'src/**/{constants,types}.{ts,tsx}',
           'src/**/*.test.{ts,tsx}',
+          'src/**/*.test-d.{ts,tsx}',
           'src/tests/**',
           'src/App.tsx',
           'src/Document.tsx',
           'src/router.ts'
         ]
       },
-      reporters: ['verbose'],
+      reporters: env.GITHUB_ACTIONS
+        ? ['default', 'github-actions']
+        : ['verbose'],
+      // Os projetos herdam as opções acima (extends padrão do Vitest) e
+      // declaram só o que muda: ambiente, include, plugins e aliases.
       projects: [
         {
           resolve: {
@@ -185,8 +206,6 @@ export default defineConfig(({ mode }) => {
             }
           },
           test: {
-            ...shared,
-            env: testEnv,
             name: { label: 'node', color: 'cyan' },
             environment: 'node',
             include: ['src/**/*.node.test.{ts,tsx}']
@@ -196,8 +215,6 @@ export default defineConfig(({ mode }) => {
           resolve,
           plugins: componentPlugins(),
           test: {
-            ...shared,
-            env: testEnv,
             name: { label: 'dom', color: 'magenta' },
             environment: 'happy-dom',
             setupFiles: ['./tooling/vitest.setup.ts'],
@@ -212,8 +229,6 @@ export default defineConfig(({ mode }) => {
             include: ['@solidjs/web/server-functions']
           },
           test: {
-            ...shared,
-            env: testEnv,
             css: true,
             name: { label: 'browser', color: 'yellow' },
             include: ['src/**/*.browser.test.{ts,tsx}'],
