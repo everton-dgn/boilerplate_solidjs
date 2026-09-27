@@ -44,13 +44,13 @@
   "dependencies": {
     "@solidjs/router": "2.0.0-next.26",
     "@solidjs/web": "2.0.0-rc.9",
-    "filesystem-routing": "0.3.1",
+    "filesystem-routing": "0.4.0",
     "solid-js": "2.0.0-rc.9",
     "valibot": "1.5.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "21.2.2",
-    "@commitlint/config-conventional": "21.2.2",
+    "@commitlint/cli": "21.2.3",
+    "@commitlint/config-conventional": "21.2.3",
     "@iconify-json/hugeicons": "1.2.35",
     "@playwright/test": "1.63.0",
     "@solidjs/vite-plugin": "3.0.0-next.44",
@@ -76,7 +76,7 @@
     "vitest": "catalog:"
   },
   "type": "module",
-  "packageManager": "pnpm@12.4.2",
+  "packageManager": "pnpm@12.6.0",
   "engines": {
     "node": ">=24.20.0 <25"
   },

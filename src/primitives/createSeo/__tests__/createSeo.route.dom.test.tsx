@@ -13,6 +13,9 @@ import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { createSeo } from '../index.ts'
 
+// vi.waitUntil não lê test.expect.poll e espera 50ms por padrão.
+const POLL = { interval: 10 }
+
 type RenderAtOptions = {
   pathname: string
   routes?: readonly RouteDefinition[]
@@ -65,7 +68,7 @@ async function renderAt({
     ),
     { providers: false }
   )
-  await vi.waitUntil(ready)
+  await vi.waitUntil(ready, POLL)
   return SITE.url
 }
 
@@ -156,7 +159,7 @@ describe('metadados de SEO no head', () => {
   })
 
   it('remove as tags ao desmontar e usa barra final na raiz', async () => {
-    await vi.waitUntil(() => readCanonical() === null)
+    await vi.waitUntil(() => readCanonical() === null, POLL)
     const base = await renderAt({ pathname: '/' })
 
     expect(readCanonical()).toBe(`${base}/`)
@@ -220,7 +223,7 @@ describe('metadados de SEO no head', () => {
 
 describe('indexação e Open Graph de artigo', () => {
   it('libera a prévia grande de imagem em rota indexável', async () => {
-    await vi.waitUntil(() => readMeta('meta[name="robots"]') === null)
+    await vi.waitUntil(() => readMeta('meta[name="robots"]') === null, POLL)
     await renderAt({ pathname: '/' })
 
     expect(readMeta('meta[name="robots"]')).toBe(
@@ -256,7 +259,8 @@ describe('indexação e Open Graph de artigo', () => {
 
   it('publica só a data que o artigo declara', async () => {
     await vi.waitUntil(
-      () => readMeta('meta[property="article:published_time"]') === null
+      () => readMeta('meta[property="article:published_time"]') === null,
+      POLL
     )
     await renderAt({
       pathname: '/artigo',
@@ -278,7 +282,7 @@ describe('indexação e Open Graph de artigo', () => {
   })
 
   it('omite as datas de artigo em rota noindex', async () => {
-    await vi.waitUntil(() => readMeta('meta[name="robots"]') === null)
+    await vi.waitUntil(() => readMeta('meta[name="robots"]') === null, POLL)
     await renderAt({
       pathname: '/rascunho',
       routes: [
@@ -305,7 +309,8 @@ describe('indexação e Open Graph de artigo', () => {
 
   it('omite as datas de artigo em página que não é artigo', async () => {
     await vi.waitUntil(
-      () => readMeta('meta[property="article:published_time"]') === null
+      () => readMeta('meta[property="article:published_time"]') === null,
+      POLL
     )
     await renderAt({
       pathname: '/guia',
@@ -322,7 +327,7 @@ describe('indexação e Open Graph de artigo', () => {
   })
 
   it('publica só robots, título e descrição em rota noindex', async () => {
-    await vi.waitUntil(() => readCanonical() === null)
+    await vi.waitUntil(() => readCanonical() === null, POLL)
     await renderAt({
       pathname: '/restrita',
       routes: [

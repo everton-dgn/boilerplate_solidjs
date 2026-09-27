@@ -80,6 +80,7 @@ const css = {
   transformer: 'lightningcss'
 } as const
 
+// oxlint-disable-next-line eslint/max-lines-per-function -- A configuração declarativa do Vite fica reunida neste callback.
 export default defineConfig(({ mode }) => {
   const localEnv = loadEnv(mode, import.meta.dirname, ['HOST', 'PORT'])
   const server = {
@@ -199,7 +200,8 @@ export default defineConfig(({ mode }) => {
       restoreMocks: true,
       unstubGlobals: true,
       unstubEnvs: true,
-      expect: { requireAssertions: true },
+      fsModuleCache: true,
+      expect: { requireAssertions: true, poll: { interval: 10 } },
       exclude: [
         '**/node_modules/**',
         '**/playwright/**',

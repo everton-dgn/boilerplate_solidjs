@@ -18,20 +18,24 @@ function baseEntries(): SitemapEntry[] {
   }))
 }
 
-// O XML base tem dezenas de MB; medir uma vez evita repetir o custo em cada
-// teste de limite.
-let baseBytes: number | undefined
+function sitemapBytes(entries: SitemapEntry[]): number {
+  return new TextEncoder().encode(buildSitemap({ entries, siteUrl: SITE_URL }))
+    .byteLength
+}
 
-function measureBaseBytes(): number {
-  baseBytes ??= new TextEncoder().encode(
-    buildSitemap({ entries: baseEntries(), siteUrl: SITE_URL })
-  ).byteLength
-  return baseBytes
+// Os caminhos são ASCII, então cada byte do XML vem da moldura, do custo fixo
+// de uma URL ou de um caractere do caminho. Montar o XML base só para medi-lo
+// custaria dezenas de MB por teste.
+function computeBaseBytes(entries: SitemapEntry[]): number {
+  const frame = sitemapBytes([])
+  const perEntry = sitemapBytes([{ path: '/' }]) - frame - '/'.length
+  const paths = entries.reduce((total, { path }) => total + path.length, 0)
+  return frame + entries.length * perEntry + paths
 }
 
 function entriesAtByteSize(size: number): SitemapEntry[] {
   const entries = baseEntries()
-  const padding = size - measureBaseBytes()
+  const padding = size - computeBaseBytes(entries)
   const perEntry = Math.floor(padding / entries.length)
   for (const entry of entries) entry.path += 'a'.repeat(perEntry)
   const [first] = entries

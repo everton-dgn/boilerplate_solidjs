@@ -19,6 +19,8 @@ declare module "virtual:file-routes" {
   export interface FileRouteEntry {
     path: string;
     page?: boolean;
+    /** The page component is a server function; its `$component` is delivered eagerly. */
+    server?: boolean;
     $component?: FileRouteLazyRef<any> | FileRouteEagerRef<any>;
     $$route?: FileRouteEagerRef<any>;
     [key: string]: unknown;
@@ -39,16 +41,16 @@ declare module "virtual:file-routes" {
       $$route?: undefined;
     },
     {
-      path: "/(base)/*404";
-      page: true;
-      $component: FileRouteLazyRef<typeof import("../routes/(base)/[...404]")>;
-      $$route: FileRouteEagerRef<typeof import("../routes/(base)/[...404]")>;
-    },
-    {
       path: "/(base)/(home)/";
       page: true;
       $component: FileRouteLazyRef<typeof import("../routes/(base)/(home)/index")>;
       $$route: FileRouteEagerRef<typeof import("../routes/(base)/(home)/index")>;
+    },
+    {
+      path: "/(base)/*404";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("../routes/(base)/[...404]")>;
+      $$route: FileRouteEagerRef<typeof import("../routes/(base)/[...404]")>;
     },
     {
       path: "/(seo)/llms.txt/";

@@ -659,8 +659,16 @@ A configuração compartilhada limpa o histórico de mocks e, antes de cada test
 restaura spies, globais e variáveis de ambiente substituídos (`restoreMocks`,
 `unstubGlobals` e `unstubEnvs`), então os testes não precisam de `afterEach`
 para isso. `expect.requireAssertions` faz falhar o teste que termina sem nenhuma
-asserção. No GitHub Actions, o reporter `github-actions` anota as falhas no PR.
-A configuração também exclui arquivos E2E, `node_modules` e `playwright`.
+asserção. `expect.poll.interval` baixa de 50ms para 10ms o intervalo entre
+checagens de `expect.poll` e `expect.element`; `vi.waitUntil` não lê essa opção
+e recebe o intervalo em cada chamada. `fsModuleCache` guarda as transformações
+em `node_modules/.vitest-cache`, então só a primeira execução após uma mudança
+paga o custo. O isolamento por arquivo (`isolate`, padrão do Vitest) é
+intencional: não use `isolate: false`, mesmo quando o Vitest sugerir o ganho de
+tempo. Com ele, arquivos passam a compartilhar `document`, cookies e o estado
+dos módulos, e um teste pode passar ou falhar conforme a ordem. No GitHub
+Actions, o reporter `github-actions` anota as falhas no PR. A configuração
+também exclui arquivos E2E, `node_modules` e `playwright`.
 `passWithNoTests: false` faz a execução falhar quando nenhum teste é encontrado.
 Essas opções ficam na configuração raiz, e os projetos as herdam pelo `extends`
 padrão do Vitest, declarando só o que muda.
