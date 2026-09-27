@@ -39,7 +39,7 @@ async function readBoundedText(response: Response): Promise<string> {
   return text + decoder.decode()
 }
 
-export async function requestJson<T>({
+export function requestJson<T>({
   url,
   schema,
   init

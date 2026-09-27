@@ -5,7 +5,7 @@ import { createSeo } from '@/primitives/createSeo/index.ts'
 
 const DATA_DELAY_MS = 150
 
-async function loadProductName(): Promise<string> {
+function loadProductName(): Promise<string> {
   // oxlint-disable-next-line promise/avoid-new -- Adapta o timer da fixture para suspender o SSR.
   return new Promise(resolve => {
     setTimeout(() => resolve('Produto em streaming'), DATA_DELAY_MS)
