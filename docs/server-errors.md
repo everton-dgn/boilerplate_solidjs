@@ -110,7 +110,10 @@ requisição. Diagnóstico detalhado e telemetria exigem uma integração própr
 - Restringe os transportes conhecidos do Node e `undici`.
 - Reserva `markSafeError` e `SAFE_ERROR` a `publicErrors` e o módulo inteiro de
   configuração/dispatch de server functions (`@solidjs/web/server-functions` e
-  `@solidjs/web/server-functions/server`) a `configureServerErrors`.
+  `@solidjs/web/server-functions/server`) a `configureServerErrors`. O import de
+  `configureServerErrors` pela raiz `@solidjs/web` também fica restrito a esse
+  módulo, inclusive em `publicErrors`: cada chamada substitui o hook global de
+  erros do servidor.
 - Reserva o objeto global `console` ao wrapper `protectServerOperation`,
   inclusive aliases e desestruturação direta. Nesse arquivo, use somente
   `console.error` diretamente; acessos por `globalThis.console`,

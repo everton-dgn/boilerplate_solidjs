@@ -234,7 +234,8 @@ release. Add a tool name to select part of the graph. For example, run
   `console.error` diretamente. Acessos como `globalThis.console` continuam
   proibidos. Preserve o argumento fixo coberto pelos testes.
 - Preserve as restrições de lint em `tooling/backendPolicy`: o módulo inteiro
-  de configuração do servidor pertence a `configureServerErrors`. Use imports
+  de configuração do servidor e o hook `configureServerErrors` de
+  `@solidjs/web` pertencem a `configureServerErrors`. Use imports
   estáticos de `@solidjs/web` e seus subcaminhos, inclusive nos módulos
   privilegiados. SDKs novos exigem restrição por pacote e exceção por adapter.
   Revise fontes de import calculadas, templates dos outros pacotes e demais

@@ -281,7 +281,7 @@ test('a política preserva APIs públicas, testes e logging do tooling', context
       'src/infra/server/publicErrors/index.ts':
         'import { markSafeError } from "@solidjs/web"; export const error = markSafeError(new Error("public"))',
       'src/infra/server/configureServerErrors/index.ts':
-        'import { configureServerFunctionsServer } from "@solidjs/web/server-functions/server"; import { handleServerFunctionRequest } from "@solidjs/web/server-functions"; configureServerFunctionsServer({}); export { handleServerFunctionRequest }',
+        'import { configureServerErrors } from "@solidjs/web"; import { configureServerFunctionsServer } from "@solidjs/web/server-functions/server"; import { handleServerFunctionRequest } from "@solidjs/web/server-functions"; configureServerErrors({}); configureServerFunctionsServer({}); export { handleServerFunctionRequest }',
       'src/infra/server/protectServerOperation/index.ts':
         'console.error("public")',
       'src/valid.ts':
@@ -310,6 +310,40 @@ test('a política preserva APIs públicas, testes e logging do tooling', context
   assert.equal(valid.status, 0, valid.stdout + valid.stderr)
 })
 
+test('só o módulo de registro instala o hook de erros do servidor', context => {
+  const sources = {
+    'src/helpers/hook.ts':
+      'import { configureServerErrors } from "@solidjs/web"; configureServerErrors({})',
+    'src/helpers/hook-alias.ts':
+      'import { configureServerErrors as configure } from "@solidjs/web"; configure({})',
+    'src/helpers/hook-namespace.ts':
+      'import * as web from "@solidjs/web"; web.configureServerErrors({})',
+    'src/helpers/hook-reexport.ts':
+      'export { configureServerErrors } from "@solidjs/web"',
+    'src/infra/server/publicErrors/index.ts':
+      'import { configureServerErrors } from "@solidjs/web"; configureServerErrors({})',
+    'src/infra/server/configureServerErrors/index.ts':
+      'import { markSafeError } from "@solidjs/web"; markSafeError(new Error("private"))'
+  }
+  const result = lintFixture({ sources, full: true, context })
+  assert.equal(result.status, 1, result.stderr)
+  const diagnostics = readDiagnostics(result.stdout)
+  for (const filename of Object.keys(sources)) {
+    assert.ok(
+      diagnostics.some(
+        diagnostic =>
+          matchesFilename({
+            actual: diagnostic.filename,
+            expected: filename
+          }) &&
+          diagnostic.code === 'eslint(no-restricted-imports)' &&
+          diagnostic.severity === 'error'
+      ),
+      filename
+    )
+  }
+})
+
 test('a política cobre todas as extensões de código sem ampliar privilégios', context => {
   const cases = {
     fetch: {
@@ -324,6 +358,10 @@ test('a política cobre todas as extensões de código sem ampliar privilégios'
     config: {
       source:
         'import { configureServerFunctionsServer } from "@solidjs/web/server-functions/server"',
+      code: 'eslint(no-restricted-imports)'
+    },
+    hook: {
+      source: 'import { configureServerErrors } from "@solidjs/web"',
       code: 'eslint(no-restricted-imports)'
     },
     transport: {
@@ -351,7 +389,7 @@ test('a política cobre todas as extensões de código sem ampliar privilégios'
       // import dinâmico continuam exercitando essa extensão.
       if (
         extension !== 'cjs' ||
-        !['safe', 'config', 'transport'].includes(name)
+        !['safe', 'config', 'hook', 'transport'].includes(name)
       ) {
         fixtures[`src/helpers/${name}.${extension}`] = fixture
       }

@@ -19,6 +19,13 @@ const SAFE_ERRORS: ImportPath = {
   message:
     'Use createPublicError; somente publicErrors autoriza erros públicos.'
 }
+// O hook global de erros do servidor substitui o anterior a cada chamada;
+// somente o módulo de registro pode instalá-lo.
+const SERVER_ERROR_HOOK: ImportPath = {
+  name: '@solidjs/web',
+  importNames: ['configureServerErrors'],
+  message: 'Mantenha o registro da política em configureServerErrors.'
+}
 // O subcaminho sem sufixo expõe a mesma superfície de configuração e dispatch
 // no runtime do servidor; a restrição precisa cobrir os dois especificadores.
 const SERVER_CONFIG: ImportPath[] = [
@@ -83,7 +90,12 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
       'backend/static-solid-imports': 'error',
       'eslint/no-console': ['error', { allow: [] }],
       ...globals({ names: RESTRICTED_GLOBALS }),
-      ...imports([SAFE_ERRORS, ...SERVER_CONFIG, ...TRANSPORTS])
+      ...imports([
+        SAFE_ERRORS,
+        SERVER_ERROR_HOOK,
+        ...SERVER_CONFIG,
+        ...TRANSPORTS
+      ])
     }
   },
   {
@@ -101,7 +113,7 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
   },
   {
     files: ['src/infra/server/publicErrors/index.ts'],
-    rules: imports([...SERVER_CONFIG, ...TRANSPORTS])
+    rules: imports([SERVER_ERROR_HOOK, ...SERVER_CONFIG, ...TRANSPORTS])
   },
   {
     files: ['src/infra/server/configureServerErrors/index.ts'],
