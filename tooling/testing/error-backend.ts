@@ -1,4 +1,4 @@
-import { createServer } from 'node:http'
+import { createServer, type ServerResponse } from 'node:http'
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const HTTP_NOT_FOUND = 404
@@ -7,6 +7,25 @@ const DELAY_MS = 100
 const recovered = new Set<string>()
 const attempts = new Map<string, number>()
 const markers = new Map<string, string>()
+// Gates seguram a resposta de /gate até o teste liberar o id, para que uma
+// falha assíncrona aconteça depois do shell sem depender de temporizador.
+const gates = new Map<string, PromiseWithResolvers<boolean>>()
+const gateStates = new Map<string, 'waiting' | 'released'>()
+
+function gateFor(id: string): PromiseWithResolvers<boolean> {
+  const existing = gates.get(id)
+  if (existing) return existing
+  const gate = Promise.withResolvers<boolean>()
+  gates.set(id, gate)
+  return gate
+}
+
+type GateAnswer = { id: string; response: ServerResponse }
+
+async function answerGate({ id, response }: GateAnswer) {
+  await gateFor(id).promise
+  response.end('{"ready":true}')
+}
 
 function privateMarker(id: string): string {
   const existing = markers.get(id)
@@ -26,7 +45,24 @@ const server = createServer((request, response) => {
 
   if (url.pathname === '/control') {
     if (request.method === 'POST') recovered.add(id)
-    response.end(JSON.stringify({ attempts: attempts.get(id) ?? 0, marker }))
+    response.end(
+      JSON.stringify({
+        attempts: attempts.get(id) ?? 0,
+        gate: gateStates.get(id) ?? 'none',
+        marker
+      })
+    )
+    return
+  }
+  if (url.pathname === '/release' && request.method === 'POST') {
+    gateStates.set(id, 'released')
+    gateFor(id).resolve(true)
+    response.end('{}')
+    return
+  }
+  if (url.pathname === '/gate') {
+    if (gateStates.get(id) !== 'released') gateStates.set(id, 'waiting')
+    void answerGate({ id, response })
     return
   }
   if (url.pathname !== '/data') {
@@ -38,7 +74,7 @@ const server = createServer((request, response) => {
   attempts.set(id, (attempts.get(id) ?? 0) + 1)
   const ok =
     recovered.has(id) ||
-    ['throw', 'result', 'public', 'success'].includes(scenario ?? '')
+    ['throw', 'result', 'public', 'success', 'outside'].includes(scenario ?? '')
   response.setHeader('x-internal-context', marker)
   setTimeout(() => {
     if (!ok) response.statusCode = HTTP_INTERNAL_SERVER_ERROR
@@ -46,7 +82,7 @@ const server = createServer((request, response) => {
       JSON.stringify(
         ok
           ? {
-              message: ['throw', 'result'].includes(scenario ?? '')
+              message: ['throw', 'result', 'outside'].includes(scenario ?? '')
                 ? marker
                 : 'Backend recuperado',
               internalContext: `CONTEXT_${marker}`

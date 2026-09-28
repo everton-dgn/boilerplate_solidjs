@@ -147,7 +147,10 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      files: ['src/middleware/index.ts'],
+      files: [
+        'src/middleware/index.ts',
+        'src/tests/fixtures/e2e/middleware/index.ts'
+      ],
       rules: {
         'node/callback-return': 'off'
       }
