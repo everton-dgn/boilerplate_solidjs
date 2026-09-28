@@ -11,7 +11,8 @@ describe('log fixo de falhas do servidor', () => {
     [
       'server-error',
       '[server-error] Unexpected failure; private details omitted'
-    ]
+    ],
+    ['middleware', '[middleware] Unexpected failure; private details omitted']
   ] as const)('registra %s com um único argumento fixo', (source, message) => {
     logServerFailure(source)
     expect(console.error).toHaveBeenCalledExactlyOnceWith(message)
