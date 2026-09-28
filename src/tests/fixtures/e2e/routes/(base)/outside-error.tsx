@@ -3,20 +3,33 @@ import { createMemo, Errored, Loading, Match, Switch } from 'solid-js'
 
 import { fixtureError } from '../../outside-error/fixtureError/index.ts'
 import { readFixtureMarker } from '../../outside-error/readFixtureMarker/index.ts'
+import { recordFixtureThrow } from '../../outside-error/recordFixtureThrow/index.ts'
 import { waitFixtureGate } from '../../outside-error/waitFixtureGate/index.ts'
 
 type GateProps = { id: string }
 type RejectionProps = { id: string; inElement?: boolean }
 
-// Lança de forma síncrona no corpo do componente, durante o render.
-function Thrower(): never {
-  throw fixtureError(readFixtureMarker())
+// Lê, registra e lança o marcador no corpo do componente, durante o render.
+function ImmediateThrower(): never {
+  const marker = readFixtureMarker()
+  recordFixtureThrow(marker)
+  throw fixtureError(marker)
 }
 
-// Só cria o Thrower depois que o teste libera o gate, com o shell já enviado.
+function throwFixture(marker: string): never {
+  throw fixtureError(marker)
+}
+
+// Lança no render só depois que o teste libera o gate, com o shell já
+// enviado. O marcador fica no fechamento: a memo resolve só com true, porque
+// o valor dela é serializado para a hidratação.
 function GatedThrower(props: GateProps) {
-  const gate = createMemo(() => waitFixtureGate(props.id))
-  return <>{gate().ready ? <Thrower /> : null}</>
+  const marker = readFixtureMarker()
+  const gate = createMemo(async () => {
+    await waitFixtureGate({ id: props.id, real: recordFixtureThrow(marker) })
+    return true
+  })
+  return <>{gate() ? throwFixture(marker) : null}</>
 }
 
 // Fonte assíncrona comum, sem "use server": rejeita com o marcador lido no
@@ -26,7 +39,8 @@ function GatedThrower(props: GateProps) {
 function GatedRejection(props: RejectionProps) {
   const data = createMemo(async () => {
     const marker = readFixtureMarker()
-    await waitFixtureGate(props.id)
+    const real = recordFixtureThrow(marker)
+    await waitFixtureGate({ id: props.id, real })
     throw fixtureError(marker)
   })
   return <>{props.inElement ? <p>{data()}</p> : data()}</>
@@ -48,11 +62,11 @@ export default function OutsideError() {
       <Switch fallback={<p>Caso desconhecido</p>}>
         <Match when={params.case === 'render-local'}>
           <Errored fallback={<p data-fixture="fallback">Falha contida</p>}>
-            <Thrower />
+            <ImmediateThrower />
           </Errored>
         </Match>
         <Match when={params.case === 'render-root'}>
-          <Thrower />
+          <ImmediateThrower />
         </Match>
         <Match when={params.case === 'render-stream'}>
           <Loading fallback={<p>Carregando fixture...</p>}>

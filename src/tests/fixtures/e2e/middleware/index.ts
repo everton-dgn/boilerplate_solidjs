@@ -5,8 +5,11 @@ import { requestJson } from '@/infra/server/requestJson/index.ts'
 import productionMiddleware from '@/middleware/index.ts'
 
 import { fixtureError } from '../outside-error/fixtureError/index.ts'
+import { readFixtureMarker } from '../outside-error/readFixtureMarker/index.ts'
+import { recordFixtureThrow } from '../outside-error/recordFixtureThrow/index.ts'
 
 type Next = () => Promise<Response>
+type FailureRequest = { request: Request; phase: 'before' | 'after' }
 
 const PREFIX = '/outside-error'
 
@@ -27,17 +30,17 @@ async function fixtureMarker(request: Request, next: Next) {
   const response = await next()
   if (url.pathname === PREFIX) {
     const loaded = typeof event?.locals.fixtureMarker === 'string'
+    const thrown: unknown = event?.locals.fixtureThrown
     response.headers.set('x-fixture-marker', loaded ? 'loaded' : 'missing')
+    response.headers.set(
+      'x-fixture-thrown',
+      typeof thrown === 'string' ? thrown : 'none'
+    )
   }
   return response
 }
 
-function readMarker(): string {
-  const marker: unknown = getRequestEvent()?.locals.fixtureMarker
-  return typeof marker === 'string' ? marker : 'FIXTURE_MARKER_MISSING'
-}
-
-function failureRequested(request: Request, phase: string): boolean {
+function failureRequested({ request, phase }: FailureRequest): boolean {
   const url = new URL(request.url)
   return (
     url.pathname === PREFIX &&
@@ -45,16 +48,34 @@ function failureRequested(request: Request, phase: string): boolean {
   )
 }
 
+// A resposta desta falha é a da contenção, sem os headers da fixture; o
+// controle positivo vai ao backend sintético antes do lançamento.
+async function throwFixtureFailure(request: Request): Promise<never> {
+  const id = new URL(request.url).searchParams.get('id') ?? ''
+  const marker = readFixtureMarker()
+  const real = recordFixtureThrow(marker)
+  const query = new URLSearchParams({ id, real: real ? '1' : '0' })
+  await requestJson({
+    url: `http://127.0.0.1:4318/report?${query}`,
+    schema: v.object({ ready: v.boolean() })
+  })
+  throw fixtureError(marker)
+}
+
 // Exceção de middleware antes de next(): nenhuma resposta foi produzida.
-function fixtureFailureBefore(request: Request, next: Next) {
-  if (failureRequested(request, 'before')) throw fixtureError(readMarker())
+async function fixtureFailureBefore(request: Request, next: Next) {
+  if (failureRequested({ request, phase: 'before' })) {
+    await throwFixtureFailure(request)
+  }
   return next()
 }
 
 // Exceção de middleware depois de next(): a resposta já foi produzida.
 async function fixtureFailureAfter(request: Request, next: Next) {
   const response = await next()
-  if (failureRequested(request, 'after')) throw fixtureError(readMarker())
+  if (failureRequested({ request, phase: 'after' })) {
+    await throwFixtureFailure(request)
+  }
   return response
 }
 

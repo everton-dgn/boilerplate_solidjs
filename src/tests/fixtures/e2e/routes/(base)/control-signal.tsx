@@ -1,12 +1,26 @@
-import { query, type RouteDefinition } from '@solidjs/router'
-import { createMemo } from 'solid-js'
+import { query, useSearchParams, type RouteDefinition } from '@solidjs/router'
+import { createMemo, Match, Switch } from 'solid-js'
 
+import { returnEnvelope } from '../../control-signal/returnEnvelope/index.ts'
+import { throwEnvelope } from '../../control-signal/throwEnvelope/index.ts'
 import { throwRedirect } from '../../control-signal/throwRedirect/index.ts'
 
-const getRedirect = query(throwRedirect, 'control-signal-fixture')
+const getRedirect = query(throwRedirect, 'control-signal-redirect')
+const getReturnedEnvelope = query(returnEnvelope, 'control-signal-returned')
+const getThrownEnvelope = query(throwEnvelope, 'control-signal-thrown')
 
 function Redirected() {
   const data = createMemo(() => getRedirect())
+  return <>{data()}</>
+}
+
+function ReturnedEnvelope() {
+  const data = createMemo(() => getReturnedEnvelope())
+  return <p>{data().message}</p>
+}
+
+function ThrownEnvelope() {
+  const data = createMemo(() => getThrownEnvelope())
   return <>{data()}</>
 }
 
@@ -18,10 +32,18 @@ export const route = {
 } satisfies RouteDefinition
 
 export default function ControlSignal() {
+  const [params] = useSearchParams()
   return (
     <main>
       <h1>Sinal de controle</h1>
-      <Redirected />
+      <Switch fallback={<Redirected />}>
+        <Match when={params.kind === 'envelope-return'}>
+          <ReturnedEnvelope />
+        </Match>
+        <Match when={params.kind === 'envelope-throw'}>
+          <ThrownEnvelope />
+        </Match>
+      </Switch>
     </main>
   )
 }

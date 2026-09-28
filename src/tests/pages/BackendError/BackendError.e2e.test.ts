@@ -65,6 +65,28 @@ test('um redirect lançado por server function no SSR continua redirecionando', 
   await expect(page).toHaveURL(/\/\?from=control-signal$/u)
 })
 
+test('um envelope devolvido por server function no SSR entrega o valor', async ({
+  page
+}) => {
+  const response = await page.goto('/control-signal?kind=envelope-return')
+  expect(response?.status()).toBe(HTTP_OK)
+  await expect(page.getByText('Envelope retornado')).toBeVisible()
+})
+
+// O hook recebe o envelope lançado como controle; o router então lança o valor
+// do envelope no render, que vira falha de render com ou sem o hook. O runtime
+// também descarta o content-type desse documento ([LATE_HEADER_WRITE]), então
+// o teste confere a resposta bruta em vez do render do navegador.
+test('um envelope lançado por server function no SSR vira falha de render sem expor o valor', async ({
+  request
+}) => {
+  const response = await request.get('/control-signal?kind=envelope-throw')
+  const document = await response.text()
+  expect(response.status()).toBe(HTTP_INTERNAL_SERVER_ERROR)
+  expect(document).not.toContain('Envelope lançado')
+  expect(document).toContain('Algo deu errado!')
+})
+
 for (const { phase, javaScriptEnabled } of SCENARIOS) {
   test.describe(`erro de backend: ${phase}, JavaScript ${javaScriptEnabled ? 'ativo' : 'desativado'}`, () => {
     test.use({ javaScriptEnabled })

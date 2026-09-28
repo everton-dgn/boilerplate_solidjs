@@ -15,9 +15,12 @@ const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 // padrão do runtime antes de qualquer hook; o fragmento do boundary leva a
 // mensagem pública definida pelo hook.
 const RUNTIME_MESSAGE = 'Internal Server Error'
+const MIDDLEWARE_LOG =
+  '[middleware] Unexpected failure; private details omitted'
 const backendState = v.object({
   attempts: v.number(),
   gate: v.picklist(['none', 'waiting', 'released']),
+  real: v.boolean(),
   marker: v.string()
 })
 
@@ -151,12 +154,18 @@ for (const fixture of CASES) {
       // pública. A fonte assíncrona ainda leva a mensagem do runtime.
       expect(raw.body).toContain(PUBLIC_MESSAGE)
       expect(raw.headers).not.toContain(marker)
-      // Controles positivos: a fixture recebeu o marcador e, nos casos com
-      // gate, a falha aconteceu depois da liberação.
+      // Controles positivos: a fixture recebeu o marcador, lançou com ele e,
+      // nos casos com gate, só falhou depois da liberação. Sem streaming o
+      // registro volta num header; com gate, pelo backend sintético.
       expect(raw.headers).toContain('"x-fixture-marker":"loaded"')
       const state = await readState({ request, id })
       expect(state.attempts).toBe(1)
       expect(state.gate).toBe(fixture.gate === 'none' ? 'none' : 'released')
+      if (fixture.gate === 'none') {
+        expect(raw.headers).toContain('"x-fixture-thrown":"real"')
+      } else {
+        expect(state.real).toBe(true)
+      }
       if (fixture.gate === 'stream') expect(raw.body).toContain(LOADING_TEXT)
     })
 
@@ -170,9 +179,10 @@ for (const fixture of CASES) {
       page.on('pageerror', error => browserErrors.push(error.message))
       if (fixture.gate === 'before') await release({ request, id })
 
-      await page.goto(`/outside-error?case=${fixture.name}&id=${id}`, {
-        waitUntil: fixture.gate === 'stream' ? 'commit' : 'load'
-      })
+      const response = await page.goto(
+        `/outside-error?case=${fixture.name}&id=${id}`,
+        { waitUntil: fixture.gate === 'stream' ? 'commit' : 'load' }
+      )
       if (fixture.gate === 'stream') {
         await expect(page.getByText(LOADING_TEXT)).toBeVisible()
         await releaseWhenWaiting({ request, id })
@@ -184,39 +194,56 @@ for (const fixture of CASES) {
       expect(
         browserErrors.filter(message => !fixture.pageErrors.includes(message))
       ).toStrictEqual([])
+      const state = await readState({ request, id })
+      if (fixture.gate === 'none') {
+        expect(response?.headers()['x-fixture-thrown']).toBe('real')
+      } else {
+        expect(state.real).toBe(true)
+      }
     })
   })
 }
 
-// oxlint-disable-next-line vitest/prefer-each -- O runner do Playwright não oferece test.each.
-for (const phase of ['before', 'after']) {
-  test(`exceção no middleware ${phase === 'before' ? 'antes' : 'depois'} de next() vira 500 público`, async ({
-    request,
-    baseURL
-  }) => {
-    const logFile = env.SERVER_LOG_FILE
-    if (!baseURL || !logFile) throw new Error('E2E environment is incomplete')
-    const id = `outside:${crypto.randomUUID()}`
-    const { marker } = await readState({ request, id })
-
-    const response = await fetch(
-      `${baseURL}/outside-error?case=middleware-${phase}&id=${id}`
-    )
-    const body = await response.text()
-
-    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    expect(body).toBe(PUBLIC_MESSAGE)
-    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
-    expect(JSON.stringify(Object.fromEntries(response.headers))).not.toContain(
-      marker
-    )
-    // Controle positivo: a fixture leu o marcador antes de lançar.
-    const state = await readState({ request, id })
-    expect(state.attempts).toBe(1)
-    // O log capturado registra a linha fixa; o teardown global recusa o
-    // marcador em todo o arquivo depois da suíte.
-    await expect
-      .poll(async () => readFile(logFile, 'utf8'))
-      .toContain('[middleware] Unexpected failure; private details omitted')
-  })
+async function countLogLines(file: string): Promise<number> {
+  const log = await readFile(file, 'utf8')
+  return log.split('\n').filter(line => line.includes(MIDDLEWARE_LOG)).length
 }
+
+test.describe('exceções no middleware', () => {
+  // Em série, para que cada caso atribua a si a linha de log que produziu.
+  test.describe.configure({ mode: 'serial' })
+
+  for (const phase of ['before', 'after']) {
+    test(`exceção ${phase === 'before' ? 'antes' : 'depois'} de next() vira 500 público`, async ({
+      request,
+      baseURL
+    }) => {
+      const logFile = env.SERVER_LOG_FILE
+      if (!baseURL || !logFile) throw new Error('E2E environment is incomplete')
+      const id = `outside:${crypto.randomUUID()}`
+      const { marker } = await readState({ request, id })
+      const logLinesBefore = await countLogLines(logFile)
+
+      const response = await fetch(
+        `${baseURL}/outside-error?case=middleware-${phase}&id=${id}`
+      )
+      const body = await response.text()
+
+      expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+      expect(body).toBe(PUBLIC_MESSAGE)
+      expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+      expect(
+        JSON.stringify(Object.fromEntries(response.headers))
+      ).not.toContain(marker)
+      // Controle positivo: a fixture lançou com o marcador carregado.
+      const state = await readState({ request, id })
+      expect(state.attempts).toBe(1)
+      expect(state.real).toBe(true)
+      // O log capturado ganha a linha fixa desta requisição; o teardown
+      // global recusa o marcador em todo o arquivo depois da suíte.
+      await expect
+        .poll(async () => countLogLines(logFile))
+        .toBeGreaterThan(logLinesBefore)
+    })
+  }
+})

@@ -11,6 +11,9 @@ const markers = new Map<string, string>()
 // falha assíncrona aconteça depois do shell sem depender de temporizador.
 const gates = new Map<string, PromiseWithResolvers<boolean>>()
 const gateStates = new Map<string, 'waiting' | 'released'>()
+// Marca se alguma chamada ao gate veio de uma fixture que ia lançar com o
+// marcador real. Chamadas do cliente, sem marcador, não apagam a marca.
+const realThrows = new Set<string>()
 
 function gateFor(id: string): PromiseWithResolvers<boolean> {
   const existing = gates.get(id)
@@ -49,6 +52,7 @@ const server = createServer((request, response) => {
       JSON.stringify({
         attempts: attempts.get(id) ?? 0,
         gate: gateStates.get(id) ?? 'none',
+        real: realThrows.has(id),
         marker
       })
     )
@@ -60,7 +64,13 @@ const server = createServer((request, response) => {
     response.end('{}')
     return
   }
+  if (url.pathname === '/report') {
+    if (url.searchParams.get('real') === '1') realThrows.add(id)
+    response.end('{"ready":true}')
+    return
+  }
   if (url.pathname === '/gate') {
+    if (url.searchParams.get('real') === '1') realThrows.add(id)
     if (gateStates.get(id) !== 'released') gateStates.set(id, 'waiting')
     void answerGate({ id, response })
     return
