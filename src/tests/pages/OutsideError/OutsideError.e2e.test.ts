@@ -5,10 +5,12 @@ const BACKEND = 'http://127.0.0.1:4318'
 const HTTP_OK = 200
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const LOADING_TEXT = 'Carregando fixture...'
-// A rejeição de uma fonte assíncrona é serializada com a política padrão do
-// runtime antes de qualquer hook e chega ao navegador ao hidratar. No
-// render-stream ela só aparece quando o fragmento rejeitado chega antes da
-// hidratação; a lista admite a mensagem sem exigi-la.
+const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+// Mensagens que o navegador pode lançar ao hidratar, conforme a ordem entre a
+// hidratação e a chegada do fragmento rejeitado: a lista admite cada uma sem
+// exigi-la. A rejeição da fonte assíncrona é serializada com a política
+// padrão do runtime antes de qualquer hook; o fragmento do boundary leva a
+// mensagem pública definida pelo hook.
 const RUNTIME_MESSAGE = 'Internal Server Error'
 const backendState = v.object({
   attempts: v.number(),
@@ -48,7 +50,7 @@ const CASES: FixtureCase[] = [
     gate: 'stream',
     status: HTTP_OK,
     content: 'Algo deu errado!',
-    pageErrors: [RUNTIME_MESSAGE]
+    pageErrors: [PUBLIC_MESSAGE]
   },
   {
     name: 'async-ssr',
@@ -62,14 +64,14 @@ const CASES: FixtureCase[] = [
     gate: 'stream',
     status: HTTP_OK,
     content: 'Algo deu errado!',
-    pageErrors: [RUNTIME_MESSAGE]
+    pageErrors: [RUNTIME_MESSAGE, PUBLIC_MESSAGE]
   },
   {
     name: 'async-element',
     gate: 'stream',
     status: HTTP_OK,
     content: 'Algo deu errado!',
-    pageErrors: [RUNTIME_MESSAGE]
+    pageErrors: [RUNTIME_MESSAGE, PUBLIC_MESSAGE]
   }
 ]
 
@@ -142,6 +144,9 @@ for (const fixture of CASES) {
 
       expect(raw.status).toBe(fixture.status)
       expect(raw.body).not.toContain(marker)
+      // O hook de erros troca o erro que o boundary serializa pela mensagem
+      // pública. A fonte assíncrona ainda leva a mensagem do runtime.
+      expect(raw.body).toContain(PUBLIC_MESSAGE)
       expect(raw.headers).not.toContain(marker)
       // Controles positivos: a fixture recebeu o marcador e, nos casos com
       // gate, a falha aconteceu depois da liberação.

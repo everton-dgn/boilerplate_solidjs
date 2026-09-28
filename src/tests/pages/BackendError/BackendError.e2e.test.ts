@@ -5,6 +5,7 @@ import * as v from 'valibot'
 
 const BACKEND = 'http://127.0.0.1:4318'
 const HTTP_OK = 200
+const HTTP_FOUND = 302
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const ATTEMPTS_AFTER_RETRY = 2
 const backendState = v.object({ attempts: v.number(), marker: v.string() })
@@ -48,8 +49,20 @@ test('o bundle cliente não inclui a implementação do servidor', async () => {
   for (const file of files) {
     const source = await readFile(new URL(file, directory), 'utf8')
     expect(source).not.toContain('[server-operation]')
+    expect(source).not.toContain('[server-error]')
     expect(source).not.toContain('127.0.0.1:4318')
   }
+})
+
+test('um redirect lançado por server function no SSR continua redirecionando', async ({
+  page,
+  request
+}) => {
+  const response = await request.get('/control-signal', { maxRedirects: 0 })
+  expect(response.status()).toBe(HTTP_FOUND)
+  expect(response.headers().location).toBe('/?from=control-signal')
+  await page.goto('/control-signal')
+  await expect(page).toHaveURL(/\/\?from=control-signal$/u)
 })
 
 for (const { phase, javaScriptEnabled } of SCENARIOS) {

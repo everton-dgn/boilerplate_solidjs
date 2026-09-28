@@ -190,7 +190,7 @@ test('a política rejeita desvios de acesso no parser real do Oxlint', context =
         source
       ])
     ),
-    'src/infra/server/protectServerOperation/index.ts':
+    'src/infra/server/logServerFailure/index.ts':
       'fetch("/private"); globalThis.console.warn("PRIVATE")',
     'src/infra/server/requestJson/index.ts': 'new WebSocket("wss://private")',
     'src/infra/server/publicErrors/index.ts':
@@ -210,12 +210,12 @@ test('a política rejeita desvios de acesso no parser real do Oxlint', context =
         diagnostic =>
           matchesFilename({
             actual: diagnostic.filename,
-            expected: 'src/infra/server/protectServerOperation/index.ts'
+            expected: 'src/infra/server/logServerFailure/index.ts'
           }) &&
           diagnostic.code === code &&
           diagnostic.severity === 'error'
       ),
-      `proteção do wrapper: ${code}`
+      `proteção do log fixo: ${code}`
     )
   }
   for (const filename of Object.keys(sources)) {
@@ -245,8 +245,9 @@ test('o lint completo aplica as novas regras com exceções restritas', context 
     'src/helpers/dynamic.ts': 'void import("@solidjs/web")',
     'src/helpers/template.ts':
       'void import(`@solidjs/web/server-functions/server`)',
+    'src/infra/server/logServerFailure/index.ts': 'console.warn("PRIVATE")',
     'src/infra/server/protectServerOperation/index.ts':
-      'console.warn("PRIVATE")',
+      'console.error("PRIVATE")',
     'src/infra/server/requestJson/index.ts': 'console.error("PRIVATE")',
     'src/infra/server/publicErrors/index.ts': 'void import("@solidjs/web")'
   }
@@ -282,8 +283,7 @@ test('a política preserva APIs públicas, testes e logging do tooling', context
         'import { markSafeError } from "@solidjs/web"; export const error = markSafeError(new Error("public"))',
       'src/infra/server/configureServerErrors/index.ts':
         'import { configureServerErrors } from "@solidjs/web"; import { configureServerFunctionsServer } from "@solidjs/web/server-functions/server"; import { handleServerFunctionRequest } from "@solidjs/web/server-functions"; configureServerErrors({}); configureServerFunctionsServer({}); export { handleServerFunctionRequest }',
-      'src/infra/server/protectServerOperation/index.ts':
-        'console.error("public")',
+      'src/infra/server/logServerFailure/index.ts': 'console.error("public")',
       'src/valid.ts':
         'import { createMemo } from "solid-js"; import { redirect } from "@solidjs/web"; globalThis.matchMedia("print"); typeof window; const client = { fetch() {} }; client.fetch(); function useLocal(fetch) { return fetch(); } const data = { allowControl: true }; export { createMemo, redirect, useLocal, data }',
       'src/local-console.ts': 'const console = { error() {} }; console.error()',
@@ -400,7 +400,7 @@ test('a política cobre todas as extensões de código sem ampliar privilégios'
     code: 'eslint(no-restricted-imports)'
   }
   fixtures['src/infra/server/requestJson/index.mts'] = cases.fetch
-  fixtures['src/infra/server/protectServerOperation/index.mts'] = cases.console
+  fixtures['src/infra/server/logServerFailure/index.mts'] = cases.console
   fixtures['src/infra/server/publicErrors/index.mts'] = cases.safe
   fixtures['src/infra/server/configureServerErrors/index.mts'] = cases.config
   const sources = Object.fromEntries(

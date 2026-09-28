@@ -6,6 +6,7 @@ import {
 } from '@solidjs/web'
 import { NotReadyError } from 'solid-js'
 
+import { logServerFailure } from '@/infra/server/logServerFailure/index.ts'
 import {
   createPublicError,
   isPublicError
@@ -105,12 +106,7 @@ export function protectServerOperation({
     }
     // oxlint-disable-next-line typescript/only-throw-error -- O Solid usa Response/ResponseEnvelope como sinais de controle.
     if (control) throw control
-    if (!isPublicError(error)) {
-      // Nunca registre o objeto original, argumentos, URLs ou corpos upstream.
-      console.error(
-        '[server-operation] Unexpected failure; private details omitted'
-      )
-    }
+    if (!isPublicError(error)) logServerFailure('server-operation')
     throw createPublicError()
   }
 

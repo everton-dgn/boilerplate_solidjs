@@ -75,7 +75,7 @@ function globals({
           property,
           message:
             property === 'console'
-              ? 'Mantenha os logs fixos em protectServerOperation.'
+              ? 'Mantenha os logs fixos em logServerFailure.'
               : 'Use requestJson ou um adapter de backend protegido.'
         }))
       )
@@ -99,7 +99,7 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
     }
   },
   {
-    files: ['src/infra/server/protectServerOperation/index.ts'],
+    files: ['src/infra/server/logServerFailure/index.ts'],
     rules: {
       ...globals({ names: NETWORK, properties: RESTRICTED_GLOBALS }),
       'eslint/no-console': ['error', { allow: ['error'] }]

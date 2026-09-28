@@ -15,7 +15,9 @@ quando houver consumidores. Novos imports de erros públicos usam
 O [registro central](../src/infra/server/configureServerErrors/index.ts) usa
 `configureServerFunctionsServer({ wrapInvocation })`. O
 [Vite](../vite.config.ts) o carrega por `serverFunctions.configure`, cobrindo
-server functions chamadas diretamente no SSR e pelo transporte HTTP.
+server functions chamadas diretamente no SSR e pelo transporte HTTP. O mesmo
+módulo instala, só nos builds de produção, o hook
+`configureServerErrors({ onError })` de `@solidjs/web`.
 
 - [requestJson](../src/infra/server/requestJson/index.ts) verifica o status
   HTTP, lê o JSON de sucesso e aplica o schema de saída dentro da proteção.
@@ -23,15 +25,36 @@ server functions chamadas diretamente no SSR e pelo transporte HTTP.
   captura lançamentos e rejeições e verifica a estrutura do resultado.
 - [publicErrors](../src/infra/server/publicErrors/index.ts) cria um erro novo
   com a mensagem fixa "Não foi possível concluir a solicitação.".
+- [logServerFailure](../src/infra/server/logServerFailure/index.ts) é o único
+  ponto de log: uma mensagem fixa por origem, sem receber o erro.
 - Os módulos importam `server-only`; o plugin impede que entrem no bundle
   cliente. O alias de testes existe somente no projeto Node.
 
-A proteção central é temporária e cobre a execução direta durante SSR, que não
-passa pela sanitização do dispatch HTTP. Sua retirada exige a validação do
-runtime publicado descrita neste guia. Um fallback genérico e HTML escapado não
-removem dados do payload já enviado. Exceções de componentes, middleware e
-tarefas fora de server functions não recebem proteção geral do renderer por esse
-registro.
+Em produção o runtime do Solid já troca todo erro lançado por
+`Error("Internal Server Error")`, em SSR, streaming e HTTP, inclusive fora de
+server functions. Ele não barra um `Error` devolvido como dado: esse caso,
+medido nos três canais, só é recusado pela verificação estrutural do wrapper.
+Por isso o `wrapInvocation` continua registrado. Um fallback genérico e HTML
+escapado não removem dados do payload já enviado.
+
+O hook `onError` é aditivo. Ele troca qualquer falha que chega ao runtime,
+inclusive de render e de rejeições fora de server functions, por um
+`createPublicError()` novo e registra o log fixo `[server-error]` quando o erro
+não era público. Sinais de controle (`Response`, envelopes e `NotReadyError`)
+seguem a política padrão do runtime. O retorno do hook vai ao cliente sem nova
+sanitização, então ele nunca devolve o objeto recebido, nem um erro público, que
+pode ter ganhado campos depois de criado. O hook é síncrono e não lança: uma
+falha dele faria o runtime registrar o erro do hook.
+
+Limites do hook:
+
+- A rejeição de uma fonte assíncrona é serializada com a política padrão antes
+  de qualquer hook. O mesmo corpo leva "Internal Server Error" para a fonte e a
+  mensagem pública para o boundary.
+- Em desenvolvimento o hook não é instalado, para que o runtime mostre o erro
+  original.
+- Valores primitivos lançados não têm veredito por objeto; o hook roda e
+  registra o log a cada vez que o runtime os encontra.
 
 ## Como adicionar uma chamada
 
@@ -95,8 +118,9 @@ schema e o mapeamento continuam responsáveis pelos campos de negócio.
 respostas sem corpo e envelopes com dados verificados; o corpo do envelope é
 reconstruído desses dados. Headers e destinos devem ser definidos pela
 aplicação. Adapters não habilitam essa opção nem encaminham respostas upstream.
-Os logs atuais contêm só uma mensagem fixa, sem erro original ou contexto da
-requisição. Diagnóstico detalhado e telemetria exigem uma integração própria.
+Os logs atuais contêm só uma mensagem fixa por origem, emitida por
+`logServerFailure`, sem erro original ou contexto da requisição. Diagnóstico
+detalhado e telemetria exigem uma integração própria.
 
 ## O que o lint cobre
 
@@ -114,13 +138,12 @@ requisição. Diagnóstico detalhado e telemetria exigem uma integração própr
   `configureServerErrors` pela raiz `@solidjs/web` também fica restrito a esse
   módulo, inclusive em `publicErrors`: cada chamada substitui o hook global de
   erros do servidor.
-- Reserva o objeto global `console` ao wrapper `protectServerOperation`,
-  inclusive aliases e desestruturação direta. Nesse arquivo, use somente
-  `console.error` diretamente; acessos por `globalThis.console`,
-  `window.console`, `self.console` e `global.console` continuam proibidos. Os
-  testes do wrapper exigem um único argumento fixo nas falhas inesperadas, sem o
-  objeto original. Aliases de `console` dentro do wrapper e outros loggers
-  exigem revisão.
+- Reserva o objeto global `console` a `logServerFailure`, inclusive aliases e
+  desestruturação direta. Nesse arquivo, use somente `console.error`
+  diretamente; acessos por `globalThis.console`, `window.console`,
+  `self.console` e `global.console` continuam proibidos. Os testes exigem um
+  único argumento fixo por origem, sem o objeto original. Aliases de `console` e
+  outros loggers exigem revisão.
 
 Os testes de regressão exigem que `no-restricted-imports` também recuse
 `import("pacote")` quando o pacote inteiro está restrito. A política não depende
@@ -147,10 +170,26 @@ para contornar o contrato. O padrão de imports relativos é compartilhado com
 ## Validação e recuperação
 
 O [E2E de backend](../src/tests/pages/BackendError/BackendError.e2e.test.ts)
-executa 20 casos no build de produção: cinco cenários (HTTP 500, exceção após
+executa 21 casos no build de produção: cinco cenários (HTTP 500, exceção após
 leitura, `Error` dentro do resultado, erro público e sucesso) em SSR inicial,
-streaming e chamada HTTP; quatro recargas, incluindo SSR sem JavaScript; e um
-teste de isolamento do bundle.
+streaming e chamada HTTP; quatro recargas, incluindo SSR sem JavaScript; um
+teste de isolamento do bundle; e um `redirect()` lançado por server function no
+SSR, que o hook precisa deixar passar.
+
+O
+[E2E de erros fora de server functions](../src/tests/pages/OutsideError/OutsideError.e2e.test.ts)
+cobre throw no render com e sem boundary local, throw no render depois do shell
+e rejeições assíncronas no SSR, como filho direto de `<Loading>` e dentro de
+elemento. Cada caso lê o documento bruto fora do navegador e confere o fallback
+no navegador. Nos casos de streaming, a falha só acontece depois que o teste
+observa o shell e libera um gate no backend sintético, sem temporizador.
+Controles positivos conferem que a fixture recebeu o marcador (header
+`x-fixture-marker` e contagem do backend) e que o gate foi usado.
+
+O `webServer` do Playwright grava a saída do preview em
+`test-results/server-<modo>.log`. O
+[teardown global](../tooling/testing/server-log-teardown.ts) confere que o
+arquivo registrou o endereço do preview e recusa qualquer marcador privado.
 
 Os marcadores sintéticos nascem no backend após o build. Os testes verificam o
 corpo completo, headers, DOM e erros do navegador. O teste de assets procura
@@ -163,10 +202,13 @@ A captura HTTP usa `route.fetch()` e entrega a resposta ao browser com
 captura aguarda o corpo completo e não mede cancelamento ou latência. O
 streaming do documento SSR não é interceptado.
 
-Os testes toleram somente a mensagem pública fixa em `pageerror` ao hidratar. O
-status do streaming pode permanecer 200 após o envio inicial; os testes conferem
-confidencialidade independentemente dele. Fontes adiadas aninhadas e trabalho
-assíncrono fora do retorno aguardado exigem integração e testes próprios.
+Os testes toleram em `pageerror` só a mensagem pública fixa e, nos casos que
+passam por uma fonte assíncrona ou por streaming, a mensagem genérica do
+runtime; cada caso declara as mensagens admitidas, que dependem da ordem entre a
+hidratação e a chegada do fragmento rejeitado. O status do streaming pode
+permanecer 200 após o envio inicial; os testes conferem confidencialidade
+independentemente dele. Fontes adiadas aninhadas e trabalho assíncrono fora do
+retorno aguardado exigem integração e testes próprios.
 
 O link global "Recarregar página" preserva a URL e funciona sem JavaScript.
 Ações iniciadas depois do carregamento precisam ser repetidas. Para retry local
@@ -178,7 +220,7 @@ Após alterar essa fronteira, execute:
 ```bash
 pnpm test:tooling
 pnpm test:unit
-pnpm test:e2e src/tests/pages/BackendError
+pnpm test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError
 pnpm typecheck
 pnpm check:ci
 ```
@@ -208,11 +250,12 @@ publicado e instalado contém a solução.
 1. Confira releases, exports e contrato dos pacotes publicados. Atualize
    `solid-js` e `@solidjs/web` juntos, verificando Router, plugin e lockfile.
    Preserve as versões anteriores para reversão; não antecipe APIs internas.
-2. Avalie o hook nativo `configureServerErrors({ onError })`, de `@solidjs/web`,
-   e a integração do plugin. Confira o nome publicado por requisição: a proposta
-   convergiu para `onError`. Um retorno explícito pode ser tratado como público
-   sem nova sanitização. Nunca devolva o erro original; confira sincronismo e
-   precedência.
+2. Confira se o contrato do hook `configureServerErrors({ onError })` que o
+   registro central usa continua igual: chamada síncrona, retorno enviado sem
+   nova sanitização, veredito por objeto, substituição do hook anterior e
+   precedência sobre o `onError` por requisição. Confira também se o plugin
+   passou a repassar um `onError` por requisição ou a carregar o módulo
+   `configure` em outro momento.
 3. Em uma reprodução isolada, teste a sanitização nativa sem o wrapper local,
    usando os três canais e falhas de render/rejeições fora de server functions.
    Verifique os artefatos de produção resolvidos; `NODE_ENV` sozinho não basta.

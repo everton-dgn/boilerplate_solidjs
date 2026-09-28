@@ -225,14 +225,17 @@ release. Add a tool name to select part of the graph. For example, run
 - O schema seleciona os campos públicos. A verificação estrutural do wrapper
   não identifica dados confidenciais em strings. Não retorne erros, promises
   aninhadas ou trabalho adiado sem contrato específico.
-- Mantenha o registro global e os sinais de controle do Solid. A proteção do
-  registro central cobre server functions; um fallback visual não protege o payload.
+- Mantenha o registro global e os sinais de controle do Solid. O
+  `wrapInvocation` cobre server functions e o hook `onError`, instalado só em
+  produção, uniformiza a mensagem pública das demais falhas; ele nunca devolve
+  o objeto recebido. Um fallback visual não protege o payload.
   Os logs atuais são fixos e não recebem o objeto original.
 - Não registre erro original, headers, cookies, argumentos, corpos ou
   credenciais. Logs detalhados exigem remoção de dados sensíveis definida antes.
-  O lint reserva `console` ao wrapper `protectServerOperation`, onde se usa
-  `console.error` diretamente. Acessos como `globalThis.console` continuam
-  proibidos. Preserve o argumento fixo coberto pelos testes.
+  O lint reserva `console` a `logServerFailure`, onde se usa `console.error`
+  diretamente com uma mensagem fixa por origem. Acessos como
+  `globalThis.console` continuam proibidos. Preserve o argumento fixo coberto
+  pelos testes.
 - Preserve as restrições de lint em `tooling/backendPolicy`: o módulo inteiro
   de configuração do servidor e o hook `configureServerErrors` de
   `@solidjs/web` pertencem a `configureServerErrors`. Use imports
@@ -242,7 +245,8 @@ release. Add a tool name to select part of the graph. For example, run
   limites do guia; não contorne o contrato com disable. Fixtures seguem
   protegidas; as exceções de backend cobrem só testes e declarações de tipos.
 - Após mudar essa fronteira, rode `pnpm test:tooling`, os testes Node
-  pertinentes e `pnpm test:e2e src/tests/pages/BackendError`. Preserve no CI
+  pertinentes e `pnpm test:e2e src/tests/pages/BackendError
+  src/tests/pages/OutsideError`. Preserve no CI
   a verificação do corpo completo em SSR inicial, streaming e chamada HTTP.
 - Em atualizações do Solid/plugin, siga o roteiro do guia. Só retire o wrapper
   após testar o runtime publicado sem essa interceptação; uma issue fechada ou
