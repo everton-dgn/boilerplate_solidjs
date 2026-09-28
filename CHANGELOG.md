@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.6.1 - 2026-09-28
+
+### Fixed
+
+- update Vite+ to 1.0.0 and Solid to rc.11 (53e7914)
+
 ## 1.6.0 - 2026-09-27
 
 ### Added
