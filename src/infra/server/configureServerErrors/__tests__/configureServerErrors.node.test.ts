@@ -116,7 +116,6 @@ describe('registro central da política de erros', () => {
   it('deixa sinais de controle com a política padrão do runtime', () => {
     for (const control of [
       redirect('/'),
-      new Response('PRIVATE'),
       respond({ ok: true }),
       new NotReadyError(Promise.resolve('pronto'))
     ]) {
@@ -128,6 +127,7 @@ describe('registro central da política de erros', () => {
   it.each([
     ['um Error', new Error('PRIVATE', { cause: 'CAUSE_PRIVATE' })],
     ['um primitivo', 'PRIVATE'],
+    ['uma Response com corpo', new Response('PRIVATE')],
     ['um objeto cuja inspeção falha', hostileValue()]
   ])('troca %s por erro público novo com log fixo', (_label, failure) => {
     const mapped = onError(failure, site)
@@ -149,6 +149,20 @@ describe('registro central da política de erros', () => {
     expect(mapped).not.toBe(tampered)
     expect(mapped).toStrictEqual(new Error(PUBLIC_MESSAGE))
     expect(console.error).not.toHaveBeenCalled()
+  })
+
+  it('registra o log fixo mesmo quando a primeira tentativa falha', () => {
+    vi.mocked(console.error).mockImplementationOnce(() => {
+      throw new Error('stderr indisponível')
+    })
+
+    const mapped = onError(new Error('PRIVATE'), site)
+
+    expect(mapped).toStrictEqual(new Error(PUBLIC_MESSAGE))
+    expect(vi.mocked(console.error).mock.calls).toStrictEqual([
+      [LOG_MESSAGE],
+      [LOG_MESSAGE]
+    ])
   })
 
   it('não instala o hook em desenvolvimento', async () => {

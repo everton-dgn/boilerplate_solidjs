@@ -13,8 +13,9 @@ configureServerFunctionsServer({
 
 function isControlSignal(value: unknown): boolean {
   try {
+    // Como no wrapper e no middleware, só uma Response sem corpo é controle.
     return (
-      value instanceof Response ||
+      (value instanceof Response && value.body === null) ||
       value instanceof NotReadyError ||
       isResponseEnvelope(value)
     )
@@ -38,6 +39,9 @@ function mapServerError(error: unknown): Error | undefined {
     // adicionados depois da criação.
     return createPublicError()
   } catch {
+    // Se o próprio log falhar de novo, o runtime registra o erro do hook, que
+    // não carrega o erro original.
+    logServerFailure('server-error')
     return createPublicError()
   }
 }
