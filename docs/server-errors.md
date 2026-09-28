@@ -40,8 +40,11 @@ escapado não removem dados do payload já enviado.
 O hook `onError` é aditivo. Ele troca qualquer falha que chega ao runtime,
 inclusive de render e de rejeições fora de server functions, por um
 `createPublicError()` novo e registra o log fixo `[server-error]` quando o erro
-não era público. Sinais de controle (`Response`, envelopes e `NotReadyError`)
-seguem a política padrão do runtime. O retorno do hook vai ao cliente sem nova
+não era público. Sinais de controle (`Response` sem corpo, envelopes e
+`NotReadyError`) seguem a política padrão do runtime. Um envelope lançado por
+uma query durante o SSR chega primeiro ao hook como controle; depois o router
+lança o valor do envelope no render, e esse valor é tratado como falha de
+render, com ou sem o hook. O retorno do hook vai ao cliente sem nova
 sanitização, então ele nunca devolve o objeto recebido, nem um erro público, que
 pode ter ganhado campos depois de criado. O hook é síncrono e não lança: uma
 falha dele faria o runtime registrar o erro do hook.
@@ -77,7 +80,8 @@ foi medido localmente.
 Use `requestJson` dentro de uma server function, com um schema que selecione os
 campos públicos. A
 [fixture readBackend](../src/tests/fixtures/e2e/backend-error/readBackend/index.ts)
-é a única chamada atual e só entra no build E2E:
+é a chamada de referência e, como as demais fixtures que usam o transporte, só
+entra no build E2E:
 
 ```ts
 import * as v from 'valibot'
@@ -179,18 +183,22 @@ O lint não faz análise completa de fluxo: aliases do objeto global, como
 `const g = globalThis`, fontes de import calculadas, templates de pacotes fora
 de `@solidjs/web`, SDKs desconhecidos e marcação manual por `Symbol.for` exigem
 revisão. Ele também não restringe `allowControl` pelo nome nem verifica o
-conteúdo dos argumentos de log no wrapper. Não use essas lacunas nem um disable
-para contornar o contrato. O padrão de imports relativos é compartilhado com
-`tooling/lint.ts` pela constante `RELATIVE_IMPORT_RESTRICTION`.
+conteúdo dos argumentos de log em `logServerFailure`. Não use essas lacunas nem
+um disable para contornar o contrato. O padrão de imports relativos é
+compartilhado com `tooling/lint.ts` pela constante
+`RELATIVE_IMPORT_RESTRICTION`.
 
 ## Validação e recuperação
 
 O [E2E de backend](../src/tests/pages/BackendError/BackendError.e2e.test.ts)
-executa 21 casos no build de produção: cinco cenários (HTTP 500, exceção após
+executa 23 casos no build de produção: cinco cenários (HTTP 500, exceção após
 leitura, `Error` dentro do resultado, erro público e sucesso) em SSR inicial,
 streaming e chamada HTTP; quatro recargas, incluindo SSR sem JavaScript; um
-teste de isolamento do bundle; e um `redirect()` lançado por server function no
-SSR, que o hook precisa deixar passar.
+teste de isolamento do bundle; e três sinais de controle em server functions
+chamadas no SSR: um `redirect()` lançado, um envelope devolvido e um envelope
+lançado. O envelope lançado chega ao hook como controle, mas o router lança o
+valor dele no render; o documento vira 500 e o runtime descarta o `content-type`
+dessa resposta (aviso `[LATE_HEADER_WRITE]`), com ou sem o hook.
 
 O
 [E2E de erros fora de server functions](../src/tests/pages/OutsideError/OutsideError.e2e.test.ts)
@@ -201,7 +209,10 @@ lê o documento bruto fora do navegador e confere o fallback no navegador. Nos
 casos de streaming, a falha só acontece depois que o teste observa o shell e
 libera um gate no backend sintético, sem temporizador. Controles positivos
 conferem que a fixture recebeu o marcador (header `x-fixture-marker` e contagem
-do backend) e que o gate foi usado.
+do backend), que o erro lançado carregava esse marcador (header
+`x-fixture-thrown` sem streaming e registro no backend sintético nos casos com
+gate e de middleware) e que o gate foi usado. Os casos de middleware rodam em
+série e exigem uma linha nova de log fixo por requisição.
 
 O `webServer` do Playwright grava a saída do preview em
 `test-results/server-<modo>.log`. O
@@ -269,10 +280,11 @@ publicado e instalado contém a solução.
    Preserve as versões anteriores para reversão; não antecipe APIs internas.
 2. Confira se o contrato do hook `configureServerErrors({ onError })` que o
    registro central usa continua igual: chamada síncrona, retorno enviado sem
-   nova sanitização, veredito por objeto, substituição do hook anterior e
-   precedência sobre o `onError` por requisição. Confira também se o plugin
-   passou a repassar um `onError` por requisição ou a carregar o módulo
-   `configure` em outro momento.
+   nova sanitização, veredito por objeto e substituição do hook anterior. Um
+   `onError` por requisição (opção de `renderToStream` ou de
+   `handleServerFunctionRequest`) tem precedência sobre o hook global e o
+   substituiria sem aviso: confira se o plugin continua sem repassá-lo e se o
+   módulo `configure` ainda carrega antes do primeiro dispatch.
 3. Em uma reprodução isolada, teste a sanitização nativa sem o wrapper local,
    usando os três canais e falhas de render/rejeições fora de server functions.
    Verifique os artefatos de produção resolvidos; `NODE_ENV` sozinho não basta.
