@@ -56,6 +56,22 @@ Limites do hook:
 - Valores primitivos lançados não têm veredito por objeto; o hook roda e
   registra o log a cada vez que o runtime os encontra.
 
+Exceções de middleware não passam pelo hook nem pelo wrapper. Sem tratamento, o
+host responde com um corpo genérico, mas registra a mensagem, o `cause`, as
+propriedades e a stack do erro original. Por isso o primeiro item de
+[`src/middleware/index.ts`](../src/middleware/index.ts) é `containFailures`: uma
+exceção nos middlewares, nas rotas de API ou no handler de páginas vira 500 com
+a mensagem pública, os headers de segurança e o log fixo `[middleware]`. Só uma
+`Response` sem corpo passa como controle; uma `Response` com corpo lançada vira
+500, porque pode carregar dados upstream. Em desenvolvimento o erro original
+segue para o Vite. O teste Node fixa `containFailures` no índice 0, e a cadeia
+do E2E o mantém na frente das falhas injetadas.
+
+A contenção só alcança a janela da cadeia de middleware. A criação do evento, o
+commit da resposta e falhas do corpo depois que a `Response` sai ficam fora
+dela. O comportamento foi medido no preview do Nitro; o runtime da Vercel não
+foi medido localmente.
+
 ## Como adicionar uma chamada
 
 Use `requestJson` dentro de uma server function, com um schema que selecione os
@@ -180,11 +196,12 @@ O
 [E2E de erros fora de server functions](../src/tests/pages/OutsideError/OutsideError.e2e.test.ts)
 cobre throw no render com e sem boundary local, throw no render depois do shell
 e rejeições assíncronas no SSR, como filho direto de `<Loading>` e dentro de
-elemento. Cada caso lê o documento bruto fora do navegador e confere o fallback
-no navegador. Nos casos de streaming, a falha só acontece depois que o teste
-observa o shell e libera um gate no backend sintético, sem temporizador.
-Controles positivos conferem que a fixture recebeu o marcador (header
-`x-fixture-marker` e contagem do backend) e que o gate foi usado.
+elemento, além de exceções de middleware antes e depois de `next()`. Cada caso
+lê o documento bruto fora do navegador e confere o fallback no navegador. Nos
+casos de streaming, a falha só acontece depois que o teste observa o shell e
+libera um gate no backend sintético, sem temporizador. Controles positivos
+conferem que a fixture recebeu o marcador (header `x-fixture-marker` e contagem
+do backend) e que o gate foi usado.
 
 O `webServer` do Playwright grava a saída do preview em
 `test-results/server-<modo>.log`. O

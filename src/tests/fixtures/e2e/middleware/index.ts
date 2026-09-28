@@ -4,6 +4,8 @@ import * as v from 'valibot'
 import { requestJson } from '@/infra/server/requestJson/index.ts'
 import productionMiddleware from '@/middleware/index.ts'
 
+import { fixtureError } from '../outside-error/fixtureError/index.ts'
+
 type Next = () => Promise<Response>
 
 const PREFIX = '/outside-error'
@@ -30,6 +32,43 @@ async function fixtureMarker(request: Request, next: Next) {
   return response
 }
 
-const middleware = [fixtureMarker, ...productionMiddleware]
+function readMarker(): string {
+  const marker: unknown = getRequestEvent()?.locals.fixtureMarker
+  return typeof marker === 'string' ? marker : 'FIXTURE_MARKER_MISSING'
+}
+
+function failureRequested(request: Request, phase: string): boolean {
+  const url = new URL(request.url)
+  return (
+    url.pathname === PREFIX &&
+    url.searchParams.get('case') === `middleware-${phase}`
+  )
+}
+
+// Exceção de middleware antes de next(): nenhuma resposta foi produzida.
+function fixtureFailureBefore(request: Request, next: Next) {
+  if (failureRequested(request, 'before')) throw fixtureError(readMarker())
+  return next()
+}
+
+// Exceção de middleware depois de next(): a resposta já foi produzida.
+async function fixtureFailureAfter(request: Request, next: Next) {
+  const response = await next()
+  if (failureRequested(request, 'after')) throw fixtureError(readMarker())
+  return response
+}
+
+// A contenção da produção fica na frente de tudo, inclusive das falhas
+// injetadas; o teste Node do middleware fixa essa posição na cadeia real.
+const [containFailures, ...productionChain] = productionMiddleware
+if (!containFailures) throw new Error('Contain failures middleware not found')
+
+const middleware = [
+  containFailures,
+  fixtureMarker,
+  fixtureFailureBefore,
+  fixtureFailureAfter,
+  ...productionChain
+]
 
 export default middleware

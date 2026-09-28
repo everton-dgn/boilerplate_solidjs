@@ -3,10 +3,98 @@ import { provideRequestEvent } from '@solidjs/web/storage'
 import middleware from '../index.ts'
 
 const TEST_ORIGIN = 'http://localhost'
-const REQUEST_CONTEXT_INDEX = 2
-const API_HANDLER_INDEX = 3
+const CONTAIN_FAILURES_INDEX = 0
+const REQUEST_TIMING_INDEX = 1
+const SECURITY_HEADERS_INDEX = 2
+const REQUEST_CONTEXT_INDEX = 3
+const API_HANDLER_INDEX = 4
+const HTTP_FOUND = 302
+const HTTP_BAD_GATEWAY = 502
+const HTTP_INTERNAL_SERVER_ERROR = 500
+const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
+
+function containFailures() {
+  const handler = middleware[CONTAIN_FAILURES_INDEX]
+  if (!handler) throw new Error('Contain failures middleware not found')
+  return handler
+}
+
+function rejectWith(value: unknown) {
+  return vi.fn<() => Promise<Response>>().mockRejectedValue(value)
+}
+
+// Simula um objeto lançado cuja inspeção falha, com o marcador na mensagem.
+function hostileValue(): object {
+  return new Proxy(
+    {},
+    {
+      getPrototypeOf: () => {
+        throw new Error('PRIVATE_PROTOTYPE')
+      }
+    }
+  )
+}
 
 describe('middlewares de requisição', () => {
+  beforeEach(() => {
+    // A contenção só vale nos builds de produção; o Vitest roda com DEV.
+    vi.stubEnv('DEV', false)
+    vi.spyOn(console, 'error').mockImplementation(vi.fn())
+  })
+
+  it('preserva a resposta do próximo handler sem registrar log', async () => {
+    const response = new Response('conteúdo')
+    const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
+
+    await expect(
+      containFailures()(new Request(TEST_ORIGIN), next)
+    ).resolves.toBe(response)
+    expect(console.error).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['um Error', new Error('PRIVATE', { cause: 'CAUSE_PRIVATE' })],
+    [
+      'uma Response com corpo',
+      new Response('PRIVATE', { status: HTTP_BAD_GATEWAY })
+    ],
+    ['um objeto cuja inspeção falha', hostileValue()]
+  ])('troca %s por 500 público com log fixo', async (_label, failure) => {
+    const response = await containFailures()(
+      new Request(TEST_ORIGIN),
+      rejectWith(failure)
+    )
+
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    expect(Object.fromEntries(response.headers)).toMatchObject({
+      'content-type': 'text/plain; charset=utf-8',
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'strict-origin-when-cross-origin'
+    })
+    expect(console.error).toHaveBeenCalledExactlyOnceWith(LOG_MESSAGE)
+  })
+
+  it('deixa passar uma Response de controle sem corpo', async () => {
+    const control = Response.redirect(new URL('/', TEST_ORIGIN), HTTP_FOUND)
+
+    await expect(
+      containFailures()(new Request(TEST_ORIGIN), rejectWith(control))
+    ).resolves.toBe(control)
+    expect(console.error).not.toHaveBeenCalled()
+  })
+
+  it('relança o erro original em desenvolvimento', async () => {
+    vi.stubEnv('DEV', true)
+    const failure = new Error('PRIVATE')
+
+    await expect(
+      containFailures()(new Request(TEST_ORIGIN), rejectWith(failure))
+    ).rejects.toBe(failure)
+    expect(console.error).not.toHaveBeenCalled()
+  })
+
   it('mede o tempo e preserva a resposta do próximo handler', async () => {
     const started = 100
     const finished = 112.5
@@ -15,7 +103,7 @@ describe('middlewares de requisição', () => {
       .mockReturnValueOnce(finished)
     const response = new Response('conteúdo')
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
-    const [requestTiming] = middleware
+    const requestTiming = middleware[REQUEST_TIMING_INDEX]
     if (!requestTiming) throw new Error('Request timing middleware not found')
 
     await expect(requestTiming(new Request(TEST_ORIGIN), next)).resolves.toBe(
@@ -28,7 +116,7 @@ describe('middlewares de requisição', () => {
   it('adiciona os cabeçalhos de segurança à resposta', async () => {
     const response = new Response('conteúdo')
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
-    const [, securityHeaders] = middleware
+    const securityHeaders = middleware[SECURITY_HEADERS_INDEX]
     if (!securityHeaders) {
       throw new Error('Security headers middleware not found')
     }

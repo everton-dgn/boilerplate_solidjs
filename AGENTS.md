@@ -228,7 +228,9 @@ release. Add a tool name to select part of the graph. For example, run
 - Mantenha o registro global e os sinais de controle do Solid. O
   `wrapInvocation` cobre server functions e o hook `onError`, instalado só em
   produção, uniformiza a mensagem pública das demais falhas; ele nunca devolve
-  o objeto recebido. Um fallback visual não protege o payload.
+  o objeto recebido. `containFailures` continua como primeiro middleware para
+  que exceções da cadeia não cheguem ao log do host. Um fallback visual não
+  protege o payload.
   Os logs atuais são fixos e não recebem o objeto original.
 - Não registre erro original, headers, cookies, argumentos, corpos ou
   credenciais. Logs detalhados exigem remoção de dados sensíveis definida antes.

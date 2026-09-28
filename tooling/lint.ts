@@ -60,6 +60,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     {
       files: [
         'src/tests/pages/BackendError/BackendError.e2e.test.ts',
+        'src/tests/pages/OutsideError/OutsideError.e2e.test.ts',
         'src/tests/helpers/readSiteOrigin/index.ts'
       ],
       rules: { 'import/no-nodejs-modules': 'off' }

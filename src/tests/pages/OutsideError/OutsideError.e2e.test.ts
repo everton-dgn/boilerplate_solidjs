@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises'
+import { env } from 'node:process'
+
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import * as v from 'valibot'
 
@@ -182,5 +185,38 @@ for (const fixture of CASES) {
         browserErrors.filter(message => !fixture.pageErrors.includes(message))
       ).toStrictEqual([])
     })
+  })
+}
+
+// oxlint-disable-next-line vitest/prefer-each -- O runner do Playwright não oferece test.each.
+for (const phase of ['before', 'after']) {
+  test(`exceção no middleware ${phase === 'before' ? 'antes' : 'depois'} de next() vira 500 público`, async ({
+    request,
+    baseURL
+  }) => {
+    const logFile = env.SERVER_LOG_FILE
+    if (!baseURL || !logFile) throw new Error('E2E environment is incomplete')
+    const id = `outside:${crypto.randomUUID()}`
+    const { marker } = await readState({ request, id })
+
+    const response = await fetch(
+      `${baseURL}/outside-error?case=middleware-${phase}&id=${id}`
+    )
+    const body = await response.text()
+
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    expect(body).toBe(PUBLIC_MESSAGE)
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(JSON.stringify(Object.fromEntries(response.headers))).not.toContain(
+      marker
+    )
+    // Controle positivo: a fixture leu o marcador antes de lançar.
+    const state = await readState({ request, id })
+    expect(state.attempts).toBe(1)
+    // O log capturado registra a linha fixa; o teardown global recusa o
+    // marcador em todo o arquivo depois da suíte.
+    await expect
+      .poll(async () => readFile(logFile, 'utf8'))
+      .toContain('[middleware] Unexpected failure; private details omitted')
   })
 }
