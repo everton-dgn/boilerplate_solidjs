@@ -80,11 +80,19 @@ test('um envelope devolvido por server function no SSR entrega o valor', async (
 test('um envelope lançado por server function no SSR vira falha de render sem expor o valor', async ({
   request
 }) => {
-  const response = await request.get('/control-signal?kind=envelope-throw')
+  const id = `throw:${crypto.randomUUID()}`
+  const state = await request.get(`${BACKEND}/control?id=${id}`)
+  const { marker } = v.parse(backendState, await state.json())
+  const response = await request.get(
+    `/control-signal?kind=envelope-throw&id=${id}`
+  )
   const document = await response.text()
   expect(response.status()).toBe(HTTP_INTERNAL_SERVER_ERROR)
-  expect(document).not.toContain('Envelope lançado')
+  expect(document).not.toContain(marker)
   expect(document).toContain('Algo deu errado!')
+  // Controle positivo: a server function leu o marcador antes de lançar.
+  const after = await request.get(`${BACKEND}/control?id=${id}`)
+  expect(v.parse(backendState, await after.json()).attempts).toBe(1)
 })
 
 for (const { phase, javaScriptEnabled } of SCENARIOS) {

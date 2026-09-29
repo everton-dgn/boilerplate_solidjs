@@ -9,6 +9,8 @@ const getRedirect = query(throwRedirect, 'control-signal-redirect')
 const getReturnedEnvelope = query(returnEnvelope, 'control-signal-returned')
 const getThrownEnvelope = query(throwEnvelope, 'control-signal-thrown')
 
+type EnvelopeProps = { id: string }
+
 function Redirected() {
   const data = createMemo(() => getRedirect())
   return <>{data()}</>
@@ -19,8 +21,8 @@ function ReturnedEnvelope() {
   return <p>{data().message}</p>
 }
 
-function ThrownEnvelope() {
-  const data = createMemo(() => getThrownEnvelope())
+function ThrownEnvelope(props: EnvelopeProps) {
+  const data = createMemo(() => getThrownEnvelope(props.id))
   return <>{data()}</>
 }
 
@@ -41,7 +43,7 @@ export default function ControlSignal() {
           <ReturnedEnvelope />
         </Match>
         <Match when={params.kind === 'envelope-throw'}>
-          <ThrownEnvelope />
+          <ThrownEnvelope id={String(params.id)} />
         </Match>
       </Switch>
     </main>
