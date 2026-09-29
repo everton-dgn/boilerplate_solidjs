@@ -61,14 +61,26 @@ Limites do hook:
 
 Exceções de middleware não passam pelo hook nem pelo wrapper. Sem tratamento, o
 host responde com um corpo genérico, mas registra a mensagem, o `cause`, as
-propriedades e a stack do erro original. Por isso o primeiro item de
-[`src/middleware/index.ts`](../src/middleware/index.ts) é `containFailures`: uma
-exceção nos middlewares, nas rotas de API ou no handler de páginas vira 500 com
-a mensagem pública, os headers de segurança e o log fixo `[middleware]`. Só uma
-`Response` sem corpo passa como controle; uma `Response` com corpo lançada vira
-500, porque pode carregar dados upstream. Em desenvolvimento o erro original
-segue para o Vite. O teste Node fixa `containFailures` no índice 0, e a cadeia
-do E2E o mantém na frente das falhas injetadas.
+propriedades e a stack do erro original. Por isso o export padrão de
+[`src/middleware/index.ts`](../src/middleware/index.ts) é
+`containFailures(requestMiddleware)`: ele compõe a cadeia inteira dentro de si,
+e uma exceção nos middlewares, nas rotas de API ou no handler de páginas vira
+500 com os headers de segurança e o log fixo `[middleware]`. Só uma `Response`
+sem corpo passa como controle; uma `Response` com corpo lançada vira 500, porque
+pode carregar dados upstream. Em desenvolvimento o erro original segue para o
+Vite. A cadeia do E2E usa a mesma função em volta das falhas injetadas.
+
+Numa navegação (`GET` ou `HEAD` com `accept` de HTML), o 500 mostra a página de
+erro do app: `containFailures` grava um `createPublicError()` em
+`locals.serverFailure` e chama o render da página. O `ServerFailureGate` de
+[`App.tsx`](../src/App.tsx) lança esse erro antes do Router, o `Errored` raiz
+mostra o `ErrorFallback` e o cliente hidrata o fallback pelo erro serializado.
+Como o erro já é público, o hook não registra outro log. O status é forçado para
+500 na resposta. Server functions, rotas de API e outros métodos recebem a
+mensagem pública em texto, porque esperam outro formato e não devem rodar de
+novo. O plugin aceita um único render por requisição: se a cadeia falhar depois
+de já ter renderizado a página, ou se o render de erro falhar, a resposta também
+é o 500 em texto.
 
 A contenção só alcança a janela da cadeia de middleware. A criação do evento, o
 commit da resposta e falhas do corpo depois que a `Response` sai ficam fora

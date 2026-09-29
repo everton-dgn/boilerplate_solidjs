@@ -204,18 +204,33 @@ for (const fixture of CASES) {
   })
 }
 
+// errorPage: a navegação recebe a página de erro do app. Depois de next() o
+// render já aconteceu e o plugin não permite outro, então a resposta é o 500
+// em texto, como fora de navegação.
+type MiddlewareCase = {
+  phase: 'before' | 'after'
+  navigation: boolean
+  errorPage: boolean
+}
+
+const MIDDLEWARE_CASES: MiddlewareCase[] = [
+  { phase: 'before', navigation: true, errorPage: true },
+  { phase: 'after', navigation: true, errorPage: false },
+  { phase: 'before', navigation: false, errorPage: false }
+]
+
 async function countLogLines(file: string): Promise<number> {
   const log = await readFile(file, 'utf8')
   return log.split('\n').filter(line => line.includes(MIDDLEWARE_LOG)).length
 }
 
 test.describe('exceções no middleware', () => {
-  // Em ordem num único worker, para que cada caso atribua a si a linha de log
-  // que produziu. Diferente de serial, uma falha não pula o caso seguinte.
+  // Em ordem num único worker, para que cada caso atribua a si as linhas de
+  // log que produziu. Diferente de serial, uma falha não pula o caso seguinte.
   test.describe.configure({ mode: 'default' })
 
-  for (const phase of ['before', 'after']) {
-    test(`exceção ${phase === 'before' ? 'antes' : 'depois'} de next() vira 500 público`, async ({
+  for (const { phase, navigation, errorPage } of MIDDLEWARE_CASES) {
+    test(`exceção ${phase === 'before' ? 'antes' : 'depois'} de next() ${navigation ? 'numa navegação' : 'fora de navegação'} ${errorPage ? 'mostra a página de erro' : 'vira 500 em texto'}`, async ({
       request,
       baseURL
     }) => {
@@ -223,16 +238,23 @@ test.describe('exceções no middleware', () => {
       if (!baseURL || !logFile) throw new Error('E2E environment is incomplete')
       const id = `outside:${crypto.randomUUID()}`
       const { marker } = await readState({ request, id })
-      const logLinesBefore = await countLogLines(logFile)
+      const logBefore = await countLogLines(logFile)
 
       const response = await fetch(
-        `${baseURL}/outside-error?case=middleware-${phase}&id=${id}`
+        `${baseURL}/outside-error?case=middleware-${phase}&id=${id}`,
+        { headers: { accept: navigation ? 'text/html' : '*/*' } }
       )
       const body = await response.text()
 
       expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-      expect(body).toBe(PUBLIC_MESSAGE)
       expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+      if (errorPage) {
+        expect(response.headers.get('content-type')).toContain('text/html')
+        expect(body).toContain('Algo deu errado!')
+      } else {
+        expect(body).toBe(PUBLIC_MESSAGE)
+      }
+      expect(body).not.toContain(marker)
       expect(
         JSON.stringify(Object.fromEntries(response.headers))
       ).not.toContain(marker)
@@ -240,11 +262,33 @@ test.describe('exceções no middleware', () => {
       const state = await readState({ request, id })
       expect(state.attempts).toBe(1)
       expect(state.real).toBe(true)
-      // O log capturado ganha a linha fixa desta requisição; o teardown
-      // global recusa o marcador em todo o arquivo depois da suíte.
-      await expect
-        .poll(async () => countLogLines(logFile))
-        .toBeGreaterThan(logLinesBefore)
+      // Uma linha fixa do middleware por requisição. O teardown global recusa
+      // o marcador em todo o arquivo depois da suíte.
+      await expect.poll(async () => countLogLines(logFile)).toBe(logBefore + 1)
     })
   }
+
+  test('a página de erro do middleware hidrata no navegador', async ({
+    page,
+    request
+  }) => {
+    const id = `outside:${crypto.randomUUID()}`
+    const { marker } = await readState({ request, id })
+    const browserErrors: string[] = []
+    page.on('pageerror', error => browserErrors.push(error.message))
+
+    const response = await page.goto(
+      `/outside-error?case=middleware-before&id=${id}`
+    )
+
+    expect(response?.status()).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(
+      page.getByRole('link', { name: 'Recarregar página' })
+    ).toBeVisible()
+    expect(await page.content()).not.toContain(marker)
+    // Só a mensagem pública pode reaparecer ao hidratar o fallback.
+    expect(
+      browserErrors.filter(message => message !== PUBLIC_MESSAGE)
+    ).toStrictEqual([])
+  })
 })

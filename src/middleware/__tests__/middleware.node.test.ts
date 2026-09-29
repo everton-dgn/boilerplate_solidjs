@@ -1,27 +1,45 @@
 import { provideRequestEvent } from '@solidjs/web/storage'
 
-import middleware from '../index.ts'
+import { isPublicError } from '@/infra/server/publicErrors/index.ts'
+
+import middleware, { containFailures, requestMiddleware } from '../index.ts'
 
 const TEST_ORIGIN = 'http://localhost'
-const CONTAIN_FAILURES_INDEX = 0
-const REQUEST_TIMING_INDEX = 1
-const SECURITY_HEADERS_INDEX = 2
-const REQUEST_CONTEXT_INDEX = 3
-const API_HANDLER_INDEX = 4
+const REQUEST_TIMING_INDEX = 0
+const SECURITY_HEADERS_INDEX = 1
+const REQUEST_CONTEXT_INDEX = 2
+const API_HANDLER_INDEX = 3
 const HTTP_FOUND = 302
 const HTTP_BAD_GATEWAY = 502
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
 
-function containFailures() {
-  const handler = middleware[CONTAIN_FAILURES_INDEX]
-  if (!handler) throw new Error('Contain failures middleware not found')
-  return handler
+type LocalsEvent = {
+  request: Request
+  locals: { serverFailure?: Error }
+  response: { headers: Headers }
 }
 
-function rejectWith(value: unknown) {
-  return vi.fn<() => Promise<Response>>().mockRejectedValue(value)
+// Uma cadeia cujo único middleware rejeita com o valor recebido.
+function failingWith(value: unknown) {
+  const fail = vi.fn<() => Promise<Response>>().mockRejectedValue(value)
+  return containFailures([fail])
+}
+
+function renderPage() {
+  return vi.fn<() => Promise<Response>>().mockResolvedValue(
+    new Response('<main>Algo deu errado!</main>', {
+      headers: { 'content-type': 'text/html; charset=utf-8' }
+    })
+  )
+}
+
+function pageEvent(): LocalsEvent {
+  const request = new Request(TEST_ORIGIN, {
+    headers: { accept: 'text/html,application/xhtml+xml' }
+  })
+  return { request, locals: {}, response: { headers: new Headers() } }
 }
 
 // Simula um objeto lançado cuja inspeção falha, com o marcador na mensagem.
@@ -36,7 +54,7 @@ function hostileValue(): object {
   )
 }
 
-describe('middlewares de requisição', () => {
+describe('contenção de falhas do middleware', () => {
   beforeEach(() => {
     // A contenção só vale nos builds de produção; o Vitest roda com DEV.
     vi.stubEnv('DEV', false)
@@ -48,7 +66,7 @@ describe('middlewares de requisição', () => {
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
 
     await expect(
-      containFailures()(new Request(TEST_ORIGIN), next)
+      containFailures([])(new Request(TEST_ORIGIN), next)
     ).resolves.toBe(response)
     expect(console.error).not.toHaveBeenCalled()
   })
@@ -61,11 +79,13 @@ describe('middlewares de requisição', () => {
     ],
     ['um objeto cuja inspeção falha', hostileValue()]
   ])('troca %s por 500 público com log fixo', async (_label, failure) => {
-    const response = await containFailures()(
+    const render = renderPage()
+    const response = await failingWith(failure)(
       new Request(TEST_ORIGIN),
-      rejectWith(failure)
+      render
     )
 
+    expect(render).not.toHaveBeenCalled()
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
     await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
     expect(Object.fromEntries(response.headers)).toMatchObject({
@@ -81,9 +101,9 @@ describe('middlewares de requisição', () => {
       throw new Error('stderr indisponível')
     })
 
-    const response = await containFailures()(
+    const response = await failingWith(new Error('PRIVATE'))(
       new Request(TEST_ORIGIN),
-      rejectWith(new Error('PRIVATE'))
+      renderPage()
     )
 
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
@@ -94,7 +114,7 @@ describe('middlewares de requisição', () => {
     const control = Response.redirect(new URL('/', TEST_ORIGIN), HTTP_FOUND)
 
     await expect(
-      containFailures()(new Request(TEST_ORIGIN), rejectWith(control))
+      failingWith(control)(new Request(TEST_ORIGIN), renderPage())
     ).resolves.toBe(control)
     expect(console.error).not.toHaveBeenCalled()
   })
@@ -104,11 +124,97 @@ describe('middlewares de requisição', () => {
     const failure = new Error('PRIVATE')
 
     await expect(
-      containFailures()(new Request(TEST_ORIGIN), rejectWith(failure))
+      failingWith(failure)(new Request(TEST_ORIGIN), renderPage())
     ).rejects.toBe(failure)
     expect(console.error).not.toHaveBeenCalled()
   })
 
+  it('renderiza a página de erro do app numa navegação', async () => {
+    const event = pageEvent()
+    const render = renderPage()
+
+    const response = await provideRequestEvent(event, () =>
+      failingWith(new Error('PRIVATE'))(event.request, render)
+    )
+
+    expect(render).toHaveBeenCalledOnce()
+    expect(isPublicError(event.locals.serverFailure)).toBe(true)
+    await expect(response.text()).resolves.toBe('<main>Algo deu errado!</main>')
+    expect({
+      status: response.status,
+      ...Object.fromEntries(response.headers)
+    }).toMatchObject({
+      status: HTTP_INTERNAL_SERVER_ERROR,
+      'content-type': 'text/html; charset=utf-8',
+      'x-content-type-options': 'nosniff'
+    })
+    expect(console.error).toHaveBeenCalledExactlyOnceWith(LOG_MESSAGE)
+  })
+
+  it('cai no 500 em texto quando a página de erro falha', async () => {
+    const event = pageEvent()
+    const render = vi
+      .fn<() => Promise<Response>>()
+      .mockRejectedValue(new Error('PRIVATE_RENDER'))
+
+    const response = await provideRequestEvent(event, () =>
+      failingWith(new Error('PRIVATE'))(event.request, render)
+    )
+
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+  })
+
+  it('não renderiza de novo quando a falha vem depois do render', async () => {
+    const event = pageEvent()
+    const render = renderPage()
+    const failAfterRender = vi
+      .fn<
+        (request: Request, next: () => Promise<Response>) => Promise<Response>
+      >()
+      .mockImplementation(async (_request, renderNext) => {
+        const page = await renderNext()
+        throw new Error(`PRIVATE_AFTER_${page.status}`)
+      })
+
+    const response = await provideRequestEvent(event, () =>
+      containFailures([failAfterRender])(event.request, render)
+    )
+
+    expect(render).toHaveBeenCalledOnce()
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+  })
+
+  it('não renderiza páginas para métodos que não são de navegação', async () => {
+    const event = pageEvent()
+    const request = new Request(TEST_ORIGIN, {
+      method: 'POST',
+      headers: { accept: 'text/html' }
+    })
+    const render = renderPage()
+
+    const response = await provideRequestEvent({ ...event, request }, () =>
+      failingWith(new Error('PRIVATE'))(request, render)
+    )
+
+    expect(render).not.toHaveBeenCalled()
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+  })
+
+  it('compõe a cadeia de produção dentro da contenção', async () => {
+    const response = new Response('página')
+    const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
+    provideRequestEvent(pageEvent(), vi.fn())
+
+    const request = new Request(new URL('/pagina', TEST_ORIGIN))
+
+    await expect(middleware(request, next)).resolves.toBe(response)
+    expect(next).toHaveBeenCalledOnce()
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+  })
+})
+
+describe('middlewares de requisição', () => {
   it('mede o tempo e preserva a resposta do próximo handler', async () => {
     const started = 100
     const finished = 112.5
@@ -117,7 +223,7 @@ describe('middlewares de requisição', () => {
       .mockReturnValueOnce(finished)
     const response = new Response('conteúdo')
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
-    const requestTiming = middleware[REQUEST_TIMING_INDEX]
+    const requestTiming = requestMiddleware[REQUEST_TIMING_INDEX]
     if (!requestTiming) throw new Error('Request timing middleware not found')
 
     await expect(requestTiming(new Request(TEST_ORIGIN), next)).resolves.toBe(
@@ -130,7 +236,7 @@ describe('middlewares de requisição', () => {
   it('adiciona os cabeçalhos de segurança à resposta', async () => {
     const response = new Response('conteúdo')
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
-    const securityHeaders = middleware[SECURITY_HEADERS_INDEX]
+    const securityHeaders = requestMiddleware[SECURITY_HEADERS_INDEX]
     if (!securityHeaders) {
       throw new Error('Security headers middleware not found')
     }
@@ -158,7 +264,7 @@ describe('middlewares de requisição', () => {
       expect(event.locals.requestId).toBe(requestId)
       return Promise.resolve(response)
     })
-    const requestContext = middleware[REQUEST_CONTEXT_INDEX]
+    const requestContext = requestMiddleware[REQUEST_CONTEXT_INDEX]
     if (!requestContext) throw new Error('Request context middleware not found')
 
     await expect(
@@ -172,7 +278,7 @@ describe('middlewares de requisição', () => {
   it('entrega ao próximo handler as requisições sem rota de API', async () => {
     const response = new Response('página')
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
-    const apiHandler = middleware[API_HANDLER_INDEX]
+    const apiHandler = requestMiddleware[API_HANDLER_INDEX]
     if (!apiHandler) throw new Error('API handler middleware not found')
 
     const request = new Request(new URL('/pagina', TEST_ORIGIN))
@@ -196,7 +302,7 @@ describe('middlewares de requisição', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(vi.fn())
     const response = new Response()
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
-    const requestContext = middleware[REQUEST_CONTEXT_INDEX]
+    const requestContext = requestMiddleware[REQUEST_CONTEXT_INDEX]
     if (!requestContext) throw new Error('Request context middleware not found')
 
     await expect(requestContext(new Request(TEST_ORIGIN), next)).resolves.toBe(

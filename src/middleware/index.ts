@@ -1,11 +1,18 @@
-import { getRequestEvent } from '@solidjs/web'
+import { composeMiddleware, getRequestEvent } from '@solidjs/web'
 import { createAPIHandler } from 'filesystem-routing/api'
 import routes from 'virtual:file-routes'
 
 import { logServerFailure } from '@/infra/server/logServerFailure/index.ts'
-import { PUBLIC_ERROR_MESSAGE } from '@/infra/server/publicErrors/index.ts'
+import {
+  createPublicError,
+  PUBLIC_ERROR_MESSAGE
+} from '@/infra/server/publicErrors/index.ts'
 
 type Next = () => Promise<Response>
+type Render = (request?: Request) => Response | Promise<Response>
+type Middleware = (request: Request, next: Next) => Promise<Response>
+type ChainEntry = (request: Request, next: Render) => Promise<Response>
+type RenderState = { rendered: boolean }
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
 
@@ -26,28 +33,75 @@ function isControlResponse(value: unknown): value is Response {
   }
 }
 
-// Primeiro da cadeia: uma exceção nos middlewares, nas rotas de API ou no
-// handler de páginas vira 500 com a mensagem pública e um log fixo, em vez de
-// chegar ao host, que registraria o erro original. Não cobre a criação do
-// evento, o commit da resposta nem falhas do corpo depois que a Response sai.
-async function containFailures(_request: Request, next: Next) {
+// Só uma navegação recebe a página de erro do app. Server functions e rotas
+// de API esperam outro formato e não devem ser executadas de novo.
+function isPageRequest(request: Request): boolean {
+  return (
+    (request.method === 'GET' || request.method === 'HEAD') &&
+    (request.headers.get('accept') ?? '').includes('text/html')
+  )
+}
+
+function publicTextFailure(): Response {
+  return applySecurityHeaders(
+    new Response(PUBLIC_ERROR_MESSAGE, {
+      status: HTTP_INTERNAL_SERVER_ERROR,
+      headers: { 'content-type': 'text/plain; charset=utf-8' }
+    })
+  )
+}
+
+// Renderiza o app de novo com o erro público em locals: o gate de App.tsx o
+// lança e o Errored raiz mostra o ErrorFallback. O status é forçado porque um
+// render descartado pode já ter enviado o início da resposta do evento.
+async function renderErrorPage(render: Render): Promise<Response> {
+  const event = getRequestEvent()
+  if (!event) return publicTextFailure()
+  event.locals.serverFailure = createPublicError()
   try {
-    return await next()
-  } catch (error) {
-    // Em desenvolvimento o erro original segue para o Vite.
-    if (import.meta.env.DEV) throw error
-    if (isControlResponse(error)) return error
-    try {
-      logServerFailure('middleware')
-    } catch {
-      // O log é uma tentativa; a resposta pública sai mesmo sem destino.
-    }
+    const page = await render()
     return applySecurityHeaders(
-      new Response(PUBLIC_ERROR_MESSAGE, {
+      new Response(page.body, {
         status: HTTP_INTERNAL_SERVER_ERROR,
-        headers: { 'content-type': 'text/plain; charset=utf-8' }
+        headers: page.headers
       })
     )
+  } catch {
+    return publicTextFailure()
+  }
+}
+
+// Envolve toda a cadeia: uma exceção nos middlewares, nas rotas de API ou no
+// handler de páginas vira 500 público com log fixo, em vez de chegar ao host,
+// que registraria o erro original. Como a cadeia é composta aqui dentro, o
+// next recebido é o render da página, usado para a página de erro. Não cobre
+// a criação do evento, o commit da resposta nem falhas do corpo depois que a
+// Response sai.
+function containFailures(chain: Middleware[]): ChainEntry {
+  const run = composeMiddleware(chain)
+  return async (request, next) => {
+    // O plugin só aceita uma chamada ao render por requisição. Se a cadeia já
+    // renderizou a página antes de falhar, a página de erro não é possível.
+    const state: RenderState = { rendered: false }
+    const render: Render = override => {
+      state.rendered = true
+      return next(override)
+    }
+    try {
+      return await run(request, render)
+    } catch (error) {
+      // Em desenvolvimento o erro original segue para o Vite.
+      if (import.meta.env.DEV) throw error
+      if (isControlResponse(error)) return error
+      try {
+        logServerFailure('middleware')
+      } catch {
+        // O log é uma tentativa; a resposta pública sai mesmo sem destino.
+      }
+      return isPageRequest(request) && !state.rendered
+        ? renderErrorPage(next)
+        : publicTextFailure()
+    }
   }
 }
 
@@ -73,12 +127,12 @@ async function requestContext(_request: Request, next: Next) {
 
 // Rotas com exportações GET, POST etc. respondem antes do SSR; o restante
 // segue para a renderização.
-const middleware = [
-  containFailures,
+const requestMiddleware: Middleware[] = [
   requestTiming,
   securityHeaders,
   requestContext,
   createAPIHandler(routes)
 ]
 
-export default middleware
+export { containFailures, requestMiddleware }
+export default containFailures(requestMiddleware)

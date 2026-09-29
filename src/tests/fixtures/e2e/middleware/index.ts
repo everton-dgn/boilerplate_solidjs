@@ -2,7 +2,7 @@ import { getRequestEvent } from '@solidjs/web'
 import * as v from 'valibot'
 
 import { requestJson } from '@/infra/server/requestJson/index.ts'
-import productionMiddleware from '@/middleware/index.ts'
+import { containFailures, requestMiddleware } from '@/middleware/index.ts'
 
 import { fixtureError } from '../outside-error/fixtureError/index.ts'
 import { readFixtureMarker } from '../outside-error/readFixtureMarker/index.ts'
@@ -79,17 +79,10 @@ async function fixtureFailureAfter(request: Request, next: Next) {
   return response
 }
 
-// A contenção da produção fica na frente de tudo, inclusive das falhas
-// injetadas; o teste Node do middleware fixa essa posição na cadeia real.
-const [containFailures, ...productionChain] = productionMiddleware
-if (!containFailures) throw new Error('Contain failures middleware not found')
-
-const middleware = [
-  containFailures,
+// A mesma contenção da produção envolve as falhas injetadas e a cadeia real.
+export default containFailures([
   fixtureMarker,
   fixtureFailureBefore,
   fixtureFailureAfter,
-  ...productionChain
-]
-
-export default middleware
+  ...requestMiddleware
+])
