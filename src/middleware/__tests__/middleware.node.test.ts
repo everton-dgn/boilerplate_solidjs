@@ -14,6 +14,9 @@ const HTTP_BAD_GATEWAY = 502
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
+// Entrada que o runtime grava no Server-Timing com um traceparent amostrado.
+const TRACE_TIMING =
+  'traceparent;desc="00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"'
 
 type LocalsEvent = {
   request: Request
@@ -54,6 +57,18 @@ function hostileValue(): object {
   )
 }
 
+// Um redirect que passa na classificação de controle, mas cujos headers falham
+// ao ser lidos: não aceita gravação nem cópia.
+function hostileControl(): Response {
+  const control = Response.redirect(new URL('/', TEST_ORIGIN), HTTP_FOUND)
+  return new Proxy(control, {
+    get: (target, property): unknown => {
+      if (property === 'headers') throw new Error('PRIVATE_HEADERS')
+      return Reflect.get(target, property, target)
+    }
+  })
+}
+
 describe('contenção de falhas do middleware', () => {
   beforeEach(() => {
     // A contenção só vale nos builds de produção; o Vitest roda com DEV.
@@ -77,7 +92,9 @@ describe('contenção de falhas do middleware', () => {
       'uma Response com corpo',
       new Response('PRIVATE', { status: HTTP_BAD_GATEWAY })
     ],
-    ['um objeto cuja inspeção falha', hostileValue()]
+    ['um objeto cuja inspeção falha', hostileValue()],
+    ['uma Response.error(), com status 0', Response.error()],
+    ['um controle cujos headers falham', hostileControl()]
   ])('troca %s por 500 público com log fixo', async (_label, failure) => {
     const render = renderPage()
     const response = await failingWith(failure)(
@@ -110,12 +127,23 @@ describe('contenção de falhas do middleware', () => {
     await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
   })
 
-  it('deixa passar uma Response de controle sem corpo', async () => {
+  it('deixa passar uma Response de controle sem corpo, com os headers de segurança', async () => {
     const control = Response.redirect(new URL('/', TEST_ORIGIN), HTTP_FOUND)
 
-    await expect(
-      failingWith(control)(new Request(TEST_ORIGIN), renderPage())
-    ).resolves.toBe(control)
+    const response = await failingWith(control)(
+      new Request(TEST_ORIGIN),
+      renderPage()
+    )
+
+    expect({
+      status: response.status,
+      ...Object.fromEntries(response.headers)
+    }).toMatchObject({
+      status: HTTP_FOUND,
+      location: `${TEST_ORIGIN}/`,
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'strict-origin-when-cross-origin'
+    })
     expect(console.error).not.toHaveBeenCalled()
   })
 
@@ -245,6 +273,153 @@ describe('contenção de falhas do middleware', () => {
   })
 })
 
+describe('export padrão do middleware', () => {
+  beforeEach(() => {
+    // A contenção só vale nos builds de produção; o Vitest roda com DEV.
+    vi.stubEnv('DEV', false)
+    vi.spyOn(console, 'error').mockImplementation(vi.fn())
+  })
+
+  // O E2E injeta falhas pela fábrica; só este teste prova que o export padrão
+  // mantém a contenção.
+  it('troca uma falha da cadeia por 500 público', async () => {
+    const event: LocalsEvent = {
+      request: new Request(TEST_ORIGIN),
+      locals: {},
+      response: { headers: new Headers() }
+    }
+    const next = vi
+      .fn<() => Promise<Response>>()
+      .mockRejectedValue(new Error('PRIVATE'))
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event.request, next)
+    )
+
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    expect(Object.fromEntries(response.headers)).toMatchObject({
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'strict-origin-when-cross-origin'
+    })
+    expect(console.error).toHaveBeenCalledExactlyOnceWith(LOG_MESSAGE)
+  })
+
+  // Response.redirect() chega com headers imutáveis e sem corpo.
+  it('grava os headers da cadeia num redirect sem trocar por 500', async () => {
+    const event = pageEvent('/pagina')
+    const next = vi
+      .fn<() => Promise<Response>>()
+      .mockResolvedValue(
+        Response.redirect(new URL('/destino', TEST_ORIGIN), HTTP_FOUND)
+      )
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event.request, next)
+    )
+
+    expect(console.error).not.toHaveBeenCalled()
+    expect({
+      status: response.status,
+      ...Object.fromEntries(response.headers)
+    }).toMatchObject({
+      status: HTTP_FOUND,
+      location: `${TEST_ORIGIN}/destino`,
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'strict-origin-when-cross-origin'
+    })
+    expect(response.headers.get('server-timing')).toMatch(/^app;dur=/u)
+  })
+
+  // O retorno cru de fetch() tem headers imutáveis e corpo upstream; a cadeia
+  // não o repassa.
+  it('troca a resposta crua de fetch() por 500 público', async () => {
+    const event: LocalsEvent = {
+      request: new Request(new URL('/pagina', TEST_ORIGIN)),
+      locals: {},
+      response: { headers: new Headers() }
+    }
+    const next = vi
+      .fn<() => Promise<Response>>()
+      .mockReturnValue(fetch('data:text/plain,PRIVATE_UPSTREAM'))
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event.request, next)
+    )
+
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    expect(console.error).toHaveBeenCalledExactlyOnceWith(LOG_MESSAGE)
+  })
+})
+
+// As respostas criadas pela contenção não voltam pelo requestTiming.
+describe('server-timing nas respostas da contenção', () => {
+  beforeEach(() => {
+    // A contenção só vale nos builds de produção; o Vitest roda com DEV.
+    vi.stubEnv('DEV', false)
+    vi.spyOn(console, 'error').mockImplementation(vi.fn())
+  })
+
+  it('grava o server-timing no controle lançado', async () => {
+    const control = Response.redirect(new URL('/', TEST_ORIGIN), HTTP_FOUND)
+
+    const response = await failingWith(control)(
+      new Request(TEST_ORIGIN),
+      renderPage()
+    )
+
+    expect(response.status).toBe(HTTP_FOUND)
+    expect(response.headers.get('server-timing')).toMatch(/^app;dur=/u)
+  })
+
+  // O requestTiming consome o segundo valor antes da falha: uma medição
+  // iniciada no catch daria 7.5.
+  it('mede o server-timing do 500 em texto desde a entrada', async () => {
+    const started = 100
+    const failed = 105
+    const finished = 112.5
+    vi.spyOn(performance, 'now')
+      .mockReturnValueOnce(started)
+      .mockReturnValueOnce(failed)
+      .mockReturnValueOnce(finished)
+    const requestTiming = requestMiddleware[REQUEST_TIMING_INDEX]
+    if (!requestTiming) throw new Error('Request timing middleware not found')
+    const fail = vi
+      .fn<() => Promise<Response>>()
+      .mockRejectedValue(new Error('PRIVATE'))
+
+    const response = await containFailures([requestTiming, fail])(
+      new Request(TEST_ORIGIN),
+      renderPage()
+    )
+
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    expect(response.headers.get('server-timing')).toBe('app;dur=12.5')
+  })
+
+  it('grava o server-timing na página de erro sem apagar o do runtime', async () => {
+    const event = pageEvent()
+    const render = vi.fn<() => Promise<Response>>().mockResolvedValue(
+      new Response('<main>Algo deu errado!</main>', {
+        headers: {
+          'content-type': 'text/html; charset=utf-8',
+          'server-timing': TRACE_TIMING
+        }
+      })
+    )
+
+    const response = await provideRequestEvent(event, () =>
+      failingWith(new Error('PRIVATE'))(event.request, render)
+    )
+
+    await expect(response.text()).resolves.toBe('<main>Algo deu errado!</main>')
+    expect(response.headers.get('server-timing')).toMatch(
+      /^traceparent;desc="[^"]+", app;dur=/u
+    )
+  })
+})
+
 describe('middlewares de requisição', () => {
   it('mede o tempo e preserva a resposta do próximo handler', async () => {
     const started = 100
@@ -262,6 +437,26 @@ describe('middlewares de requisição', () => {
     )
     expect(response.headers.get('server-timing')).toBe('app;dur=12.5')
     expect(next).toHaveBeenCalledExactlyOnceWith()
+  })
+
+  it('acrescenta o server-timing sem apagar as métricas do runtime', async () => {
+    const started = 100
+    const finished = 112.5
+    vi.spyOn(performance, 'now')
+      .mockReturnValueOnce(started)
+      .mockReturnValueOnce(finished)
+    const response = new Response('conteúdo', {
+      headers: { 'server-timing': TRACE_TIMING }
+    })
+    const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
+    const requestTiming = requestMiddleware[REQUEST_TIMING_INDEX]
+    if (!requestTiming) throw new Error('Request timing middleware not found')
+
+    await requestTiming(new Request(TEST_ORIGIN), next)
+
+    expect(response.headers.get('server-timing')).toBe(
+      `${TRACE_TIMING}, app;dur=12.5`
+    )
   })
 
   it('adiciona os cabeçalhos de segurança à resposta', async () => {

@@ -2,6 +2,7 @@ import { composeMiddleware, getRequestEvent } from '@solidjs/web'
 import { createAPIHandler, createAPIMatcher } from 'filesystem-routing/api'
 import routes from 'virtual:file-routes'
 
+import { isControlResponse } from '@/infra/server/isControlResponse/index.ts'
 import { logServerFailure } from '@/infra/server/logServerFailure/index.ts'
 import {
   createPublicError,
@@ -13,6 +14,16 @@ type Render = (request?: Request) => Response | Promise<Response>
 type Middleware = (request: Request, next: Next) => Promise<Response>
 type ChainEntry = (request: Request, next: Render) => Promise<Response>
 type RenderState = { rendered: boolean }
+type HeaderUpdate = { response: Response; headers: Record<string, string> }
+type RouteRequest = { request: Request; pathname: string }
+type Timing = { response: Response; started: number }
+type Containment = {
+  error: unknown
+  request: Request
+  next: Render
+  rendered: boolean
+  started: number
+}
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
 // Endpoint padrão do @solidjs/vite-plugin; o vite.config.ts não o altera. O
@@ -21,21 +32,42 @@ const HTTP_INTERNAL_SERVER_ERROR = 500
 const SERVER_FUNCTIONS_ENDPOINT = '/_server'
 const matchAPIRoute = createAPIMatcher(routes)
 
-function applySecurityHeaders(response: Response): Response {
-  response.headers.set('x-content-type-options', 'nosniff')
-  response.headers.set('referrer-policy', 'strict-origin-when-cross-origin')
-  return response
+// Uma resposta sem corpo e com headers imutáveis, como Response.redirect(), vai
+// numa cópia com o mesmo status e os mesmos headers. Com corpo, ela é o retorno
+// cru de fetch(), que carrega dados e headers upstream; o erro segue para a
+// contenção.
+function withHeaders({ response, headers }: HeaderUpdate): Response {
+  try {
+    for (const [name, value] of Object.entries(headers)) {
+      response.headers.set(name, value)
+    }
+    return response
+  } catch (error) {
+    if (response.body !== null) throw error
+    const copy = new Response(null, response)
+    for (const [name, value] of Object.entries(headers)) {
+      copy.headers.set(name, value)
+    }
+    return copy
+  }
 }
 
-function isControlResponse(value: unknown): value is Response {
-  try {
-    // Só respostas sem corpo passam como controle (redirect/reload), como no
-    // wrapper; uma Response com corpo pode carregar dados upstream.
-    return value instanceof Response && value.body === null
-  } catch {
-    // A inspeção de um objeto lançado também pode falhar (getter ou Proxy).
-    return false
-  }
+function applySecurityHeaders(response: Response): Response {
+  return withHeaders({
+    response,
+    headers: {
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'strict-origin-when-cross-origin'
+    }
+  })
+}
+
+// Acrescenta a métrica app sem apagar as que o runtime já gravou, como a do
+// traceparent.
+function serverTiming({ response, started }: Timing): Record<string, string> {
+  const metric = `app;dur=${(performance.now() - started).toFixed(1)}`
+  const current = response.headers.get('server-timing')
+  return { 'server-timing': current ? `${current}, ${metric}` : metric }
 }
 
 function isServerFunctionPath(pathname: string): boolean {
@@ -45,7 +77,7 @@ function isServerFunctionPath(pathname: string): boolean {
   )
 }
 
-function isAPIRoute(request: Request, pathname: string): boolean {
+function isAPIRoute({ request, pathname }: RouteRequest): boolean {
   const route = matchAPIRoute(pathname, request.method)
   return route !== undefined && !route.isPage
 }
@@ -59,7 +91,7 @@ function isPageRequest(request: Request): boolean {
     (request.method === 'GET' || request.method === 'HEAD') &&
     (request.headers.get('accept') ?? '').includes('text/html') &&
     !isServerFunctionPath(pathname) &&
-    !isAPIRoute(request, pathname)
+    !isAPIRoute({ request, pathname })
   )
 }
 
@@ -97,6 +129,43 @@ async function renderErrorPage(render: Render): Promise<Response> {
   }
 }
 
+// Resposta da contenção: o controle lançado, a página de erro ou o 500 em
+// texto. Ela não volta pelo requestTiming, então o server-timing é gravado aqui.
+async function containedResponse({
+  error,
+  request,
+  next,
+  rendered,
+  started
+}: Containment): Promise<Response> {
+  if (isControlResponse(error)) {
+    try {
+      // O controle sai com os mesmos headers de uma resposta devolvida.
+      const control = applySecurityHeaders(error)
+      return withHeaders({
+        response: control,
+        headers: serverTiming({ response: control, started })
+      })
+    } catch {
+      // Headers que não aceitam gravação nem cópia (status fora de 200 a 599
+      // ou objeto hostil) tornam o controle uma falha.
+    }
+  }
+  try {
+    logServerFailure('middleware')
+  } catch {
+    // O log é uma tentativa; a resposta pública sai mesmo sem destino.
+  }
+  const failure =
+    isPageRequest(request) && !rendered
+      ? await renderErrorPage(next)
+      : publicTextFailure()
+  return withHeaders({
+    response: failure,
+    headers: serverTiming({ response: failure, started })
+  })
+}
+
 // Envolve toda a cadeia: uma exceção nos middlewares, nas rotas de API ou no
 // handler de páginas vira 500 público com log fixo, em vez de chegar ao host,
 // que registraria o erro original. Como a cadeia é composta aqui dentro, o
@@ -106,6 +175,7 @@ async function renderErrorPage(render: Render): Promise<Response> {
 function containFailures(chain: Middleware[]): ChainEntry {
   const run = composeMiddleware(chain)
   return async (request, next) => {
+    const started = performance.now()
     // O plugin só aceita uma chamada ao render por requisição. Se a cadeia já
     // renderizou a página antes de falhar, a página de erro não é possível.
     const state: RenderState = { rendered: false }
@@ -118,15 +188,13 @@ function containFailures(chain: Middleware[]): ChainEntry {
     } catch (error) {
       // Em desenvolvimento o erro original segue para o Vite.
       if (import.meta.env.DEV) throw error
-      if (isControlResponse(error)) return error
-      try {
-        logServerFailure('middleware')
-      } catch {
-        // O log é uma tentativa; a resposta pública sai mesmo sem destino.
-      }
-      return isPageRequest(request) && !state.rendered
-        ? renderErrorPage(next)
-        : publicTextFailure()
+      return containedResponse({
+        error,
+        request,
+        next,
+        rendered: state.rendered,
+        started
+      })
     }
   }
 }
@@ -134,11 +202,7 @@ function containFailures(chain: Middleware[]): ChainEntry {
 async function requestTiming(_request: Request, next: Next) {
   const started = performance.now()
   const response = await next()
-  response.headers.set(
-    'server-timing',
-    `app;dur=${(performance.now() - started).toFixed(1)}`
-  )
-  return response
+  return withHeaders({ response, headers: serverTiming({ response, started }) })
 }
 
 async function securityHeaders(_request: Request, next: Next) {
@@ -160,5 +224,11 @@ const requestMiddleware: Middleware[] = [
   createAPIHandler(routes)
 ]
 
-export { containFailures, requestMiddleware }
-export default containFailures(requestMiddleware)
+// Monta a cadeia de produção dentro da contenção. O build E2E passa em extra
+// as falhas injetadas, que rodam antes da cadeia e dentro da mesma contenção.
+function createMiddleware(extra: Middleware[] = []): ChainEntry {
+  return containFailures([...extra, ...requestMiddleware])
+}
+
+export { containFailures, createMiddleware, requestMiddleware }
+export default createMiddleware()
