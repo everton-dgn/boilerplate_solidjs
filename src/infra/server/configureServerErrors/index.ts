@@ -3,6 +3,7 @@ import { configureServerErrors, isResponseEnvelope } from '@solidjs/web'
 import { configureServerFunctionsServer } from '@solidjs/web/server-functions/server'
 import { NotReadyError } from 'solid-js'
 
+import { isControlResponse } from '../isControlResponse/index.ts'
 import { logServerFailure } from '../logServerFailure/index.ts'
 import { protectServerOperation } from '../protectServerOperation/index.ts'
 import { createPublicError, isPublicError } from '../publicErrors/index.ts'
@@ -13,9 +14,8 @@ configureServerFunctionsServer({
 
 function isControlSignal(value: unknown): boolean {
   try {
-    // Como no wrapper e no middleware, só uma Response sem corpo é controle.
     return (
-      (value instanceof Response && value.body === null) ||
+      isControlResponse(value) ||
       value instanceof NotReadyError ||
       isResponseEnvelope(value)
     )

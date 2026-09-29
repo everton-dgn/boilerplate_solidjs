@@ -132,6 +132,7 @@ describe('registro central da política de erros', () => {
     ['um Error', new Error('PRIVATE', { cause: 'CAUSE_PRIVATE' })],
     ['um primitivo', 'PRIVATE'],
     ['uma Response com corpo', new Response('PRIVATE')],
+    ['uma Response.error(), com status 0', Response.error()],
     ['um objeto cuja inspeção falha', hostileValue()]
   ])('troca %s por erro público novo com log fixo', (_label, failure) => {
     const mapped = onError(failure, site)

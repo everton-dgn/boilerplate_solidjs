@@ -6,6 +6,7 @@ import {
 } from '@solidjs/web'
 import { NotReadyError } from 'solid-js'
 
+import { isControlResponse } from '@/infra/server/isControlResponse/index.ts'
 import { logServerFailure } from '@/infra/server/logServerFailure/index.ts'
 import {
   createPublicError,
@@ -66,7 +67,7 @@ function assertPublicData({
 function controlResponse(value: unknown): ControlSignal | undefined {
   // O transporte nunca devolve Response upstream. Respostas deliberadas da
   // aplicação preservam o contrato de redirecionamento/reload do framework.
-  if (value instanceof Response && value.body === null) return value
+  if (isControlResponse(value)) return value
   if (isResponseEnvelope(value)) {
     assertPublicData({ value: value.value })
     // Reconstrói o corpo a partir dos dados verificados, sem encaminhar um

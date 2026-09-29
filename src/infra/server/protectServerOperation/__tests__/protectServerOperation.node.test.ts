@@ -164,6 +164,17 @@ describe('proteção de operações no servidor', () => {
     expectPublicFailure(thrownValue({ run: () => response }))
   })
 
+  it('recusa Response.error() como controle, lançada ou devolvida', () => {
+    const failure = Response.error()
+
+    expectPublicFailure(
+      thrownValue({ run: () => throwValue(failure), allowControl: true })
+    )
+    expectPublicFailure(thrownValue({ run: () => failure, allowControl: true }))
+    const log = '[server-operation] Unexpected failure; private details omitted'
+    expect(vi.mocked(console.error).mock.calls).toStrictEqual([[log], [log]])
+  })
+
   it('verifica valores de envelopes e rejeita corpos upstream', () => {
     const response = respond(
       { ok: true },
