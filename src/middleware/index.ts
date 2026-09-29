@@ -1,5 +1,5 @@
 import { composeMiddleware, getRequestEvent } from '@solidjs/web'
-import { createAPIHandler } from 'filesystem-routing/api'
+import { createAPIHandler, createAPIMatcher } from 'filesystem-routing/api'
 import routes from 'virtual:file-routes'
 
 import { logServerFailure } from '@/infra/server/logServerFailure/index.ts'
@@ -15,6 +15,11 @@ type ChainEntry = (request: Request, next: Render) => Promise<Response>
 type RenderState = { rendered: boolean }
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
+// Endpoint padrão do @solidjs/vite-plugin; o vite.config.ts não o altera. O
+// dispatcher do plugin desvia esse prefixo para as server functions antes do
+// render da página.
+const SERVER_FUNCTIONS_ENDPOINT = '/_server'
+const matchAPIRoute = createAPIMatcher(routes)
 
 function applySecurityHeaders(response: Response): Response {
   response.headers.set('x-content-type-options', 'nosniff')
@@ -33,12 +38,28 @@ function isControlResponse(value: unknown): value is Response {
   }
 }
 
-// Só uma navegação recebe a página de erro do app. Server functions e rotas
-// de API esperam outro formato e não devem ser executadas de novo.
+function isServerFunctionPath(pathname: string): boolean {
+  return (
+    pathname === SERVER_FUNCTIONS_ENDPOINT ||
+    pathname.startsWith(`${SERVER_FUNCTIONS_ENDPOINT}/`)
+  )
+}
+
+function isAPIRoute(request: Request, pathname: string): boolean {
+  const route = matchAPIRoute(pathname, request.method)
+  return route !== undefined && !route.isPage
+}
+
+// Só uma navegação de página recebe a página de erro do app. Chamar o render
+// de novo no endpoint de server functions executaria a função sem os
+// middlewares que falharam; rotas de API esperam outro formato.
 function isPageRequest(request: Request): boolean {
+  const { pathname } = new URL(request.url)
   return (
     (request.method === 'GET' || request.method === 'HEAD') &&
-    (request.headers.get('accept') ?? '').includes('text/html')
+    (request.headers.get('accept') ?? '').includes('text/html') &&
+    !isServerFunctionPath(pathname) &&
+    !isAPIRoute(request, pathname)
   )
 }
 
@@ -67,6 +88,11 @@ async function renderErrorPage(render: Render): Promise<Response> {
       })
     )
   } catch {
+    try {
+      logServerFailure('error-page')
+    } catch {
+      // Sem destino de log disponível.
+    }
     return publicTextFailure()
   }
 }

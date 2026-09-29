@@ -35,8 +35,8 @@ function renderPage() {
   )
 }
 
-function pageEvent(): LocalsEvent {
-  const request = new Request(TEST_ORIGIN, {
+function pageEvent(path = '/'): LocalsEvent {
+  const request = new Request(new URL(path, TEST_ORIGIN), {
     headers: { accept: 'text/html,application/xhtml+xml' }
   })
   return { request, locals: {}, response: { headers: new Headers() } }
@@ -183,6 +183,37 @@ describe('contenção de falhas do middleware', () => {
 
     expect(render).toHaveBeenCalledOnce()
     await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+  })
+
+  it.each(['/_server', '/_server/abc123'])(
+    'não renderiza a página de erro em %s, mesmo com accept de HTML',
+    async path => {
+      const event = pageEvent(path)
+      const render = renderPage()
+
+      const response = await provideRequestEvent(event, () =>
+        failingWith(new Error('PRIVATE'))(event.request, render)
+      )
+
+      expect(render).not.toHaveBeenCalled()
+      await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    }
+  )
+
+  it('registra um log fixo quando a página de erro falha', async () => {
+    const event = pageEvent()
+    const render = vi
+      .fn<() => Promise<Response>>()
+      .mockRejectedValue(new Error('PRIVATE_RENDER'))
+
+    await provideRequestEvent(event, () =>
+      failingWith(new Error('PRIVATE'))(event.request, render)
+    )
+
+    expect(vi.mocked(console.error).mock.calls).toStrictEqual([
+      [LOG_MESSAGE],
+      ['[error-page] Unexpected failure; private details omitted']
+    ])
   })
 
   it('não renderiza páginas para métodos que não são de navegação', async () => {

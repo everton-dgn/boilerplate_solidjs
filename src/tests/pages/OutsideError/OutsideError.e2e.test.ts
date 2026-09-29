@@ -1,7 +1,12 @@
 import { readFile } from 'node:fs/promises'
 import { env } from 'node:process'
 
-import { expect, test, type APIRequestContext } from '@playwright/test'
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type Page
+} from '@playwright/test'
 import * as v from 'valibot'
 
 const BACKEND = 'http://127.0.0.1:4318'
@@ -219,6 +224,19 @@ const MIDDLEWARE_CASES: MiddlewareCase[] = [
   { phase: 'before', navigation: false, errorPage: false }
 ]
 
+// O runtime do cliente troca a fila de eventos por null ao terminar a
+// hidratação; sem JavaScript ela continua um array.
+async function hydrationFinished(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const runtime: unknown = Reflect.get(globalThis, '_$HY')
+    const events: unknown =
+      typeof runtime === 'object' && runtime !== null
+        ? Reflect.get(runtime, 'events')
+        : undefined
+    return events === null
+  })
+}
+
 async function countLogLines(file: string): Promise<number> {
   const log = await readFile(file, 'utf8')
   return log.split('\n').filter(line => line.includes(MIDDLEWARE_LOG)).length
@@ -268,6 +286,28 @@ test.describe('exceções no middleware', () => {
     })
   }
 
+  // O render de erro chamaria o dispatcher do plugin, que executa server
+  // functions e responde rotas de API com o próprio corpo.
+  for (const path of ['/robots.txt', '/_server/fixture']) {
+    test(`exceção antes de next() em ${path} vira 500 em texto mesmo com accept de HTML`, async ({
+      request,
+      baseURL
+    }) => {
+      if (!baseURL) throw new Error('baseURL is required')
+      const id = `outside:${crypto.randomUUID()}`
+
+      const response = await fetch(
+        `${baseURL}${path}?case=middleware-before&id=${id}`,
+        { headers: { accept: 'text/html' } }
+      )
+
+      expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+      await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+      const state = await readState({ request, id })
+      expect(state.real).toBe(true)
+    })
+  }
+
   test('a página de erro do middleware hidrata no navegador', async ({
     page,
     request
@@ -285,6 +325,7 @@ test.describe('exceções no middleware', () => {
     await expect(
       page.getByRole('link', { name: 'Recarregar página' })
     ).toBeVisible()
+    await expect.poll(async () => hydrationFinished(page)).toBe(true)
     expect(await page.content()).not.toContain(marker)
     // Só a mensagem pública pode reaparecer ao hidratar o fallback.
     expect(

@@ -20,7 +20,11 @@ async function fixtureMarker(request: Request, next: Next) {
   const url = new URL(request.url)
   const id = url.searchParams.get('id')
   const event = getRequestEvent()
-  if (event && id && url.pathname === PREFIX) {
+  // Falhas de middleware podem ser pedidas em qualquer caminho, inclusive
+  // rotas de API e o endpoint de server functions.
+  const middlewareCase =
+    url.searchParams.get('case')?.startsWith('middleware-') === true
+  if (event && id && (url.pathname === PREFIX || middlewareCase)) {
     const data = await requestJson({
       url: `http://127.0.0.1:4318/data?id=${encodeURIComponent(id)}`,
       schema: v.object({ message: v.string() })
@@ -42,10 +46,7 @@ async function fixtureMarker(request: Request, next: Next) {
 
 function failureRequested({ request, phase }: FailureRequest): boolean {
   const url = new URL(request.url)
-  return (
-    url.pathname === PREFIX &&
-    url.searchParams.get('case') === `middleware-${phase}`
-  )
+  return url.searchParams.get('case') === `middleware-${phase}`
 }
 
 // A resposta desta falha é a da contenção, sem os headers da fixture; o

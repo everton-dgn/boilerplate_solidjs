@@ -76,11 +76,19 @@ erro do app: `containFailures` grava um `createPublicError()` em
 [`App.tsx`](../src/App.tsx) lança esse erro antes do Router, o `Errored` raiz
 mostra o `ErrorFallback` e o cliente hidrata o fallback pelo erro serializado.
 Como o erro já é público, o hook não registra outro log. O status é forçado para
-500 na resposta. Server functions, rotas de API e outros métodos recebem a
-mensagem pública em texto, porque esperam outro formato e não devem rodar de
-novo. O plugin aceita um único render por requisição: se a cadeia falhar depois
-de já ter renderizado a página, ou se o render de erro falhar, a resposta também
-é o 500 em texto.
+500 na resposta.
+
+O render recebido pelo middleware é o dispatcher do plugin, que atende o
+endpoint de server functions (`/_server`) antes da página. Por isso esse
+endpoint e as rotas de API reconhecidas pelo `createAPIMatcher` do
+`filesystem-routing` nunca recebem a página de erro, mesmo com `accept` de HTML:
+chamar o render ali executaria a função sem os middlewares que falharam. Esses
+caminhos e os outros métodos recebem a mensagem pública em texto. O plugin
+aceita um único render por requisição: se a cadeia falhar depois de já ter
+renderizado a página, a resposta também é o 500 em texto. Se o render de erro
+falhar, a resposta é o 500 em texto e o log ganha a linha fixa `[error-page]`. O
+endpoint fica numa constante do middleware; ao configurar
+`serverFunctions.endpoint` no Vite, atualize os dois.
 
 A contenção só alcança a janela da cadeia de middleware. A criação do evento, o
 commit da resposta e falhas do corpo depois que a `Response` sai ficam fora
