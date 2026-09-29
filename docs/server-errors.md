@@ -197,8 +197,16 @@ streaming e chamada HTTP; quatro recargas, incluindo SSR sem JavaScript; um
 teste de isolamento do bundle; e três sinais de controle em server functions
 chamadas no SSR: um `redirect()` lançado, um envelope devolvido e um envelope
 lançado. O envelope lançado chega ao hook como controle, mas o router lança o
-valor dele no render; o documento vira 500 e o runtime descarta o `content-type`
-dessa resposta (aviso `[LATE_HEADER_WRITE]`), com ou sem o hook.
+valor dele no render e o documento vira 500, com ou sem o hook.
+
+Bug conhecido do `@solidjs/router`: quando uma `query()` lida no SSR devolve ou
+lança um envelope de `respond()`, o `handleResponse` copia os headers do
+envelope para a resposta da página, e o documento HTML sai com
+`content-type: application/json`. As cópias feitas depois do envio do início da
+resposta são descartadas com o aviso `[LATE_HEADER_WRITE]`. Até a correção, não
+leia um envelope de `respond()` por `query()` durante o SSR; use `respond()` em
+actions e chamadas HTTP. O E2E marca esse comportamento com `test.fail()`:
+quando o router corrigir, o teste passa a falhar e o marcador deve sair.
 
 O
 [E2E de erros fora de server functions](../src/tests/pages/OutsideError/OutsideError.e2e.test.ts)
@@ -268,14 +276,15 @@ catálogo do [pnpm-workspace.yaml](../pnpm-workspace.yaml) e a resolução no
 instalação ativa. Esses arquivos e o comando substituem uma lista de versões
 mantida neste guia.
 
-A proteção atual parte da avaliação feita no Solid `2.0.0-rc.11`, que já contém
-a [sanitização SSR (#3477)](https://github.com/solidjs/solid/pull/3477), o
+A proteção atual parte da avaliação da versão do Solid resolvida no lockfile
+quando o wrapper foi revisado, que já contém a
+[sanitização SSR (#3477)](https://github.com/solidjs/solid/pull/3477), o
 [hook central (#3481)](https://github.com/solidjs/solid/pull/3481) e a
 [consolidação de onError (#3484)](https://github.com/solidjs/solid/pull/3484).
-Nessa versão o runtime troca erros lançados pela mensagem genérica, mas não
-recusa um `Error` devolvido como dado; por isso o `wrapInvocation` fica e o hook
-é aditivo. Uma issue fechada ou um commit integrado não comprova que o pacote
-publicado e instalado mudou esse comportamento.
+Nessa avaliação o runtime trocava erros lançados pela mensagem genérica, mas não
+recusava um `Error` devolvido como dado; por isso o `wrapInvocation` fica e o
+hook é aditivo. Uma issue fechada ou um commit integrado não comprova que o
+pacote publicado e instalado mudou esse comportamento.
 
 1. Confira releases, exports e contrato dos pacotes publicados. Atualize
    `solid-js` e `@solidjs/web` juntos, verificando Router, plugin e lockfile.
