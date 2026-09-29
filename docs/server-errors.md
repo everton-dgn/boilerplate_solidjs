@@ -199,14 +199,15 @@ chamadas no SSR: um `redirect()` lançado, um envelope devolvido e um envelope
 lançado. O envelope lançado chega ao hook como controle, mas o router lança o
 valor dele no render e o documento vira 500, com ou sem o hook.
 
-Bug conhecido do `@solidjs/router`: quando uma `query()` lida no SSR devolve ou
-lança um envelope de `respond()`, o `handleResponse` copia os headers do
-envelope para a resposta da página, e o documento HTML sai com
-`content-type: application/json`. As cópias feitas depois do envio do início da
-resposta são descartadas com o aviso `[LATE_HEADER_WRITE]`. Até a correção, não
-leia um envelope de `respond()` por `query()` durante o SSR; use `respond()` em
-actions e chamadas HTTP. O E2E marca esse comportamento com `test.fail()`:
-quando o router corrigir, o teste passa a falhar e o marcador deve sair.
+[Bug do `@solidjs/router` (#633)](https://github.com/solidjs/solid-router/issues/633):
+quando uma `query()` lida no SSR devolve ou lança um envelope de `respond()`, o
+`handleResponse` copia os headers do envelope para a resposta da página, e o
+documento HTML sai com `content-type: application/json`. As cópias feitas depois
+do envio do início da resposta são descartadas com o aviso
+`[LATE_HEADER_WRITE]`. Até a correção, não leia um envelope de `respond()` por
+`query()` durante o SSR; use `respond()` em actions e chamadas HTTP. O E2E marca
+esse comportamento com `test.fail()`: quando o router corrigir, o teste passa a
+falhar e o marcador deve sair.
 
 O
 [E2E de erros fora de server functions](../src/tests/pages/OutsideError/OutsideError.e2e.test.ts)

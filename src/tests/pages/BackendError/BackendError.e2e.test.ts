@@ -74,8 +74,8 @@ test('um envelope devolvido por server function no SSR entrega o valor', async (
   expect(await response.text()).toMatch(/<p[^>]*>Envelope retornado<\/p>/u)
 })
 
-// Bug do @solidjs/router (ver docs/server-errors.md): query() copia o
-// content-type do envelope para a página. test.fail() registra o bug; quando o
+// Bug do @solidjs/router (https://github.com/solidjs/solid-router/issues/633):
+// query() copia o content-type do envelope para a página. test.fail() registra o bug; quando o
 // router corrigir, o teste passa a falhar e o marcador deve sair.
 // oxlint-disable-next-line vitest/prefer-each -- O runner do Playwright não oferece test.each.
 for (const kind of ['envelope-return', 'envelope-throw']) {
