@@ -260,7 +260,7 @@ real e seu registro no lint completo, com casos recusados e permitidos para cada
 exceção. Consulte os resultados de cada execução nos logs da validação local e
 do CI.
 
-## Atualizar o Solid e retirar o wrapper
+## Atualizar o Solid
 
 Consulte as dependências declaradas no [package.json](../package.json), o
 catálogo do [pnpm-workspace.yaml](../pnpm-workspace.yaml) e a resolução no
@@ -268,12 +268,14 @@ catálogo do [pnpm-workspace.yaml](../pnpm-workspace.yaml) e a resolução no
 instalação ativa. Esses arquivos e o comando substituem uma lista de versões
 mantida neste guia.
 
-Acompanhe as mudanças técnicas de
-[sanitização SSR (#3477)](https://github.com/solidjs/solid/pull/3477),
-[hook central (#3481)](https://github.com/solidjs/solid/pull/3481) e
+A proteção atual parte da avaliação feita no Solid `2.0.0-rc.11`, que já contém
+a [sanitização SSR (#3477)](https://github.com/solidjs/solid/pull/3477), o
+[hook central (#3481)](https://github.com/solidjs/solid/pull/3481) e a
 [consolidação de onError (#3484)](https://github.com/solidjs/solid/pull/3484).
-Elas orientam a próxima avaliação; sua integração não prova que um pacote
-publicado e instalado contém a solução.
+Nessa versão o runtime troca erros lançados pela mensagem genérica, mas não
+recusa um `Error` devolvido como dado; por isso o `wrapInvocation` fica e o hook
+é aditivo. Uma issue fechada ou um commit integrado não comprova que o pacote
+publicado e instalado mudou esse comportamento.
 
 1. Confira releases, exports e contrato dos pacotes publicados. Atualize
    `solid-js` e `@solidjs/web` juntos, verificando Router, plugin e lockfile.
@@ -285,17 +287,22 @@ publicado e instalado contém a solução.
    `handleServerFunctionRequest`) tem precedência sobre o hook global e o
    substituiria sem aviso: confira se o plugin continua sem repassá-lo e se o
    módulo `configure` ainda carrega antes do primeiro dispatch.
-3. Em uma reprodução isolada, teste a sanitização nativa sem o wrapper local,
-   usando os três canais e falhas de render/rejeições fora de server functions.
-   Verifique os artefatos de produção resolvidos; `NODE_ENV` sozinho não basta.
-4. Confira payload, conclusão do streaming e hidratação separadamente. Antes de
-   retirar a tolerância de `pageerror`, reproduza com CPU limitada a 20x. Um
-   `Error` retornado como dado continua exigindo tratamento da aplicação.
+3. Rode
+   `pnpm test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError` no
+   build de produção. Os marcadores nos corpos brutos, os controles positivos e
+   o teardown do log são a regressão da fronteira. Se o runtime mudar as
+   mensagens que chegam ao navegador, meça antes de ajustar as tolerâncias de
+   `pageerror`, inclusive com CPU limitada a 20x.
+4. Reavalie o wrapper só se as notas da versão ou o código publicado indicarem
+   que o runtime passou a recusar um `Error` devolvido como dado. Numa
+   reprodução isolada, troque o `wrapInvocation` por um passthrough e confira o
+   cenário `result` nos três canais pelos marcadores nos corpos brutos, sem
+   confiar em teste verde. Verifique os artefatos de produção resolvidos;
+   `NODE_ENV` sozinho não basta.
 5. Retire somente a interceptação que o runtime passou a cobrir. Preserve o
-   transporte, o contrato de dados públicos e seus testes. Registre comandos,
-   resultados e limites na validação da atualização. Mantenha as versões nos
-   arquivos de dependências; na reversão, restaure dependências e proteção
-   juntas.
+   transporte, o contrato de dados públicos, o hook, a contenção do middleware e
+   seus testes. Registre comandos, resultados e limites na validação da
+   atualização. Na reversão, restaure dependências e proteção juntas.
 
 O acompanhamento ocorre nas atualizações de dependências; não há monitor
 automático configurado.

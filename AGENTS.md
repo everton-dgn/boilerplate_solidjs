@@ -250,6 +250,7 @@ release. Add a tool name to select part of the graph. For example, run
   pertinentes e `pnpm test:e2e src/tests/pages/BackendError
   src/tests/pages/OutsideError`. Preserve no CI
   a verificação do corpo completo em SSR inicial, streaming e chamada HTTP.
-- Em atualizações do Solid/plugin, siga o roteiro do guia. Só retire o wrapper
-  após testar o runtime publicado sem essa interceptação; uma issue fechada ou
-  commit integrado não comprova a correção na versão instalada.
+- Em atualizações do Solid/plugin, siga o roteiro do guia. O wrapper fica
+  enquanto o runtime publicado não recusar um `Error` devolvido como dado; só
+  retire o que uma reprodução sem essa interceptação provar coberto. Uma issue
+  fechada ou commit integrado não comprova a correção na versão instalada.
