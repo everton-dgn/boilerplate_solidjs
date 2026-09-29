@@ -37,7 +37,11 @@ async function containFailures(_request: Request, next: Next) {
     // Em desenvolvimento o erro original segue para o Vite.
     if (import.meta.env.DEV) throw error
     if (isControlResponse(error)) return error
-    logServerFailure('middleware')
+    try {
+      logServerFailure('middleware')
+    } catch {
+      // O log é uma tentativa; a resposta pública sai mesmo sem destino.
+    }
     return applySecurityHeaders(
       new Response(PUBLIC_ERROR_MESSAGE, {
         status: HTTP_INTERNAL_SERVER_ERROR,

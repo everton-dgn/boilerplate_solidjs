@@ -76,6 +76,20 @@ describe('middlewares de requisição', () => {
     expect(console.error).toHaveBeenCalledExactlyOnceWith(LOG_MESSAGE)
   })
 
+  it('responde 500 público mesmo quando o log falha', async () => {
+    vi.mocked(console.error).mockImplementationOnce(() => {
+      throw new Error('stderr indisponível')
+    })
+
+    const response = await containFailures()(
+      new Request(TEST_ORIGIN),
+      rejectWith(new Error('PRIVATE'))
+    )
+
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+  })
+
   it('deixa passar uma Response de controle sem corpo', async () => {
     const control = Response.redirect(new URL('/', TEST_ORIGIN), HTTP_FOUND)
 
