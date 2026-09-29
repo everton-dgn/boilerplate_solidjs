@@ -41,13 +41,15 @@ O hook `onError` é aditivo. Ele troca qualquer falha que chega ao runtime,
 inclusive de render e de rejeições fora de server functions, por um
 `createPublicError()` novo e registra o log fixo `[server-error]` quando o erro
 não era público. Sinais de controle (`Response` sem corpo, envelopes e
-`NotReadyError`) seguem a política padrão do runtime. Um envelope lançado por
-uma query durante o SSR chega primeiro ao hook como controle; depois o router
-lança o valor do envelope no render, e esse valor é tratado como falha de
-render, com ou sem o hook. O retorno do hook vai ao cliente sem nova
-sanitização, então ele nunca devolve o objeto recebido, nem um erro público, que
-pode ter ganhado campos depois de criado. O hook é síncrono e não lança, nem
-quando o log falha: uma falha dele faria o runtime registrar o erro do hook.
+`NotReadyError`) seguem a política padrão do runtime. `Response.error()` também
+não tem corpo, mas o status 0 não sai como HTTP, então ela vira falha pública.
+Um envelope lançado por uma query durante o SSR chega primeiro ao hook como
+controle; depois o router lança o valor do envelope no render, e esse valor é
+tratado como falha de render, com ou sem o hook. O retorno do hook vai ao
+cliente sem nova sanitização, então ele nunca devolve o objeto recebido, nem um
+erro público, que pode ter ganhado campos depois de criado. O hook é síncrono e
+não lança, nem quando o log falha: uma falha dele faria o runtime registrar o
+erro do hook.
 
 Limites do hook:
 
@@ -62,13 +64,24 @@ Limites do hook:
 Exceções de middleware não passam pelo hook nem pelo wrapper. Sem tratamento, o
 host responde com um corpo genérico, mas registra a mensagem, o `cause`, as
 propriedades e a stack do erro original. Por isso o export padrão de
-[`src/middleware/index.ts`](../src/middleware/index.ts) é
-`containFailures(requestMiddleware)`: ele compõe a cadeia inteira dentro de si,
-e uma exceção nos middlewares, nas rotas de API ou no handler de páginas vira
-500 com os headers de segurança e o log fixo `[middleware]`. Só uma `Response`
-sem corpo passa como controle; uma `Response` com corpo lançada vira 500, porque
-pode carregar dados upstream. Em desenvolvimento o erro original segue para o
-Vite. A cadeia do E2E usa a mesma função em volta das falhas injetadas.
+[`src/middleware/index.ts`](../src/middleware/index.ts) é `createMiddleware()`,
+que devolve `containFailures(requestMiddleware)`: ele compõe a cadeia inteira
+dentro de si, e uma exceção nos middlewares, nas rotas de API ou no handler de
+páginas vira 500 com os headers de segurança, o `server-timing` e o log fixo
+`[middleware]`. Só uma `Response` sem corpo e com status diferente de 0 passa
+como controle, e sai com os mesmos headers; uma `Response` com corpo lançada
+vira 500, porque pode carregar dados upstream. O middleware, o hook e o wrapper
+usam a mesma classificação,
+[`isControlResponse`](../src/infra/server/isControlResponse/index.ts). Os
+headers de um `Response.redirect()` devolvido são imutáveis, então vão numa
+cópia sem corpo; o retorno cru de `fetch()`, com headers imutáveis e corpo
+upstream, não é copiado e vira 500. O `server-timing` acrescenta a métrica `app`
+às que o runtime já gravou, como a do traceparent. Em desenvolvimento o erro
+original segue para o Vite. O build E2E monta a entrada com a mesma fábrica e
+passa as falhas injetadas em `createMiddleware(extra)`, que as põe antes da
+cadeia e dentro da mesma contenção. Como o E2E não chama o export padrão, um
+teste unitário exige que ele contenha falhas, e a suíte `test:e2e:production`
+confere os headers do middleware na entrada real.
 
 Numa navegação (`GET` ou `HEAD` com `accept` de HTML), o 500 mostra a página de
 erro do app: `containFailures` grava um `createPublicError()` em
@@ -155,12 +168,12 @@ Essa verificação estrutural não identifica dados confidenciais em strings: o
 schema e o mapeamento continuam responsáveis pelos campos de negócio.
 
 `allowControl: true` pertence apenas ao registro global. Preserva suspensão,
-respostas sem corpo e envelopes com dados verificados; o corpo do envelope é
-reconstruído desses dados. Headers e destinos devem ser definidos pela
-aplicação. Adapters não habilitam essa opção nem encaminham respostas upstream.
-Os logs atuais contêm só uma mensagem fixa por origem, emitida por
-`logServerFailure`, sem erro original ou contexto da requisição. Diagnóstico
-detalhado e telemetria exigem uma integração própria.
+respostas sem corpo (exceto a de `Response.error()`, com status 0) e envelopes
+com dados verificados; o corpo do envelope é reconstruído desses dados. Headers
+e destinos devem ser definidos pela aplicação. Adapters não habilitam essa opção
+nem encaminham respostas upstream. Os logs atuais contêm só uma mensagem fixa
+por origem, emitida por `logServerFailure`, sem erro original ou contexto da
+requisição. Diagnóstico detalhado e telemetria exigem uma integração própria.
 
 ## O que o lint cobre
 
