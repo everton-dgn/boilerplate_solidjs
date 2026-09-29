@@ -46,8 +46,8 @@ uma query durante o SSR chega primeiro ao hook como controle; depois o router
 lança o valor do envelope no render, e esse valor é tratado como falha de
 render, com ou sem o hook. O retorno do hook vai ao cliente sem nova
 sanitização, então ele nunca devolve o objeto recebido, nem um erro público, que
-pode ter ganhado campos depois de criado. O hook é síncrono e não lança: uma
-falha dele faria o runtime registrar o erro do hook.
+pode ter ganhado campos depois de criado. O hook é síncrono e não lança, nem
+quando o log falha: uma falha dele faria o runtime registrar o erro do hook.
 
 Limites do hook:
 

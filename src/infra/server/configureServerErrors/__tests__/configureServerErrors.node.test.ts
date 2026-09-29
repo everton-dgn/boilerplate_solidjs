@@ -52,6 +52,10 @@ function throwValue(value: unknown): never {
   throw value
 }
 
+function logUnavailable(): never {
+  throw new Error('stderr indisponível')
+}
+
 // Simula um objeto lançado cuja inspeção falha, com o marcador na mensagem.
 function hostileValue(): object {
   return new Proxy(
@@ -155,6 +159,22 @@ describe('registro central da política de erros', () => {
     vi.mocked(console.error).mockImplementationOnce(() => {
       throw new Error('stderr indisponível')
     })
+
+    const mapped = onError(new Error('PRIVATE'), site)
+
+    expect(mapped).toStrictEqual(new Error(PUBLIC_MESSAGE))
+    expect(vi.mocked(console.error).mock.calls).toStrictEqual([
+      [LOG_MESSAGE],
+      [LOG_MESSAGE]
+    ])
+  })
+
+  it('devolve o erro público mesmo sem destino de log', () => {
+    // As duas tentativas do hook falham; o mock volta ao normal depois, para
+    // não afetar os logs do próprio Vitest.
+    vi.mocked(console.error)
+      .mockImplementationOnce(logUnavailable)
+      .mockImplementationOnce(logUnavailable)
 
     const mapped = onError(new Error('PRIVATE'), site)
 

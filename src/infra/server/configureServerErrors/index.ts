@@ -39,9 +39,13 @@ function mapServerError(error: unknown): Error | undefined {
     // adicionados depois da criação.
     return createPublicError()
   } catch {
-    // Se o próprio log falhar de novo, o runtime registra o erro do hook, que
-    // não carrega o erro original.
-    logServerFailure('server-error')
+    // O log é uma tentativa: se o destino continuar falhando, o hook ainda
+    // devolve o erro público em vez de lançar.
+    try {
+      logServerFailure('server-error')
+    } catch {
+      // Sem destino de log disponível.
+    }
     return createPublicError()
   }
 }
