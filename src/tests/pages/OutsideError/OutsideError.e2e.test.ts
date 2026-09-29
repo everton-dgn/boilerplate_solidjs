@@ -210,8 +210,9 @@ async function countLogLines(file: string): Promise<number> {
 }
 
 test.describe('exceções no middleware', () => {
-  // Em série, para que cada caso atribua a si a linha de log que produziu.
-  test.describe.configure({ mode: 'serial' })
+  // Em ordem num único worker, para que cada caso atribua a si a linha de log
+  // que produziu. Diferente de serial, uma falha não pula o caso seguinte.
+  test.describe.configure({ mode: 'default' })
 
   for (const phase of ['before', 'after']) {
     test(`exceção ${phase === 'before' ? 'antes' : 'depois'} de next() vira 500 público`, async ({
