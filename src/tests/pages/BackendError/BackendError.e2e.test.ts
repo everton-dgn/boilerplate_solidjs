@@ -66,17 +66,33 @@ test('um redirect lançado por server function no SSR continua redirecionando', 
 })
 
 test('um envelope devolvido por server function no SSR entrega o valor', async ({
-  page
+  request
 }) => {
-  const response = await page.goto('/control-signal?kind=envelope-return')
-  expect(response?.status()).toBe(HTTP_OK)
-  await expect(page.getByText('Envelope retornado')).toBeVisible()
+  const response = await request.get('/control-signal?kind=envelope-return')
+  expect(response.status()).toBe(HTTP_OK)
+  // O parágrafo renderizado, não só o valor serializado para a hidratação.
+  expect(await response.text()).toMatch(/<p[^>]*>Envelope retornado<\/p>/u)
 })
 
+// Bug do @solidjs/router (ver docs/server-errors.md): query() copia o
+// content-type do envelope para a página. test.fail() registra o bug; quando o
+// router corrigir, o teste passa a falhar e o marcador deve sair.
+// oxlint-disable-next-line vitest/prefer-each -- O runner do Playwright não oferece test.each.
+for (const kind of ['envelope-return', 'envelope-throw']) {
+  test(`o documento com ${kind} por query no SSR continua HTML`, async ({
+    request
+  }) => {
+    test.fail()
+    const response = await request.get(
+      `/control-signal?kind=${kind}&id=throw:${crypto.randomUUID()}`
+    )
+    expect(response.headers()['content-type']).toBe('text/html; charset=utf-8')
+  })
+}
+
 // O hook recebe o envelope lançado como controle; o router então lança o valor
-// do envelope no render, que vira falha de render com ou sem o hook. O runtime
-// também descarta o content-type desse documento ([LATE_HEADER_WRITE]), então
-// o teste confere a resposta bruta em vez do render do navegador.
+// do envelope no render, que vira falha de render com ou sem o hook. O teste
+// confere a resposta bruta, porque o documento sai com o content-type errado.
 test('um envelope lançado por server function no SSR vira falha de render sem expor o valor', async ({
   request
 }) => {
