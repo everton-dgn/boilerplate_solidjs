@@ -266,6 +266,7 @@ test.describe('exceções no middleware', () => {
 
       expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
       expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+      expect(response.headers.get('server-timing')).toMatch(/^app;dur=/u)
       if (errorPage) {
         expect(response.headers.get('content-type')).toContain('text/html')
         expect(body).toContain('Algo deu errado!')

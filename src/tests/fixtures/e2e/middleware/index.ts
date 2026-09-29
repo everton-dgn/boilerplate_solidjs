@@ -2,7 +2,7 @@ import { getRequestEvent } from '@solidjs/web'
 import * as v from 'valibot'
 
 import { requestJson } from '@/infra/server/requestJson/index.ts'
-import { containFailures, requestMiddleware } from '@/middleware/index.ts'
+import { createMiddleware } from '@/middleware/index.ts'
 
 import { fixtureError } from '../outside-error/fixtureError/index.ts'
 import { readFixtureMarker } from '../outside-error/readFixtureMarker/index.ts'
@@ -80,10 +80,10 @@ async function fixtureFailureAfter(request: Request, next: Next) {
   return response
 }
 
-// A mesma contenção da produção envolve as falhas injetadas e a cadeia real.
-export default containFailures([
+// A fábrica da produção põe as falhas injetadas na frente da cadeia real,
+// dentro da mesma contenção.
+export default createMiddleware([
   fixtureMarker,
   fixtureFailureBefore,
-  fixtureFailureAfter,
-  ...requestMiddleware
+  fixtureFailureAfter
 ])
