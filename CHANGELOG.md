@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 1.7.0 - 2026-09-30
+
+### Added
+
+- render the app error page for failed navigations (40d9b7b)
+- map runtime errors to the public error with a fixed log (397e73d)
+
+### Fixed
+
+- log the error class and filtered stack frames (00ed86d)
+- add headers to immutable redirects and contained responses (81d5068)
+- share one control check that rejects Response.error() (6d6f876)
+- keep server functions and API routes out of the error page (8b91dcc)
+- return the public 500 even when logging fails (4278893)
+- keep the error hook from throwing when logging fails (fbdebd9)
+- treat only body-less responses as control in the error hook (947ba9d)
+- contain chain failures without logging the original error (ae35932)
+- restrict the server error hook to its registration module (a4dd6d8)
+
 ## 1.6.1 - 2026-09-28
 
 ### Fixed
