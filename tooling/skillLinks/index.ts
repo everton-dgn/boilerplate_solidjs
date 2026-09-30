@@ -27,13 +27,19 @@ type CheckOptions = {
 const SLUG_REMOVED = /[^\p{L}\p{M}\p{N}\p{Pc} -]/gu
 const FENCE = /^ {0,3}(?<marker>`{3,}|~{3,})/u
 const ATX_HEADING = /^ {0,3}#{1,6}(?:[ \t]+(?<text>.*?))?(?:[ \t]+#+)?[ \t]*$/u
+const SETEXT_UNDERLINE = /^ {0,3}(?:=+|-+)[ \t]*$/u
+// Linhas que não continuam um parágrafo: em branco, citação, item de lista ou
+// quebra temática com `*` ou `_` (a de `-` já cai em SETEXT_UNDERLINE).
+const PARAGRAPH_BREAK =
+  /^(?:[ \t]*$| {0,3}(?:>|[-+*](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|(?:\*[ \t]*){3,}$|(?:_[ \t]*){3,}$))/u
 const HTML_ANCHOR = /<a\s[^>]*?\b(?:id|name)\s*=\s*["'](?<id>[^"']+)["']/giu
 const INLINE_LINK =
-  /!?\[(?:[^\]\\]|\\.)*\]\(\s*(?:<(?<angle>[^>]*)>|(?<bare>[^\s)]+))(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)/gu
+  /!?\[(?:[^\]\\]|\\.)*\]\(\s*(?:<(?<angle>[^>]*)>|(?<bare>(?:\\.|[^\s()\\]|\((?:\\.|[^\s()\\])*\))+))(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)/gu
 const REFERENCE_DEFINITION =
   /^ {0,3}\[[^\]]+\]:\s*(?:<(?<angle>[^>]*)>|(?<bare>\S+))/u
 const EXTERNAL = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/iu
 const LINK_PARTS = /^(?<path>[^#]*)(?:#(?<fragment>.*))?$/su
+const BACKSLASH_ESCAPE = /\\(?<char>[!-/:-@[-`{-~])/gu
 
 function githubSlug(text: string): string {
   return text.toLowerCase().replace(SLUG_REMOVED, '').replaceAll(' ', '-')
@@ -88,17 +94,42 @@ function proseLines(markdown: string): ProseLine[] {
 
 function extractAnchors(markdown: string): Set<string> {
   const anchors = new Set<string>()
-  const counts = new Map<string, number>()
-  for (const { text } of proseLines(markdown)) {
+  // Numeração do github-slugger: o sufixo avança até achar um slug livre,
+  // inclusive diante de headings como `A-1`. Âncoras manuais ficam de fora.
+  const occurrences = new Map<string, number>()
+  const addHeading = (raw: string): void => {
+    const base = githubSlug(headingText(raw))
+    let slug = base
+    while (occurrences.has(slug)) {
+      const count = (occurrences.get(base) ?? 0) + 1
+      occurrences.set(base, count)
+      slug = `${base}-${count}`
+    }
+    occurrences.set(slug, 0)
+    anchors.add(slug)
+  }
+  // Linhas consecutivas do parágrafo atual, candidatas a heading Setext.
+  let paragraph: string[] = []
+  let previousLine = 0
+  for (const { text, line } of proseLines(markdown)) {
     for (const match of text.matchAll(HTML_ANCHOR)) {
       if (match.groups?.id) anchors.add(match.groups.id.toLowerCase())
     }
+    // Blocos cercados somem de proseLines; o salto de linha encerra o parágrafo.
+    if (line !== previousLine + 1) paragraph = []
+    previousLine = line
     const heading = ATX_HEADING.exec(text)
-    if (!heading) continue
-    const base = githubSlug(headingText(heading.groups?.text ?? ''))
-    const seen = counts.get(base) ?? 0
-    counts.set(base, seen + 1)
-    anchors.add(seen === 0 ? base : `${base}-${seen}`)
+    if (heading) {
+      addHeading(heading.groups?.text ?? '')
+      paragraph = []
+    } else if (SETEXT_UNDERLINE.test(text)) {
+      if (paragraph.length > 0) addHeading(paragraph.join('\n'))
+      paragraph = []
+    } else if (PARAGRAPH_BREAK.test(text)) {
+      paragraph = []
+    } else {
+      paragraph.push(text.trim())
+    }
   }
   return anchors
 }
@@ -168,7 +199,9 @@ async function checkMarkdownLinks({
     const links = extractLinks(await readFile(file, 'utf8'))
     for (const { target, line } of links) {
       if (EXTERNAL.test(target)) continue
-      const parts = LINK_PARTS.exec(target)?.groups
+      const parts = LINK_PARTS.exec(
+        target.replaceAll(BACKSLASH_ESCAPE, '$<char>')
+      )?.groups
       const linkPath = decode(parts?.path ?? '')
       const fragment =
         parts?.fragment === undefined ? undefined : decode(parts.fragment)

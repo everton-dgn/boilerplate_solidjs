@@ -67,6 +67,47 @@ describe('extractAnchors', () => {
       'âncora-manual'
     ])
   })
+
+  it('evita sufixos já gerados ao numerar headings repetidos', () => {
+    const anchors = extractAnchors(['# A', '# A-1', '# A'].join('\n'))
+    assert.deepEqual([...anchors].toSorted(), ['a', 'a-1', 'a-2'])
+  })
+
+  it('reconhece headings Setext e ignora linhas horizontais', () => {
+    const anchors = extractAnchors(
+      [
+        'Configuração',
+        '============',
+        '',
+        'Uso `avançado`',
+        '---',
+        '',
+        'Texto',
+        '```md',
+        'Dentro do bloco',
+        '```',
+        '---'
+      ].join('\n')
+    )
+    assert.deepEqual([...anchors].toSorted(), ['configuração', 'uso-avançado'])
+  })
+
+  it('encerra o parágrafo Setext em quebra temática com asterisco ou sublinhado', () => {
+    const anchors = extractAnchors(
+      [
+        'Texto',
+        '***',
+        'Título',
+        '---',
+        '',
+        'Outro',
+        '_ _ _',
+        'Fim',
+        '==='
+      ].join('\n')
+    )
+    assert.deepEqual([...anchors].toSorted(), ['fim', 'título'])
+  })
 })
 
 describe('checkMarkdownLinks', () => {
@@ -125,6 +166,34 @@ describe('checkMarkdownLinks', () => {
         '[y](missing.md)',
         '```'
       ].join('\n')
+    })
+    assert.deepEqual(messages, [])
+  })
+
+  it('aceita parênteses balanceados no destino do link', async () => {
+    const messages = await check({
+      'SKILL.md': '[Guia](guide(v2).md) [falta](missing(v2).md)\n',
+      'guide(v2).md': '# Guia\n'
+    })
+    assert.deepEqual(messages, [
+      'SKILL.md:1 link para arquivo inexistente: missing(v2).md'
+    ])
+  })
+
+  it('interpreta parênteses escapados no destino do link', async () => {
+    const messages = await check({
+      'SKILL.md': '[ok](a\\(b.md) [falta](c\\(d.md#x)\n',
+      'a(b.md': '# A\n'
+    })
+    assert.deepEqual(messages, [
+      String.raw`SKILL.md:1 link para arquivo inexistente: c\(d.md#x`
+    ])
+  })
+
+  it('resolve âncora de heading Setext em outro arquivo', async () => {
+    const messages = await check({
+      'SKILL.md': '[Guia](guide.md#configuração)\n',
+      'guide.md': 'Guia\n====\n\nConfiguração\n------------\n'
     })
     assert.deepEqual(messages, [])
   })
