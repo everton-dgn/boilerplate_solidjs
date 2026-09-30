@@ -66,13 +66,14 @@ Exceções de middleware não passam pelo hook nem pelo wrapper. Sem tratamento,
 host responde com um corpo genérico, mas registra a mensagem, o `cause`, as
 propriedades e a stack do erro original. Por isso o export padrão de
 [`src/middleware/index.ts`](../src/middleware/index.ts) é `createMiddleware()`,
-que devolve `containFailures(requestMiddleware)`: ele compõe a cadeia inteira
-dentro de si, e uma exceção nos middlewares, nas rotas de API ou no handler de
-páginas vira 500 com os headers de segurança, o `server-timing` e o log
-`[middleware]`. Só uma `Response` sem corpo e com status diferente de 0 passa
-como controle, e sai com os mesmos headers; uma `Response` com corpo lançada
-vira 500, porque pode carregar dados upstream. O middleware, o hook e o wrapper
-usam a mesma classificação,
+que devolve `containFailures(requestMiddleware)`. A contenção, em
+[`src/middleware/containFailures/index.ts`](../src/middleware/containFailures/index.ts),
+compõe a cadeia inteira dentro de si, e uma exceção nos middlewares, nas rotas
+de API ou no handler de páginas vira 500 com os headers de segurança, o
+`server-timing` e o log `[middleware]`. Só uma `Response` sem corpo e com status
+diferente de 0 passa como controle, e sai com os mesmos headers; uma `Response`
+com corpo lançada vira 500, porque pode carregar dados upstream. O middleware, o
+hook e o wrapper usam a mesma classificação,
 [`isControlResponse`](../src/infra/server/isControlResponse/index.ts). Os
 headers de um `Response.redirect()` devolvido são imutáveis, então vão numa
 cópia sem corpo; o retorno cru de `fetch()`, com headers imutáveis e corpo
@@ -102,8 +103,11 @@ aceita um único render por requisição: se a cadeia falhar depois de já ter
 renderizado a página, a resposta também é o 500 em texto. Se o render de erro
 falhar, a resposta é o 500 em texto e o log ganha a linha `[error-page]`, com a
 classe e os frames do erro do render descritos em
-[Log de falhas](#log-de-falhas). O endpoint fica numa constante do middleware;
-ao configurar `serverFunctions.endpoint` no Vite, atualize os dois.
+[Log de falhas](#log-de-falhas). A contenção lê o endpoint do export `endpoint`
+de `virtual:solid-server-function-handler`, o mesmo valor que o dispatcher do
+plugin usa, com `serverFunctions.endpoint` e o `base` do Vite já aplicados;
+mudar essas opções não exige editar o middleware. No projeto Node do Vitest, um
+alias troca esse módulo por um stub com o valor padrão.
 
 A contenção só alcança a janela da cadeia de middleware. A criação do evento, o
 commit da resposta e falhas do corpo depois que a `Response` sai ficam fora

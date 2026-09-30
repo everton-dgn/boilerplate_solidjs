@@ -455,7 +455,8 @@ Reescreva as notas em cada projeto derivado. O `Document.tsx` anuncia esse
 arquivo em todas as páginas com `<link rel="describedby" href="/llms.txt">`, a
 descoberta recomendada pela spec do llms.txt; agentes não são redirecionados. O
 robots publica os grupos de `robots.txt/constants.ts`: `*` com `Allow: /` e
-`Disallow: /_server` (endpoint das server functions), robôs de treinamento de IA
+`Disallow` do endpoint das server functions (`/_server` por padrão, lido do
+`virtual:solid-server-function-handler` do plugin), robôs de treinamento de IA
 com `Disallow: /`, e o link do sitemap. Buscadores e agentes que leem páginas a
 pedido do usuário continuam liberados, porque são o público do llms.txt.
 `Disallow` é um pedido que robôs mal comportados ignoram e não remove URL do
@@ -678,7 +679,9 @@ padrão do Vitest, declarando só o que muda.
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
 `vite-plus/prefer-vite-plus-imports` bloqueia o import direto). O contexto de
 requisição dos middlewares é testado com `provideRequestEvent` de
-`@solidjs/web/storage` em `src/middleware/__tests__/middleware.node.test.ts`.
+`@solidjs/web/storage`. Cada middleware de `src/middleware/` tem a própria suíte
+em `__tests__/`, e `src/middleware/__tests__/middleware.node.test.ts` cobre o
+export padrão e a cadeia montada por `createMiddleware`.
 
 <br />
 

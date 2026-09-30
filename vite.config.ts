@@ -251,6 +251,12 @@ export default defineConfig(({ mode }) => {
               ),
               'virtual:file-routes': fileURLToPath(
                 new URL('tooling/testing/file-routes.ts', import.meta.url)
+              ),
+              'virtual:solid-server-function-handler': fileURLToPath(
+                new URL(
+                  'tooling/testing/solid-server-function-handler.ts',
+                  import.meta.url
+                )
               )
             }
           },
