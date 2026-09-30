@@ -1,10 +1,10 @@
 # Cancelamento e fontes vivas
 
-Base: [revisão verificada](../SKILL.md).
+Base: [revisão verificada](../SKILL.md), reverificada em 2026-09-29.
 
 ## Responsabilidade e limpeza
 
-Use fonte async do grafo para dados renderizados; effect split para integração imperativa. O apply precisa devolver cleanup síncrono. Draft de setter ou projection retido depois da execução perde escritas; não o capture em timer ou Promise. Reentrada de action após `await` tem [contrato próprio](10-actions-optimism-and-confirmation.md#geradores-e-reentrada).
+Use fonte async do grafo para dados renderizados; effect split para integração imperativa. O apply precisa devolver cleanup síncrono. Draft de setter retido depois da execução perde escritas; não o capture em timer ou Promise. Draft de projection ou store derivada vale até a próxima execução da derivação ([R10](17-known-risks.md#r10-escrita-tardia-pelo-draft-de-uma-projection-é-descartada-sem-aviso)). Reentrada de action após `await` tem [contrato próprio](10-actions-optimism-and-confirmation.md#geradores-e-reentrada).
 
 ## Operação imperativa
 
@@ -36,7 +36,7 @@ Armadilha: perder leitor não reverte servidor. Teste requests concorrentes com 
 
 ## Origem e CORS
 
-`Sec-Fetch-Site` pode recusar a chamada antes de consultar `csrf.origin`: veja [configuração e origem](13-server-functions-and-security.md#configuração-e-origem). Aceitação num cliente HTTP fora do navegador não prova o fluxo com preflight e credenciais.
+Chamada de outra origem só passa quando `csrf.origin` nomeia o `Origin` da página; `Sec-Fetch-Site: none` e requisição cross-site sem `Origin` são recusadas antes do matcher: veja [configuração e origem](13-server-functions-and-security.md#configuração-e-origem). Aceitação num cliente HTTP fora do navegador não prova o fluxo com preflight e credenciais.
 
 ## Hooks e invocação
 
@@ -46,9 +46,9 @@ Armadilha: dois requests podem executar duas vezes; idempotência de criação/r
 
 ## Estado live
 
-Contrato: live entrega estados sucessivos da mesma consulta e reemite estado atual a cada invocação. Compõe com GET sem implicá-lo: live(GET(fn)). Perda de conexão pode reinvocar com backoff; estado deve ser reconstruível da fonte autoritativa, sem persistir o mesmo grafo servidor.
+Contrato: live entrega estados sucessivos da mesma consulta e reemite estado atual a cada invocação. Compõe com GET sem implicá-lo: live(GET(fn)). Perda de conexão pode reinvocar com backoff; estado deve ser reconstruível da fonte autoritativa, sem persistir o mesmo grafo servidor. Na base verificada, a chamada abre `<endpoint>/live/<id>` e recebe `text/event-stream` com heartbeat; ao reinvocar, o cliente envia `Last-Event-ID` com o digest do último valor JSON-safe recebido e o servidor omite o primeiro valor reemitido quando o digest é igual. A base anterior não tinha esse transporte nem essa deduplicação.
 
-Armadilha: não é SSE/WebSocket pronto nem persistência durável. Identifique adapter/teste recuperação. Eventos de entrega única, histórico, auditoria ou incremento precisam de cursor/sequência/dedupe/reconexão próprios; snapshot não é evento.
+Armadilha: o event stream do transporte não torna live um canal SSE/WebSocket genérico nem persistência durável; `Last-Event-ID` só evita reenviar estado idêntico e não é cursor de eventos. Identifique adapter/teste recuperação. Eventos de entrega única, histórico, auditoria ou incremento precisam de cursor/sequência/dedupe/reconexão próprios; snapshot não é evento.
 
 ## Coleta após gravação
 

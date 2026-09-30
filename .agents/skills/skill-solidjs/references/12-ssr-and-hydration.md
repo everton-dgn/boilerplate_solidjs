@@ -49,7 +49,7 @@ const Document = (props: DocumentProps) => (
 hydrate(() => <App />, container)
 ```
 
-Contrato: JSX em prop não children, seguido de outro hole que aloca ID, pode hidratar sem eventos na base. Passe por children ou renderize slot por componente:
+Contrato: na base anterior, JSX em prop não children, seguido de outro hole que aloca ID, podia hidratar sem eventos. O compilador da base verificada escopa também o hole que lê essa prop (`_$scope`), e o dev avisa `UNSCOPED_HOLE_ALLOCATED_IDS` quando um hole sem escopo aloca IDs; a hidratação desse arranjo não foi sondada em navegador. Com compilador anterior, passe por children ou renderize slot por componente:
 
 ```tsx
 type SlotProps = { children?: JSX.Element }
@@ -134,7 +134,7 @@ function ProductHead(props: ProductHeadProps) {
 
 Contrato: useHead de @solidjs/web registra por owner; descarte restaura tags vencedoras anteriores. Props aceitam getters; children é texto, title singleton e key altera dedupe das demais tags. Getter só lê: criar memo/children nele consome ID de um lado e desalinha hidratação; crie no corpo. Se documento não tem fechamento head, onHead de renderToString/renderToStream entrega markup ao host. Solid Meta é recomendação documental para metadados comuns, pacote separado não instalado na base.
 
-Armadilha: receita foi tipada, sem comparação de render cliente/servidor dos dois getters. Relatos não reproduzidos na base: texto estático com spread sem escape; stylesheet de useHead ainda carregando causa TypeError/REACTIVITY_HALTED ao hidratar. Correções posteriores sem publicação não certificam runtime local: teste esses arranjos antes de adotá-los.
+Armadilha: receita foi tipada, sem comparação de render cliente/servidor dos dois getters. Dois relatos da base anterior têm correção na base verificada: texto estático com spread sem escape ([R11](17-known-risks.md#r11-texto-estático-filho-de-elemento-com-spread-sai-sem-escape-no-ssr), sondado) e stylesheet de useHead ainda carregando que causava TypeError/REACTIVITY_HALTED ao hidratar (só pelo changelog da tag, sem sonda). Teste esses arranjos antes de adotá-los com versão anterior.
 
 ## Erros, sanitização e observação
 
@@ -146,8 +146,8 @@ Armadilha: fallback genérico e transporte sanitizado não contêm toda exceçã
 
 ## Falhas tardias e artefato real
 
-Rejeições tardias em certos arranjos encerram o processo Node mesmo depois de enviar uma resposta: [R08](17-known-risks.md#r08-rejeição-assíncrona-tardia-durante-ssr-derruba-o-processo-node). Preserve árvore, modo e momento ao reproduzir em processo descartável.
+Na base anterior, rejeições tardias em certos arranjos encerravam o processo Node mesmo depois de enviar uma resposta; a base verificada corrige os arranjos reproduzidos: [R08](17-known-risks.md#r08-rejeição-assíncrona-tardia-durante-ssr-derruba-o-processo-node). Preserve árvore, modo e momento ao reproduzir em processo descartável.
 
-Armadilha: mudanças posteriores não publicadas não removem esses riscos. Execute regressão em processo filho, registrando saída, código, sinal e timeout; não engula unhandledRejection globalmente. Teste shell/região 1, hidrate com região 2 pendente, altere cache, conclua stream e observe identidade, listeners e criação/destruição de recursos. HTML totalmente aguardado não testa essa janela. Inclua falha tardia, abort e navegação para outro owner.
+Armadilha: a correção cobre os arranjos medidos, não toda rejeição tardia. Execute regressão em processo filho, registrando saída, código, sinal e timeout; não engula unhandledRejection globalmente. Teste shell/região 1, hidrate com região 2 pendente, altere cache, conclua stream e observe identidade, listeners e criação/destruição de recursos. HTML totalmente aguardado não testa essa janela. Inclua falha tardia, abort e navegação para outro owner.
 
 Contrato: produção precisa ser servida pelo adapter real de teste. Source/dev não cobrem campos entre pacotes renomeados na otimização. Botão inerte exige conferir core/web/plugin/compilador/binário nativo resolvidos antes da lógica de evento; não corrija atributos privados. Fixtures use server precisam entrar no filtro efetivo, cujo padrão é src/**; build verde pode manter corpo servidor no cliente se fora dele. Confira referência gerada, registro HTTP, marcador sintético ausente em bundle/chunks/sourcemaps públicos e chamada real. Um marcador ausente não prova ausência de todo segredo. Skip, sinal de término ou erro de spawn não são aprovação.
