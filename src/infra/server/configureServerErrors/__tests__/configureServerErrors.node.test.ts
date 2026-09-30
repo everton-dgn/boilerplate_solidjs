@@ -14,9 +14,11 @@ import type {
   createPublicError,
   isPublicError
 } from '@/infra/server/publicErrors/index.ts'
-import { hostileValue } from '@/tests/helpers/hostileValue/index.ts'
+import {
+  hostileValue,
+  throwValue
+} from '@/tests/helpers/failureValues/index.ts'
 import { readLog } from '@/tests/helpers/readLog/index.ts'
-import { throwValue } from '@/tests/helpers/throwValue/index.ts'
 
 vi.mock(import('@solidjs/web'), async importOriginal => ({
   ...(await importOriginal()),

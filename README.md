@@ -37,8 +37,8 @@ testes e hooks de git), sem aplicação de produto pronta.
 
 - [x] SSR com hidratação no cliente e `Document` próprio (`src/Document.tsx`)
 - [x] Toolchain configurada para server functions com `'use server'`
-- [x] Middleware de servidor: `server-timing`, cabeçalhos de segurança e
-      `requestId` por requisição
+- [x] Middleware de servidor: cabeçalhos de segurança, Content-Security-Policy
+      com nonce e `requestId` por requisição
 - [x] Roteamento com lazy loading e rota 404 respondendo com status HTTP correto
 - [x] SEO: canonical e Open Graph por rota com `useHead`, imagem social,
       `sitemap.xml` e `llms.txt` gerados a partir do manifesto de rotas e
@@ -87,8 +87,8 @@ método HTTP em vez de `export default`. O `createAPIHandler` em
 passar as demais. O nome do arquivo vira o caminho sem a extensão, então
 `sitemap.xml.ts` atende `/sitemap.xml`; colchetes continuam indicando parâmetros
 dinâmicos. Uma rota pode devolver `Response.redirect()`: como os headers dessa
-resposta são imutáveis, o middleware grava `server-timing` e os cabeçalhos de
-segurança numa cópia.
+resposta são imutáveis, o middleware grava os cabeçalhos de segurança numa
+cópia.
 
 O plugin gera `src/@types/routes.d.ts` com os caminhos tipados durante o build
 ou desenvolvimento. Mantenha essa declaração versionada e atualizada ao mudar as
@@ -126,11 +126,12 @@ restrições são:
 | `components/molecules`                                     | `components/organisms`                                       |
 | Qualquer módulo de produção em `src`                       | Testes, fixtures de `src/tests` e `tooling`                  |
 
-As entradas são `App`, `Document`, `router` e `middleware`. A classificação
-parte da raiz de `src`: primitives colocalizadas dentro de um componente
-continuam na camada desse componente. Testes (`*.test.*`, `*.spec.*`,
-`__tests__` e `src/tests`) podem importar as camadas que verificam. A declaração
-gerada `src/@types/routes.d.ts` continua excluída do lint.
+As entradas são `App`, `Document`, `entry-server`, `entry-client`, `router` e
+`middleware`. A classificação parte da raiz de `src`: primitives colocalizadas
+dentro de um componente continuam na camada desse componente. Testes
+(`*.test.*`, `*.spec.*`, `__tests__` e `src/tests`) podem importar as camadas
+que verificam. A declaração gerada `src/@types/routes.d.ts` continua excluída do
+lint.
 
 Nos diagnósticos, `base` identifica as seis pastas da primeira linha, `entry`
 identifica as entradas e `source` os demais módulos de `src`.
@@ -222,6 +223,81 @@ módulos. A criação de erros públicos exclusivos do servidor fica em
 [`infra/server/publicErrors/`](src/infra/server/publicErrors/index.ts), junto da
 proteção das operações de backend. Requisições e persistência continuam em
 `infra/`. Validação de tema continua em `helpers/isTheme/`.
+
+### Cabeçalhos de segurança e CSP
+
+Os cabeçalhos de segurança saem do middleware, não do `vercel.json`. O
+`securityHeaders` grava em toda resposta da cadeia `Strict-Transport-Security`,
+`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+`Permissions-Policy`, `Cross-Origin-Opener-Policy`,
+`Cross-Origin-Embedder-Policy`, `Cross-Origin-Resource-Policy` e a
+`Content-Security-Policy`. Os valores ficam em
+[`securityHeaders/constants.ts`](src/middleware/securityHeaders/constants.ts). A
+contenção de falhas grava os mesmos cabeçalhos no 500, na página de erro e no
+controle lançado.
+
+A CSP usa `script-src 'nonce-<valor>' 'strict-dynamic'`, sem `'unsafe-inline'`
+para scripts. As demais diretivas são `default-src 'self'`,
+`style-src 'self' 'unsafe-inline'`, `object-src 'none'`, `base-uri 'self'`,
+`form-action 'self'` e `frame-ancestors 'none'`. O app não usa WebAssembly nem
+`eval`, então a política não inclui `'wasm-unsafe-eval'`. Só respostas
+`text/html` levam o nonce; texto, XML, JSON e redirects saem com
+`script-src 'none'`. Assim `/sitemap.xml`, `/robots.txt` e `/llms.txt`, que têm
+`s-maxage`, não guardam o nonce de uma requisição no cache compartilhado.
+
+O nonce tem 16 bytes de `crypto.getRandomValues` em base64 e é criado a cada
+requisição por [`requestNonce`](src/middleware/securityHeaders/index.ts), que o
+guarda em `locals.nonce`. O `securityHeaders` o cria antes do render; a
+contenção cria um quando a falha veio antes dele, para que a página de erro e a
+CSP usem o mesmo valor. O caminho até os scripts é:
+
+- [`src/entry-server.tsx`](src/entry-server.tsx) passa o nonce ao
+  `renderToStream`, que o grava no `HydrationScript`, nos scripts de dados e de
+  streaming, no script de título e nos `modulepreload`. Os estilos ficam sem
+  nonce, porque o `style-src` mantém `'unsafe-inline'`.
+- O `Document` grava `nonce` no script inline do tema e no script da entrada do
+  cliente, que ele mesmo renderiza com o caminho literal
+  `/src/entry-client.tsx`. No build, o handler do plugin troca esse caminho pelo
+  asset com hash.
+
+As entradas autorais existem porque as geradas pelo `@solidjs/vite-plugin`
+chamam `renderToStream` só com o manifesto, e o `fetch` que o Nitro usa chama
+`handleRequest(request)` sem opções. Com elas, o plugin deixa de gerar o
+`DefaultErrorBoundary` de produção e a opção `start.errorBoundary` não tem
+efeito; o `Errored` raiz do `App` continua responsável pela página de erro. Uma
+exceção no próprio `Document` sai síncrona do `renderToStream` e a contenção de
+falhas responde o 500 em texto, com o log fixo. A árvore de `entry-client.tsx`
+precisa ser a mesma de `entry-server.tsx`.
+
+Em desenvolvimento a CSP não é enviada, porque o Vite injeta no `<head>` o
+cliente de HMR e o patch de estilos sem nonce; os demais cabeçalhos valem. A CSP
+só pode ser conferida no build, com `pnpm start` ou `pnpm test:e2e:production`.
+Todo script novo no `Document` precisa de `nonce={nonce}`.
+
+Limites conhecidos:
+
+- Na Vercel, arquivos estáticos (`/assets/`, `/images/` e `/favicon/`) saem do
+  CDN sem passar pela função. O `vercel.json` grava neles só
+  `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`; a CSP e as
+  políticas de frame só têm efeito em documentos, que passam pelo middleware.
+- Um redirect decidido depois do envio do shell vira um
+  `<script>window.location=...</script>` do runtime, que só recebe nonce pelas
+  opções de `handleRequest`, fora do alcance do `fetch` padrão. Com a CSP, esse
+  fallback é bloqueado. Redirects anteriores ao shell viram 3xx reais e não são
+  afetados.
+- Um componente `lazy()` com CSS própria criado só depois que o dado assíncrono
+  de um `Loading` resolve, por exemplo dentro de `<Show when={dado()}>`, não
+  aparece. O runtime grava a folha do fragmento num `<link>` com `onload` e
+  `onerror` inline (`sink.fragment` em `@solidjs/web/dist/server.js`); atributos
+  `on*=` não aceitam nonce, a CSP os bloqueia, o fragmento fica no fallback e a
+  hidratação não termina. Importe o componente de forma estática ou crie o
+  `lazy()` fora do trecho que espera o dado assíncrono, para que a CSS dele
+  entre no `<head>`. A fixture `/fragment-css` e o teste
+  `FragmentCss.e2e.test.ts` registram o limite.
+- `Cross-Origin-Embedder-Policy: require-corp` bloqueia recursos de outra origem
+  sem `Cross-Origin-Resource-Policy` ou CORS. Ao adicionar fontes, imagens ou
+  scripts externos, confira se o provedor envia esses cabeçalhos ou revise a
+  política.
 
 ### Falhas de backend e recuperação
 
@@ -534,8 +610,9 @@ ou `pnpm start --host 0.0.0.0`.
 plataforma de hospedagem; o comando `preview` é destinado à conferência local.
 
 O Nitro usa `preset: 'vercel'` no `vite.config.ts` e gera a função SSR e os
-estáticos em `.vercel/output/`. O plugin do Solid gera a entrada SSR, que o
-Nitro usa diretamente. As requisições de server functions usam a integração
+estáticos em `.vercel/output/`. O handler SSR do plugin do Solid, que renderiza
+pelas entradas autorais `src/entry-server.tsx` e `src/entry-client.tsx`, é usado
+diretamente pelo Nitro. As requisições de server functions usam a integração
 nativa entre Solid e Nitro/srvx.
 
 Para gerar o artefato da Vercel:
@@ -545,10 +622,18 @@ pnpm build
 ```
 
 Esse comando gera `.vercel/output/`, incluindo estáticos e a função SSR com
-runtime Node. O `vercel.json` define esse comando como build do projeto. Na
-Vercel, importe o repositório e deixe o diretório de saída sem override manual
-para usar a Build Output API. Gerar o artefato localmente não publica a
-aplicação.
+runtime Node. Gerar o artefato localmente não publica a aplicação.
+
+O deploy de produção sai do job `deploy` do
+[workflow do CI](.github/workflows/ci.yml), só em push na `main` e depois do job
+`check`. Ele roda `vercel pull --environment=production`, `vercel build --prod`
+e `vercel deploy --prebuilt --prod`, com a variável `VERCEL_ORG_ID`, a variável
+`VERCEL_PROJECT_ID` e o secret `VERCEL_TOKEN` cadastrados no GitHub. O
+`vercel.json` desativa os deploys pela integração Git
+(`git.deploymentEnabled: false`) e guarda o cache imutável de `/images/` e os
+cabeçalhos `nosniff` e `Cross-Origin-Resource-Policy` dos estáticos; os demais
+cabeçalhos de segurança saem do middleware. A configuração do projeto na Vercel
+está em [tooling/release/README.md](tooling/release/README.md).
 
 O Nitro é definido no [package.json](package.json). Ao atualizá-lo, valide o
 build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
@@ -752,12 +837,15 @@ um build normal, com a árvore real de `src/routes/`. Essa suíte verifica por
 HTTP que `/robots.txt`, `/llms.txt` e `/sitemap.xml` respondem sem
 redirecionamento, com conteúdo e headers esperados, e que os helpers locais não
 viram endpoints públicos. Também verifica a ausência de uma rota das fixtures e
-que a Home recebe `server-timing` e os cabeçalhos de segurança do middleware
-real, já que o build E2E monta a cadeia pela fábrica `createMiddleware`. O
-comando usa a mesma `BASE_URL_TEST`, carrega as variáveis públicas no modo
-`production` e dispensa o backend simulado. Execute as duas suítes em sequência,
-pois compartilham a porta e os artefatos de build. O CI executa ambas; a suíte
-de produção também valida o build final.
+que a Home recebe os cabeçalhos de segurança do middleware real, já que o build
+E2E monta a cadeia pela fábrica `createMiddleware`.
+`Home.csp.production.e2e.test.ts` confere que a CSP traz um nonce que muda a
+cada requisição, que todos os `<script>` e `modulepreload` do HTML bruto trazem
+esse nonce e que a Home hidrata sem violação de CSP no console. O comando usa a
+mesma `BASE_URL_TEST`, carrega as variáveis públicas no modo `production` e
+dispensa o backend simulado. Execute as duas suítes em sequência, pois
+compartilham a porta e os artefatos de build. O CI executa ambas; a suíte de
+produção também valida o build final.
 
 Use `pnpm test:e2e:ui` para abrir a interface interativa do Playwright. Com
 `CI=true`, os E2E usam um único worker; localmente, mantêm o paralelismo padrão.

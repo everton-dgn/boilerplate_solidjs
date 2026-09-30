@@ -2,13 +2,11 @@ import { provideRequestEvent } from '@solidjs/web/storage'
 
 import { readLog } from '@/tests/helpers/readLog/index.ts'
 
-import middleware, { requestMiddleware } from '../index.ts'
-import { requestContext } from '../requestContext/index.ts'
-import { requestTiming } from '../requestTiming/index.ts'
-import { securityHeaders } from '../securityHeaders/index.ts'
+import middleware from '../index.ts'
 
 const TEST_ORIGIN = 'http://localhost'
-const API_HANDLER_INDEX = 3
+// vi.mock é içado para o topo do arquivo; o caminho sobe junto.
+const { API_PATH } = vi.hoisted(() => ({ API_PATH: '/rota-api' }))
 const HTTP_FOUND = 302
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
@@ -16,9 +14,32 @@ const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
 
 type LocalsEvent = {
   request: Request
-  locals: { serverFailure?: Error }
+  locals: { serverFailure?: Error; requestId?: string; nonce?: string }
   response: { headers: Headers }
 }
+
+// O projeto node usa um manifesto vazio. O handler de API real recebe aqui uma
+// rota sintética que responde sem chamar next, como sitemap.xml e robots.txt.
+vi.mock(import('filesystem-routing/api'), async importOriginal => {
+  const api = await importOriginal()
+  return {
+    ...api,
+    createAPIHandler: () =>
+      api.createAPIHandler([
+        {
+          path: API_PATH,
+          $GET: {
+            require: () => ({
+              GET: () =>
+                new Response('api', {
+                  headers: { 'content-type': 'text/plain; charset=utf-8' }
+                })
+            })
+          }
+        }
+      ])
+  }
+})
 
 function pageEvent(path = '/'): LocalsEvent {
   const request = new Request(new URL(path, TEST_ORIGIN), {
@@ -97,7 +118,6 @@ describe('export padrão do middleware', () => {
       'x-content-type-options': 'nosniff',
       'referrer-policy': 'strict-origin-when-cross-origin'
     })
-    expect(response.headers.get('server-timing')).toMatch(/^app;dur=/u)
   })
 
   // O retorno cru de fetch() tem headers imutáveis e corpo upstream; a cadeia
@@ -127,28 +147,52 @@ describe('export padrão do middleware', () => {
 })
 
 describe('cadeia de produção', () => {
-  // A ordem define o intervalo medido pelo server-timing e quais respostas
-  // recebem os cabeçalhos de segurança; as suítes de cada módulo não a fixam.
-  it('mantém a ordem dos middlewares da cadeia', () => {
-    expect(requestMiddleware).toStrictEqual([
-      requestTiming,
-      securityHeaders,
-      requestContext,
-      expect.any(Function)
-    ])
+  beforeEach(() => {
+    // A CSP só sai nos builds de produção; o Vitest roda com DEV.
+    vi.stubEnv('DEV', false)
+  })
+
+  // A ordem decide quais respostas recebem os cabeçalhos de segurança e o
+  // contexto: o handler de API responde sem chamar next, então o que vier
+  // depois dele não roda nas rotas de API. Trocar a ordem faz este teste falhar.
+  it('aplica os cabeçalhos e o contexto antes do handler de API', async () => {
+    const event = pageEvent(API_PATH)
+    const next = vi.fn<() => Promise<Response>>()
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event.request, next)
+    )
+
+    expect(next).not.toHaveBeenCalled()
+    await expect(response.text()).resolves.toBe('api')
+    expect({
+      requestId: typeof event.locals.requestId,
+      nonce: typeof event.locals.nonce,
+      nosniff: response.headers.get('x-content-type-options')
+    }).toStrictEqual({
+      requestId: 'string',
+      nonce: 'string',
+      nosniff: 'nosniff'
+    })
+    expect(response.headers.get('content-security-policy')).toContain(
+      "script-src 'none'"
+    )
   })
 
   // O despacho das rotas de API é do filesystem-routing e a suíte E2E cobre
   // sitemap.xml e robots.txt; aqui só o encadeamento importa.
   it('entrega ao próximo handler as requisições sem rota de API', async () => {
+    const event = pageEvent('/pagina')
     const response = new Response('página')
-    const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
-    const apiHandler = requestMiddleware[API_HANDLER_INDEX]
-    if (!apiHandler) throw new Error('API handler middleware not found')
+    const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
+      expect(event.locals.requestId).toBeDefined()
+      expect(event.locals.nonce).toBeDefined()
+      return Promise.resolve(response)
+    })
 
-    const request = new Request(new URL('/pagina', TEST_ORIGIN))
-
-    await expect(apiHandler(request, next)).resolves.toBe(response)
+    await expect(
+      provideRequestEvent(event, () => middleware(event.request, next))
+    ).resolves.toBe(response)
     expect(next).toHaveBeenCalledOnce()
   })
 })

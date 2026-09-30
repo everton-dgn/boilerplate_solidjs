@@ -233,6 +233,8 @@ export default defineConfig(({ mode }) => {
           'src/tests/**',
           'src/App.tsx',
           'src/Document.tsx',
+          'src/entry-server.tsx',
+          'src/entry-client.tsx',
           'src/router.ts'
         ]
       },

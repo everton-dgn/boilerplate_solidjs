@@ -214,7 +214,8 @@ release. Add a tool name to select part of the graph. For example, run
 
 - Preserve `architecture/layer-imports` em `tooling/architecturePolicy/index.ts`.
   `helpers`, `constants`, `@types`, `data` e `infra` não dependem de UI,
-  primitives, rotas ou entradas (`App`, `Document`, `router`, `middleware`).
+  primitives, rotas ou entradas (`App`, `Document`, `entry-server`,
+  `entry-client`, `router`, `middleware`).
   Primitives globais não dependem de UI, rotas ou entradas; atoms não dependem
   de molecules/organisms, e molecules não dependem de organisms.
 - Produção em `src` não importa testes, fixtures de `src/tests` ou `tooling`.
@@ -227,6 +228,29 @@ release. Add a tool name to select part of the graph. For example, run
   `vite-plus/lint/plugins` e `vite-plus/lint/plugins-dev`, sem instalar outra
   cópia de Oxlint. Rode `pnpm test:tooling` e `pnpm check:ci`. Consulte a
   matriz e os limites no README.
+
+## Cabeçalhos de segurança e CSP
+
+- Os cabeçalhos de segurança e a Content-Security-Policy saem do middleware,
+  com os valores em `src/middleware/securityHeaders/constants.ts`.
+  O `vercel.json` guarda o cache de `/images/` e só `nosniff` e
+  `Cross-Origin-Resource-Policy` para os estáticos, que não passam pela função;
+  não devolva a CSP nem os demais cabeçalhos a ele.
+- O `script-src` usa o nonce da requisição com `'strict-dynamic'`. Não
+  acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts para scripts.
+- O nonce vem de `requestNonce` e fica em `locals.nonce`. Todo `<script>` do
+  `Document` recebe `nonce={nonce}`; o `src/entry-server.tsx` repassa o valor ao
+  `renderToStream`, que o grava nos scripts do runtime. Não troque as entradas
+  autorais pelas geradas do plugin: elas renderizam sem nonce.
+- Mantenha a mesma árvore em `src/entry-server.tsx` e `src/entry-client.tsx`.
+- Só respostas `text/html` recebem o nonce na CSP; as demais saem com
+  `script-src 'none'`.
+- Não crie um componente `lazy()` com CSS própria só depois que o dado
+  assíncrono de um `Loading` resolve (por exemplo dentro de
+  `<Show when={dado()}>`): o runtime libera esse fragmento com handlers inline
+  que a CSP bloqueia. Veja o limite no README.
+- Em desenvolvimento a CSP não é enviada, porque o Vite injeta scripts sem
+  nonce. Confira mudanças de CSP com `pnpm test:e2e:production`.
 
 ## Erros no servidor e chamadas de backend
 

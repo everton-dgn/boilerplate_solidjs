@@ -2,8 +2,8 @@ import { redirect, reload, respond } from '@solidjs/web'
 import { NotReadyError } from 'solid-js'
 
 import { createPublicError } from '@/infra/server/publicErrors/index.ts'
+import { throwValue } from '@/tests/helpers/failureValues/index.ts'
 import { readLog } from '@/tests/helpers/readLog/index.ts'
-import { throwValue } from '@/tests/helpers/throwValue/index.ts'
 
 import { protectServerOperation } from '../index.ts'
 

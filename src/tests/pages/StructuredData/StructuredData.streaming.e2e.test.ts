@@ -33,7 +33,10 @@ test('envia o JSON-LD assíncrono como atualização de head após o HTML inicia
   expect(head).not.toContain(PRODUCT_NAME)
   expect(tail).toContain('Carregando produto...')
   expect(tail).toContain('"a","script:key:structured-data:')
-  expect(tail).toContain('"script",{"type":"application/ld+json"}')
+  // O runtime repassa o nonce CSP da requisição à tag criada no head.
+  expect(tail).toMatch(
+    /"script",\{"type":"application\/ld\+json","nonce":"[^"]+"\}/u
+  )
   expect(tail).toContain(String.raw`\"@type\":\"Product\"`)
   expect(tail).toContain(PRODUCT_NAME)
   expect(

@@ -66,24 +66,33 @@ Exceções de middleware não passam pelo hook nem pelo wrapper. Sem tratamento,
 host responde com um corpo genérico, mas registra a mensagem, o `cause`, as
 propriedades e a stack do erro original. Por isso o export padrão de
 [`src/middleware/index.ts`](../src/middleware/index.ts) é `createMiddleware()`,
-que devolve `containFailures(requestMiddleware)`. A contenção, em
+que entrega a cadeia de produção a `containFailures`. A contenção, em
 [`src/middleware/containFailures/index.ts`](../src/middleware/containFailures/index.ts),
 compõe a cadeia inteira dentro de si, e uma exceção nos middlewares, nas rotas
-de API ou no handler de páginas vira 500 com os headers de segurança, o
-`server-timing` e o log `[middleware]`. Só uma `Response` sem corpo e com status
-diferente de 0 passa como controle, e sai com os mesmos headers; uma `Response`
-com corpo lançada vira 500, porque pode carregar dados upstream. O middleware, o
-hook e o wrapper usam a mesma classificação,
+de API ou no handler de páginas vira 500 com os headers de segurança e o log
+`[middleware]`. Só uma `Response` sem corpo e com status diferente de 0 passa
+como controle, e sai com os mesmos headers; uma `Response` com corpo lançada
+vira 500, porque pode carregar dados upstream. O middleware, o hook e o wrapper
+usam a mesma classificação,
 [`isControlResponse`](../src/infra/server/isControlResponse/index.ts). Os
 headers de um `Response.redirect()` devolvido são imutáveis, então vão numa
 cópia sem corpo; o retorno cru de `fetch()`, com headers imutáveis e corpo
-upstream, não é copiado e vira 500. O `server-timing` acrescenta a métrica `app`
-às que o runtime já gravou, como a do traceparent. Em desenvolvimento o erro
-original segue para o Vite. O build E2E monta a entrada com a mesma fábrica e
-passa as falhas injetadas em `createMiddleware(extra)`, que as põe antes da
-cadeia e dentro da mesma contenção. Como o E2E não chama o export padrão, um
-teste unitário exige que ele contenha falhas, e a suíte `test:e2e:production`
-confere os headers do middleware na entrada real.
+upstream, não é copiado e vira 500. Em desenvolvimento o erro original segue
+para o Vite. O build E2E monta a entrada com a mesma fábrica e passa as falhas
+injetadas em `createMiddleware(extra)`, que as põe antes da cadeia e dentro da
+mesma contenção. Como o E2E não chama o export padrão, um teste unitário exige
+que ele contenha falhas, e a suíte `test:e2e:production` confere os headers do
+middleware na entrada real.
+
+As respostas da contenção não voltam pelo `securityHeaders`, então a própria
+contenção grava os cabeçalhos de segurança e a Content-Security-Policy com o
+nonce da requisição, lido por
+[`requestNonce`](../src/middleware/securityHeaders/index.ts). Uma falha anterior
+ao `securityHeaders`, como as injetadas pelo build E2E, deixa a requisição sem
+nonce; a contenção o cria antes de renderizar a página de erro, para que os
+scripts dela e a CSP usem o mesmo valor. Sem evento de requisição, o 500 em
+texto sai com `script-src 'none'`. O desenho da CSP está no README, em
+"Cabeçalhos de segurança e CSP".
 
 Numa navegação (`GET` ou `HEAD` com `accept` de HTML), o 500 mostra a página de
 erro do app: `containFailures` grava um `createPublicError()` em

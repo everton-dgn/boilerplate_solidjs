@@ -81,6 +81,10 @@ test('a política distingue dependências permitidas e inversões de camada', ()
         code: 'import routes from "virtual:file-routes"'
       },
       {
+        filename: 'src/entry-server.tsx',
+        code: 'import App from "./App.tsx"; import Document from "./Document.tsx"; import manifest from "virtual:solid-manifest"'
+      },
+      {
         filename: 'src/helpers/example.ts',
         code: 'import value from "@/componentsExtra/value.ts"; import other from "@/testsExtra/value.ts"; import("@/" + name)'
       },
@@ -141,6 +145,10 @@ test('a política distingue dependências permitidas e inversões de camada', ()
       {
         filename: 'src/infra/example.ts',
         code: 'import middleware from "@/middleware/index.ts"'
+      },
+      {
+        filename: 'src/helpers/example.ts',
+        code: 'import { render } from "@/entry-server.tsx"'
       },
       {
         filename: 'src/components/atoms/Button/index.tsx',

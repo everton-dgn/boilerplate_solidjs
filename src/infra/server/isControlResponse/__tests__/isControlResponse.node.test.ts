@@ -1,6 +1,6 @@
 import { redirect, reload } from '@solidjs/web'
 
-import { hostileValue } from '@/tests/helpers/hostileValue/index.ts'
+import { hostileValue } from '@/tests/helpers/failureValues/index.ts'
 
 import { isControlResponse } from '../index.ts'
 

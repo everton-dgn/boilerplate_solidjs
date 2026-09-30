@@ -3,14 +3,13 @@ import routes from 'virtual:file-routes'
 
 import { containFailures } from './containFailures/index.ts'
 import { requestContext } from './requestContext/index.ts'
-import { requestTiming } from './requestTiming/index.ts'
 import { securityHeaders } from './securityHeaders/index.ts'
 import type { ChainEntry, Middleware } from './types.ts'
 
 // Rotas com exportações GET, POST etc. respondem antes do SSR; o restante
-// segue para a renderização.
-export const requestMiddleware: Middleware[] = [
-  requestTiming,
+// segue para a renderização. O handler de API fica por último para que as
+// respostas dele recebam os cabeçalhos de segurança e o contexto.
+const requestMiddleware: Middleware[] = [
   securityHeaders,
   requestContext,
   createAPIHandler(routes)

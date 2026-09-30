@@ -74,16 +74,21 @@ test.describe('layout na árvore de produção', () => {
 
 // O build E2E monta a cadeia pela fábrica; aqui passa o export padrão real.
 test.describe('middleware na entrada de produção', () => {
-  test('aplica server-timing e os cabeçalhos de segurança', async ({
-    request
-  }) => {
+  test('aplica os cabeçalhos de segurança', async ({ request }) => {
     const response = await request.get('/')
 
     expect(response.status()).toBe(HTTP_OK)
     expect(response.headers()).toMatchObject({
+      'strict-transport-security':
+        'max-age=63072000; includeSubDomains; preload',
+      'x-frame-options': 'DENY',
       'x-content-type-options': 'nosniff',
-      'referrer-policy': 'strict-origin-when-cross-origin'
+      'referrer-policy': 'strict-origin-when-cross-origin',
+      'permissions-policy': 'camera=(), microphone=(), geolocation=()',
+      'cross-origin-opener-policy': 'same-origin',
+      'cross-origin-embedder-policy': 'require-corp',
+      'cross-origin-resource-policy': 'same-origin',
+      'content-security-policy': expect.stringContaining("script-src 'nonce-")
     })
-    expect(response.headers()['server-timing']).toMatch(/^app;dur=/u)
   })
 })

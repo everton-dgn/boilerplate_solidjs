@@ -59,7 +59,8 @@ const config = defineConfig({
     ]
   ],
   use: {
-    // bypassCSP: true,
+    // Não ative bypassCSP: ele desliga a CSP e anula as suítes que conferem
+    // violações (Home.csp e FragmentCss).
     // headless: false,
     // launchOptions: {
     //   slowMo: 600,

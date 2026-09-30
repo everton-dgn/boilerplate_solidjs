@@ -15,9 +15,13 @@ import interSemiBold from './assets/fonts/inter-latin-ext-600-normal.woff2?url&n
 import interBold from './assets/fonts/inter-latin-ext-700-normal.woff2?url&no-inline'
 
 export default function Document(props: ParentProps) {
+  const event = isServer ? getRequestEvent() : undefined
   const cookieHeader = isServer
-    ? (getRequestEvent()?.request.headers.get('cookie') ?? null)
+    ? (event?.request.headers.get('cookie') ?? null)
     : undefined
+  // Nonce CSP criado pelo middleware; no cliente o valor não existe, e o
+  // navegador já oculta o atributo depois de validar o script.
+  const nonce = event?.locals.nonce
   const theme = readTheme(cookieHeader) ?? DEFAULT_THEME
   const explicitTheme = theme === 'system' ? undefined : theme
 
@@ -44,7 +48,7 @@ export default function Document(props: ParentProps) {
           content={THEME_COLORS[explicitTheme ?? 'light']}
         />
         <link rel="describedby" href="/llms.txt" />
-        <script>
+        <script nonce={nonce}>
           {`(() => {
             const theme = ${JSON.stringify(theme)};
             const dark = theme === 'dark' || (theme === 'system' && matchMedia(${JSON.stringify(DARK_MEDIA_QUERY)}).matches);
@@ -85,6 +89,9 @@ export default function Document(props: ParentProps) {
           sizes="180x180"
         />
         <HydrationScript />
+        {/* Com entries autorais o plugin não injeta a entrada do cliente: ele
+        troca este caminho literal pelo asset com hash no build. */}
+        <script type="module" src="/src/entry-client.tsx" async nonce={nonce} />
       </head>
       <body>{props.children}</body>
     </html>

@@ -22,6 +22,7 @@ const subjects: Record<string, readonly string[]> = {
   'src/tests/pages/Home': ['Home'],
   'src/tests/pages/NotFound': ['NotFound'],
   'src/tests/pages/BackendError': ['BackendError'],
+  'src/tests/pages/FragmentCss': ['FragmentCss'],
   'src/tests/pages/OutsideError': ['OutsideError'],
   'src/tests/pages/SeoIndexes': ['SeoIndexes'],
   'src/tests/pages/StructuredData': ['StructuredData'],

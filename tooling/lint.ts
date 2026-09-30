@@ -81,8 +81,6 @@ export const lint: NonNullable<UserConfig['lint']> = {
         'src/middleware/types.ts',
         'src/middleware/containFailures/index.ts',
         'src/middleware/requestContext/index.ts',
-        'src/middleware/requestTiming/index.ts',
-        'src/middleware/securityHeaders/index.ts',
         'tooling/**/*.ts',
         'vite.config.ts'
       ],
@@ -151,10 +149,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      files: [
-        'src/middleware/requestTiming/index.ts',
-        'src/tests/fixtures/e2e/middleware/index.ts'
-      ],
+      files: ['src/tests/fixtures/e2e/middleware/index.ts'],
       rules: {
         'node/callback-return': 'off'
       }
