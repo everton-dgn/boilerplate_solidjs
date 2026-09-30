@@ -22,6 +22,8 @@ const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const RUNTIME_MESSAGE = 'Internal Server Error'
 const MIDDLEWARE_LOG =
   '[middleware] Unexpected failure; private details omitted'
+const SERVER_ERROR_LOG =
+  '[server-error] Unexpected failure; private details omitted'
 const backendState = v.object({
   attempts: v.number(),
   gate: v.picklist(['none', 'waiting', 'released']),
@@ -40,6 +42,7 @@ type FixtureCase = {
 type Control = { request: APIRequestContext; id: string }
 type RawRequest = Control & { baseURL: string; fixture: FixtureCase }
 type RawResponse = { body: string; headers: string; status: number }
+type LogCount = { file: string; message: string }
 
 const CASES: FixtureCase[] = [
   {
@@ -141,6 +144,11 @@ async function readRawDocument({
   }
 }
 
+async function countLogLines({ file, message }: LogCount): Promise<number> {
+  const log = await readFile(file, 'utf8')
+  return log.split('\n').filter(line => line.includes(message)).length
+}
+
 for (const fixture of CASES) {
   test.describe(`erro fora de server function: ${fixture.name}`, () => {
     test('o documento bruto não leva o marcador', async ({
@@ -150,8 +158,27 @@ for (const fixture of CASES) {
       if (!baseURL) throw new Error('baseURL is required')
       const id = `outside:${crypto.randomUUID()}`
       const { marker } = await readState({ request, id })
+      // O throw no render da raiz passa pelo hook de erros de produção, que
+      // grava a linha fixa [server-error]. Outros casos do arquivo gravam a
+      // mesma linha em paralelo, então a conferência é de crescimento.
+      const logFile =
+        fixture.name === 'render-root' ? env.SERVER_LOG_FILE : undefined
+      if (fixture.name === 'render-root' && !logFile) {
+        throw new Error('E2E environment is incomplete')
+      }
+      const hookLogBefore = logFile
+        ? await countLogLines({ file: logFile, message: SERVER_ERROR_LOG })
+        : 0
 
       const raw = await readRawDocument({ request, id, baseURL, fixture })
+
+      if (logFile) {
+        await expect
+          .poll(async () =>
+            countLogLines({ file: logFile, message: SERVER_ERROR_LOG })
+          )
+          .toBeGreaterThan(hookLogBefore)
+      }
 
       expect(raw.status).toBe(fixture.status)
       expect(raw.body).not.toContain(marker)
@@ -237,11 +264,6 @@ async function hydrationFinished(page: Page): Promise<boolean> {
   })
 }
 
-async function countLogLines(file: string): Promise<number> {
-  const log = await readFile(file, 'utf8')
-  return log.split('\n').filter(line => line.includes(MIDDLEWARE_LOG)).length
-}
-
 test.describe('exceções no middleware', () => {
   // Em ordem num único worker, para que cada caso atribua a si as linhas de
   // log que produziu. Diferente de serial, uma falha não pula o caso seguinte.
@@ -256,7 +278,10 @@ test.describe('exceções no middleware', () => {
       if (!baseURL || !logFile) throw new Error('E2E environment is incomplete')
       const id = `outside:${crypto.randomUUID()}`
       const { marker } = await readState({ request, id })
-      const logBefore = await countLogLines(logFile)
+      const logBefore = await countLogLines({
+        file: logFile,
+        message: MIDDLEWARE_LOG
+      })
 
       const response = await fetch(
         `${baseURL}/outside-error?case=middleware-${phase}&id=${id}`,
@@ -283,7 +308,11 @@ test.describe('exceções no middleware', () => {
       expect(state.real).toBe(true)
       // Uma linha fixa do middleware por requisição. O teardown global recusa
       // o marcador em todo o arquivo depois da suíte.
-      await expect.poll(async () => countLogLines(logFile)).toBe(logBefore + 1)
+      await expect
+        .poll(async () =>
+          countLogLines({ file: logFile, message: MIDDLEWARE_LOG })
+        )
+        .toBe(logBefore + 1)
     })
   }
 
