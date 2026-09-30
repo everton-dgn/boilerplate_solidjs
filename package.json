@@ -15,6 +15,7 @@
     "typecheck:node": "vp run typecheck-node",
     "lint": "vp run lint-project",
     "lint:css": "vp run lint-css",
+    "lint:skills": "vp run lint-skill-links",
     "format": "vp fmt",
     "check:ci": "vp run check-project",
     "check:fix": "vp check --fix",

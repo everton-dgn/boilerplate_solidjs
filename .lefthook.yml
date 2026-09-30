@@ -15,6 +15,10 @@ pre-commit:
       run: pnpm check:fix {staged_files}
       stage_fixed: true
 
+    - name: skill-links
+      glob: '.agents/skills/**/*.md'
+      run: pnpm lint:skills
+
     - name: secret-scan
       run: |
         if ! command -v kingfisher > /dev/null 2>&1; then

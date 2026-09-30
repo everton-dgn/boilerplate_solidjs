@@ -105,6 +105,12 @@ export default defineConfig(({ mode }) => {
           command: 'node tooling/css/check.ts',
           cache: { env: ['NODE_ENV'] }
         },
+        // O Oxfmt e o Oxlint ignoram .agents/**; este check valida links
+        // relativos e âncoras dos Markdown da skill.
+        'lint-skill-links': {
+          command: 'node tooling/skillLinks/check.ts',
+          cache: { env: ['NODE_ENV'] }
+        },
         'dead-code-project': {
           command:
             'pnpm knip --config tooling/knip.ts && pnpm knip --config tooling/knip.ts --strict && pnpm knip --config tooling/knip.ts --cycles',
@@ -123,11 +129,13 @@ export default defineConfig(({ mode }) => {
           }
         },
         'lint-project': {
-          command: 'node tooling/css/check.ts && vp lint',
+          command:
+            'node tooling/css/check.ts && node tooling/skillLinks/check.ts && vp lint',
           cache: { env: ['NODE_ENV'] }
         },
         'check-project': {
-          command: 'node tooling/css/check.ts && vp check',
+          command:
+            'node tooling/css/check.ts && node tooling/skillLinks/check.ts && vp check',
           cache: { env: ['NODE_ENV'] }
         },
         // O rastreamento automático não vê as leituras do tsc nativo, então as

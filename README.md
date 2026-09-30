@@ -565,6 +565,7 @@ build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
 | `pnpm typecheck`            | Tipos da aplicação e das ferramentas Node                   |
 | `pnpm typecheck:node`       | Tipos das ferramentas no ambiente Node                      |
 | `pnpm lint`                 | CSS, lint e tipos com cache do Vite+                        |
+| `pnpm lint:skills`          | Links relativos e âncoras dos Markdown em `.agents/skills`  |
 | `pnpm format`               | Formatar código com Oxfmt                                   |
 | `pnpm check:ci`             | Formatação, lint e tipos da aplicação                       |
 | `pnpm check:fix`            | Formatação + lint corrigindo o que for possível             |
@@ -583,18 +584,20 @@ Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
 comando embutido; `vp run <script>` executa um script do `package.json`. Os dois
 podem divergir, então confira o `package.json` antes de rodar direto.
 
-`pnpm lint`, `pnpm lint:css`, `pnpm check:ci` e `pnpm dead-code` usam as tarefas
-com cache `lint-project`, `lint-css`, `check-project` e `dead-code-project` do
-`vite.config.ts`. `pnpm typecheck` usa `typecheck-app` e `typecheck-node`, e
-`pnpm typecheck:node` executa somente a segunda tarefa; `pnpm test:tooling` usa
-a tarefa `test-tooling`, sem cache, porque os testes dependem de diretórios
-temporários que o cache não rastreia. O Vite+ reaproveita resultados
-bem-sucedidos quando os arquivos lidos, as listagens de diretórios, os
-argumentos e as variáveis de ambiente selecionadas continuam iguais. As tarefas
-de lint incluem `NODE_ENV` na chave do cache; `PATH` e `NODE_OPTIONS` chegam ao
-processo sem invalidar o resultado. O Vite também registra as variáveis que
-carrega. A configuração do servidor limita `loadEnv` aos prefixos `HOST` e
-`PORT`, para não registrar todo o ambiente.
+`pnpm lint`, `pnpm lint:css`, `pnpm lint:skills`, `pnpm check:ci` e
+`pnpm dead-code` usam as tarefas com cache `lint-project`, `lint-css`,
+`lint-skill-links`, `check-project` e `dead-code-project` do `vite.config.ts`.
+`lint-project` e `check-project` também rodam a checagem de links da skill,
+porque o Oxfmt e o Oxlint ignoram `.agents/**`. `pnpm typecheck` usa
+`typecheck-app` e `typecheck-node`, e `pnpm typecheck:node` executa somente a
+segunda tarefa; `pnpm test:tooling` usa a tarefa `test-tooling`, sem cache,
+porque os testes dependem de diretórios temporários que o cache não rastreia. O
+Vite+ reaproveita resultados bem-sucedidos quando os arquivos lidos, as
+listagens de diretórios, os argumentos e as variáveis de ambiente selecionadas
+continuam iguais. As tarefas de lint incluem `NODE_ENV` na chave do cache;
+`PATH` e `NODE_OPTIONS` chegam ao processo sem invalidar o resultado. O Vite
+também registra as variáveis que carrega. A configuração do servidor limita
+`loadEnv` aos prefixos `HOST` e `PORT`, para não registrar todo o ambiente.
 
 O rastreamento automático registra os arquivos que o lint type-aware lê,
 inclusive os tipos em `node_modules`, mas não vê as leituras do `tsc` nativo.
