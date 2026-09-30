@@ -75,7 +75,7 @@ function globals({
           property,
           message:
             property === 'console'
-              ? 'Mantenha os logs fixos em logServerFailure.'
+              ? 'Registre falhas somente por logServerFailure.'
               : 'Use requestJson ou um adapter de backend protegido.'
         }))
       )

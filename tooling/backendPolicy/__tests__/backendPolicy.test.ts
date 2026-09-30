@@ -215,7 +215,7 @@ test('a política rejeita desvios de acesso no parser real do Oxlint', context =
           diagnostic.code === code &&
           diagnostic.severity === 'error'
       ),
-      `proteção do log fixo: ${code}`
+      `proteção do log central: ${code}`
     )
   }
   for (const filename of Object.keys(sources)) {
