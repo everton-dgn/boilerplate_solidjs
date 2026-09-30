@@ -26,7 +26,8 @@ módulo instala, só nos builds de produção, o hook
 - [publicErrors](../src/infra/server/publicErrors/index.ts) cria um erro novo
   com a mensagem fixa "Não foi possível concluir a solicitação.".
 - [logServerFailure](../src/infra/server/logServerFailure/index.ts) é o único
-  ponto de log: uma mensagem fixa por origem, sem receber o erro.
+  ponto de log: grava a mensagem fixa da origem e, para um `Error`, só a classe
+  e os frames filtrados descritos em [Log de falhas](#log-de-falhas).
 - Os módulos importam `server-only`; o plugin impede que entrem no bundle
   cliente. O alias de testes existe somente no projeto Node.
 
@@ -39,8 +40,8 @@ escapado não removem dados do payload já enviado.
 
 O hook `onError` é aditivo. Ele troca qualquer falha que chega ao runtime,
 inclusive de render e de rejeições fora de server functions, por um
-`createPublicError()` novo e registra o log fixo `[server-error]` quando o erro
-não era público. Sinais de controle (`Response` sem corpo, envelopes e
+`createPublicError()` novo e registra o log `[server-error]` quando o erro não
+era público. Sinais de controle (`Response` sem corpo, envelopes e
 `NotReadyError`) seguem a política padrão do runtime. `Response.error()` também
 não tem corpo, mas o status 0 não sai como HTTP, então ela vira falha pública.
 Um envelope lançado por uma query durante o SSR chega primeiro ao hook como
@@ -67,7 +68,7 @@ propriedades e a stack do erro original. Por isso o export padrão de
 [`src/middleware/index.ts`](../src/middleware/index.ts) é `createMiddleware()`,
 que devolve `containFailures(requestMiddleware)`: ele compõe a cadeia inteira
 dentro de si, e uma exceção nos middlewares, nas rotas de API ou no handler de
-páginas vira 500 com os headers de segurança, o `server-timing` e o log fixo
+páginas vira 500 com os headers de segurança, o `server-timing` e o log
 `[middleware]`. Só uma `Response` sem corpo e com status diferente de 0 passa
 como controle, e sai com os mesmos headers; uma `Response` com corpo lançada
 vira 500, porque pode carregar dados upstream. O middleware, o hook e o wrapper
@@ -99,14 +100,76 @@ chamar o render ali executaria a função sem os middlewares que falharam. Esses
 caminhos e os outros métodos recebem a mensagem pública em texto. O plugin
 aceita um único render por requisição: se a cadeia falhar depois de já ter
 renderizado a página, a resposta também é o 500 em texto. Se o render de erro
-falhar, a resposta é o 500 em texto e o log ganha a linha fixa `[error-page]`. O
-endpoint fica numa constante do middleware; ao configurar
-`serverFunctions.endpoint` no Vite, atualize os dois.
+falhar, a resposta é o 500 em texto e o log ganha a linha `[error-page]`, com a
+classe e os frames do erro do render descritos em
+[Log de falhas](#log-de-falhas). O endpoint fica numa constante do middleware;
+ao configurar `serverFunctions.endpoint` no Vite, atualize os dois.
 
 A contenção só alcança a janela da cadeia de middleware. A criação do evento, o
 commit da resposta e falhas do corpo depois que a `Response` sai ficam fora
 dela. O comportamento foi medido no preview do Nitro; o runtime da Vercel não
 foi medido localmente.
+
+## Log de falhas
+
+`logServerFailure({ source, error })` faz um único `console.error` com uma
+string de várias linhas:
+
+1. A mensagem fixa da origem, como
+   `[middleware] Unexpected failure; private details omitted`. O texto segue
+   igual byte a byte, porque o E2E conta as linhas que o contêm.
+2. Só quando `error instanceof Error`, o nome da classe, lido de
+   `Object.getPrototypeOf(error).constructor.name` e gravado apenas se for um
+   identificador simples de até 64 caracteres. Nem `error.name` nem uma
+   propriedade própria `constructor` são usados.
+3. Até 10 frames do stack, um por linha.
+
+Os frames só são lidos quando `error.stack` começa pelo cabeçalho que o V8 monta
+com o `name` e a mensagem atuais: `<nome>: <message>` seguido de quebra de
+linha, ou só o nome quando a mensagem é vazia. O nome do cabeçalho precisa ser o
+`error.name` atual inteiro, um identificador simples de até 64 caracteres, ou,
+num erro interno do Node, esse nome seguido do `code`, como em
+`TypeError [ERR_INVALID_ARG_TYPE]`. Um `name` ou `code` com quebra de linha, que
+deixaria linhas do cabeçalho com forma de frame, também deixa o log sem frames.
+O cabeçalho inteiro é descartado, inclusive as linhas de uma mensagem com
+quebras. Um stack sobrescrito, ou um `name` ou uma mensagem trocados depois da
+primeira leitura do stack, deixa o log sem frames, porque não há como saber onde
+o cabeçalho termina.
+
+Depois do cabeçalho, só passam linhas `    at <função> (<local>)` ou
+`    at <local>`, com o local em `file://`, `node:` ou caminho absoluto, sem
+espaços, parênteses nem caracteres de controle ou de formatação (categoria
+Unicode `C`, como o ESC das sequências de terminal e o U+202E, que inverte a
+direção do texto), e terminado em `:linha:coluna`. Um frame real em `file://`
+traz esses caracteres codificados. A função admite os prefixos `async` e `new`,
+`<anonymous>` e o alias `[as nome]`; a forma sem função admite só o prefixo
+`async`, das funções anônimas assíncronas. Por causa dos parênteses, um frame
+que aponte para um arquivo fonte em pasta de grupo de rotas, como
+`src/routes/(seo)/`, é descartado. As demais linhas, como
+`async Promise.all (index 0)`, frames de `eval` e URLs HTTP, são descartadas sem
+interromper a leitura. A leitura para em 50 linhas, e uma linha acima de 1024
+caracteres é descartada antes das expressões regulares, que são ancoradas e sem
+repetições aninhadas.
+
+Ficam fora do log a mensagem, o `cause`, as propriedades próprias, `error.name`
+e qualquer dado de um valor que não seja `Error`. Uma falha na inspeção, como um
+getter que lança ou um Proxy hostil, deixa só a linha fixa. A função não lança
+por causa do valor recebido; o próprio `console.error` ainda pode lançar.
+
+Limites conhecidos:
+
+- Um stack forjado que imite o cabeçalho e a gramática passa pelo filtro. O
+  mesmo vale para uma mensagem ou um `name` trocados por um prefixo do valor
+  original depois da primeira leitura do stack, e para um getter de `name` que
+  devolva um valor na formatação do V8 e outro, simples, na conferência. Esses
+  casos exigem código que altere o erro no próprio processo; um `name` ou `code`
+  recebido apenas como dado não entra no log.
+- O alias `[as nome]` de um frame mostra a propriedade usada na chamada, que
+  pode ter sido escolhida em tempo de execução.
+- Outro `Error.prepareStackTrace`, como o do module runner do Vite que o Vitest
+  instala, pode montar o cabeçalho sem o código dos erros do Node ou como
+  `Error: ` quando a mensagem é vazia; no segundo caso o log sai sem frames.
+  Frames com caminho relativo ou com espaços também são descartados.
 
 ## Como adicionar uma chamada
 
@@ -171,9 +234,11 @@ schema e o mapeamento continuam responsáveis pelos campos de negócio.
 respostas sem corpo (exceto a de `Response.error()`, com status 0) e envelopes
 com dados verificados; o corpo do envelope é reconstruído desses dados. Headers
 e destinos devem ser definidos pela aplicação. Adapters não habilitam essa opção
-nem encaminham respostas upstream. Os logs atuais contêm só uma mensagem fixa
-por origem, emitida por `logServerFailure`, sem erro original ou contexto da
-requisição. Diagnóstico detalhado e telemetria exigem uma integração própria.
+nem encaminham respostas upstream. Os logs, emitidos por `logServerFailure`,
+contêm a mensagem fixa da origem e, para um `Error`, só a classe e os frames
+descritos em [Log de falhas](#log-de-falhas), sem mensagem, `cause`,
+propriedades ou contexto da requisição. Diagnóstico detalhado e telemetria
+exigem uma integração própria.
 
 ## O que o lint cobre
 
@@ -195,8 +260,9 @@ requisição. Diagnóstico detalhado e telemetria exigem uma integração própr
   desestruturação direta. Nesse arquivo, use somente `console.error`
   diretamente; acessos por `globalThis.console`, `window.console`,
   `self.console` e `global.console` continuam proibidos. Os testes exigem um
-  único argumento fixo por origem, sem o objeto original. Aliases de `console` e
-  outros loggers exigem revisão.
+  único argumento, uma string que começa pela mensagem fixa da origem e não traz
+  mensagem, `cause` nem propriedades do erro. Aliases de `console` e outros
+  loggers exigem revisão.
 
 Os testes de regressão exigem que `no-restricted-imports` também recuse
 `import("pacote")` quando o pacote inteiro está restrito. A política não depende
@@ -254,7 +320,8 @@ conferem que a fixture recebeu o marcador (header `x-fixture-marker` e contagem
 do backend), que o erro lançado carregava esse marcador (header
 `x-fixture-thrown` sem streaming e registro no backend sintético nos casos com
 gate e de middleware) e que o gate foi usado. Os casos de middleware rodam em
-série e exigem uma linha nova de log fixo por requisição.
+série e exigem, por requisição, uma nova linha com a mensagem fixa
+`[middleware]`.
 
 O `webServer` do Playwright grava a saída do preview em
 `test-results/server-<modo>.log`. O
