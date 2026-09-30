@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.8.0 - 2026-09-30
+
+### Added
+
+- send a nonce-based CSP and the security headers from the middleware (93162d5)
+
 ## 1.7.0 - 2026-09-30
 
 ### Added
