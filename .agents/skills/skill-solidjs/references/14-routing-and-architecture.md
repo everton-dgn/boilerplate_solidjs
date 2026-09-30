@@ -1,6 +1,6 @@
 # Roteamento, integrações e arquitetura
 
-Base: [revisão verificada](../SKILL.md), com `@solidjs/router` 2.0.0-next.30 instalado junto do rc.11, reverificada em 2026-09-29. Versão diferente exige nova prova.
+Base: [revisão verificada](../SKILL.md), com o `@solidjs/router` instalado junto dela, reverificada em 2026-09-29. Versão diferente exige nova prova.
 
 ## Compatibilidade por pacote
 
@@ -16,7 +16,7 @@ Contrato: o router instalado exporta
 - navegação e leitura: `useNavigate`, `useLocation`, `useParams`, `useSearchParams`, `useMatch`, `useRouteMatches`, `useHref`, `useResolvedPath`, `useIsRouting`, `useLinkState`, `usePreloadRoute`, `useBeforeLeave` e `createBeforeLeave(): BeforeLeaveLifecycle` (`subscribe(listener)` devolve o cancelamento e `confirm(to, options?)` devolve boolean; é a guarda que `useBeforeLeave` instala sob demanda no router, então prefira o hook);
 - dados: `query`, `revalidate`, `action`, `useAction`, `useSubmissions` e `liveQuery` (experimental; a documentação de dados o omite).
 
-Não existem `Router`, `Route`, `A`, `Navigate`, `createAsync`, `createAsyncStore`, `useSubmission`, `cache`, `json`, `createMemoryHistory` nem `MemoryRouter`. O `Router` da receita é a instância retornada por `createRouter`, usada como componente num host real, com children explícitos: `render(() => <Router>{props => props.children}</Router>, host)`; `render()` recebe um `MountableElement`, não objeto de opções. `redirect`, `reload` e `respond` vêm de `@solidjs/web`. `viewTransition` e um hook como `useViewTransitionState` não existem; componha um wrapper sobre `document.startViewTransition`. O router 2.0.0-next.30 instalado também exporta `serverRouteComponent`, experimental e ausente no next.26 do rc.9; seu contrato não foi validado nesta skill. `createResource`, `createAsync` e `createAsyncStore` também não existem em `solid-js`: leitura assíncrona passa por `query(fn, name)` lida por `createMemo`, `createProjection` ou `createOptimistic`, sob `Loading`/`Errored`.
+Não existem `Router`, `Route`, `A`, `Navigate`, `createAsync`, `createAsyncStore`, `useSubmission`, `cache`, `json`, `createMemoryHistory` nem `MemoryRouter`. O `Router` da receita é a instância retornada por `createRouter`, usada como componente num host real, com children explícitos: `render(() => <Router>{props => props.children}</Router>, host)`; `render()` recebe um `MountableElement`, não objeto de opções. `redirect`, `reload` e `respond` vêm de `@solidjs/web`. `viewTransition` e um hook como `useViewTransitionState` não existem; componha um wrapper sobre `document.startViewTransition`. O router instalado junto da base verificada também exporta `serverRouteComponent`, experimental e ausente no router da base anterior; seu contrato não foi validado nesta skill. `createResource`, `createAsync` e `createAsyncStore` também não existem em `solid-js`: leitura assíncrona passa por `query(fn, name)` lida por `createMemo`, `createProjection` ou `createOptimistic`, sob `Loading`/`Errored`.
 
 Receita:
 
@@ -59,7 +59,7 @@ Armadilha: em `<form action>` com action vinculada, os argumentos vão serializa
 | --- | --- |
 | `<Router root={App}>` com `<Route>` | `createRouter({ routes: [...] })` e `<Router>{props => ...}</Router>`; rotas como objetos, filhos em `children` |
 | `<HashRouter>`, `<MemoryRouter>` | `createRouter({ routes, history: hashHistory() })` ou `memoryHistory("/inicial")` |
-| `<A href>` com `activeClass` | `<a href>` comum; estilo por `[data-active]` e `[aria-current="page"]`; `noscroll` no JSX (única grafia tipada no rc.11, como `link`, `state` e `replace`; o rc.9 tipava `noScroll`), que o router lê |
+| `<A href>` com `activeClass` | `<a href>` comum; estilo por `[data-active]` e `[aria-current="page"]`; `noscroll` no JSX (única grafia tipada na base verificada, como `link`, `state` e `replace`; a base anterior tipava `noScroll`), que o router lê |
 | `<Navigate>` | `useNavigate()` no setup ou redirect no preload |
 | `useCurrentMatches` | `useRouteMatches` |
 | `createAsync`, `createAsyncStore` | `createMemo`, `createProjection`, `createOptimistic` ou `createOptimisticStore` lendo a `query` |
@@ -87,4 +87,4 @@ Armadilha: em monorepo, cópias independentes de `solid-js` quebram reatividade 
 
 ## Diagnósticos de custo
 
-`SSR_BOUNDARY_WATERFALL` no servidor aponta esperas em série dentro de um `Loading` (até o rc.9, `ASYNC_WATERFALL` cobria os dois lados; agora é só cliente); `HOT_SCOPE_FANOUT` no cliente agrega escopos quentes pela causa raiz. `markFlight(promise, startedAt)`, de `solid-js/attribution`, registra o início de um fetch. Uso e limites em [diagnósticos](15-diagnostics-checklists-and-recipes.md#diagnósticos-de-custo).
+`SSR_BOUNDARY_WATERFALL` no servidor aponta esperas em série dentro de um `Loading` (até a base anterior, `ASYNC_WATERFALL` cobria os dois lados; agora é só cliente); `HOT_SCOPE_FANOUT` no cliente agrega escopos quentes pela causa raiz. `markFlight(promise, startedAt)`, de `solid-js/attribution`, registra o início de um fetch. Uso e limites em [diagnósticos](15-diagnostics-checklists-and-recipes.md#diagnósticos-de-custo).

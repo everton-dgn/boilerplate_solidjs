@@ -78,9 +78,9 @@ Contrato: no runtime instalado, `Loading.on` é lista de dependências: toda mud
 
 | Configuração | Durante a espera | Ambiente |
 | --- | --- | --- |
-| `on={id()}`, sozinha | fallback | Chromium (rc.9), grafo (rc.11) |
-| `on={id()}`, irmã lendo mesma fonte | ambas preservam conteúdo; `LOADING_ON_OUTSIDE_HOLD` em dev | Chromium (rc.9), grafo (rc.11) |
-| `on={id}` | conteúdo antigo, pending verdadeiro | Chromium (rc.9), grafo (rc.11) |
+| `on={id()}`, sozinha | fallback | Chromium (base anterior), grafo (base verificada) |
+| `on={id()}`, irmã lendo mesma fonte | ambas preservam conteúdo; `LOADING_ON_OUTSIDE_HOLD` em dev | Chromium (base anterior), grafo (base verificada) |
+| `on={id}` | conteúdo antigo, pending verdadeiro | Chromium (base anterior), grafo (base verificada) |
 | `on={latest(id)}`, irmã lendo mesma fonte | fallback já; irmã preserva conteúdo | grafo |
 | chave cujo valor não muda, como `on={id() > 0}` | fallback | grafo |
 | `on` com dado async e refresh | fallback a cada refetch | grafo |
@@ -118,4 +118,4 @@ Armadilha: fallback reativo pode reexecutar e duplicar telemetria; não dependa 
 
 ## Limite de atualização
 
-A semântica de `Loading.on` mudou entre o rc.9 e o rc.11. Consulte [R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold) antes de aplicar exemplos de outra versão.
+A semântica de `Loading.on` mudou entre a base anterior e a base verificada. Consulte [R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold) antes de aplicar exemplos de outra versão.

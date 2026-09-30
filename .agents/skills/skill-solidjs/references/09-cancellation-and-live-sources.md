@@ -1,6 +1,6 @@
 # Cancelamento e fontes vivas
 
-Base: [revisão verificada](../SKILL.md), rc.11, reverificada em 2026-09-29.
+Base: [revisão verificada](../SKILL.md), reverificada em 2026-09-29.
 
 ## Responsabilidade e limpeza
 
@@ -46,7 +46,7 @@ Armadilha: dois requests podem executar duas vezes; idempotência de criação/r
 
 ## Estado live
 
-Contrato: live entrega estados sucessivos da mesma consulta e reemite estado atual a cada invocação. Compõe com GET sem implicá-lo: live(GET(fn)). Perda de conexão pode reinvocar com backoff; estado deve ser reconstruível da fonte autoritativa, sem persistir o mesmo grafo servidor. No rc.11, a chamada abre `<endpoint>/live/<id>` e recebe `text/event-stream` com heartbeat; ao reinvocar, o cliente envia `Last-Event-ID` com o digest do último valor JSON-safe recebido e o servidor omite o primeiro valor reemitido quando o digest é igual. O rc.9 não tinha esse transporte nem essa deduplicação.
+Contrato: live entrega estados sucessivos da mesma consulta e reemite estado atual a cada invocação. Compõe com GET sem implicá-lo: live(GET(fn)). Perda de conexão pode reinvocar com backoff; estado deve ser reconstruível da fonte autoritativa, sem persistir o mesmo grafo servidor. Na base verificada, a chamada abre `<endpoint>/live/<id>` e recebe `text/event-stream` com heartbeat; ao reinvocar, o cliente envia `Last-Event-ID` com o digest do último valor JSON-safe recebido e o servidor omite o primeiro valor reemitido quando o digest é igual. A base anterior não tinha esse transporte nem essa deduplicação.
 
 Armadilha: o event stream do transporte não torna live um canal SSE/WebSocket genérico nem persistência durável; `Last-Event-ID` só evita reenviar estado idêntico e não é cursor de eventos. Identifique adapter/teste recuperação. Eventos de entrega única, histórico, auditoria ou incremento precisam de cursor/sequência/dedupe/reconexão próprios; snapshot não é evento.
 

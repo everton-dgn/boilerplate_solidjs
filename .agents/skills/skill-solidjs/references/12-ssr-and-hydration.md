@@ -49,7 +49,7 @@ const Document = (props: DocumentProps) => (
 hydrate(() => <App />, container)
 ```
 
-Contrato: no rc.9, JSX em prop não children, seguido de outro hole que aloca ID, podia hidratar sem eventos. O compilador do rc.11 escopa também o hole que lê essa prop (`_$scope`), e o dev avisa `UNSCOPED_HOLE_ALLOCATED_IDS` quando um hole sem escopo aloca IDs; a hidratação desse arranjo não foi sondada em navegador. Com compilador anterior, passe por children ou renderize slot por componente:
+Contrato: na base anterior, JSX em prop não children, seguido de outro hole que aloca ID, podia hidratar sem eventos. O compilador da base verificada escopa também o hole que lê essa prop (`_$scope`), e o dev avisa `UNSCOPED_HOLE_ALLOCATED_IDS` quando um hole sem escopo aloca IDs; a hidratação desse arranjo não foi sondada em navegador. Com compilador anterior, passe por children ou renderize slot por componente:
 
 ```tsx
 type SlotProps = { children?: JSX.Element }
@@ -134,7 +134,7 @@ function ProductHead(props: ProductHeadProps) {
 
 Contrato: useHead de @solidjs/web registra por owner; descarte restaura tags vencedoras anteriores. Props aceitam getters; children é texto, title singleton e key altera dedupe das demais tags. Getter só lê: criar memo/children nele consome ID de um lado e desalinha hidratação; crie no corpo. Se documento não tem fechamento head, onHead de renderToString/renderToStream entrega markup ao host. Solid Meta é recomendação documental para metadados comuns, pacote separado não instalado na base.
 
-Armadilha: receita foi tipada, sem comparação de render cliente/servidor dos dois getters. Dois relatos do rc.9 têm correção no rc.11: texto estático com spread sem escape ([R11](17-known-risks.md#r11-texto-estático-filho-de-elemento-com-spread-sai-sem-escape-no-ssr), sondado) e stylesheet de useHead ainda carregando que causava TypeError/REACTIVITY_HALTED ao hidratar (só pelo changelog da tag, sem sonda). Teste esses arranjos antes de adotá-los com versão anterior.
+Armadilha: receita foi tipada, sem comparação de render cliente/servidor dos dois getters. Dois relatos da base anterior têm correção na base verificada: texto estático com spread sem escape ([R11](17-known-risks.md#r11-texto-estático-filho-de-elemento-com-spread-sai-sem-escape-no-ssr), sondado) e stylesheet de useHead ainda carregando que causava TypeError/REACTIVITY_HALTED ao hidratar (só pelo changelog da tag, sem sonda). Teste esses arranjos antes de adotá-los com versão anterior.
 
 ## Erros, sanitização e observação
 
@@ -146,7 +146,7 @@ Armadilha: fallback genérico e transporte sanitizado não contêm toda exceçã
 
 ## Falhas tardias e artefato real
 
-No rc.9, rejeições tardias em certos arranjos encerravam o processo Node mesmo depois de enviar uma resposta; o rc.11 contém os arranjos reproduzidos: [R08](17-known-risks.md#r08-rejeição-assíncrona-tardia-durante-ssr-derruba-o-processo-node). Preserve árvore, modo e momento ao reproduzir em processo descartável.
+Na base anterior, rejeições tardias em certos arranjos encerravam o processo Node mesmo depois de enviar uma resposta; a base verificada corrige os arranjos reproduzidos: [R08](17-known-risks.md#r08-rejeição-assíncrona-tardia-durante-ssr-derruba-o-processo-node). Preserve árvore, modo e momento ao reproduzir em processo descartável.
 
 Armadilha: a correção cobre os arranjos medidos, não toda rejeição tardia. Execute regressão em processo filho, registrando saída, código, sinal e timeout; não engula unhandledRejection globalmente. Teste shell/região 1, hidrate com região 2 pendente, altere cache, conclua stream e observe identidade, listeners e criação/destruição de recursos. HTML totalmente aguardado não testa essa janela. Inclua falha tardia, abort e navegação para outro owner.
 
