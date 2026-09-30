@@ -74,18 +74,19 @@ Armadilha: isso não cancela transporte/processamento externo, nem é o yield de
 
 ## Chaves e leitores compartilhados
 
-Contrato: no runtime instalado, `Loading.on` compara valor. Passe `on={id()}`; `on={id}` compara accessor estável e equivale a omitir `on`, embora o tipo `any` aceite e o JSDoc use accessor. Identidade de função só é chave correta quando esse é o domínio. A chave participa do commit: irmã que retém a mesma mudança pode impedir o fallback.
+Contrato: no runtime instalado, `Loading.on` é lista de dependências: toda mudança numa leitura rastreada de `on` re-arma a boundary, sem comparar valor. Passe `on={id()}` ou `on={[query(), page()]}`, como no JSDoc; `on={id}` não chama o accessor e equivale a omitir `on`, embora o tipo `any` aceite. O fallback chega junto do frame da mudança: irmã que retém a mesma mudança impede o fallback.
 
 | Configuração | Durante a espera | Ambiente |
 | --- | --- | --- |
-| `on={id()}`, sozinha | fallback | Chromium |
-| `on={id()}`, irmã lendo mesma fonte | ambas preservam conteúdo | Chromium |
-| `on={id}` | conteúdo antigo, pending verdadeiro | Chromium |
-| chave cujo valor não muda | conteúdo antigo | grafo |
+| `on={id()}`, sozinha | fallback | Chromium (base anterior), grafo (base verificada) |
+| `on={id()}`, irmã lendo mesma fonte | ambas preservam conteúdo; `LOADING_ON_OUTSIDE_HOLD` em dev | Chromium (base anterior), grafo (base verificada) |
+| `on={id}` | conteúdo antigo, pending verdadeiro | Chromium (base anterior), grafo (base verificada) |
+| `on={latest(id)}`, irmã lendo mesma fonte | fallback já; irmã preserva conteúdo | grafo |
+| chave cujo valor não muda, como `on={id() > 0}` | fallback | grafo |
 | `on` com dado async e refresh | fallback a cada refetch | grafo |
 | `on` com id e refresh do mesmo assunto | conteúdo antigo | grafo |
 
-Armadilha: `on={latest(id)}` também espera a irmã; sozinha mostra fallback. Não misture título de B com dados confirmados de A sem indicar a diferença. Não incremente contador nem crie objeto novo ao avaliar `on`. `flush()` só drena trabalho síncrono elegível, sem resolver rede ou forçar transação arbitrária.
+Armadilha: para mostrar o fallback já, apesar da irmã, leia `latest(id)` em `on`; sozinha, `on={latest(id)}` também mostra fallback. Não misture título de B com dados confirmados de A sem indicar a diferença. Não incremente contador nem crie objeto novo ao avaliar `on`. `flush()` só drena trabalho síncrono elegível, sem resolver rede ou forçar transação arbitrária.
 
 ## Aninhamento e Reveal
 
@@ -117,4 +118,4 @@ Armadilha: fallback reativo pode reexecutar e duplicar telemetria; não dependa 
 
 ## Limite de atualização
 
-A semântica de `Loading.on` descrita para código posterior difere da base verificada. Consulte [R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold) antes de aplicar exemplos de outra versão.
+A semântica de `Loading.on` mudou entre a base anterior e a base verificada. Consulte [R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold) antes de aplicar exemplos de outra versão.

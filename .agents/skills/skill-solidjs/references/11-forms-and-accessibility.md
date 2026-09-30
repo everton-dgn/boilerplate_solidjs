@@ -1,6 +1,6 @@
 # Formulários e acessibilidade
 
-Base: [revisão verificada](../SKILL.md).
+Base: [revisão verificada](../SKILL.md), reverificada em 2026-09-29.
 
 ## Estado e entradas
 

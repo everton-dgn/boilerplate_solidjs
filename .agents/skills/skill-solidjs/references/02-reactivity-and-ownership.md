@@ -100,7 +100,7 @@ Armadilha: igualdade ignorando campos congela UI; equals false pode aumentar tra
 
 ## Leituras assíncronas
 
-Contrato: memo aceita Promise/AsyncIterable e seu accessor representa valor resolvido. Só leituras anteriores ao primeiro await rastreiam; leitura posterior vê valor atual mas não reexecuta o memo quando muda. Outra dependência pode disparar releitura atualizada.
+Contrato: memo aceita Promise/AsyncIterable e seu accessor representa valor resolvido. Só leituras anteriores ao primeiro await rastreiam; leitura posterior vê valor atual mas não reexecuta o memo quando muda. Outra dependência pode disparar releitura atualizada. Depois da base anterior, o dev passou a avisar `UNTRACKED_READ_AFTER_AWAIT` nessa leitura; o build padrão não avisa.
 
 Receita:
 
@@ -134,7 +134,7 @@ Armadilha: throw no callback de criação antes de devolver disposer não descar
 
 ## Ordem de cleanup e hidratação
 
-Contrato: no mesmo owner, cleanup é FIFO. Owners filhos, inclusive roots e memos, descartam antes dos cleanups do pai. Componente ganha root próprio em dev, mas compartilha owner do pai no padrão: pai registra antes/depois do filho e resulta em `child, parent-before, parent-after` em dev, contra `parent-before, child, parent-after` no padrão. O runtime instalado não oferece a mudança futura para LIFO nem a correção futura de reentrada; a reentrada duplicada não foi reproduzida nele.
+Contrato: no mesmo owner, cleanup é LIFO na base verificada (na base anterior era FIFO). Owners filhos, inclusive roots e memos, descartam antes dos cleanups do pai. Componente ganha root próprio em dev, mas compartilha owner do pai no padrão: pai registra antes/depois do filho e resulta em `child, parent-after, parent-before` em dev, contra `parent-after, child, parent-before` no padrão. Cleanup que descarta a própria raiz ou lança roda uma vez; a reentrada duplicada não foi reproduzida em nenhuma das duas bases.
 
 Receita: cleanups independem dessa ordem. Se a dependência for obrigatória, libere explicitamente o outro recurso ou use root filho, que descarta antes do pai nos dois builds. Registrar primeiro o cleanup do pai não resolve.
 

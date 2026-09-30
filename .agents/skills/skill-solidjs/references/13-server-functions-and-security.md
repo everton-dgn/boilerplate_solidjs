@@ -1,6 +1,6 @@
 # Server functions e segurança
 
-Base: [revisão verificada](../SKILL.md).
+Base: [revisão verificada](../SKILL.md), reverificada em 2026-09-29.
 
 ## Compilação e corpo registrado
 
@@ -26,7 +26,7 @@ Armadilha: GET não muta; query string não leva segredo/token/dado sensível re
 
 Contrato: configureServerFunctionsServer aceita endpoint padrão /_server alinhado ao cliente/base path; csrf ligado por padrão; secret usado no flash no-JS; wrapInvocation envolvendo HTTP e chamada direta SSR; provideEvent ligado a provideRequestEvent de @solidjs/web/storage ou equivalente; handleNoJS, cujo null desliga convenção; bodySizeLimit/maxArguments. Csrf false só se outra camada confiável protege endpoint. handleServerFunctionRequest aceita por request createEvent, provideEvent, wrapInvocation, onError, transformResult, handleNoJS, csrf, codec e limites. Wrapper por request cobre só invocação endereçada; chamadas aninhadas exigem política global.
 
-Armadilha: com Sec-Fetch-Site, same-origin libera e same-site/cross-site/none recusam sem consultar csrf.origin. Só sem header entram Origin/Referer e matcher string/array/função. Endpoint absoluto e matcher não certificam cross-origin browser; não remova proteção para contornar 403. Provedor executa uma vez por invocação, sem garantir idempotência entre requests. Detalhes de transporte ficam em 09-cancellation-and-live-sources.md.
+Armadilha: no @solidjs/web da base verificada, com Sec-Fetch-Site, same-origin libera e none recusa sempre; same-site/cross-site recusam sem Origin ou sem csrf.origin configurado e, fora isso, seguem o matcher string/array/função (só true literal admite). Origin admitido de outra origem recebe CORS: Access-Control-Allow-Origin ecoando Origin, Vary: Origin, headers do protocolo expostos e preflight OPTIONS 204; Access-Control-Allow-Credentials só com csrf.allowCredentials true, e cookie cross-site ainda exige SameSite=None; Secure. Sem Sec-Fetch-Site entram Origin/Referer e o mesmo matcher; sem metadado nenhum, só allowRequestsWithoutOriginCheck libera. Aceitação num cliente HTTP fora do navegador não prova preflight e credenciais; não remova proteção para contornar 403. Provedor executa uma vez por invocação, sem garantir idempotência entre requests. Detalhes de transporte ficam em 09-cancellation-and-live-sources.md.
 
 Armadilha: configure um provedor de evento explícito: `configureServerFunctionsServer({ provideEvent: (event, fn) => provideRequestEvent(event, fn) })`. Sem `provideEvent`, o runtime cai para o `AsyncLocalStorage` global que `provideRequestEvent` instala na primeira chamada; a chamada só lança `No request event provider` se nenhum dos dois existir ainda, e o resultado depende da ordem das requisições no processo. `createEvent` é opção por requisição de `handleServerFunctionRequest`; passado a `configureServerFunctionsServer`, é aceito sem erro e ignorado, e `locals` fica vazio.
 
@@ -110,4 +110,4 @@ Contrato: prévia fora da estabilidade 2.0. Adoção explícita: tarefa de UI n�
 
 Receita: `serverFunctions: { components: true }`, ou components "external" com ligação documental pelo host. Reutiliza endpoint/compilação/segurança RPC. Start SSR gerado chama installServerComponents de @solidjs/web/frames antes de hydrate; entrada autoral chama uma vez e servidor recebe plugin de render de frames.
 
-Armadilha: sideEffects false em @solidjs/web permite remover import sem chamada. Sem use client/convenções Next.js inventadas. Alinhe cliente/servidor/codec; teste produção/HMR e manifesto completo. Markup/props podem vazar dados. O router da base verificada não exporta `serverRouteComponent`; sua chegada em prévia posterior não foi validada nesta skill. UI/formulários comuns podem usar componentes cliente/async/SSR/RPC.
+Armadilha: sideEffects false em @solidjs/web permite remover import sem chamada. Sem use client/convenções Next.js inventadas. Alinhe cliente/servidor/codec; teste produção/HMR e manifesto completo. Markup/props podem vazar dados. O router instalado junto da base verificada exporta `serverRouteComponent` pela raiz (o router da base anterior não o tinha); seu contrato não foi validado nesta skill. UI/formulários comuns podem usar componentes cliente/async/SSR/RPC.
