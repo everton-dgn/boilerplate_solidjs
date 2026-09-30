@@ -1,13 +1,10 @@
 import { readFile } from 'node:fs/promises'
 import { env } from 'node:process'
 
-import {
-  expect,
-  test,
-  type APIRequestContext,
-  type Page
-} from '@playwright/test'
+import { expect, test, type APIRequestContext } from '@playwright/test'
 import * as v from 'valibot'
+
+import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 
 const BACKEND = 'http://127.0.0.1:4318'
 const HTTP_OK = 200
@@ -251,19 +248,6 @@ const MIDDLEWARE_CASES: MiddlewareCase[] = [
   { phase: 'before', navigation: false, errorPage: false }
 ]
 
-// O runtime do cliente troca a fila de eventos por null ao terminar a
-// hidratação; sem JavaScript ela continua um array.
-async function hydrationFinished(page: Page): Promise<boolean> {
-  return page.evaluate(() => {
-    const runtime: unknown = Reflect.get(globalThis, '_$HY')
-    const events: unknown =
-      typeof runtime === 'object' && runtime !== null
-        ? Reflect.get(runtime, 'events')
-        : undefined
-    return events === null
-  })
-}
-
 test.describe('exceções no middleware', () => {
   // Em ordem num único worker, para que cada caso atribua a si as linhas de
   // log que produziu. Diferente de serial, uma falha não pula o caso seguinte.
@@ -291,7 +275,6 @@ test.describe('exceções no middleware', () => {
 
       expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
       expect(response.headers.get('x-content-type-options')).toBe('nosniff')
-      expect(response.headers.get('server-timing')).toMatch(/^app;dur=/u)
       if (errorPage) {
         expect(response.headers.get('content-type')).toContain('text/html')
         expect(body).toContain('Algo deu errado!')

@@ -5,6 +5,8 @@ import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
 const CACHE_CONTROL = 'public, max-age=0, s-maxage=3600'
+// Respostas com s-maxage não levam o nonce da requisição para o cache.
+const NO_SCRIPTS = "script-src 'none'"
 // Grupo dos robôs de treinamento de IA: começa em GPTBot e termina bloqueando tudo.
 const AI_BOTS_GROUP =
   /\nUser-agent: GPTBot\n(?:User-agent: [^\n]+\n)*Disallow: \/\n/u
@@ -15,6 +17,10 @@ test.describe('índices na árvore real de produção', () => {
     expect(response.status()).toBe(HTTP_OK)
     expect(response.headers()['content-type']).toContain('application/xml')
     expect(response.headers()['cache-control']).toBe(CACHE_CONTROL)
+    expect(response.headers()['content-security-policy']).toContain(NO_SCRIPTS)
+    expect(response.headers()['content-security-policy']).not.toContain(
+      'nonce-'
+    )
     const xml = await response.text()
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
     expect(xml).toContain(
@@ -33,6 +39,10 @@ test.describe('índices na árvore real de produção', () => {
     expect(response.status()).toBe(HTTP_OK)
     expect(response.headers()['content-type']).toContain('text/plain')
     expect(response.headers()['cache-control']).toBe(CACHE_CONTROL)
+    expect(response.headers()['content-security-policy']).toContain(NO_SCRIPTS)
+    expect(response.headers()['content-security-policy']).not.toContain(
+      'nonce-'
+    )
     const text = await response.text()
     expect(
       text.startsWith('User-agent: *\nAllow: /\nDisallow: /_server\n')
@@ -48,6 +58,10 @@ test.describe('índices na árvore real de produção', () => {
     expect(response.status()).toBe(HTTP_OK)
     expect(response.headers()['content-type']).toContain('text/markdown')
     expect(response.headers()['cache-control']).toBe(CACHE_CONTROL)
+    expect(response.headers()['content-security-policy']).toContain(NO_SCRIPTS)
+    expect(response.headers()['content-security-policy']).not.toContain(
+      'nonce-'
+    )
     const markdown = await response.text()
     expect(markdown).toMatch(/^# .+\n/u)
     expect(markdown).toContain('## Páginas\n')

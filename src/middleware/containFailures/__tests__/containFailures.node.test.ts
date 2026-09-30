@@ -1,8 +1,7 @@
 import { provideRequestEvent } from '@solidjs/web/storage'
 
 import { isPublicError } from '@/infra/server/publicErrors/index.ts'
-import { requestTiming } from '@/middleware/requestTiming/index.ts'
-import { hostileValue } from '@/tests/helpers/hostileValue/index.ts'
+import { hostileValue } from '@/tests/helpers/failureValues/index.ts'
 import { readLog } from '@/tests/helpers/readLog/index.ts'
 
 import { containFailures } from '../index.ts'
@@ -15,13 +14,10 @@ const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
 const ERROR_PAGE_LOG =
   '[error-page] Unexpected failure; private details omitted'
-// Entrada que o runtime grava no Server-Timing com um traceparent amostrado.
-const TRACE_TIMING =
-  'traceparent;desc="00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"'
 
 type LocalsEvent = {
   request: Request
-  locals: { serverFailure?: Error }
+  locals: { serverFailure?: Error; nonce?: string }
   response: { headers: Headers }
 }
 
@@ -212,6 +208,35 @@ describe('contenção de falhas do middleware', () => {
     await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
   })
 
+  // Com as entries autorais não há boundary fora do Document: uma exceção
+  // nele sai síncrona do renderToStream e rejeita o render da cadeia.
+  it('responde 500 em texto sem renderizar de novo quando o próprio render lança', async () => {
+    const event = pageEvent()
+    const render = vi
+      .fn<() => Promise<Response>>()
+      .mockRejectedValue(new TypeError('PRIVATE_DOCUMENT'))
+    const passThrough = vi
+      .fn<
+        (request: Request, next: () => Promise<Response>) => Promise<Response>
+      >()
+      .mockImplementation(async (_request, renderNext) => renderNext())
+
+    const response = await provideRequestEvent(event, () =>
+      containFailures([passThrough])(event.request, render)
+    )
+
+    expect(render).toHaveBeenCalledOnce()
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    expect(response.headers.get('content-security-policy')).toContain(
+      "script-src 'none'"
+    )
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'TypeError']],
+      leaks: []
+    })
+  })
+
   it.each(['/_server', '/_server/abc123'])(
     'não renderiza a página de erro em %s, mesmo com accept de HTML',
     async path => {
@@ -263,67 +288,83 @@ describe('contenção de falhas do middleware', () => {
   })
 })
 
-// As respostas criadas pela contenção não voltam pelo requestTiming.
-describe('server-timing nas respostas da contenção', () => {
+// As respostas da contenção não voltam pelo securityHeaders; a CSP e o nonce
+// são gravados aqui.
+describe('cSP nas respostas da contenção', () => {
   beforeEach(() => {
-    // A contenção só vale nos builds de produção; o Vitest roda com DEV.
+    // A contenção e a CSP só valem nos builds de produção; o Vitest roda com DEV.
     vi.stubEnv('DEV', false)
     vi.spyOn(console, 'error').mockImplementation(vi.fn())
   })
 
-  it('grava o server-timing no controle lançado', async () => {
-    const control = Response.redirect(new URL('/', TEST_ORIGIN), HTTP_FOUND)
-
-    const response = await failingWith(control)(
+  it('bloqueia scripts no 500 em texto fora de uma requisição', async () => {
+    const response = await failingWith(new Error('PRIVATE'))(
       new Request(TEST_ORIGIN),
       renderPage()
     )
 
-    expect(response.status).toBe(HTTP_FOUND)
-    expect(response.headers.get('server-timing')).toMatch(/^app;dur=/u)
-  })
-
-  // O requestTiming consome o segundo valor antes da falha: uma medição
-  // iniciada no catch daria 7.5.
-  it('mede o server-timing do 500 em texto desde a entrada', async () => {
-    const started = 100
-    const failed = 105
-    const finished = 112.5
-    vi.spyOn(performance, 'now')
-      .mockReturnValueOnce(started)
-      .mockReturnValueOnce(failed)
-      .mockReturnValueOnce(finished)
-    const fail = vi
-      .fn<() => Promise<Response>>()
-      .mockRejectedValue(new Error('PRIVATE'))
-
-    const response = await containFailures([requestTiming, fail])(
-      new Request(TEST_ORIGIN),
-      renderPage()
+    expect(response.headers.get('content-security-policy')).toContain(
+      "script-src 'none'"
     )
-
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
-    expect(response.headers.get('server-timing')).toBe('app;dur=12.5')
+    expect(response.headers.get('cross-origin-embedder-policy')).toBe(
+      'require-corp'
+    )
   })
 
-  it('grava o server-timing na página de erro sem apagar o do runtime', async () => {
+  // Uma falha antes do securityHeaders deixa a requisição sem nonce; a página
+  // de erro precisa dele no render para que os scripts batam com a CSP.
+  it('cria o nonce antes de renderizar a página de erro', async () => {
     const event = pageEvent()
-    const render = vi.fn<() => Promise<Response>>().mockResolvedValue(
-      new Response('<main>Algo deu errado!</main>', {
-        headers: {
-          'content-type': 'text/html; charset=utf-8',
-          'server-timing': TRACE_TIMING
-        }
-      })
-    )
+    let seen: string | undefined
+    const render = vi.fn<() => Promise<Response>>().mockImplementation(() => {
+      seen = event.locals.nonce
+      return Promise.resolve(
+        new Response('<main>Algo deu errado!</main>', {
+          headers: { 'content-type': 'text/html; charset=utf-8' }
+        })
+      )
+    })
 
     const response = await provideRequestEvent(event, () =>
       failingWith(new Error('PRIVATE'))(event.request, render)
     )
 
-    await expect(response.text()).resolves.toBe('<main>Algo deu errado!</main>')
-    expect(response.headers.get('server-timing')).toMatch(
-      /^traceparent;desc="[^"]+", app;dur=/u
+    expect(seen).toMatch(/^[A-Za-z0-9+/]{22}==$/u)
+    expect(response.headers.get('content-security-policy')).toContain(
+      `script-src 'nonce-${seen}' 'strict-dynamic'`
+    )
+  })
+
+  it('mantém na página de erro o nonce já criado na requisição', async () => {
+    const event = pageEvent()
+    event.locals.nonce = 'bm9uY2UtYW50ZXJpb3I='
+
+    const response = await provideRequestEvent(event, () =>
+      failingWith(new Error('PRIVATE'))(event.request, renderPage())
+    )
+
+    expect(response.headers.get('content-security-policy')).toContain(
+      "script-src 'nonce-bm9uY2UtYW50ZXJpb3I=' 'strict-dynamic'"
+    )
+  })
+
+  it('grava a CSP e os cabeçalhos de segurança no controle lançado', async () => {
+    const event = pageEvent()
+    const control = Response.redirect(new URL('/', TEST_ORIGIN), HTTP_FOUND)
+
+    const response = await provideRequestEvent(event, () =>
+      failingWith(control)(event.request, renderPage())
+    )
+
+    expect(response.status).toBe(HTTP_FOUND)
+    expect(Object.fromEntries(response.headers)).toMatchObject({
+      'x-frame-options': 'DENY',
+      'strict-transport-security':
+        'max-age=63072000; includeSubDomains; preload'
+    })
+    // O redirect não tem documento: a CSP bloqueia scripts sem gravar o nonce.
+    expect(response.headers.get('content-security-policy')).toContain(
+      "script-src 'none'"
     )
   })
 })

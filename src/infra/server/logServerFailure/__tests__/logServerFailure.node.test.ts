@@ -1,5 +1,7 @@
-import { hostileValue } from '@/tests/helpers/hostileValue/index.ts'
-import { throwValue } from '@/tests/helpers/throwValue/index.ts'
+import {
+  hostileValue,
+  throwValue
+} from '@/tests/helpers/failureValues/index.ts'
 
 import { logServerFailure } from '../index.ts'
 
