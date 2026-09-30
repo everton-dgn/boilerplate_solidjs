@@ -1,14 +1,10 @@
 import type { UserConfig } from 'vite-plus'
 
+import { RELATIVE_IMPORT_RESTRICTION } from './constants.ts'
+
 type LintConfig = NonNullable<UserConfig['lint']>
 type ImportPath = { name: string; importNames?: string[]; message: string }
 type GlobalRestrictions = { names: string[]; properties?: string[] }
-
-const RELATIVE_IMPORT_RESTRICTION = {
-  regex: '^(\\.\\./){4,}',
-  message:
-    'Imports relativos podem subir no máximo três níveis. Use o alias @/ para caminhos mais distantes.'
-}
 
 const NETWORK = ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource']
 const RESTRICTED_GLOBALS = [...NETWORK, 'console']
@@ -18,6 +14,13 @@ const SAFE_ERRORS: ImportPath = {
   importNames: ['markSafeError', 'SAFE_ERROR'],
   message:
     'Use createPublicError; somente publicErrors autoriza erros públicos.'
+}
+// O hook global de erros do servidor substitui o anterior a cada chamada;
+// somente o módulo de registro pode instalá-lo.
+const SERVER_ERROR_HOOK: ImportPath = {
+  name: '@solidjs/web',
+  importNames: ['configureServerErrors'],
+  message: 'Mantenha o registro da política em configureServerErrors.'
 }
 // O subcaminho sem sufixo expõe a mesma superfície de configuração e dispatch
 // no runtime do servidor; a restrição precisa cobrir os dois especificadores.
@@ -68,7 +71,7 @@ function globals({
           property,
           message:
             property === 'console'
-              ? 'Mantenha os logs fixos em protectServerOperation.'
+              ? 'Registre falhas somente por logServerFailure.'
               : 'Use requestJson ou um adapter de backend protegido.'
         }))
       )
@@ -83,11 +86,16 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
       'backend/static-solid-imports': 'error',
       'eslint/no-console': ['error', { allow: [] }],
       ...globals({ names: RESTRICTED_GLOBALS }),
-      ...imports([SAFE_ERRORS, ...SERVER_CONFIG, ...TRANSPORTS])
+      ...imports([
+        SAFE_ERRORS,
+        SERVER_ERROR_HOOK,
+        ...SERVER_CONFIG,
+        ...TRANSPORTS
+      ])
     }
   },
   {
-    files: ['src/infra/server/protectServerOperation/index.ts'],
+    files: ['src/infra/server/logServerFailure/index.ts'],
     rules: {
       ...globals({ names: NETWORK, properties: RESTRICTED_GLOBALS }),
       'eslint/no-console': ['error', { allow: ['error'] }]
@@ -101,7 +109,7 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
   },
   {
     files: ['src/infra/server/publicErrors/index.ts'],
-    rules: imports([...SERVER_CONFIG, ...TRANSPORTS])
+    rules: imports([SERVER_ERROR_HOOK, ...SERVER_CONFIG, ...TRANSPORTS])
   },
   {
     files: ['src/infra/server/configureServerErrors/index.ts'],
@@ -124,4 +132,4 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
   }
 ]
 
-export { backendPolicy as default, RELATIVE_IMPORT_RESTRICTION }
+export default backendPolicy

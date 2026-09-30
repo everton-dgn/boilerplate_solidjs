@@ -5,6 +5,7 @@ import * as v from 'valibot'
 
 const BACKEND = 'http://127.0.0.1:4318'
 const HTTP_OK = 200
+const HTTP_FOUND = 302
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const ATTEMPTS_AFTER_RETRY = 2
 const backendState = v.object({ attempts: v.number(), marker: v.string() })
@@ -48,8 +49,66 @@ test('o bundle cliente não inclui a implementação do servidor', async () => {
   for (const file of files) {
     const source = await readFile(new URL(file, directory), 'utf8')
     expect(source).not.toContain('[server-operation]')
+    expect(source).not.toContain('[server-error]')
     expect(source).not.toContain('127.0.0.1:4318')
   }
+})
+
+test('um redirect lançado por server function no SSR continua redirecionando', async ({
+  page,
+  request
+}) => {
+  const response = await request.get('/control-signal', { maxRedirects: 0 })
+  expect(response.status()).toBe(HTTP_FOUND)
+  expect(response.headers().location).toBe('/?from=control-signal')
+  await page.goto('/control-signal')
+  await expect(page).toHaveURL(/\/\?from=control-signal$/u)
+})
+
+test('um envelope devolvido por server function no SSR entrega o valor', async ({
+  request
+}) => {
+  const response = await request.get('/control-signal?kind=envelope-return')
+  expect(response.status()).toBe(HTTP_OK)
+  // O parágrafo renderizado, não só o valor serializado para a hidratação.
+  expect(await response.text()).toMatch(/<p[^>]*>Envelope retornado<\/p>/u)
+})
+
+// Bug do @solidjs/router (https://github.com/solidjs/solid-router/issues/633):
+// query() copia o content-type do envelope para a página. test.fail() registra o bug; quando o
+// router corrigir, o teste passa a falhar e o marcador deve sair.
+// oxlint-disable-next-line vitest/prefer-each -- O runner do Playwright não oferece test.each.
+for (const kind of ['envelope-return', 'envelope-throw']) {
+  test(`o documento com ${kind} por query no SSR continua HTML`, async ({
+    request
+  }) => {
+    test.fail()
+    const response = await request.get(
+      `/control-signal?kind=${kind}&id=throw:${crypto.randomUUID()}`
+    )
+    expect(response.headers()['content-type']).toBe('text/html; charset=utf-8')
+  })
+}
+
+// O hook recebe o envelope lançado como controle; o router então lança o valor
+// do envelope no render, que vira falha de render com ou sem o hook. O teste
+// confere a resposta bruta, porque o documento sai com o content-type errado.
+test('um envelope lançado por server function no SSR vira falha de render sem expor o valor', async ({
+  request
+}) => {
+  const id = `throw:${crypto.randomUUID()}`
+  const state = await request.get(`${BACKEND}/control?id=${id}`)
+  const { marker } = v.parse(backendState, await state.json())
+  const response = await request.get(
+    `/control-signal?kind=envelope-throw&id=${id}`
+  )
+  const document = await response.text()
+  expect(response.status()).toBe(HTTP_INTERNAL_SERVER_ERROR)
+  expect(document).not.toContain(marker)
+  expect(document).toContain('Algo deu errado!')
+  // Controle positivo: a server function leu o marcador antes de lançar.
+  const after = await request.get(`${BACKEND}/control?id=${id}`)
+  expect(v.parse(backendState, await after.json()).attempts).toBe(1)
 })
 
 for (const { phase, javaScriptEnabled } of SCENARIOS) {

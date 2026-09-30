@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url'
 
 import stylelint from 'stylelint'
 
-import plugin, { cssFilenameError } from '../../css-modules-plugin.ts'
+import { cssFilenameError } from '../../css-filename.ts'
+import plugin from '../../css-modules-plugin.ts'
 
 describe('css filenames', () => {
   it('checks theme boundaries and module names', () => {

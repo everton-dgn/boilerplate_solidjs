@@ -71,3 +71,19 @@ test.describe('layout na árvore de produção', () => {
     ).toBe(true)
   })
 })
+
+// O build E2E monta a cadeia pela fábrica; aqui passa o export padrão real.
+test.describe('middleware na entrada de produção', () => {
+  test('aplica server-timing e os cabeçalhos de segurança', async ({
+    request
+  }) => {
+    const response = await request.get('/')
+
+    expect(response.status()).toBe(HTTP_OK)
+    expect(response.headers()).toMatchObject({
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'strict-origin-when-cross-origin'
+    })
+    expect(response.headers()['server-timing']).toMatch(/^app;dur=/u)
+  })
+})

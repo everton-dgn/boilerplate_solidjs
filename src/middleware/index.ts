@@ -1,39 +1,25 @@
-import { getRequestEvent } from '@solidjs/web'
 import { createAPIHandler } from 'filesystem-routing/api'
 import routes from 'virtual:file-routes'
 
-type Next = () => Promise<Response>
-
-async function requestTiming(_request: Request, next: Next) {
-  const started = performance.now()
-  const response = await next()
-  response.headers.set(
-    'server-timing',
-    `app;dur=${(performance.now() - started).toFixed(1)}`
-  )
-  return response
-}
-
-async function securityHeaders(_request: Request, next: Next) {
-  const response = await next()
-  response.headers.set('x-content-type-options', 'nosniff')
-  response.headers.set('referrer-policy', 'strict-origin-when-cross-origin')
-  return response
-}
-
-async function requestContext(_request: Request, next: Next) {
-  const event = getRequestEvent()
-  if (event) event.locals.requestId = crypto.randomUUID()
-  return next()
-}
+import { containFailures } from './containFailures/index.ts'
+import { requestContext } from './requestContext/index.ts'
+import { requestTiming } from './requestTiming/index.ts'
+import { securityHeaders } from './securityHeaders/index.ts'
+import type { ChainEntry, Middleware } from './types.ts'
 
 // Rotas com exportações GET, POST etc. respondem antes do SSR; o restante
 // segue para a renderização.
-const middleware = [
+export const requestMiddleware: Middleware[] = [
   requestTiming,
   securityHeaders,
   requestContext,
   createAPIHandler(routes)
 ]
 
-export default middleware
+// Monta a cadeia de produção dentro da contenção. O build E2E passa em extra
+// as falhas injetadas, que rodam antes da cadeia e dentro da mesma contenção.
+export function createMiddleware(extra: Middleware[] = []): ChainEntry {
+  return containFailures([...extra, ...requestMiddleware])
+}
+
+export default createMiddleware()

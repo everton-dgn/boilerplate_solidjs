@@ -86,7 +86,9 @@ método HTTP em vez de `export default`. O `createAPIHandler` em
 `src/middleware/index.ts` responde a essas requisições antes do SSR e deixa
 passar as demais. O nome do arquivo vira o caminho sem a extensão, então
 `sitemap.xml.ts` atende `/sitemap.xml`; colchetes continuam indicando parâmetros
-dinâmicos.
+dinâmicos. Uma rota pode devolver `Response.redirect()`: como os headers dessa
+resposta são imutáveis, o middleware grava `server-timing` e os cabeçalhos de
+segurança numa cópia.
 
 O plugin gera `src/@types/routes.d.ts` com os caminhos tipados durante o build
 ou desenvolvimento. Mantenha essa declaração versionada e atualizada ao mudar as
@@ -453,7 +455,8 @@ Reescreva as notas em cada projeto derivado. O `Document.tsx` anuncia esse
 arquivo em todas as páginas com `<link rel="describedby" href="/llms.txt">`, a
 descoberta recomendada pela spec do llms.txt; agentes não são redirecionados. O
 robots publica os grupos de `robots.txt/constants.ts`: `*` com `Allow: /` e
-`Disallow: /_server` (endpoint das server functions), robôs de treinamento de IA
+`Disallow` do endpoint das server functions (`/_server` por padrão, lido do
+`virtual:solid-server-function-handler` do plugin), robôs de treinamento de IA
 com `Disallow: /`, e o link do sitemap. Buscadores e agentes que leem páginas a
 pedido do usuário continuam liberados, porque são o público do llms.txt.
 `Disallow` é um pedido que robôs mal comportados ignoram e não remove URL do
@@ -676,7 +679,9 @@ padrão do Vitest, declarando só o que muda.
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
 `vite-plus/prefer-vite-plus-imports` bloqueia o import direto). O contexto de
 requisição dos middlewares é testado com `provideRequestEvent` de
-`@solidjs/web/storage` em `src/middleware/__tests__/middleware.node.test.ts`.
+`@solidjs/web/storage`. Cada middleware de `src/middleware/` tem a própria suíte
+em `__tests__/`, e `src/middleware/__tests__/middleware.node.test.ts` cobre o
+export padrão e a cadeia montada por `createMiddleware`.
 
 <br />
 
@@ -746,7 +751,9 @@ nem o backend simulado. As portas 4317 e 4318 precisam estar livres.
 um build normal, com a árvore real de `src/routes/`. Essa suíte verifica por
 HTTP que `/robots.txt`, `/llms.txt` e `/sitemap.xml` respondem sem
 redirecionamento, com conteúdo e headers esperados, e que os helpers locais não
-viram endpoints públicos. Também verifica a ausência de uma rota das fixtures. O
+viram endpoints públicos. Também verifica a ausência de uma rota das fixtures e
+que a Home recebe `server-timing` e os cabeçalhos de segurança do middleware
+real, já que o build E2E monta a cadeia pela fábrica `createMiddleware`. O
 comando usa a mesma `BASE_URL_TEST`, carrega as variáveis públicas no modo
 `production` e dispensa o backend simulado. Execute as duas suítes em sequência,
 pois compartilham a porta e os artefatos de build. O CI executa ambas; a suíte

@@ -2,6 +2,8 @@ import { redirect, reload, respond } from '@solidjs/web'
 import { NotReadyError } from 'solid-js'
 
 import { createPublicError } from '@/infra/server/publicErrors/index.ts'
+import { readLog } from '@/tests/helpers/readLog/index.ts'
+import { throwValue } from '@/tests/helpers/throwValue/index.ts'
 
 import { protectServerOperation } from '../index.ts'
 
@@ -11,6 +13,8 @@ type CyclicData = { self?: CyclicData }
 const HTTP_CREATED = 201
 const DIAMOND_DEPTH = 24
 const REJECTED_SHAPES = 4
+const LOG_MESSAGE =
+  '[server-operation] Unexpected failure; private details omitted'
 
 function thrownValue(invocation: Invocation): unknown {
   try {
@@ -21,8 +25,8 @@ function thrownValue(invocation: Invocation): unknown {
   throw new Error('Expected operation to throw')
 }
 
-function throwValue(value: unknown): never {
-  throw value
+function logUnavailable(): never {
+  throw new Error('stderr indisponível')
 }
 
 function expectPublicFailure(error: unknown): void {
@@ -52,9 +56,10 @@ describe('proteção de operações no servidor', () => {
     const error = thrownValue({ run: () => throwValue(internal) })
     expectPublicFailure(error)
     expect(error).not.toBe(internal)
-    expect(console.error).toHaveBeenCalledExactlyOnceWith(
-      '[server-operation] Unexpected failure; private details omitted'
-    )
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
   })
 
   it('captura rejeições e preserva sucesso assíncrono', async () => {
@@ -67,9 +72,10 @@ describe('proteção de operações no servidor', () => {
     await expect(
       protectServerOperation({ run: () => Promise.resolve({ ok: true }) })
     ).resolves.toStrictEqual({ ok: true })
-    expect(console.error).toHaveBeenCalledExactlyOnceWith(
-      '[server-operation] Unexpected failure; private details omitted'
-    )
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
   })
 
   it('rejeita erros, classes, ciclos e fontes adiadas dentro de resultados', async () => {
@@ -164,6 +170,21 @@ describe('proteção de operações no servidor', () => {
     expectPublicFailure(thrownValue({ run: () => response }))
   })
 
+  it('recusa Response.error() como controle, lançada ou devolvida', () => {
+    const failure = Response.error()
+
+    expectPublicFailure(
+      thrownValue({ run: () => throwValue(failure), allowControl: true })
+    )
+    expectPublicFailure(thrownValue({ run: () => failure, allowControl: true }))
+    // A lançada não é um Error; a devolvida falha na verificação estrutural,
+    // que lança um Error próprio.
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE], [LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
+  })
+
   it('verifica valores de envelopes e rejeita corpos upstream', () => {
     const response = respond(
       { ok: true },
@@ -221,6 +242,34 @@ describe('proteção de operações no servidor', () => {
   })
 })
 
+describe('log da proteção de operações', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+
+  it('lança o erro público mesmo quando o log falha', async () => {
+    // O log falha no caminho síncrono e no assíncrono; o mock volta ao normal
+    // depois, para não afetar os logs do próprio Vitest.
+    vi.mocked(console.error)
+      .mockImplementationOnce(logUnavailable)
+      .mockImplementationOnce(logUnavailable)
+
+    expectPublicFailure(
+      thrownValue({ run: () => throwValue(new Error('PRIVATE_SYNC')) })
+    )
+    await expect(
+      protectServerOperation({
+        run: () => Promise.reject(new Error('PRIVATE_ASYNC'))
+      })
+    ).rejects.toThrow('Não foi possível concluir a solicitação.')
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [
+        [LOG_MESSAGE, 'Error'],
+        [LOG_MESSAGE, 'Error']
+      ],
+      leaks: []
+    })
+  })
+})
+
 describe('estrutura dos dados públicos', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 
@@ -259,8 +308,9 @@ describe('estrutura dos dados públicos', () => {
     expectPublicFailure(
       thrownValue({ run: () => ({ level: { nested }, shared }) })
     )
-    expect(console.error).toHaveBeenCalledExactlyOnceWith(
-      '[server-operation] Unexpected failure; private details omitted'
-    )
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
   })
 })

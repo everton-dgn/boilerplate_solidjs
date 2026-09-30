@@ -26,6 +26,12 @@ if (!PORT) {
   throw new Error('BASE_URL_TEST must include an explicit port')
 }
 const STARTUP_TIMEOUT = 120_000
+// Só a saída do preview vai para o arquivo, sem o ruído do build. O teardown
+// global lê o arquivo depois da suíte e recusa marcadores privados.
+const SERVER_LOG = `test-results/server-${BUILD_MODE}.log`
+env.SERVER_LOG_FILE = fileURLToPath(
+  new URL(`../${SERVER_LOG}`, import.meta.url)
+)
 
 const config = defineConfig({
   testDir: '../src/tests/pages',
@@ -36,6 +42,7 @@ const config = defineConfig({
   outputDir: PRODUCTION_ROUTES
     ? '../test-results/e2e-production'
     : '../test-results/e2e',
+  globalTeardown: './testing/server-log-teardown.ts',
   fullyParallel: true,
   forbidOnly: true,
   workers: env.CI ? 1 : undefined,
@@ -109,7 +116,7 @@ const config = defineConfig({
           }
         ]),
     {
-      command: `pnpm build --mode ${BUILD_MODE} && pnpm start --strictPort`,
+      command: `pnpm build --mode ${BUILD_MODE} && mkdir -p test-results && pnpm start --strictPort > ${SERVER_LOG} 2>&1`,
       cwd: '..',
       env: { HOST, PORT, NODE_ENV: 'production' },
       url: BASE_URL,

@@ -1,7 +1,3 @@
-type Commit = {
-  sha: string
-  message: string
-}
 type Bump = 'major' | 'minor' | 'patch'
 type Change = {
   bump: Bump
@@ -9,22 +5,9 @@ type Change = {
   summary: string
   sha: string
 }
-type ReleasePlan = {
-  version: string
-  tag: string
-  notes: string
-  changelog: string
-}
 
 const SHORT_SHA_LENGTH = 7
 const versionPattern = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u
-
-function parseVersion(version: string): number[] {
-  if (!versionPattern.test(version)) {
-    throw new Error(`Invalid stable version: ${version}`)
-  }
-  return version.split('.').map(Number)
-}
 
 function hasBreakingFooter(lines: string[]): boolean {
   let fence = ''
@@ -87,7 +70,26 @@ function escapeSummary(value: string): string {
     .replaceAll('@', '&#64;')
 }
 
-function planRelease(input: {
+export type Commit = {
+  sha: string
+  message: string
+}
+
+export type ReleasePlan = {
+  version: string
+  tag: string
+  notes: string
+  changelog: string
+}
+
+export function parseVersion(version: string): number[] {
+  if (!versionPattern.test(version)) {
+    throw new Error(`Invalid stable version: ${version}`)
+  }
+  return version.split('.').map(Number)
+}
+
+export function planRelease(input: {
   currentVersion: string
   baselineTag: string | undefined
   commits: Commit[]
@@ -146,6 +148,3 @@ function planRelease(input: {
     .concat('\n')
   return { version, tag: `v${version}`, notes, changelog }
 }
-
-export { parseVersion, planRelease }
-export type { Commit, ReleasePlan }

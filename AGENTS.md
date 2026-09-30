@@ -149,7 +149,28 @@ release. Add a tool name to select part of the graph. For example, run
   argumento único.
 - A regra vale para as funções do projeto. Assinaturas ditadas por terceiros
   ficam como o contrato exige, sem adaptação: middlewares `(request, next)` em
-  `src/middleware/index.ts`, callbacks de teste e hooks de plugin do Vite.
+  `src/middleware/`, callbacks de teste e hooks de plugin do Vite.
+
+## Exports
+
+- Exporte na própria declaração: `export function`, `export const`,
+  `export type` e `export default`. Não use lista local como `export { x }`,
+  `export { x as y }` ou `export type { T }`.
+- Lista de exports só vale em reexport com `from`, como
+  `export { default, route } from '@/routes/(base)/(home)/index.tsx'` nas
+  fixtures E2E, porque não há declaração local para marcar.
+- `export {}` vazio também é recusado. Para transformar em módulo um `.d.ts`
+  que só tem `declare global`, use um `import` real, como
+  `import '@solidjs/web'` em `src/@types/solid.d.ts`.
+- `import/exports-last` exige os exports no fim do arquivo. Declare antes
+  deles os tipos, constantes e helpers privados. Quando um valor exportado
+  precisar existir antes do código privado que o consome, mova-o para um
+  módulo próprio, como `tooling/backendPolicy/constants.ts`, em vez de
+  exportar os helpers.
+- A regra `project/no-export-list` (`tooling/noExportList/index.ts`,
+  registrada no plugin de `tooling/css-modules-plugin.ts`) aplica a
+  convenção. Valide com `pnpm check:ci` e, ao mudar a regra, com
+  `pnpm test:tooling`.
 
 ## Funções que retornam Promise
 
@@ -225,24 +246,35 @@ release. Add a tool name to select part of the graph. For example, run
 - O schema seleciona os campos públicos. A verificação estrutural do wrapper
   não identifica dados confidenciais em strings. Não retorne erros, promises
   aninhadas ou trabalho adiado sem contrato específico.
-- Mantenha o registro global e os sinais de controle do Solid. A proteção do
-  registro central cobre server functions; um fallback visual não protege o payload.
-  Os logs atuais são fixos e não recebem o objeto original.
+- Mantenha o registro global e os sinais de controle do Solid. O
+  `wrapInvocation` cobre server functions e o hook `onError`, instalado só em
+  produção, uniformiza a mensagem pública das demais falhas; ele nunca devolve
+  o objeto recebido. `containFailures` continua envolvendo a cadeia inteira
+  para que exceções não cheguem ao log do host; numa navegação ele renderiza a
+  página de erro do app pelo `ServerFailureGate` de `App.tsx`. Um fallback visual não
+  protege o payload.
+  O log grava a mensagem fixa da origem e, para um `Error`, só a classe e os
+  frames filtrados, sem mensagem, `cause` nem propriedades.
 - Não registre erro original, headers, cookies, argumentos, corpos ou
-  credenciais. Logs detalhados exigem remoção de dados sensíveis definida antes.
-  O lint reserva `console` ao wrapper `protectServerOperation`, onde se usa
-  `console.error` diretamente. Acessos como `globalThis.console` continuam
-  proibidos. Preserve o argumento fixo coberto pelos testes.
+  credenciais. Logs detalhados exigem remoção de dados sensíveis definida antes;
+  a de `logServerFailure` está em "Log de falhas", no guia.
+  O lint reserva `console` a `logServerFailure`, onde se usa `console.error`
+  diretamente. Acessos como `globalThis.console` continuam proibidos. Preserve
+  o argumento único coberto pelos testes: uma string que começa pela mensagem
+  fixa da origem.
 - Preserve as restrições de lint em `tooling/backendPolicy`: o módulo inteiro
-  de configuração do servidor pertence a `configureServerErrors`. Use imports
+  de configuração do servidor e o hook `configureServerErrors` de
+  `@solidjs/web` pertencem a `configureServerErrors`. Use imports
   estáticos de `@solidjs/web` e seus subcaminhos, inclusive nos módulos
   privilegiados. SDKs novos exigem restrição por pacote e exceção por adapter.
   Revise fontes de import calculadas, templates dos outros pacotes e demais
   limites do guia; não contorne o contrato com disable. Fixtures seguem
   protegidas; as exceções de backend cobrem só testes e declarações de tipos.
 - Após mudar essa fronteira, rode `pnpm test:tooling`, os testes Node
-  pertinentes e `pnpm test:e2e src/tests/pages/BackendError`. Preserve no CI
+  pertinentes e `pnpm test:e2e src/tests/pages/BackendError
+  src/tests/pages/OutsideError`. Preserve no CI
   a verificação do corpo completo em SSR inicial, streaming e chamada HTTP.
-- Em atualizações do Solid/plugin, siga o roteiro do guia. Só retire o wrapper
-  após testar o runtime publicado sem essa interceptação; uma issue fechada ou
-  commit integrado não comprova a correção na versão instalada.
+- Em atualizações do Solid/plugin, siga o roteiro do guia. O wrapper fica
+  enquanto o runtime publicado não recusar um `Error` devolvido como dado; só
+  retire o que uma reprodução sem essa interceptação provar coberto. Uma issue
+  fechada ou commit integrado não comprova a correção na versão instalada.

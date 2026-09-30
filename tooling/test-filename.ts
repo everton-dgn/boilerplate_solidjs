@@ -1,5 +1,20 @@
 import path from 'node:path'
 
+type Diagnostic = {
+  node: object
+  message: string
+}
+
+type Context = {
+  cwd: string
+  filename: string
+  report: (diagnostic: Diagnostic) => void
+}
+
+type RuleListeners = {
+  Program: (node: object) => void
+}
+
 // Suites sem módulo colocalizado declaram os próprios alvos explicitamente.
 const subjects: Record<string, readonly string[]> = {
   'src/__tests__': ['App', 'PageFileSystemRouter'],
@@ -7,13 +22,14 @@ const subjects: Record<string, readonly string[]> = {
   'src/tests/pages/Home': ['Home'],
   'src/tests/pages/NotFound': ['NotFound'],
   'src/tests/pages/BackendError': ['BackendError'],
+  'src/tests/pages/OutsideError': ['OutsideError'],
   'src/tests/pages/SeoIndexes': ['SeoIndexes'],
   'src/tests/pages/StructuredData': ['StructuredData'],
   'tooling/css/__tests__': ['cssPolicy', 'testFilename'],
   'tooling/release/__tests__': ['automatic-release', 'versioning']
 }
 
-function testFilenameError(file: string): string | undefined {
+export function testFilenameError(file: string): string | undefined {
   const normalized = path.posix.normalize(file.replaceAll('\\', '/'))
   if (!/^(?:src|tooling)\//u.test(normalized)) return undefined
   const basename = path.posix.basename(normalized)
@@ -55,22 +71,7 @@ function testFilenameError(file: string): string | undefined {
   return undefined
 }
 
-type Diagnostic = {
-  node: object
-  message: string
-}
-
-type Context = {
-  cwd: string
-  filename: string
-  report: (diagnostic: Diagnostic) => void
-}
-
-type RuleListeners = {
-  Program: (node: object) => void
-}
-
-const testFilename = {
+export const testFilename = {
   meta: { type: 'problem', schema: [] },
   create(context: Context): RuleListeners {
     return {
@@ -82,5 +83,3 @@ const testFilename = {
     }
   }
 }
-
-export { testFilename, testFilenameError }

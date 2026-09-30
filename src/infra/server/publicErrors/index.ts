@@ -2,10 +2,10 @@ import 'server-only'
 import { markSafeError } from '@solidjs/web'
 
 const errors = new WeakSet<object>()
-const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+export const PUBLIC_ERROR_MESSAGE = 'Não foi possível concluir a solicitação.'
 
 export function createPublicError(): Error {
-  const error = markSafeError(new Error(PUBLIC_MESSAGE))
+  const error = markSafeError(new Error(PUBLIC_ERROR_MESSAGE))
   errors.add(error)
   return error
 }

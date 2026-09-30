@@ -1,8 +1,7 @@
 import type { UserConfig } from 'vite-plus'
 
-import backendPolicy, {
-  RELATIVE_IMPORT_RESTRICTION
-} from './backendPolicy/index.ts'
+import { RELATIVE_IMPORT_RESTRICTION } from './backendPolicy/constants.ts'
+import backendPolicy from './backendPolicy/index.ts'
 
 const TEST_FILES = [
   '**/*.test.ts',
@@ -60,6 +59,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     {
       files: [
         'src/tests/pages/BackendError/BackendError.e2e.test.ts',
+        'src/tests/pages/OutsideError/OutsideError.e2e.test.ts',
         'src/tests/helpers/readSiteOrigin/index.ts'
       ],
       rules: { 'import/no-nodejs-modules': 'off' }
@@ -78,7 +78,11 @@ export const lint: NonNullable<UserConfig['lint']> = {
       files: [
         'src/**/*.test.{ts,tsx}',
         'src/tests/**/*.{ts,tsx}',
-        'src/middleware/index.ts',
+        'src/middleware/types.ts',
+        'src/middleware/containFailures/index.ts',
+        'src/middleware/requestContext/index.ts',
+        'src/middleware/requestTiming/index.ts',
+        'src/middleware/securityHeaders/index.ts',
         'tooling/**/*.ts',
         'vite.config.ts'
       ],
@@ -147,7 +151,10 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      files: ['src/middleware/index.ts'],
+      files: [
+        'src/middleware/requestTiming/index.ts',
+        'src/tests/fixtures/e2e/middleware/index.ts'
+      ],
       rules: {
         'node/callback-return': 'off'
       }
@@ -168,6 +175,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'project/css-modules-import': 'error',
     'project/css-filename': 'error',
     'project/test-filename': 'error',
+    'project/no-export-list': 'error',
     'eslint/accessor-pairs': 'error',
     'eslint/array-callback-return': 'error',
     'eslint/arrow-body-style': ['error', 'as-needed'],

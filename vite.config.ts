@@ -59,7 +59,12 @@ const appPlugins = (mode: string) =>
     return [
       icons(modules),
       modules.solid({
-        start: { middleware: './src/middleware/index.ts' },
+        start: {
+          middleware:
+            mode === 'e2e'
+              ? './src/tests/fixtures/e2e/middleware/index.ts'
+              : './src/middleware/index.ts'
+        },
         ssr: true,
         serverFunctions: {
           configure: './src/infra/server/configureServerErrors/index.ts'
@@ -246,6 +251,12 @@ export default defineConfig(({ mode }) => {
               ),
               'virtual:file-routes': fileURLToPath(
                 new URL('tooling/testing/file-routes.ts', import.meta.url)
+              ),
+              'virtual:solid-server-function-handler': fileURLToPath(
+                new URL(
+                  'tooling/testing/solid-server-function-handler.ts',
+                  import.meta.url
+                )
               )
             }
           },
