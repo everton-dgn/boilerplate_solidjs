@@ -1,6 +1,6 @@
 # Migração do Solid 1 e divergências
 
-Base: [revisão verificada](../SKILL.md). Entra só em tarefa de migração ou quando um padrão antigo aparece no código; a coluna de legado não faz parte da API do Solid 2 e as receitas da skill usam só o contrato v2.
+Base: [revisão verificada](../SKILL.md), rc.11, reverificada em 2026-09-29. Entra só em tarefa de migração ou quando um padrão antigo aparece no código; a coluna de legado não faz parte da API do Solid 2 e as receitas da skill usam só o contrato v2.
 
 Contrato: API depreciada pode seguir exportada por compatibilidade sem ser recomendada. API presente só no motor interno, em tipos ou em comentários não ganha export público por isso. Se o pedido é corrigir um bug em Solid 1, informe o limite e use a documentação da versão instalada; migração de major é outra tarefa.
 
@@ -74,7 +74,7 @@ Não trate duas RCs como iguais: cada prévia pode alterar diagnóstico, exports
 
 Processo: congele uma base com testes, liste imports removidos, migre uma feature representativa com async e formulário, verifique DOM cliente e SSR, então amplie. Não desative todos os diagnósticos na transição; cada exceção temporária tem motivo, escopo e teste.
 
-Armadilha: issue fechada não prova correção no pacote instalado; a semântica de `Loading.on` muda em `next` ([R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold)); uma resposta antiga pode descrever hook planejado que a base verificada já tem; um gate encerrado por sinal pode parecer sucesso. Nada disso autoriza importar campo privado ou aplicar patch de comentário.
+Armadilha: issue fechada não prova correção no pacote instalado; a semântica de `Loading.on` mudou no rc.11 ([R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold)); uma resposta antiga pode descrever hook planejado que a base verificada já tem; um gate encerrado por sinal pode parecer sucesso. Nada disso autoriza importar campo privado ou aplicar patch de comentário.
 
 ## APIs que induzem a erro
 

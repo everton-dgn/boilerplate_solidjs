@@ -74,7 +74,7 @@ Contrato: leitura de folha assina a folha; retornar só proxy pai e ler depois f
 
 Receita: leia `state.user.name` dentro da derivação. Preserve `NotReadyError` para prontidão/retry/Loading, sobretudo SSR. Guarde novo valor localmente ou leia draft para decidir durante escrita.
 
-Armadilha: store comum lida antes do flush entrega valor anterior. Derivada pode entregar recém-escrito e, após `latest` na mesma propriedade, passar a entregar anterior nas escritas seguintes. Assentado/assinantes ficam corretos; evite decidir por essa leitura. Catch genérico que converte pending em vazio quebra o grafo. Projection complexa para filtro de três itens pode custar mais que ajudar.
+Armadilha: store comum lida antes do flush entrega valor anterior. Derivada entrega o recém-escrito; no rc.9, após `latest` na mesma propriedade, passava a entregar o anterior nas escritas seguintes ([R09](17-known-risks.md#r09-leitura-logo-após-escrita-numa-store-derivada-muda-depois-de-um-latest)). Assentado/assinantes ficam corretos; evite decidir por essa leitura. Catch genérico que converte pending em vazio quebra o grafo. Projection complexa para filtro de três itens pode custar mais que ajudar.
 
 ## Seleção por chave
 

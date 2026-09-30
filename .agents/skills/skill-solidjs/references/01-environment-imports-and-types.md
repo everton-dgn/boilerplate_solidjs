@@ -14,13 +14,13 @@ Armadilha: Motores independentes não rastreiam signals entre si, sem erro. Conf
 
 ## Tags, plugin e compilador
 
-Contrato: No recorte, `latest` de `solid-js` e router escolhia Solid 1; `next` escolhia a linha 2. `latest` de web, signals, compiler e babel-plugin estava atrás do core; `next` do vite-plugin era mais antigo que `latest`. Tags atuais não verificadas. Atualize plugin/compilador juntos: o plugin usa `^` e passa `componentNames` em dev/observe; código ainda não publicado troca a opção por `sourceNames` e rejeita a antiga. Inferência: versão futura aceita pela faixa pode quebrar dev.
+Contrato: em 2026-09-29, `latest` de `solid-js` e router escolhe Solid 1; `next` escolhe a linha 2. `latest` de web, signals, compiler e babel-plugin está atrás do core; `next` do vite-plugin é mais antigo que `latest`. Atualize plugin/compilador juntos: o compilador rc.11 rejeita `componentNames` (opção desconhecida) e o vite-plugin 3.0.0-next.46 já passa `sourceNames`; plugin antigo com compilador novo quebra dev.
 
 Receita: tags: `npm view <pacote> dist-tags`; offline, lockfile/manifesto instalado, tags não verificadas. Após atualização, teste dev e produção. Backend padrão native; compiler babel isola JSX, mas demais transformações exigem @solidjs/compiler.
 
 Armadilha: Tag ou primeiro pacote em `.pnpm` pode escolher outra RC transitiva; Babel não elimina o compilador nativo.
 
-Na base verificada, uma cópia transitiva antiga de `@solidjs/signals` pode não exportar `ROOT_ERROR_HOOK`, `configureClientErrors` ou `isStatic`, exigidos pelo core, causando `MISSING_EXPORT`. Confira `pnpm why solid-js` e `pnpm why @solidjs/signals` antes de contornar o erro com aliases. A faixa do [manifesto do core](https://github.com/solidjs/solid/blob/9a29b1a07aa3e06ee32afd1fc4c18414b4a558bb/packages/solid/package.json) não garante alinhamento no lockfile.
+O core rc.11 ainda importa `ROOT_ERROR_HOOK`, `configureClientErrors` e `isStatic` de `@solidjs/signals`; uma cópia transitiva antiga sem esses exports causa `MISSING_EXPORT`. Confira `pnpm why solid-js` e `pnpm why @solidjs/signals` antes de contornar o erro com aliases. A faixa `^` do [manifesto do core](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/solid/package.json) não garante alinhamento no lockfile.
 
 Eventos delegados também dependem desse alinhamento: na base verificada, o renderer usa `node._$$click`; um compilador antigo que emita `node.$$click` produz handlers que nunca disparam, sem erro de build. Ao investigar, compare a propriedade emitida no JSX compilado com a chave lida pelo renderer instalado.
 
@@ -53,7 +53,7 @@ import solid from '@solidjs/vite-plugin'
 export default defineConfig({ plugins: [solid()] })
 ```
 
-Contrato: export conditions variam por worker, browser, deno e node, com prioridade `development`, depois `observe`, depois default, inclusive fora desses ambientes. `resolve.conditions: ['development']` ou `['observe']` seleciona o tier. Produção usa o ramo `default`, sem `development` ou `observe`; não existe condição chamada `production` ([build de produção](../../skill-solidjs-testing/references/vitest-config.md#build-de-produção)). Web repete isso inclusive em `server-functions` e `frames`; as 14 entradas do recorte resolvem arquivos existentes. Node sem `browser` usa servidor. Configure Vitest cliente; não force browser no SSR.
+Contrato: export conditions variam por worker, browser, deno e node, com prioridade `development`, depois `observe`, depois default, inclusive fora desses ambientes. `resolve.conditions: ['development']` ou `['observe']` seleciona o tier. Produção usa o ramo `default`, sem `development` ou `observe`; não existe condição chamada `production` ([build de produção](../../skill-solidjs-testing/references/vitest-config.md#build-de-produção)). Web repete isso inclusive em `server-functions` e `frames`; as 15 entradas do rc.11 resolvem arquivos existentes (o rc.9 tinha 14; entrou `./performance-tracks`, cujo ramo `node` só tem `default`). Node sem `browser` usa servidor. Configure Vitest cliente; não force browser no SSR.
 
 Armadilha: plugin básico não instala roteador/servidor/deploy. Preserve adapters; evite vite-plugin-solid/babel-preset-solid. `react-jsx` com `@solidjs/h` pertence a outra renderização. Vite não executa tsc; cheque tipos e produção (otimizações, diagnósticos e sanitização diferem). Bibliotecas: emita/teste declarações num consumidor; `skipLibCheck`, stubs ou TS antigo não validam integração.
 
@@ -87,7 +87,7 @@ Contrato: TS trata cada chamada reativa como nova. Use callback estreitado de `S
 
 Receita: inicialize de verdade quando possível; explicite `createSignal<Item[]>([])`. `createSignal<T>()` admite ausência e, quando T inclui `undefined`, o setter pode ser chamado sem argumento para limpar. Preserve essa sobrecarga em wrappers. Valor recebe `Exclude<T, Function>`; propague esse limite em primitivas genéricas. Funções armazenadas exigem camada de função na criação e no setter. Fonte async entrega `Accessor<T>` resolvido pelo grafo, não `Promise<T>`.
 
-Armadilha: `Setter<T>` aceita valor ou atualizador e devolve o valor escrito; não equivale a `(value: T) => void`. Retorno implícito: apply recebe cleanup inválido; store pode substituir raiz. Tsc estrito recusa ambos, inclusive `push`/atribuição primitiva na store, que o runtime ignora. Use chaves. MemoOptions: `id`, `name`, `equals`, `unobserved`, `lazy`, `transparent`; hidratação acrescenta `ssrSource` via `HydrationMemoOptions<T>`.
+Armadilha: `Setter<T>` aceita valor ou atualizador e devolve o valor escrito; não equivale a `(value: T) => void`. Retorno implícito: apply recebe cleanup inválido; store pode substituir raiz. Tsc estrito recusa ambos, inclusive `push`/atribuição primitiva na store, que o runtime ignora. Use chaves. MemoOptions no tipo do rc.11: `id`, `name`, `equals`, `unobserved`, `lazy`, `transparent`, `sync` e `loadingValue` (o JSDoc de `createMemo` lista só os seis primeiros); a augmentação de hidratação do `solid-js` acrescenta `ssrSource` (`'server' | 'hybrid' | 'client'`) e `deferStream`, que `HydrationMemoOptions<T>` repete. `_plumbing` é interno.
 
 Contrato: TS aceita async em posição apenas `() => void`, como `onCleanup`. Apply de effect e `onSettled` retornam `void | (() => void)` e recusam async/retorno implícito sob tsc estrito. Aceitação não prova cleanup síncrono. Evite !/casts/cópias de props no setup para silenciar tipos.
 

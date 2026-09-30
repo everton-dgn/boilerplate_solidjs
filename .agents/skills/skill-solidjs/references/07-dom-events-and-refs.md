@@ -2,7 +2,7 @@
 
 ## HTML e atributos
 
-Contrato: atributos HTML (class/for/tabindex), eventos camelCase. TS aceita só `tabindex`; `tabIndex` dá `TS2322`, embora Chromium aceite a atualização do atributo minúsculo. Booleano true grava atributo vazio; false/undefined remove. String 'false' mantém disabled e é rejeitada pelo tipo. Muted é propriedade: compilador atribui elemento.muted, sem atributo mesmo com true.
+Contrato: atributos HTML (class/for/tabindex), eventos camelCase. TS aceita só `tabindex`; `tabIndex` dá `TS2322`, embora Chromium aceite a atualização do atributo minúsculo. Booleano true grava atributo vazio; false/undefined remove. String 'false' mantém disabled e é rejeitada pelo tipo. Muted é propriedade: com valor dinâmico, o compilador atribui elemento.muted, sem atributo mesmo com true; `muted` ou `muted={true}` literal vai ao template como atributo.
 
 Receita: diferencie estado controlado de inicial em value/defaultValue, checked/defaultChecked, selected/defaultSelected e muted/defaultMuted. Preserve semântica textual de ARIA: aria-pressed='false' não equivale universalmente à ausência.
 

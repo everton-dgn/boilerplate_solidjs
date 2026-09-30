@@ -3,14 +3,14 @@ name: skill-solidjs
 description: "SolidJS 2 / Solid 2.0 (solid-js, @solidjs/web): criar, revisar, depurar TSX, createSignal, stores, effects, Loading, action, SSR, hidratação. Testes: skill-solidjs-testing. Fora: Solid 1, SolidStart."
 metadata:
   compatibility: "SolidJS 2 com @solidjs/web. Consulte exports e tipos do pacote instalado."
-  versao-da-skill: "1.7.0"
-  data-da-verificacao: "2026-09-23"
-  commit-base: "9a29b1a07aa3e06ee32afd1fc4c18414b4a558bb"
+  versao-da-skill: "1.8.0"
+  data-da-verificacao: "2026-09-29"
+  commit-base: "ee49b3eee5f457a637075c4a3bbdcee013808fc3"
 ---
 
 # SolidJS 2
 
-A base de evidência está no frontmatter ([manifesto da revisão verificada](https://github.com/solidjs/solid/blob/9a29b1a07aa3e06ee32afd1fc4c18414b4a558bb/packages/solid/package.json)). As ressalvas de runtime valem para essa base; confirme exports e tipos instalados antes de aplicá-las a outra versão. Documentação de Solid 1 e código em `next` podem descrever APIs ausentes no pacote.
+A base de evidência está no frontmatter ([manifesto da revisão verificada](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/solid/package.json), rc.11). A reverificação de 2026-09-29 no rc.11, com controle no rc.9 (`9a29b1a`) em grafo, SSR no Node, happy-dom e Chromium, cobriu os riscos de [17](references/17-known-risks.md), o gate de origem de server functions, `Loading.on`, toda afirmação marcada como da base ou do runtime instalado nas referências 01 a 16 e a tabela de migração de 16; os changelogs rc.10 e rc.11 de signals, `solid-js` e `@solidjs/web` foram cruzados com as referências e as contradições encontradas foram corrigidas. Na mesma data, os cerca de 230 parágrafos de contrato e armadilha sem marcação nas referências 01 a 16 foram reverificados no rc.11: exports, tipos (tsc 7 estrito), compilador e diff do `dist` contra o rc.9, com sonda nos dois RCs quando o trecho mudou ou o contrato era comportamental; nove foram corrigidos. Ficaram sem nova medição, por exigirem navegador real, hidratação completa, build de produção servido ou por a sonda não reproduzir o caso nem no rc.9: o disparo extra da derivação e o leitor retido até `TimeoutError` em [10](references/10-actions-optimism-and-confirmation.md); o snapshot de hidratação em [02](references/02-reactivity-and-ownership.md); o owner marcado com DOM retido em [03](references/03-effects-and-lifecycle.md); `seedLoadingValue` com `ssrSource: 'client'` em [05](references/05-stores-and-projections.md); foco com action pendente, `lazy` com `.then`, `clientOnly` e Portal na hidratação em [06](references/06-lists-control-flow-and-local-state.md); o plugin de lint em [07](references/07-dom-events-and-refs.md); `NoHydration`/`Hydration` com documento inteiro, o lado cliente da hidratação, o build do plugin, a produção servida pelo adapter e a retração de status sob `Loading`/`Errored` em [12](references/12-ssr-and-hydration.md); GET/HEAD declarados, `X-Revalidate` de `reload` e formulário sem JS em [13](references/13-server-functions-and-security.md). As ressalvas de runtime valem para essa base; confirme exports e tipos instalados antes de aplicá-las a outra versão. Documentação de Solid 1 e código em `next` podem descrever APIs ausentes no pacote.
 
 ## Erros que o modelo tende a introduzir
 
@@ -20,7 +20,7 @@ A base de evidência está no frontmatter ([manifesto da revisão verificada](ht
 - `createSignal(fn)` cria derivação gravável. Escritas publicam por microtask; leitura logo após setter ainda pode ver o valor anterior. Escrita no corpo de componente, root ou compute é proibida em dev; `untrack` não a libera.
 - Componentes e callbacks estruturais não reexecutam como renders de React. Leia props no JSX ou em compute, sem desestruturar no setup. Prop de valor usa `value={count()}`; handler dinâmico decide dentro do callback, como `onClick={e => (active() ? a : b)(e)}`.
 - Apply de `createEffect` não tem owner: devolva cleanup, em vez de usar `onCleanup` ali. Primitivas ficam no setup; callback de ref e `onSettled` não permitem criá-las. Roots aninhados são descartados com o pai.
-- Fontes async são memos/stores lidos sob `Loading`; capture dependências antes de `await`. `refresh` recebe a fonte original. `Loading.on` compara o valor: `on={id()}`. `Show` por status não protege um memo que lança; o leitor precisa de `Errored`.
+- Fontes async são memos/stores lidos sob `Loading`; capture dependências antes de `await`. `refresh` recebe a fonte original. `Loading.on` é lista de dependências e re-arma a cada mudança lida, sem comparar valor: `on={id()}`. `Show` por status não protege um memo que lança; o leitor precisa de `Errored`.
 - Actions são geradores. Depois de `await`, faça `yield` vazio antes de escrever ou criar outra espera. Estado otimista reverte no assentamento, mesmo em sucesso; escrita comum no mesmo tick da action pode ficar retida. Consulte a referência antes de implementar confirmação ou envios sobrepostos.
 - APIs conhecidas do Solid 1 mudaram: `Suspense → Loading`, `ErrorBoundary → Errored`, `onMount → onSettled`, `mergeProps → merge`, `splitProps → omit`. `createResource`, `batch` e setter de store por caminho não são a API desta base. O contexto é o próprio provider: `<Context value={value}>`, sem `.Provider`.
 

@@ -1,12 +1,12 @@
 # Riscos conhecidos da base verificada
 
-Base: [revisão verificada](../SKILL.md). Os status abaixo pertencem ao recorte de evidência da skill: nele, as correções citadas em `next` ainda não estavam publicadas. Não são uma consulta atual ao registro. Issue fechada, PR integrado ou versão em `package.json` de branch não provam correção no pacote instalado. Esta é a única referência com status upstream; as demais apontam para a entrada R. Não é lista exaustiva nem recomendação de upgrade. As fontes upstream estão junto de cada risco; os testes upstream não foram executados localmente.
+Base: [revisão verificada](../SKILL.md), `solid-js` e `@solidjs/web` 2.0.0-rc.11 (`ee49b3e`), reverificada em 2026-09-29. Cada entrada diz se a correção está no pacote instalado: a tag rc.11 contém o commit da correção (comparação `<correção>...ee49b3e` com status `ahead`) e, quando possível, uma sonda local com controle no rc.9 (`9a29b1a`) ou uma linha do `dist` confirma. Não são uma consulta atual ao registro. Issue fechada, PR integrado ou versão em `package.json` de branch não provam correção no pacote instalado. Esta é a única referência com status upstream; as demais apontam para a entrada R. Não é lista exaustiva nem recomendação de upgrade. As fontes upstream estão junto de cada risco; os testes upstream não foram executados localmente.
 
 ## R01: retenção de assinaturas durante action pendente
 
 Fontes: [issue #3543](https://github.com/solidjs/solid/issues/3543), [correção #3547](https://github.com/solidjs/solid/pull/3547), [teste da correção](https://github.com/solidjs/solid/blob/0ba30d374befd6b31cf7c27496b817fb3b3072d2/packages/web/test/zombie-show-leak-3543.spec.tsx).
 
-Contrato: com `Show` e memo aninhado gerado pelo compilador, uma action não relacionada ainda aberta retém assinaturas. Corrigido em `next`, não publicado; a correção não prova que todo trabalho extra sob transação foi eliminado.
+Contrato: com `Show` e memo aninhado gerado pelo compilador, uma action não relacionada ainda aberta retinha assinaturas no rc.9. Corrigido no rc.11 instalado: o recálculo preserva `REACTIVE_ZOMBIE` (`@solidjs/signals/dist/dev-shared.js`); sem sonda local, porque o cenário exige DOM compilado. A correção não prova que todo trabalho extra sob transação foi eliminado.
 
 Conduta: ao investigar CPU ou retenção, compare um controle sem action aberta com o mesmo cenário sob action pendente; meça antes, durante, após assentamento e após dispose. Não introduza remount global nem patch em node_modules como primeira resposta.
 
@@ -14,7 +14,7 @@ Conduta: ao investigar CPU ou retenção, compare um controle sem action aberta 
 
 Fontes: [issue #3548](https://github.com/solidjs/solid/issues/3548), [correção #3558](https://github.com/solidjs/solid/pull/3558).
 
-Contrato: stream, store otimista, listas keyed e confirmações sobrepostas podem duplicar um item no DOM a partir de uma coleção única. Corrigido em `next` (passagem de lane sobre sobreposição superada), não publicado; é correção diferente de R01.
+Contrato: stream, store otimista, listas keyed e confirmações sobrepostas podiam duplicar um item no DOM a partir de uma coleção única no rc.9. Corrigido no rc.11 instalado (passagem de lane sobre sobreposição superada lê o override exibido, `@solidjs/signals/dist/dev.js`); sem sonda local. É correção diferente de R01.
 
 Conduta: registre IDs por coluna no modelo e no DOM, preserve a ordem de envio e confirmação e reduza a reprodução. Não invente chave aleatória para esconder a duplicação nem elimine registros autoritativos. Serializar mutações por entidade é mitigação a testar, não conserto comprovado.
 
@@ -22,25 +22,25 @@ Conduta: registre IDs por coluna no modelo e no DOM, preserve a ordem de envio e
 
 Fontes: [issue #3540](https://github.com/solidjs/solid/issues/3540), [alteração de Loading.on](https://github.com/solidjs/solid/pull/3556), [alteração de on e latest](https://github.com/solidjs/solid/pull/3575).
 
-Contrato no pacote instalado (grafo sem DOM): `on` compara valores e um leitor irmão da mesma fonte segura a atualização; `on={latest(x)}` com leitor irmão também fica segurado. `Errored` não aceita `on` (o runtime só lê `children` e `fallback`).
+Mudou no rc.11 instalado. No rc.9, `on` comparava valores, um leitor irmão da mesma fonte segurava a atualização e `on={latest(x)}` com leitor irmão também ficava segurado.
 
-Em `next`, não publicado, `on` vira lista de dependências sem comparação de valor, o fallback aparece junto do frame que causou a mudança, `on={latest(x)}` passa a ser grafia para fallback imediato (documentada como capacidade, não recomendação) e surge o diagnóstico `LOADING_ON_OUTSIDE_HOLD` em dev.
+Contrato no rc.11 (grafo sem DOM, com controle no rc.9): `on` é lista de dependências. O runtime avalia `props.on` rastreado e toda reexecução re-arma a boundary sem comparar valor, então `on={id() > 0}` mostra fallback quando `id` muda. `on={id}` não chama o accessor e continua equivalente a omitir `on`. O fallback chega junto do frame que causou a mudança: com leitor irmão da mesma fonte, `on={id()}` segue sem fallback e dispara `LOADING_ON_OUTSIDE_HOLD` em dev. `on={latest(id)}` mostra o fallback já, ao lado do conteúdo que a irmã retém. `on` que lê o dado async mostra fallback a cada `refresh`; `on={id()}` com `refresh` do mesmo assunto preserva o conteúdo. `Errored` não aceita `on` (o runtime só lê `children` e `fallback`).
 
-Conduta: escreva para o pacote instalado. Não prometa que `on={latest(x)}` força fallback imediato e teste com leitores irmãos. Não use contadores mutáveis ou objetos sempre novos na leitura de `on`. Ao atualizar para uma RC com a nova semântica, repita a matriz de [boundaries](08-async-loading-errors-and-recovery.md) antes de mudar orientação.
+Conduta: escreva para o pacote instalado. Use `on={latest(id)}` quando o fallback precisa aparecer já, e trate `LOADING_ON_OUTSIDE_HOLD` lendo `latest()` em `on` ou movendo a leitura externa para dentro da boundary. Não use contadores mutáveis ou objetos sempre novos na leitura de `on`. Ao trocar de RC, repita a matriz de [boundaries](08-async-loading-errors-and-recovery.md) antes de mudar orientação.
 
 ## R05: chamadas de server function entre origens
 
 Fontes: [issue #3538](https://github.com/solidjs/solid/issues/3538), [correção #3549](https://github.com/solidjs/solid/pull/3549).
 
-Contrato: o runtime recusa requisição marcada same-site/cross-site antes de consultar o matcher de origem, e falta a política CORS desse fluxo. Corrigido em `next`, não publicado.
+Contrato: na base verificada, o runtime recusava requisição marcada same-site/cross-site antes de consultar o matcher de origem, sem política CORS desse fluxo. O `@solidjs/web` 2.0.0-rc.11 instalado traz a correção: com `Origin` presente e listado em `csrf.origin`, a chamada passa e recebe `Access-Control-Allow-Origin` e resposta de preflight; `Origin` fora da lista, ausente ou `Sec-Fetch-Site: none` continuam em 403, e sem `csrf.origin` configurado nenhuma outra origem é admitida.
 
-Conduta: não prometa que endpoint absoluto e `csrf.origin` bastam para cliente em outra origem. Não desligue CSRF para resolver um 403. Valide transporte, preflight, origem e credenciais no ambiente real; um `curl` que chama o endpoint não prova que o navegador pode lê-lo.
+Conduta: liste no `csrf.origin` só as origens de página confiáveis e não desligue CSRF para resolver um 403. Credenciais exigem `allowCredentials: true` e cookie `SameSite=None; Secure`; prefira token bearer via `prepareRequest`. Valide transporte, preflight, origem e credenciais no navegador real; um `curl` que chama o endpoint não prova que o navegador pode lê-lo.
 
 ## R07: `textContent` perde o zero numérico no HTML de SSR
 
-Fontes: [compilador SSR na revisão verificada](https://github.com/solidjs/solid/blob/9a29b1a07aa3e06ee32afd1fc4c18414b4a558bb/packages/compiler/src/ssr/transform.rs#L2176), [contrato de textContent](https://v2.solidjs.com/reference/solid-web/jsx-properties/text-content).
+Fontes: [compilador SSR na revisão verificada](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/compiler/src/ssr/transform.rs#L2386), [contrato de textContent](https://v2.solidjs.com/reference/solid-web/jsx-properties/text-content).
 
-Contrato: para `<p textContent={p.value}/>` em SSR hidratável, o compilador emite `escape(p.value || " ")`, e o placeholder usa truthiness. `renderToString` produz `<p _hk=0> </p>` para `0` e para `""` e `<p _hk=0>1</p>` para `1`; o tipo aceita `string | number` sem ressalva. Na hidratação (happy-dom com bootstrap mínimo e build completo em Chromium, dev e produção), o cliente preserva o espaço até a primeira atualização e depois recupera `"0"` no mesmo nó Text; atualizações para marcação literal, vazio e zero funcionam. Children explícitos suprimem `textContent` na compilação.
+Contrato (ainda presente no rc.11: compilador nativo e `renderToString` reverificados): para `<p textContent={p.value}/>` em SSR hidratável, o compilador emite `escape(p.value || " ")`, e o placeholder usa truthiness. `renderToString` produz `<p _hk=0> </p>` para `0` e para `""` e `<p _hk=0>1</p>` para `1`; o tipo aceita `string | number` sem ressalva. Na hidratação (happy-dom com bootstrap mínimo e build completo em Chromium, dev e produção), o cliente preserva o espaço até a primeira atualização e depois recupera `"0"` no mesmo nó Text; atualizações para marcação literal, vazio e zero funcionam. Children explícitos suprimem `textContent` na compilação.
 
 Limite: o controle negativo confirmou aviso de mismatch estrutural em dev, sem provar que o runtime diagnostica divergência textual.
 
@@ -50,17 +50,17 @@ Conduta: não recomende `textContent` como otimização geral nem para números 
 
 Fontes: [issue #3570](https://github.com/solidjs/solid/issues/3570), [issue #3569](https://github.com/solidjs/solid/issues/3569).
 
-Contrato: com `renderToString`, um memo assíncrono que rejeita depois de o render devolver o fallback vira rejeição não tratada e o processo sai com código 1, mesmo sob `<Errored>` em volta de `<Loading>`. O mesmo vale para `createStore`, `createProjection` e `createOptimisticStore` na forma derivada e para gerador assíncrono que lança antes do primeiro `yield`; gerador que falha depois do primeiro valor não é afetado. Com `await renderToStream()` e leitura que rejeita como filha direta de `<Loading>`, sem `<Errored>` acima e com `onError` fornecido, a chamada lança `TypeError` em `traceMetaMarkup`, a Promise nunca assenta e o processo também sai com 1. Num host HTTP compilado, a resposta sai com 200 e sem vazamento, e o processo morre milissegundos depois. Corrigido em `next`, não publicado.
+Contrato no rc.9: com `renderToString`, um memo assíncrono que rejeita depois de o render devolver o fallback vira rejeição não tratada e o processo sai com código 1, mesmo sob `<Errored>` em volta de `<Loading>`. O mesmo vale para `createStore`, `createProjection` e `createOptimisticStore` na forma derivada e para gerador assíncrono que lança antes do primeiro `yield`; gerador que falha depois do primeiro valor não é afetado. Com `await renderToStream()` e leitura que rejeita como filha direta de `<Loading>`, sem `<Errored>` acima e com `onError` fornecido, a chamada lança `TypeError` em `traceMetaMarkup`, a Promise nunca assenta e o processo também sai com 1. Num host HTTP compilado, a resposta sai com 200 e sem vazamento, e o processo morre milissegundos depois. Corrigido no rc.11 instalado: a mesma sonda serve o fallback e o processo segue vivo, com e sem `<Errored>`; `await renderToStream()` com leitura filha direta resolve e chama `onError` uma vez.
 
 Limites: `renderToStream().pipe()` e `await renderToStream()` sob `<Errored>` não reproduziram (observação, não mitigação certificada); `pipeTo` não foi exercitado. A sanitização de falhas de render sob boundary não cobre esse caminho.
 
-Conduta: no servidor, converta falhas esperadas em resultado ou erro público antes de devolvê-las ao grafo; um `Errored` no cliente não protege o processo. Trate saída do processo como sintoma deste risco antes de suspeitar do adapter. Reproduza o cenário num servidor descartável: na base verificada, ele derruba os testes seguintes com `ECONNRESET`.
+Conduta: no servidor, converta falhas esperadas em resultado ou erro público antes de devolvê-las ao grafo; um `Errored` no cliente não protege o processo. Trate saída do processo como sintoma deste risco antes de suspeitar do adapter. Reproduza o cenário num servidor descartável: no rc.9, ele derruba os testes seguintes com `ECONNRESET`.
 
 ## R09: leitura logo após escrita numa store derivada muda depois de um `latest`
 
 Fontes: [issue #3576](https://github.com/solidjs/solid/issues/3576).
 
-Contrato: numa store derivada (`createStore(() => ({ value: 0 }), { value: 0 })`), cinco escritas seguidas pelo setter, cada uma seguida de leitura fora de setter e sem `flush`, devolvem `0,1,2,3,4`. Depois de uma única chamada `latest(() => store.value)` antes da sequência, devolvem `0,1,0,0,0`. Com `flush` após cada escrita, `0,1,2,3,4`. Numa store comum (`createStore({ value: 0 })`) as leituras devolvem `0,0,0,0,0` com ou sem `latest`: fora do setter, a leitura vê o valor anterior até o lote assentar. O valor após `flush` é `4` e um render effect vê só `0` e `4`. Causa em `next`: a sombra de `latest()` instala override sem transação dona. Não publicado. Limite: grafo sem DOM; não testado com JSX compilado, action aberta ou SSR.
+Contrato: numa store derivada (`createStore(() => ({ value: 0 }), { value: 0 })`), cinco escritas seguidas pelo setter, cada uma seguida de leitura fora de setter e sem `flush`, devolvem `0,1,2,3,4`. No rc.9, depois de uma única chamada `latest(() => store.value)` antes da sequência, devolviam `0,1,0,0,0`; no rc.11 instalado devolvem `0,1,2,3,4` também nesse caso. Com `flush` após cada escrita, `0,1,2,3,4`. Numa store comum (`createStore({ value: 0 })`) as leituras devolvem `0,0,0,0,0` com ou sem `latest`: fora do setter, a leitura vê o valor anterior até o lote assentar. O valor após `flush` é `4` e um render effect vê só `0` e `4`. Causa no rc.9: a sombra de `latest()` instalava override sem transação dona; a correção está no rc.11. Limite: grafo sem DOM; não testado com JSX compilado, action aberta ou SSR.
 
 Conduta: não decida lógica lendo a store logo após o setter, em nenhuma forma; guarde o valor em variável local ou leia dentro do draft. Em testes, chame `flush` antes de assertar. Não use `latest` fora de JSX ou memo para "ler o valor novo".
 
@@ -68,23 +68,23 @@ Conduta: não decida lógica lendo a store logo após o setter, em nenhuma forma
 
 Fontes: [issue #3585](https://github.com/solidjs/solid/issues/3585).
 
-Contrato: uma `createProjection` que guarda o draft numa função e o chama depois que a derivação retornou perde a escrita (`length` segue 0), sem aviso ou erro; um store de controle escrito no mesmo passo publica normalmente. Em `next`, não publicado, o draft passa a valer até a próxima execução da derivação ou o descarte do owner, também para `createStore(fn, seed)` e `createOptimisticStore(fn)`.
+Contrato: no rc.9, uma `createProjection` que guardava o draft numa assinatura externa e escrevia depois que a derivação retornou perdia a escrita (`length` seguia 0), sem aviso ou erro. No rc.11 instalado o draft vale até a próxima execução da derivação ou o descarte do owner, também para `createStore(fn, seed)` e `createOptimisticStore(fn)`: a escrita tardia chega ao efeito sem `flush` explícito, e a reexecução descarta o draft anterior.
 
-Conduta: não guarde o draft de projection, store derivada ou optimistic store fora da execução que o recebeu; escreva numa fonte e deixe a derivação recalcular. Mesmo com a nova regra, mantenha `onCleanup(unsubscribe)` para assinatura externa.
+Conduta: prefira escrever numa fonte e deixar a derivação recalcular. Escrita tardia pelo draft só vale até a próxima execução; mantenha `onCleanup(unsubscribe)` para a assinatura externa.
 
 ## R11: texto estático filho de elemento com spread sai sem escape no SSR
 
 Fontes: [issue #3557](https://github.com/solidjs/solid/issues/3557), [changesets na revisão consultada](https://github.com/solidjs/solid/tree/45407d167a19a4e99af84b8076bdfa55c85c180b/.changeset).
 
-Contrato (segundo o changeset upstream, sem reprodução local): `<div {...props}>a &lt;b&gt;</div>` não era escapado no SSR em nenhum dos dois compiladores, e o plugin Babel movia `value` de `textarea` com spread para children com precedência errada. Não publicado.
+Contrato: no rc.9, `<div {...props}>a &lt;b&gt;</div>` não era escapado no SSR em nenhum dos dois compiladores (saída `"a <b>"`), e o plugin Babel movia `value` de `textarea` com spread para children com precedência errada. Corrigido no rc.11 instalado: compilador nativo e plugin Babel emitem `"a &lt;b>"`, e o Babel preserva a ordem entre spread e `value`.
 
-Conduta: confira o HTML gerado quando um elemento com spread tem texto estático com entidades; não dependa desse escape.
+Conduta: ao depender de compilador anterior ao rc.11, confira o HTML gerado quando um elemento com spread tem texto estático com entidades.
 
 ## R12: `ssrSource: "hybrid"` pode perder a primeira resposta ou piscar o fallback
 
 Fontes: [issue #3498](https://github.com/solidjs/solid/issues/3498), [issue #3574](https://github.com/solidjs/solid/issues/3574).
 
-Contrato (sem reprodução local): na hidratação por streaming, a entrega de uma fonte `hybrid` do servidor ao cliente podia perder a primeira resposta ou reabrir a janela pendente e renderizar o fallback de novo. Correções só em `next`.
+Contrato (sem reprodução local): na hidratação por streaming, a entrega de uma fonte `hybrid` do servidor ao cliente podia perder a primeira resposta ou reabrir a janela pendente e renderizar o fallback de novo no rc.9. As correções upstream estão na tag do rc.11 instalado, sem reprodução local.
 
 Conduta: com `hybrid` e stream, teste a hidratação no navegador observando o primeiro valor e a ausência de fallback depois do HTML do servidor.
 
@@ -92,6 +92,6 @@ Conduta: com `hybrid` e stream, teste a hidratação no navegador observando o p
 
 Fontes: [correção #3573](https://github.com/solidjs/solid/pull/3573).
 
-Contrato: alternar entre `0` (ou `NaN`) e `<span>elem</span>` como filho único acumula nós de texto no `innerHTML`; no caso de zero, `"0"`, `"00"`, `"000"`, sem limite. Um controle com a string `"zero"` não acumula. Não publicado.
+Contrato: no rc.9, alternar entre `0` (ou `NaN`) e `<span>elem</span>` como filho único acumula nós de texto no `innerHTML`; no caso de zero, `"0"`, `"00"`, `"000"`, sem limite. Um controle com a string `"zero"` não acumula. Corrigido no rc.11 instalado (o renderer limpa o primitivo falsy ao trocar o conteúdo, `@solidjs/web/dist/web.dev.js`): em Chromium, três ciclos entre `0` e o elemento deixam `0` no rc.11 e `0000` no rc.9; com `NaN`, o rc.11 deixa `NaN`.
 
 Conduta: na reprodução, a expressão precisa entregar `0` ou `NaN` ao renderer numa fase e um elemento na outra. `{n() || <Empty />}` não exercita esse caminho: troca ambos os números pelo fallback. Use navegador real; o happy-dom apaga o zero de `textContent` por conta própria.
