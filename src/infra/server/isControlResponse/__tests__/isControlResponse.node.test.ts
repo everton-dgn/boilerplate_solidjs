@@ -1,21 +1,11 @@
 import { redirect, reload } from '@solidjs/web'
 
+import { hostileValue } from '@/tests/helpers/hostileValue/index.ts'
+
 import { isControlResponse } from '../index.ts'
 
 const TEST_ORIGIN = 'http://localhost'
 const HTTP_FOUND = 302
-
-// Simula um objeto lançado cuja inspeção falha.
-function hostileValue(): object {
-  return new Proxy(
-    {},
-    {
-      getPrototypeOf: () => {
-        throw new Error('PRIVATE_PROTOTYPE')
-      }
-    }
-  )
-}
 
 describe('classificação de respostas de controle', () => {
   it.each([

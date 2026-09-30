@@ -3,6 +3,7 @@ import { NotReadyError } from 'solid-js'
 
 import { createPublicError } from '@/infra/server/publicErrors/index.ts'
 import { readLog } from '@/tests/helpers/readLog/index.ts'
+import { throwValue } from '@/tests/helpers/throwValue/index.ts'
 
 import { protectServerOperation } from '../index.ts'
 
@@ -22,10 +23,6 @@ function thrownValue(invocation: Invocation): unknown {
     return error
   }
   throw new Error('Expected operation to throw')
-}
-
-function throwValue(value: unknown): never {
-  throw value
 }
 
 function logUnavailable(): never {

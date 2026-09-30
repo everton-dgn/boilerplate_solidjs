@@ -1,3 +1,6 @@
+import { hostileValue } from '@/tests/helpers/hostileValue/index.ts'
+import { throwValue } from '@/tests/helpers/throwValue/index.ts'
+
 import { logServerFailure } from '../index.ts'
 
 const MESSAGE = '[middleware] Unexpected failure; private details omitted'
@@ -30,10 +33,6 @@ class UpstreamError extends Error {
 // variável: o construtor fica com o nome vazio.
 function anonymousErrorClass(): ErrorClass {
   return class extends Error {}
-}
-
-function throwValue(value: unknown): never {
-  throw value
 }
 
 // O log de uma falha é uma única chamada com uma única string.
@@ -94,13 +93,6 @@ function frameOfLength(length: number): string {
   const prefix = '    at handler (/'
   const suffix = '.js:1:1)'
   return `${prefix}${'a'.repeat(length - prefix.length - suffix.length)}${suffix}`
-}
-
-function hostileValue(): object {
-  return new Proxy(
-    {},
-    { getPrototypeOf: () => throwValue(new Error('PRIVATE_PROTOTYPE')) }
-  )
 }
 
 function hostileError(): Error {

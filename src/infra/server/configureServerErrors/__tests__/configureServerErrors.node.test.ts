@@ -14,7 +14,9 @@ import type {
   createPublicError,
   isPublicError
 } from '@/infra/server/publicErrors/index.ts'
+import { hostileValue } from '@/tests/helpers/hostileValue/index.ts'
 import { readLog } from '@/tests/helpers/readLog/index.ts'
+import { throwValue } from '@/tests/helpers/throwValue/index.ts'
 
 vi.mock(import('@solidjs/web'), async importOriginal => ({
   ...(await importOriginal()),
@@ -49,23 +51,8 @@ function invoke(wrap: WrapInvocationHook, run: () => unknown): unknown {
   }
 }
 
-function throwValue(value: unknown): never {
-  throw value
-}
-
 function logUnavailable(): never {
   throw new Error('stderr indisponível')
-}
-
-// Simula um objeto lançado cuja inspeção falha, com o marcador na mensagem.
-function hostileValue(): object {
-  return new Proxy(
-    {},
-    {
-      get: () => throwValue(new Error('PRIVATE_GET')),
-      getPrototypeOf: () => throwValue(new Error('PRIVATE_PROTOTYPE'))
-    }
-  )
 }
 
 async function loadRegistration() {
