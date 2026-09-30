@@ -284,7 +284,8 @@ Limites conhecidos:
   `<script>window.location=...</script>` do runtime, que só recebe nonce pelas
   opções de `handleRequest`, fora do alcance do `fetch` padrão. Com a CSP, esse
   fallback é bloqueado. Redirects anteriores ao shell viram 3xx reais e não são
-  afetados.
+  afetados. A correção está proposta no plugin, com a opção `start.nonce`
+  ([solidjs/solid-vite-plugin#389](https://github.com/solidjs/solid-vite-plugin/pull/389)).
 - Um componente `lazy()` com CSS própria criado só depois que o dado assíncrono
   de um `Loading` resolve, por exemplo dentro de `<Show when={dado()}>`, não
   aparece. O runtime grava a folha do fragmento num `<link>` com `onload` e
