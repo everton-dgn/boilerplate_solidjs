@@ -1,6 +1,7 @@
 import { provideRequestEvent } from '@solidjs/web/storage'
 
 import { isPublicError } from '@/infra/server/publicErrors/index.ts'
+import { readLog } from '@/tests/helpers/readLog/index.ts'
 
 import middleware, { containFailures, requestMiddleware } from '../index.ts'
 
@@ -14,6 +15,8 @@ const HTTP_BAD_GATEWAY = 502
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
+const ERROR_PAGE_LOG =
+  '[error-page] Unexpected failure; private details omitted'
 // Entrada que o runtime grava no Server-Timing com um traceparent amostrado.
 const TRACE_TIMING =
   'traceparent;desc="00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"'
@@ -87,31 +90,38 @@ describe('contenção de falhas do middleware', () => {
   })
 
   it.each([
-    ['um Error', new Error('PRIVATE', { cause: 'CAUSE_PRIVATE' })],
+    ['um Error', new Error('PRIVATE', { cause: 'CAUSE_PRIVATE' }), ['Error']],
     [
       'uma Response com corpo',
-      new Response('PRIVATE', { status: HTTP_BAD_GATEWAY })
+      new Response('PRIVATE', { status: HTTP_BAD_GATEWAY }),
+      []
     ],
-    ['um objeto cuja inspeção falha', hostileValue()],
-    ['uma Response.error(), com status 0', Response.error()],
-    ['um controle cujos headers falham', hostileControl()]
-  ])('troca %s por 500 público com log fixo', async (_label, failure) => {
-    const render = renderPage()
-    const response = await failingWith(failure)(
-      new Request(TEST_ORIGIN),
-      render
-    )
+    ['um objeto cuja inspeção falha', hostileValue(), []],
+    ['uma Response.error(), com status 0', Response.error(), []],
+    ['um controle cujos headers falham', hostileControl(), []]
+  ])(
+    'troca %s por 500 público com log filtrado',
+    async (_label, failure, details) => {
+      const render = renderPage()
+      const response = await failingWith(failure)(
+        new Request(TEST_ORIGIN),
+        render
+      )
 
-    expect(render).not.toHaveBeenCalled()
-    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
-    expect(Object.fromEntries(response.headers)).toMatchObject({
-      'content-type': 'text/plain; charset=utf-8',
-      'x-content-type-options': 'nosniff',
-      'referrer-policy': 'strict-origin-when-cross-origin'
-    })
-    expect(console.error).toHaveBeenCalledExactlyOnceWith(LOG_MESSAGE)
-  })
+      expect(render).not.toHaveBeenCalled()
+      expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+      await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+      expect(Object.fromEntries(response.headers)).toMatchObject({
+        'content-type': 'text/plain; charset=utf-8',
+        'x-content-type-options': 'nosniff',
+        'referrer-policy': 'strict-origin-when-cross-origin'
+      })
+      expect(readLog(console.error)).toStrictEqual({
+        heads: [[LOG_MESSAGE, ...details]],
+        leaks: []
+      })
+    }
+  )
 
   it('responde 500 público mesmo quando o log falha', async () => {
     vi.mocked(console.error).mockImplementationOnce(() => {
@@ -176,7 +186,10 @@ describe('contenção de falhas do middleware', () => {
       'content-type': 'text/html; charset=utf-8',
       'x-content-type-options': 'nosniff'
     })
-    expect(console.error).toHaveBeenCalledExactlyOnceWith(LOG_MESSAGE)
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
   })
 
   it('cai no 500 em texto quando a página de erro falha', async () => {
@@ -228,20 +241,23 @@ describe('contenção de falhas do middleware', () => {
     }
   )
 
-  it('registra um log fixo quando a página de erro falha', async () => {
+  it('registra a linha fixa e o erro do render quando a página de erro falha', async () => {
     const event = pageEvent()
     const render = vi
       .fn<() => Promise<Response>>()
-      .mockRejectedValue(new Error('PRIVATE_RENDER'))
+      .mockRejectedValue(new TypeError('PRIVATE_RENDER'))
 
     await provideRequestEvent(event, () =>
       failingWith(new Error('PRIVATE'))(event.request, render)
     )
 
-    expect(vi.mocked(console.error).mock.calls).toStrictEqual([
-      [LOG_MESSAGE],
-      ['[error-page] Unexpected failure; private details omitted']
-    ])
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [
+        [LOG_MESSAGE, 'Error'],
+        [ERROR_PAGE_LOG, 'TypeError']
+      ],
+      leaks: []
+    })
   })
 
   it('não renderiza páginas para métodos que não são de navegação', async () => {
@@ -302,7 +318,10 @@ describe('export padrão do middleware', () => {
       'x-content-type-options': 'nosniff',
       'referrer-policy': 'strict-origin-when-cross-origin'
     })
-    expect(console.error).toHaveBeenCalledExactlyOnceWith(LOG_MESSAGE)
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
   })
 
   // Response.redirect() chega com headers imutáveis e sem corpo.
@@ -349,7 +368,11 @@ describe('export padrão do middleware', () => {
 
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
     await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
-    expect(console.error).toHaveBeenCalledExactlyOnceWith(LOG_MESSAGE)
+    // Headers imutáveis lançam um TypeError; o corpo upstream fica fora do log.
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'TypeError']],
+      leaks: []
+    })
   })
 })
 

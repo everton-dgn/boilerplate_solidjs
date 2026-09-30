@@ -14,6 +14,7 @@ import type {
   createPublicError,
   isPublicError
 } from '@/infra/server/publicErrors/index.ts'
+import { readLog } from '@/tests/helpers/readLog/index.ts'
 
 vi.mock(import('@solidjs/web'), async importOriginal => ({
   ...(await importOriginal()),
@@ -108,13 +109,19 @@ describe('registro central da política de erros', () => {
     expect(invoke(wrap, () => envelope)).toMatchObject({ value: { ok: true } })
   })
 
-  it('substitui falhas inesperadas por erro público com log fixo', () => {
+  it('substitui falhas inesperadas por erro público com log filtrado', () => {
     const failure = invoke(wrap, () => throwValue(new Error('PRIVATE')))
     expect(failure).toBeInstanceOf(Error)
     expect(failure).toHaveProperty('message', PUBLIC_MESSAGE)
-    expect(console.error).toHaveBeenCalledExactlyOnceWith(
-      '[server-operation] Unexpected failure; private details omitted'
-    )
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [
+        [
+          '[server-operation] Unexpected failure; private details omitted',
+          'Error'
+        ]
+      ],
+      leaks: []
+    })
   })
 
   it('deixa sinais de controle com a política padrão do runtime', () => {
@@ -129,19 +136,25 @@ describe('registro central da política de erros', () => {
   })
 
   it.each([
-    ['um Error', new Error('PRIVATE', { cause: 'CAUSE_PRIVATE' })],
-    ['um primitivo', 'PRIVATE'],
-    ['uma Response com corpo', new Response('PRIVATE')],
-    ['uma Response.error(), com status 0', Response.error()],
-    ['um objeto cuja inspeção falha', hostileValue()]
-  ])('troca %s por erro público novo com log fixo', (_label, failure) => {
-    const mapped = onError(failure, site)
+    ['um Error', new Error('PRIVATE', { cause: 'CAUSE_PRIVATE' }), ['Error']],
+    ['um primitivo', 'PRIVATE', []],
+    ['uma Response com corpo', new Response('PRIVATE'), []],
+    ['uma Response.error(), com status 0', Response.error(), []],
+    ['um objeto cuja inspeção falha', hostileValue(), []]
+  ])(
+    'troca %s por erro público novo com log filtrado',
+    (_label, failure, details) => {
+      const mapped = onError(failure, site)
 
-    // A igualdade estrita de Error compara mensagem, cause e propriedades.
-    expect(mapped).toStrictEqual(new Error(PUBLIC_MESSAGE))
-    expect(publicErrors.isPublicError(mapped)).toBe(true)
-    expect(console.error).toHaveBeenCalledExactlyOnceWith(LOG_MESSAGE)
-  })
+      // A igualdade estrita de Error compara mensagem, cause e propriedades.
+      expect(mapped).toStrictEqual(new Error(PUBLIC_MESSAGE))
+      expect(publicErrors.isPublicError(mapped)).toBe(true)
+      expect(readLog(console.error)).toStrictEqual({
+        heads: [[LOG_MESSAGE, ...details]],
+        leaks: []
+      })
+    }
+  )
 
   it('recria o erro público sem registrar um log duplicado', () => {
     const tampered = Object.assign(publicErrors.createPublicError(), {
@@ -156,7 +169,8 @@ describe('registro central da política de erros', () => {
     expect(console.error).not.toHaveBeenCalled()
   })
 
-  it('registra o log fixo mesmo quando a primeira tentativa falha', () => {
+  // A segunda tentativa grava só a linha fixa, sem o erro.
+  it('registra a linha fixa mesmo quando a primeira tentativa falha', () => {
     vi.mocked(console.error).mockImplementationOnce(() => {
       throw new Error('stderr indisponível')
     })
@@ -164,10 +178,10 @@ describe('registro central da política de erros', () => {
     const mapped = onError(new Error('PRIVATE'), site)
 
     expect(mapped).toStrictEqual(new Error(PUBLIC_MESSAGE))
-    expect(vi.mocked(console.error).mock.calls).toStrictEqual([
-      [LOG_MESSAGE],
-      [LOG_MESSAGE]
-    ])
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error'], [LOG_MESSAGE]],
+      leaks: []
+    })
   })
 
   it('devolve o erro público mesmo sem destino de log', () => {
@@ -180,10 +194,10 @@ describe('registro central da política de erros', () => {
     const mapped = onError(new Error('PRIVATE'), site)
 
     expect(mapped).toStrictEqual(new Error(PUBLIC_MESSAGE))
-    expect(vi.mocked(console.error).mock.calls).toStrictEqual([
-      [LOG_MESSAGE],
-      [LOG_MESSAGE]
-    ])
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error'], [LOG_MESSAGE]],
+      leaks: []
+    })
   })
 
   it('não instala o hook em desenvolvimento', async () => {

@@ -26,23 +26,26 @@ function isControlSignal(value: unknown): boolean {
 }
 
 // O runtime já troca erros lançados pela mensagem genérica em produção. O hook
-// só uniformiza a mensagem pública e registra um log fixo, inclusive em falhas
-// de render e rejeições fora de server functions. Ele roda de forma síncrona,
-// seu retorno vai ao cliente sem nova sanitização e um lançamento aqui faria o
-// runtime registrar o erro do hook.
+// só uniformiza a mensagem pública e registra o log filtrado, inclusive em
+// falhas de render e rejeições fora de server functions. Ele roda de forma
+// síncrona, seu retorno vai ao cliente sem nova sanitização e um lançamento
+// aqui faria o runtime registrar o erro do hook.
 function mapServerError(error: unknown): Error | undefined {
   try {
     // Sinais de controle seguem a política padrão do runtime.
     if (isControlSignal(error)) return undefined
-    if (!isPublicError(error)) logServerFailure('server-error')
+    if (!isPublicError(error)) {
+      logServerFailure({ source: 'server-error', error })
+    }
     // Sempre um erro novo, mesmo para um público, para descartar campos
     // adicionados depois da criação.
     return createPublicError()
   } catch {
     // O log é uma tentativa: se o destino continuar falhando, o hook ainda
-    // devolve o erro público em vez de lançar.
+    // devolve o erro público em vez de lançar. A segunda tentativa grava só a
+    // linha fixa, sem inspecionar o erro de novo.
     try {
-      logServerFailure('server-error')
+      logServerFailure({ source: 'server-error' })
     } catch {
       // Sem destino de log disponível.
     }

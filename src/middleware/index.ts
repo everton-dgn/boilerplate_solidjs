@@ -119,9 +119,9 @@ async function renderErrorPage(render: Render): Promise<Response> {
         headers: page.headers
       })
     )
-  } catch {
+  } catch (error) {
     try {
-      logServerFailure('error-page')
+      logServerFailure({ source: 'error-page', error })
     } catch {
       // Sem destino de log disponível.
     }
@@ -152,7 +152,7 @@ async function containedResponse({
     }
   }
   try {
-    logServerFailure('middleware')
+    logServerFailure({ source: 'middleware', error })
   } catch {
     // O log é uma tentativa; a resposta pública sai mesmo sem destino.
   }
@@ -167,9 +167,9 @@ async function containedResponse({
 }
 
 // Envolve toda a cadeia: uma exceção nos middlewares, nas rotas de API ou no
-// handler de páginas vira 500 público com log fixo, em vez de chegar ao host,
-// que registraria o erro original. Como a cadeia é composta aqui dentro, o
-// next recebido é o render da página, usado para a página de erro. Não cobre
+// handler de páginas vira 500 público com log filtrado, em vez de chegar ao
+// host, que registraria o erro original. Como a cadeia é composta aqui dentro,
+// o next recebido é o render da página, usado para a página de erro. Não cobre
 // a criação do evento, o commit da resposta nem falhas do corpo depois que a
 // Response sai.
 function containFailures(chain: Middleware[]): ChainEntry {
