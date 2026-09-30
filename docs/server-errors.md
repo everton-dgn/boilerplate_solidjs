@@ -289,7 +289,7 @@ revisão. Ele também não restringe `allowControl` pelo nome nem verifica o
 conteúdo dos argumentos de log em `logServerFailure`. Não use essas lacunas nem
 um disable para contornar o contrato. O padrão de imports relativos é
 compartilhado com `tooling/lint.ts` pela constante
-`RELATIVE_IMPORT_RESTRICTION`.
+`RELATIVE_IMPORT_RESTRICTION`, em `tooling/backendPolicy/constants.ts`.
 
 ## Validação e recuperação
 

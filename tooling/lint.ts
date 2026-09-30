@@ -1,8 +1,7 @@
 import type { UserConfig } from 'vite-plus'
 
-import backendPolicy, {
-  RELATIVE_IMPORT_RESTRICTION
-} from './backendPolicy/index.ts'
+import { RELATIVE_IMPORT_RESTRICTION } from './backendPolicy/constants.ts'
+import backendPolicy from './backendPolicy/index.ts'
 
 const TEST_FILES = [
   '**/*.test.ts',
@@ -176,6 +175,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'project/css-modules-import': 'error',
     'project/css-filename': 'error',
     'project/test-filename': 'error',
+    'project/no-export-list': 'error',
     'eslint/accessor-pairs': 'error',
     'eslint/array-callback-return': 'error',
     'eslint/arrow-body-style': ['error', 'as-needed'],

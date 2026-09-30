@@ -9,7 +9,7 @@ import type { ChainEntry, Middleware } from './types.ts'
 
 // Rotas com exportações GET, POST etc. respondem antes do SSR; o restante
 // segue para a renderização.
-const requestMiddleware: Middleware[] = [
+export const requestMiddleware: Middleware[] = [
   requestTiming,
   securityHeaders,
   requestContext,
@@ -18,9 +18,8 @@ const requestMiddleware: Middleware[] = [
 
 // Monta a cadeia de produção dentro da contenção. O build E2E passa em extra
 // as falhas injetadas, que rodam antes da cadeia e dentro da mesma contenção.
-function createMiddleware(extra: Middleware[] = []): ChainEntry {
+export function createMiddleware(extra: Middleware[] = []): ChainEntry {
   return containFailures([...extra, ...requestMiddleware])
 }
 
-export { createMiddleware, requestMiddleware }
 export default createMiddleware()

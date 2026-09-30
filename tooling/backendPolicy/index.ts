@@ -1,14 +1,10 @@
 import type { UserConfig } from 'vite-plus'
 
+import { RELATIVE_IMPORT_RESTRICTION } from './constants.ts'
+
 type LintConfig = NonNullable<UserConfig['lint']>
 type ImportPath = { name: string; importNames?: string[]; message: string }
 type GlobalRestrictions = { names: string[]; properties?: string[] }
-
-const RELATIVE_IMPORT_RESTRICTION = {
-  regex: '^(\\.\\./){4,}',
-  message:
-    'Imports relativos podem subir no máximo três níveis. Use o alias @/ para caminhos mais distantes.'
-}
 
 const NETWORK = ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource']
 const RESTRICTED_GLOBALS = [...NETWORK, 'console']
@@ -136,4 +132,4 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
   }
 ]
 
-export { backendPolicy as default, RELATIVE_IMPORT_RESTRICTION }
+export default backendPolicy

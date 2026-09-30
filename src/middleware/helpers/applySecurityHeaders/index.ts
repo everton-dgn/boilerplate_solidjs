@@ -1,6 +1,6 @@
 import { withHeaders } from '../withHeaders/index.ts'
 
-function applySecurityHeaders(response: Response): Response {
+export function applySecurityHeaders(response: Response): Response {
   return withHeaders({
     response,
     headers: {
@@ -9,5 +9,3 @@ function applySecurityHeaders(response: Response): Response {
     }
   })
 }
-
-export { applySecurityHeaders }

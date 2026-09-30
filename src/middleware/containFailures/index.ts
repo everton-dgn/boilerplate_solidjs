@@ -131,7 +131,7 @@ async function containedResponse({
 // o next recebido é o render da página, usado para a página de erro. Não cobre
 // a criação do evento, o commit da resposta nem falhas do corpo depois que a
 // Response sai.
-function containFailures(chain: Middleware[]): ChainEntry {
+export function containFailures(chain: Middleware[]): ChainEntry {
   const run = composeMiddleware(chain)
   return async (request, next) => {
     const started = performance.now()
@@ -157,5 +157,3 @@ function containFailures(chain: Middleware[]): ChainEntry {
     }
   }
 }
-
-export { containFailures }

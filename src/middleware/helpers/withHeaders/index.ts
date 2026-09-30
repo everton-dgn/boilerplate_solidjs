@@ -4,7 +4,7 @@ type HeaderUpdate = { response: Response; headers: Record<string, string> }
 // numa cópia com o mesmo status e os mesmos headers. Com corpo, ela é o retorno
 // cru de fetch(), que carrega dados e headers upstream; o erro segue para a
 // contenção.
-function withHeaders({ response, headers }: HeaderUpdate): Response {
+export function withHeaders({ response, headers }: HeaderUpdate): Response {
   try {
     for (const [name, value] of Object.entries(headers)) {
       response.headers.set(name, value)
@@ -19,5 +19,3 @@ function withHeaders({ response, headers }: HeaderUpdate): Response {
     return copy
   }
 }
-
-export { withHeaders }

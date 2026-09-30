@@ -4,7 +4,7 @@ import process from 'node:process'
 
 import stylelint from 'stylelint'
 
-import { cssFilenameError } from '../css-modules-plugin.ts'
+import { cssFilenameError } from '../css-filename.ts'
 
 type Diagnostic = {
   file: string

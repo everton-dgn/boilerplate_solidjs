@@ -151,6 +151,27 @@ release. Add a tool name to select part of the graph. For example, run
   ficam como o contrato exige, sem adaptação: middlewares `(request, next)` em
   `src/middleware/`, callbacks de teste e hooks de plugin do Vite.
 
+## Exports
+
+- Exporte na própria declaração: `export function`, `export const`,
+  `export type` e `export default`. Não use lista local como `export { x }`,
+  `export { x as y }` ou `export type { T }`.
+- Lista de exports só vale em reexport com `from`, como
+  `export { default, route } from '@/routes/(base)/(home)/index.tsx'` nas
+  fixtures E2E, porque não há declaração local para marcar.
+- `export {}` vazio também é recusado. Para transformar em módulo um `.d.ts`
+  que só tem `declare global`, use um `import` real, como
+  `import '@solidjs/web'` em `src/@types/solid.d.ts`.
+- `import/exports-last` exige os exports no fim do arquivo. Declare antes
+  deles os tipos, constantes e helpers privados. Quando um valor exportado
+  precisar existir antes do código privado que o consome, mova-o para um
+  módulo próprio, como `tooling/backendPolicy/constants.ts`, em vez de
+  exportar os helpers.
+- A regra `project/no-export-list` (`tooling/noExportList/index.ts`,
+  registrada no plugin de `tooling/css-modules-plugin.ts`) aplica a
+  convenção. Valide com `pnpm check:ci` e, ao mudar a regra, com
+  `pnpm test:tooling`.
+
 ## Funções que retornam Promise
 
 - Quando uma função apenas repassar uma Promise, retorne-a diretamente, sem
