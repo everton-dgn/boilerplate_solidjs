@@ -46,10 +46,9 @@ const LOCATION_FRAME =
 function className(error: Error): string | undefined {
   const prototype: unknown = Object.getPrototypeOf(error)
   if (typeof prototype !== 'object' || prototype === null) return undefined
-  const owner: unknown = Reflect.get(prototype, 'constructor')
+  const owner = 'constructor' in prototype ? prototype.constructor : undefined
   if (typeof owner !== 'function') return undefined
-  const name: unknown = Reflect.get(owner, 'name')
-  return typeof name === 'string' && CLASS_NAME.test(name) ? name : undefined
+  return CLASS_NAME.test(owner.name) ? owner.name : undefined
 }
 
 function isFrame(line: string): boolean {
