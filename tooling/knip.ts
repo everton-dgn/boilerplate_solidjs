@@ -56,6 +56,8 @@ const config = {
     // Entradas autorais do SSR, carregadas pelo @solidjs/vite-plugin por convenção.
     'src/entry-server.tsx!',
     'src/entry-client.tsx!',
+    // Entrada SSR do build, ligada pelo plugin local do vite.config.ts.
+    'src/entry-handler.ts!',
     'src/middleware/index.ts!',
     'src/infra/server/configureServerErrors/index.ts!',
     // API de transporte do boilerplate; o consumidor atual está na fixture E2E.

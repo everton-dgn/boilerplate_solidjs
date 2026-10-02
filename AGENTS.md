@@ -215,7 +215,7 @@ release. Add a tool name to select part of the graph. For example, run
 - Preserve `architecture/layer-imports` em `tooling/architecturePolicy/index.ts`.
   `helpers`, `constants`, `@types`, `data` e `infra` não dependem de UI,
   primitives, rotas ou entradas (`App`, `Document`, `entry-server`,
-  `entry-client`, `router`, `middleware`).
+  `entry-client`, `entry-handler`, `router`, `middleware`).
   Primitives globais não dependem de UI, rotas ou entradas; atoms não dependem
   de molecules/organisms, e molecules não dependem de organisms.
 - Produção em `src` não importa testes, fixtures de `src/tests` ou `tooling`.
@@ -238,10 +238,14 @@ release. Add a tool name to select part of the graph. For example, run
   não devolva a CSP nem os demais cabeçalhos a ele.
 - O `script-src` usa o nonce da requisição com `'strict-dynamic'`. Não
   acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts para scripts.
-- O nonce vem de `requestNonce` e fica em `locals.nonce`. Todo `<script>` do
-  `Document` recebe `nonce={nonce}`; o `src/entry-server.tsx` repassa o valor ao
+- O nonce fica em `locals.nonce`: no build nasce em `src/entry-handler.ts`,
+  que também o passa ao `handleRequest` para o script de um redirect depois do
+  shell; fora dele, `requestNonce` o cria. Todo `<script>` do `Document` recebe
+  `nonce={nonce}`; o `src/entry-server.tsx` repassa o valor ao
   `renderToStream`, que o grava nos scripts do runtime. Não troque as entradas
-  autorais pelas geradas do plugin: elas renderizam sem nonce.
+  autorais pelas geradas do plugin: elas renderizam sem nonce. Mantenha o
+  plugin local `project:entry-handler` do `vite.config.ts`, que liga a entrada
+  no build.
 - Mantenha a mesma árvore em `src/entry-server.tsx` e `src/entry-client.tsx`.
 - Só respostas `text/html` recebem o nonce na CSP; as demais saem com
   `script-src 'none'`.

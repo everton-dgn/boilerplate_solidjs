@@ -1,7 +1,7 @@
 import { env, loadEnvFile } from 'node:process'
 import { fileURLToPath } from 'node:url'
 
-import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
+import { defineConfig, lazyPlugins, loadEnv, type Plugin } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 import { fmt } from './tooling/fmt.ts'
@@ -53,6 +53,26 @@ const componentPlugins = () =>
     ]
   })
 
+// No build, troca a entrada SSR que o @solidjs/vite-plugin declara (o fetch
+// padrão, sem nonce) pela src/entry-handler.ts. Fica depois do plugin do Solid,
+// para sobrescrever o input dele, e antes do Nitro, que lê a entrada da config.
+// O plugin do Solid declara a entrada em rollupOptions, e o Nitro só lê esse
+// campo, então rolldownOptions não a substituiria.
+const entryHandler = {
+  name: 'project:entry-handler',
+  apply: 'build',
+  config: () => ({
+    environments: {
+      ssr: {
+        build: {
+          // oxlint-disable-next-line typescript/no-deprecated -- O Nitro e o @solidjs/vite-plugin leem a entrada SSR de rollupOptions.
+          rollupOptions: { input: { index: './src/entry-handler.ts' } }
+        }
+      }
+    }
+  })
+} satisfies Plugin
+
 const appPlugins = (mode: string) =>
   lazyPlugins(async () => {
     const modules = await loadPluginModules()
@@ -70,6 +90,7 @@ const appPlugins = (mode: string) =>
           configure: './src/infra/server/configureServerErrors/index.ts'
         }
       }),
+      entryHandler,
       modules.fileRoutes(
         mode === 'e2e'
           ? { dir: 'src/tests/fixtures/e2e/routes', httpMethods: true }
@@ -235,6 +256,7 @@ export default defineConfig(({ mode }) => {
           'src/Document.tsx',
           'src/entry-server.tsx',
           'src/entry-client.tsx',
+          'src/entry-handler.ts',
           'src/router.ts'
         ]
       },

@@ -126,12 +126,12 @@ restrições são:
 | `components/molecules`                                     | `components/organisms`                                       |
 | Qualquer módulo de produção em `src`                       | Testes, fixtures de `src/tests` e `tooling`                  |
 
-As entradas são `App`, `Document`, `entry-server`, `entry-client`, `router` e
-`middleware`. A classificação parte da raiz de `src`: primitives colocalizadas
-dentro de um componente continuam na camada desse componente. Testes
-(`*.test.*`, `*.spec.*`, `__tests__` e `src/tests`) podem importar as camadas
-que verificam. A declaração gerada `src/@types/routes.d.ts` continua excluída do
-lint.
+As entradas são `App`, `Document`, `entry-server`, `entry-client`,
+`entry-handler`, `router` e `middleware`. A classificação parte da raiz de
+`src`: primitives colocalizadas dentro de um componente continuam na camada
+desse componente. Testes (`*.test.*`, `*.spec.*`, `__tests__` e `src/tests`)
+podem importar as camadas que verificam. A declaração gerada
+`src/@types/routes.d.ts` continua excluída do lint.
 
 Nos diagnósticos, `base` identifica as seis pastas da primeira linha, `entry`
 identifica as entradas e `source` os demais módulos de `src`.
@@ -246,11 +246,15 @@ para scripts. As demais diretivas são `default-src 'self'`,
 `s-maxage`, não guardam o nonce de uma requisição no cache compartilhado.
 
 O nonce tem 16 bytes de `crypto.getRandomValues` em base64 e é criado a cada
-requisição por [`requestNonce`](src/middleware/securityHeaders/index.ts), que o
-guarda em `locals.nonce`. O `securityHeaders` o cria antes do render; a
-contenção cria um quando a falha veio antes dele, para que a página de erro e a
-CSP usem o mesmo valor. O caminho até os scripts é:
+requisição. No build, [`src/entry-handler.ts`](src/entry-handler.ts) o cria
+antes da cadeia de middleware e o grava em `locals.nonce`; fora dela,
+[`requestNonce`](src/middleware/securityHeaders/index.ts) o cria no primeiro
+acesso. O `securityHeaders` lê esse valor antes do render, e a contenção usa o
+mesmo, para que a página de erro e a CSP coincidam. O caminho até os scripts é:
 
+- [`src/entry-handler.ts`](src/entry-handler.ts) passa o nonce ao
+  `handleRequest` do plugin, que o grava no script de um redirect decidido
+  depois do shell.
 - [`src/entry-server.tsx`](src/entry-server.tsx) passa o nonce ao
   `renderToStream`, que o grava no `HydrationScript`, nos scripts de dados e de
   streaming, no script de título e nos `modulepreload`. Os estilos ficam sem
@@ -262,7 +266,12 @@ CSP usem o mesmo valor. O caminho até os scripts é:
 
 As entradas autorais existem porque as geradas pelo `@solidjs/vite-plugin`
 chamam `renderToStream` só com o manifesto, e o `fetch` que o Nitro usa chama
-`handleRequest(request)` sem opções. Com elas, o plugin deixa de gerar o
+`handleRequest(request)` sem opções. O plugin local `project:entry-handler`, no
+`vite.config.ts`, troca no build a entrada SSR do plugin pela
+`src/entry-handler.ts`; o Nitro a lê da config. O tipo publicado de
+`handleRequest` não declara `nonce`, e
+[`src/@types/solid-ssr-handler.d.ts`](src/@types/solid-ssr-handler.d.ts)
+acrescenta o overload. Com as entradas autorais, o plugin deixa de gerar o
 `DefaultErrorBoundary` de produção e a opção `start.errorBoundary` não tem
 efeito; o `Errored` raiz do `App` continua responsável pela página de erro. Uma
 exceção no próprio `Document` sai síncrona do `renderToStream` e a contenção de
@@ -280,21 +289,20 @@ Limites conhecidos:
   CDN sem passar pela função. O `vercel.json` grava neles só
   `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`; a CSP e as
   políticas de frame só têm efeito em documentos, que passam pelo middleware.
-- Um redirect decidido depois do envio do shell vira um
-  `<script>window.location=...</script>` do runtime, que só recebe nonce pelas
-  opções de `handleRequest`, fora do alcance do `fetch` padrão. Com a CSP, esse
-  fallback é bloqueado. Redirects anteriores ao shell viram 3xx reais e não são
-  afetados. A correção está proposta no plugin, com a opção `start.nonce`
-  ([solidjs/solid-vite-plugin#389](https://github.com/solidjs/solid-vite-plugin/pull/389)).
 - Um componente `lazy()` com CSS própria criado só depois que o dado assíncrono
   de um `Loading` resolve, por exemplo dentro de `<Show when={dado()}>`, não
-  aparece. O runtime grava a folha do fragmento num `<link>` com `onload` e
-  `onerror` inline (`sink.fragment` em `@solidjs/web/dist/server.js`); atributos
-  `on*=` não aceitam nonce, a CSP os bloqueia, o fragmento fica no fallback e a
-  hidratação não termina. Importe o componente de forma estática ou crie o
+  aparece, por dois motivos independentes, ambos em `sink.fragment`
+  (`@solidjs/web/dist/server.js`). A folha do fragmento vai num `<link>` com
+  `onload` e `onerror` inline; atributos `on*=` não aceitam nonce e a CSP os
+  bloqueia. E o `<link>` sai antes do `<template>` do conteúdo: uma folha em
+  cache dispara `load` antes de o parser chegar ao template, e a troca é
+  descartada, mesmo sem CSP. Importe o componente de forma estática ou crie o
   `lazy()` fora do trecho que espera o dado assíncrono, para que a CSS dele
   entre no `<head>`. A fixture `/fragment-css` e o teste
-  `FragmentCss.e2e.test.ts` registram o limite.
+  `FragmentCss.e2e.test.ts` registram o limite, relatado em
+  [solidjs/solid#3747](https://github.com/solidjs/solid/issues/3747), com a
+  correção proposta em
+  [solidjs/solid#3755](https://github.com/solidjs/solid/pull/3755).
 - `Cross-Origin-Embedder-Policy: require-corp` bloqueia recursos de outra origem
   sem `Cross-Origin-Resource-Policy` ou CORS. Ao adicionar fontes, imagens ou
   scripts externos, confira se o provedor envia esses cabeçalhos ou revise a
@@ -611,9 +619,10 @@ ou `pnpm start --host 0.0.0.0`.
 plataforma de hospedagem; o comando `preview` é destinado à conferência local.
 
 O Nitro usa `preset: 'vercel'` no `vite.config.ts` e gera a função SSR e os
-estáticos em `.vercel/output/`. O handler SSR do plugin do Solid, que renderiza
-pelas entradas autorais `src/entry-server.tsx` e `src/entry-client.tsx`, é usado
-diretamente pelo Nitro. As requisições de server functions usam a integração
+estáticos em `.vercel/output/`. A entrada SSR do build é a
+`src/entry-handler.ts`, que chama o handler do plugin do Solid com o nonce da
+requisição; o handler renderiza pelas entradas autorais `src/entry-server.tsx` e
+`src/entry-client.tsx`. As requisições de server functions usam a integração
 nativa entre Solid e Nitro/srvx.
 
 Para gerar o artefato da Vercel:

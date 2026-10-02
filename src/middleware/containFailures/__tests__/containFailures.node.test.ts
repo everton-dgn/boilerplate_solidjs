@@ -288,6 +288,37 @@ describe('contenção de falhas do middleware', () => {
   })
 })
 
+// O critério de HTML segue o do plugin: os pedidos que recebem a página quando
+// nada falha recebem a página de erro.
+describe('accept de uma navegação', () => {
+  beforeEach(() => {
+    vi.stubEnv('DEV', false)
+    vi.spyOn(console, 'error').mockImplementation(vi.fn())
+  })
+
+  it.each([
+    ['com accept */*', { accept: '*/*' }, true],
+    ['sem accept', {}, true],
+    ['com accept de JSON', { accept: 'application/json' }, false]
+  ])(
+    'decide a página de erro de um GET %s',
+    async (_label, headers, errorPage) => {
+      const event = pageEvent()
+      const request = new Request(TEST_ORIGIN, { headers })
+      const render = renderPage()
+
+      const response = await provideRequestEvent({ ...event, request }, () =>
+        failingWith(new Error('PRIVATE'))(request, render)
+      )
+
+      expect(render).toHaveBeenCalledTimes(errorPage ? 1 : 0)
+      await expect(response.text()).resolves.toBe(
+        errorPage ? '<main>Algo deu errado!</main>' : PUBLIC_MESSAGE
+      )
+    }
+  )
+})
+
 // As respostas da contenção não voltam pelo securityHeaders; a CSP e o nonce
 // são gravados aqui.
 describe('cSP nas respostas da contenção', () => {

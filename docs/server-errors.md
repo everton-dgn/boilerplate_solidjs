@@ -87,15 +87,17 @@ middleware na entrada real.
 As respostas da contenção não voltam pelo `securityHeaders`, então a própria
 contenção grava os cabeçalhos de segurança e a Content-Security-Policy com o
 nonce da requisição, lido por
-[`requestNonce`](../src/middleware/securityHeaders/index.ts). Uma falha anterior
-ao `securityHeaders`, como as injetadas pelo build E2E, deixa a requisição sem
+[`requestNonce`](../src/middleware/securityHeaders/index.ts). No build, o nonce
+já chega em `locals` pela `src/entry-handler.ts`, antes de qualquer middleware.
+Sem ele, uma falha anterior ao `securityHeaders` deixaria a requisição sem
 nonce; a contenção o cria antes de renderizar a página de erro, para que os
 scripts dela e a CSP usem o mesmo valor. Sem evento de requisição, o 500 em
 texto sai com `script-src 'none'`. O desenho da CSP está no README, em
 "Cabeçalhos de segurança e CSP".
 
-Numa navegação (`GET` ou `HEAD` com `accept` de HTML), o 500 mostra a página de
-erro do app: `containFailures` grava um `createPublicError()` em
+Numa navegação (`GET` ou `HEAD` com `accept` de HTML, `*/*` ou sem `accept`, o
+mesmo critério do plugin para servir uma página), o 500 mostra a página de erro
+do app: `containFailures` grava um `createPublicError()` em
 `locals.serverFailure` e chama o render da página. O `ServerFailureGate` de
 [`App.tsx`](../src/App.tsx) lança esse erro antes do Router, o `Errored` raiz
 mostra o `ErrorFallback` e o cliente hidrata o fallback pelo erro serializado.
@@ -311,15 +313,15 @@ chamadas no SSR: um `redirect()` lançado, um envelope devolvido e um envelope
 lançado. O envelope lançado chega ao hook como controle, mas o router lança o
 valor dele no render e o documento vira 500, com ou sem o hook.
 
-[Bug do `@solidjs/router` (#633)](https://github.com/solidjs/solid-router/issues/633):
-quando uma `query()` lida no SSR devolve ou lança um envelope de `respond()`, o
-`handleResponse` copia os headers do envelope para a resposta da página, e o
-documento HTML sai com `content-type: application/json`. As cópias feitas depois
-do envio do início da resposta são descartadas com o aviso
-`[LATE_HEADER_WRITE]`. Até a correção, não leia um envelope de `respond()` por
-`query()` durante o SSR; use `respond()` em actions e chamadas HTTP. O E2E marca
-esse comportamento com `test.fail()`: quando o router corrigir, o teste passa a
-falhar e o marcador deve sair.
+Quando uma `query()` lida no SSR devolve ou lança um envelope de `respond()`, o
+`handleResponse` do router copia para a resposta da página só os headers que não
+descrevem o corpo; `content-type`, `content-disposition`, `etag` e similares
+ficam de fora, e o documento continua HTML
+([solidjs/solid-router#633](https://github.com/solidjs/solid-router/issues/633)).
+O E2E cobre os dois casos como regressão. Os demais headers do envelope, como
+`set-cookie` ou um header próprio, ainda são copiados; lidos depois do envio do
+início da resposta, são descartados com o aviso `[LATE_HEADER_WRITE]`. Headers
+da página pertencem ao render, não a um envelope de dados.
 
 O
 [E2E de erros fora de server functions](../src/tests/pages/OutsideError/OutsideError.e2e.test.ts)
@@ -408,7 +410,9 @@ pacote publicado e instalado mudou esse comportamento.
    nova sanitização, veredito por objeto e substituição do hook anterior. Um
    `onError` por requisição (opção de `renderToStream` ou de
    `handleServerFunctionRequest`) tem precedência sobre o hook global e o
-   substituiria sem aviso: confira se o plugin continua sem repassá-lo e se o
+   substituiria sem aviso. O de `renderToStream` fica registrado no render e
+   vale também para as server functions chamadas diretamente durante ele.
+   Confira se `src/entry-server.tsx` e o plugin continuam sem repassá-lo e se o
    módulo `configure` ainda carrega antes do primeiro dispatch.
 3. Rode
    `pnpm test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError` no

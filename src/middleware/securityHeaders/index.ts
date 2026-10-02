@@ -1,18 +1,12 @@
 import { getRequestEvent } from '@solidjs/web'
 
+import { createNonce } from '@/helpers/createNonce/index.ts'
+
 import type { Next } from '../types.ts'
 import { CSP_DIRECTIVES, SECURITY_HEADERS } from './constants.ts'
 
 type SecurityHeadersUpdate = { response: Response; nonce: string | undefined }
 type HeaderUpdate = { response: Response; headers: Record<string, string> }
-
-// 128 bits, o mínimo recomendado para um nonce de CSP.
-const NONCE_BYTES = 16
-
-function createNonce(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(NONCE_BYTES))
-  return btoa(String.fromCodePoint(...bytes))
-}
 
 // Com o nonce, só os scripts que o trazem rodam, e 'strict-dynamic' libera os
 // módulos que eles carregam. Sem nonce, nenhum script roda.
@@ -51,8 +45,9 @@ function withHeaders({ response, headers }: HeaderUpdate): Response {
   }
 }
 
-// Nonce CSP da requisição, criado no primeiro acesso e guardado em locals. O
-// securityHeaders o cria antes do render; a contenção lê o mesmo valor ou cria
+// Nonce CSP da requisição, guardado em locals. Em produção ele chega pronto da
+// src/entry-handler.ts; nos demais casos nasce no primeiro acesso. O
+// securityHeaders o lê antes do render; a contenção lê o mesmo valor ou cria
 // um quando a falha veio antes dele. O src/entry-server.tsx o repassa ao
 // renderToStream e o Document aos scripts que renderiza. Fora de uma
 // requisição não há nonce.
