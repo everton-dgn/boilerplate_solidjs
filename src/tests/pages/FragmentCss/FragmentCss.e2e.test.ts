@@ -28,9 +28,11 @@ test('anuncia a CSS do componente lazy no fragmento, fora do head', async ({
 
 // Limite do @solidjs/web (sink.fragment em dist/server.js): o <link> da CSS
 // do fragmento usa onload e onerror inline, que não aceitam nonce, e a CSP
-// com 'strict-dynamic' os bloqueia. O fragmento fica no fallback. test.fail()
-// registra o limite; quando o runtime liberar o fragmento por um script com
-// nonce, o teste passa a falhar e o marcador deve sair.
+// com 'strict-dynamic' os bloqueia (solidjs/solid#3747). test.fail() registra o
+// limite; quando o runtime liberar o fragmento por um script com nonce, o teste
+// passa a falhar e o marcador deve sair. A correção proposta em
+// solidjs/solid#3755 também grava o template antes dos links: hoje uma folha
+// em cache pode carregar antes dele e a troca é descartada.
 test('carrega a CSS do fragmento sem violação de CSP', async ({ page }) => {
   test.fail()
   const violations = await watchCspViolations(page)

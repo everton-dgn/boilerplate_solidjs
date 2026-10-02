@@ -291,13 +291,18 @@ Limites conhecidos:
   políticas de frame só têm efeito em documentos, que passam pelo middleware.
 - Um componente `lazy()` com CSS própria criado só depois que o dado assíncrono
   de um `Loading` resolve, por exemplo dentro de `<Show when={dado()}>`, não
-  aparece. O runtime grava a folha do fragmento num `<link>` com `onload` e
-  `onerror` inline (`sink.fragment` em `@solidjs/web/dist/server.js`); atributos
-  `on*=` não aceitam nonce, a CSP os bloqueia, o fragmento fica no fallback e a
-  hidratação não termina. Importe o componente de forma estática ou crie o
+  aparece, por dois motivos independentes, ambos em `sink.fragment`
+  (`@solidjs/web/dist/server.js`). A folha do fragmento vai num `<link>` com
+  `onload` e `onerror` inline; atributos `on*=` não aceitam nonce e a CSP os
+  bloqueia. E o `<link>` sai antes do `<template>` do conteúdo: uma folha em
+  cache dispara `load` antes de o parser chegar ao template, e a troca é
+  descartada, mesmo sem CSP. Importe o componente de forma estática ou crie o
   `lazy()` fora do trecho que espera o dado assíncrono, para que a CSS dele
   entre no `<head>`. A fixture `/fragment-css` e o teste
-  `FragmentCss.e2e.test.ts` registram o limite.
+  `FragmentCss.e2e.test.ts` registram o limite, relatado em
+  [solidjs/solid#3747](https://github.com/solidjs/solid/issues/3747), com a
+  correção proposta em
+  [solidjs/solid#3755](https://github.com/solidjs/solid/pull/3755).
 - `Cross-Origin-Embedder-Policy: require-corp` bloqueia recursos de outra origem
   sem `Cross-Origin-Resource-Policy` ou CORS. Ao adicionar fontes, imagens ou
   scripts externos, confira se o provedor envia esses cabeçalhos ou revise a
