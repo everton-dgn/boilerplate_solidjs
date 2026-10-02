@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.8.1 - 2026-10-02
+
+### Fixed
+
+- give the late-redirect fallback script the request nonce (0b99f3f)
+- show the error page to \*/\* and Accept-less navigations (7f5466a)
+- update Solid to rc.13, the router to next.34 and the Vite plugin to next.47
+  (670fd31)
+
 ## 1.8.0 - 2026-09-30
 
 ### Added
