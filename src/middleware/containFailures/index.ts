@@ -38,6 +38,13 @@ function isAPIRoute({ request, pathname }: RouteRequest): boolean {
   return route !== undefined && !route.isPage
 }
 
+// Mesmo critério de HTML do plugin: text/html pelo nome, */* ou nenhum Accept
+// (curl, monitores). São os pedidos que recebem a página quando nada falha.
+function acceptsHtml(request: Request): boolean {
+  const accept = request.headers.get('accept')
+  return !accept || accept.includes('text/html') || accept.includes('*/*')
+}
+
 // Só uma navegação de página recebe a página de erro do app. Chamar o render
 // de novo no endpoint de server functions executaria a função sem os
 // middlewares que falharam; rotas de API esperam outro formato.
@@ -45,7 +52,7 @@ function isPageRequest(request: Request): boolean {
   const { pathname } = new URL(request.url)
   return (
     (request.method === 'GET' || request.method === 'HEAD') &&
-    (request.headers.get('accept') ?? '').includes('text/html') &&
+    acceptsHtml(request) &&
     !isServerFunctionPath(pathname) &&
     !isAPIRoute({ request, pathname })
   )

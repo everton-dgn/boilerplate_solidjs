@@ -269,7 +269,7 @@ test.describe('exceções no middleware', () => {
 
       const response = await fetch(
         `${baseURL}/outside-error?case=middleware-${phase}&id=${id}`,
-        { headers: { accept: navigation ? 'text/html' : '*/*' } }
+        { headers: { accept: navigation ? 'text/html' : 'application/json' } }
       )
       const body = await response.text()
 

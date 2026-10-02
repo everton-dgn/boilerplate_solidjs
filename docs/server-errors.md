@@ -94,8 +94,9 @@ scripts dela e a CSP usem o mesmo valor. Sem evento de requisição, o 500 em
 texto sai com `script-src 'none'`. O desenho da CSP está no README, em
 "Cabeçalhos de segurança e CSP".
 
-Numa navegação (`GET` ou `HEAD` com `accept` de HTML), o 500 mostra a página de
-erro do app: `containFailures` grava um `createPublicError()` em
+Numa navegação (`GET` ou `HEAD` com `accept` de HTML, `*/*` ou sem `accept`, o
+mesmo critério do plugin para servir uma página), o 500 mostra a página de erro
+do app: `containFailures` grava um `createPublicError()` em
 `locals.serverFailure` e chama o render da página. O `ServerFailureGate` de
 [`App.tsx`](../src/App.tsx) lança esse erro antes do Router, o `Errored` raiz
 mostra o `ErrorFallback` e o cliente hidrata o fallback pelo erro serializado.
