@@ -1,8 +1,8 @@
 import type { RequestEvent } from '@solidjs/web'
 
-// O handler do @solidjs/vite-plugin aceita nonce desde solidjs/solid-vite-plugin#311
-// e o grava no script do redirect depois do shell, mas os tipos publicados
-// ainda não declaram a opção. Este overload acompanha o runtime.
+// O handler do @solidjs/vite-plugin repassa options.nonce ao createSSRResponse
+// do runtime, que o grava no script do redirect depois do shell, mas os tipos
+// publicados ainda não declaram a opção. Este overload acompanha o handler.
 declare module 'virtual:solid-ssr-handler' {
   type HandleRequestNonceOptions = {
     nonce: string
