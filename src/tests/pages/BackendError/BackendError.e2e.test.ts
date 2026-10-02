@@ -74,15 +74,14 @@ test('um envelope devolvido por server function no SSR entrega o valor', async (
   expect(await response.text()).toMatch(/<p[^>]*>Envelope retornado<\/p>/u)
 })
 
-// Bug do @solidjs/router (https://github.com/solidjs/solid-router/issues/633):
-// query() copia o content-type do envelope para a página. test.fail() registra o bug; quando o
-// router corrigir, o teste passa a falhar e o marcador deve sair.
+// Regressão do @solidjs/router (https://github.com/solidjs/solid-router/issues/633):
+// query() não copia mais os headers de corpo do envelope, como o content-type,
+// para a página.
 // oxlint-disable-next-line vitest/prefer-each -- O runner do Playwright não oferece test.each.
 for (const kind of ['envelope-return', 'envelope-throw']) {
   test(`o documento com ${kind} por query no SSR continua HTML`, async ({
     request
   }) => {
-    test.fail()
     const response = await request.get(
       `/control-signal?kind=${kind}&id=throw:${crypto.randomUUID()}`
     )
@@ -92,7 +91,7 @@ for (const kind of ['envelope-return', 'envelope-throw']) {
 
 // O hook recebe o envelope lançado como controle; o router então lança o valor
 // do envelope no render, que vira falha de render com ou sem o hook. O teste
-// confere a resposta bruta, porque o documento sai com o content-type errado.
+// confere a resposta bruta, fora do navegador.
 test('um envelope lançado por server function no SSR vira falha de render sem expor o valor', async ({
   request
 }) => {
