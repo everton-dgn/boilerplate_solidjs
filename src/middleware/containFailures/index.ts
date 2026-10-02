@@ -70,9 +70,11 @@ function publicTextFailure(): Response {
 
 // Renderiza o app de novo com o erro público em locals: o gate de App.tsx o
 // lança e o Errored raiz mostra o ErrorFallback. O status é forçado porque um
-// render descartado pode já ter enviado o início da resposta do evento. Uma
-// falha anterior ao securityHeaders deixa a requisição sem nonce; ele é criado
-// aqui, antes do render, para que os scripts da página e a CSP coincidam.
+// render descartado pode já ter enviado o início da resposta do evento. No
+// build o nonce já chega em locals pela src/entry-handler.ts. Sem ela, como nos
+// testes, uma falha anterior ao securityHeaders deixa a requisição sem nonce; ele
+// é criado aqui, antes do render, para que os scripts da página e a CSP
+// coincidam.
 async function renderErrorPage(render: Render): Promise<Response> {
   const event = getRequestEvent()
   if (!event) return publicTextFailure()

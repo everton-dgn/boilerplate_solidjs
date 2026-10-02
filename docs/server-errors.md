@@ -87,8 +87,9 @@ middleware na entrada real.
 As respostas da contenção não voltam pelo `securityHeaders`, então a própria
 contenção grava os cabeçalhos de segurança e a Content-Security-Policy com o
 nonce da requisição, lido por
-[`requestNonce`](../src/middleware/securityHeaders/index.ts). Uma falha anterior
-ao `securityHeaders`, como as injetadas pelo build E2E, deixa a requisição sem
+[`requestNonce`](../src/middleware/securityHeaders/index.ts). No build, o nonce
+já chega em `locals` pela `src/entry-handler.ts`, antes de qualquer middleware.
+Sem ele, uma falha anterior ao `securityHeaders` deixaria a requisição sem
 nonce; a contenção o cria antes de renderizar a página de erro, para que os
 scripts dela e a CSP usem o mesmo valor. Sem evento de requisição, o 500 em
 texto sai com `script-src 'none'`. O desenho da CSP está no README, em

@@ -19,8 +19,9 @@ export default function Document(props: ParentProps) {
   const cookieHeader = isServer
     ? (event?.request.headers.get('cookie') ?? null)
     : undefined
-  // Nonce CSP criado pelo middleware; no cliente o valor não existe, e o
-  // navegador já oculta o atributo depois de validar o script.
+  // Nonce CSP da requisição (src/entry-handler.ts no build, requestNonce fora
+  // dele); no cliente o valor não existe, e o navegador já oculta o atributo
+  // depois de validar o script.
   const nonce = event?.locals.nonce
   const theme = readTheme(cookieHeader) ?? DEFAULT_THEME
   const explicitTheme = theme === 'system' ? undefined : theme
