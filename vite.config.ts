@@ -56,8 +56,9 @@ const componentPlugins = () =>
 // No build, troca a entrada SSR que o @solidjs/vite-plugin declara (o fetch
 // padrão, sem nonce) pela src/entry-handler.ts. Fica depois do plugin do Solid,
 // para sobrescrever o input dele, e antes do Nitro, que lê a entrada da config.
-// O plugin do Solid declara a entrada em rollupOptions, e o Nitro só lê esse
-// campo, então rolldownOptions não a substituiria.
+// O plugin do Solid declara a entrada em rollupOptions, mas o Vite trata esse
+// campo como alias de rolldownOptions ao mesclar a config: o index daqui
+// sobrescreve o dele e é o que o Nitro encontra ao ler rollupOptions.
 const entryHandler = {
   name: 'project:entry-handler',
   apply: 'build',
@@ -65,8 +66,7 @@ const entryHandler = {
     environments: {
       ssr: {
         build: {
-          // oxlint-disable-next-line typescript/no-deprecated -- O Nitro e o @solidjs/vite-plugin leem a entrada SSR de rollupOptions.
-          rollupOptions: { input: { index: './src/entry-handler.ts' } }
+          rolldownOptions: { input: { index: './src/entry-handler.ts' } }
         }
       }
     }
