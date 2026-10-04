@@ -50,7 +50,7 @@ describe('cabeçalhos de segurança da resposta', () => {
     expect(Object.fromEntries(response.headers)).toMatchObject(EXPECTED_HEADERS)
   })
 
-  it('monta a CSP com o nonce e strict-dynamic, sem unsafe-inline em scripts', () => {
+  it('monta a CSP com o nonce e strict-dynamic, sem unsafe-inline em scripts e estilos', () => {
     const response = applySecurityHeaders({
       response: new Response('<main>conteúdo</main>', {
         headers: HTML_HEADERS
@@ -61,7 +61,7 @@ describe('cabeçalhos de segurança da resposta', () => {
     expect(directives(response)).toStrictEqual({
       'default-src': "'self'",
       'script-src': `'nonce-${NONCE}' 'strict-dynamic'`,
-      'style-src': "'self' 'unsafe-inline'",
+      'style-src': "'self'",
       'object-src': "'none'",
       'base-uri': "'self'",
       'form-action': "'self'",

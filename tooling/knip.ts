@@ -62,8 +62,6 @@ const config = {
     'src/infra/server/requestJson/index.ts!',
     'env.ts!',
     'tooling/testing/error-backend.ts',
-    // globalTeardown do Playwright, referenciado por caminho em tooling/playwright.ts.
-    'tooling/testing/server-log-teardown.ts',
     // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.
     'src/tests/fixtures/e2e/middleware/index.ts',
     // Testes de tipo: checados pelo tsc, sem execução no Vitest.
