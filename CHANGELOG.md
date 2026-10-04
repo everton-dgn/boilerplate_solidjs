@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.8.2 - 2026-10-04
+
+### Fixed
+
+- update compatible packages and simplify tooling (6a5515d)
+
 ## 1.8.1 - 2026-10-02
 
 ### Fixed
