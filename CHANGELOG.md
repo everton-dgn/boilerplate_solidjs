@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.8.3 - 2026-10-04
+
+### Fixed
+
+- drop 'unsafe-inline' from style-src (ac3d060)
+
 ## 1.8.2 - 2026-10-04
 
 ### Fixed
