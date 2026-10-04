@@ -537,7 +537,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'solid/prefer-onSettled-for-side-effects': 'warn',
     'solid/prefer-show': 'off',
     'solid/prefer-structured-class': 'error',
-    'solid/reactivity': ['warn', { customReactiveFunctions: ['dynamic'] }],
+    'solid/reactivity': 'warn',
     'solid/removed-api': 'error',
     'solid/require-async-server-function': 'error',
     'solid/self-closing-comp': 'warn',
