@@ -13,11 +13,12 @@ export const SECURITY_HEADERS = {
 } as const
 
 // Diretivas fixas da Content-Security-Policy. O script-src depende do nonce da
-// requisição e é montado em applySecurityHeaders. O style-src mantém
-// 'unsafe-inline' porque o runtime e o Vite gravam estilos inline.
+// requisição e é montado em applySecurityHeaders. No build os estilos chegam só
+// por <link> da mesma origem; um <style> ou um atributo style no HTML é
+// bloqueado. O tema do SSR vai pelas classes .light/.dark do <html>.
 export const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

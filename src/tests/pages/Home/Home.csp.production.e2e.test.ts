@@ -9,6 +9,8 @@ const HTTP_OK = 200
 const DOCUMENT_SCRIPTS = 3
 const NONCE_FORMAT = /^[A-Za-z0-9+/]{22}==$/u
 const SCRIPT_SRC = /^script-src 'nonce-(?<nonce>[^']+)' 'strict-dynamic'$/u
+const HTML_TAG = /<html\b[^>]*>/u
+const THEME_KEY = 'app-theme'
 
 type CspDocument = { nonce: string; html: string }
 
@@ -60,7 +62,7 @@ test.describe('CSP com nonce na entrada de produção', () => {
     expect(second.nonce).not.toBe(first.nonce)
   })
 
-  test('mantém as demais diretivas, sem unsafe-inline em scripts', async ({
+  test('mantém as demais diretivas, sem unsafe-inline em scripts e estilos', async ({
     request
   }) => {
     const response = await request.get('/')
@@ -75,7 +77,7 @@ test.describe('CSP com nonce na entrada de produção', () => {
       policy.filter(directive => !directive.startsWith('script-src '))
     ).toStrictEqual([
       "default-src 'self'",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self'",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -100,4 +102,41 @@ test.describe('CSP com nonce na entrada de produção', () => {
     expect(violations).toStrictEqual([])
     expect(errors).toStrictEqual([])
   })
+
+  // Sem 'unsafe-inline' no style-src, um atributo style no HTML é bloqueado. O
+  // tema do cookie chega ao <html> só pela classe, e o color-scheme vem das
+  // regras .light/.dark de colors.css.
+  for (const theme of ['dark', 'light'] as const) {
+    test(`aplica o tema ${theme} do cookie no SSR sem violação de CSP`, async ({
+      page,
+      context,
+      baseURL
+    }) => {
+      if (!baseURL) throw new Error('Missing test base URL')
+      await context.addCookies([
+        { name: THEME_KEY, value: theme, url: baseURL }
+      ])
+      // Com o sistema no tema oposto, a classe só pode vir do cookie.
+      await page.emulateMedia({
+        colorScheme: theme === 'dark' ? 'light' : 'dark'
+      })
+      const errors: string[] = []
+      const violations = await watchCspViolations(page)
+      page.on('pageerror', error => {
+        errors.push(error.message)
+      })
+
+      const response = await page.goto('/')
+      expect(response?.status()).toBe(HTTP_OK)
+      const root = HTML_TAG.exec((await response?.text()) ?? '')?.[0]
+      expect(root).toContain(`class="${theme}"`)
+      expect(root).not.toContain('style=')
+      await expect.poll(async () => hydrationFinished(page)).toBe(true)
+      await expect(page.locator('html')).toHaveClass(theme)
+      await expect(page.locator('html')).toHaveCSS('color-scheme', theme)
+
+      expect(violations).toStrictEqual([])
+      expect(errors).toStrictEqual([])
+    })
+  }
 })
