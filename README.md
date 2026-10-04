@@ -237,13 +237,22 @@ contenção de falhas grava os mesmos cabeçalhos no 500, na página de erro e n
 controle lançado.
 
 A CSP usa `script-src 'nonce-<valor>' 'strict-dynamic'`, sem `'unsafe-inline'`
-para scripts. As demais diretivas são `default-src 'self'`,
-`style-src 'self' 'unsafe-inline'`, `object-src 'none'`, `base-uri 'self'`,
-`form-action 'self'` e `frame-ancestors 'none'`. O app não usa WebAssembly nem
-`eval`, então a política não inclui `'wasm-unsafe-eval'`. Só respostas
-`text/html` levam o nonce; texto, XML, JSON e redirects saem com
-`script-src 'none'`. Assim `/sitemap.xml`, `/robots.txt` e `/llms.txt`, que têm
-`s-maxage`, não guardam o nonce de uma requisição no cache compartilhado.
+para scripts. As demais diretivas são `default-src 'self'`, `style-src 'self'`,
+`object-src 'none'`, `base-uri 'self'`, `form-action 'self'` e
+`frame-ancestors 'none'`. O app não usa WebAssembly nem `eval`, então a política
+não inclui `'wasm-unsafe-eval'`. Só respostas `text/html` levam o nonce; texto,
+XML, JSON e redirects saem com `script-src 'none'`. Assim `/sitemap.xml`,
+`/robots.txt` e `/llms.txt`, que têm `s-maxage`, não guardam o nonce de uma
+requisição no cache compartilhado.
+
+O `style-src` também fica sem `'unsafe-inline'`. No build os estilos chegam só
+por `<link>` da mesma origem, e um `<style>` ou um atributo `style` no HTML é
+bloqueado. Por isso o `Document` aplica o tema do cookie só pela classe `light`
+ou `dark` do `<html>`, e o `color-scheme` vem das regras `.light`/`.dark` de
+[`colors.css`](src/theme/tokens/colors.css). Não use a prop `style` em JSX
+renderizado no servidor: o SSR grava o atributo, e com valor nulo ele sai como
+`style=""`, que a CSP também bloqueia. O `applyTheme` grava o `color-scheme`
+direto em `element.style`, pelo CSSOM, que a CSP não bloqueia.
 
 O nonce tem 16 bytes de `crypto.getRandomValues` em base64 e é criado a cada
 requisição. No build, [`src/entry-handler.ts`](src/entry-handler.ts) o cria
@@ -257,8 +266,8 @@ mesmo, para que a página de erro e a CSP coincidam. O caminho até os scripts �
   depois do shell.
 - [`src/entry-server.tsx`](src/entry-server.tsx) passa o nonce ao
   `renderToStream`, que o grava no `HydrationScript`, nos scripts de dados e de
-  streaming, no script de título e nos `modulepreload`. Os estilos ficam sem
-  nonce, porque o `style-src` mantém `'unsafe-inline'`.
+  streaming, no script de título e nos `modulepreload`. Ele também o grava nos
+  `<link rel="stylesheet">`, que o `'self'` do `style-src` já libera.
 - O `Document` grava `nonce` no script inline do tema e no script da entrada do
   cliente, que ele mesmo renderiza com o caminho literal
   `/src/entry-client.tsx`. No build, o handler do plugin troca esse caminho pelo
@@ -851,9 +860,10 @@ que a Home recebe os cabeçalhos de segurança do middleware real, já que o bui
 E2E monta a cadeia pela fábrica `createMiddleware`.
 `Home.csp.production.e2e.test.ts` confere que a CSP traz um nonce que muda a
 cada requisição, que todos os `<script>` e `modulepreload` do HTML bruto trazem
-esse nonce e que a Home hidrata sem violação de CSP no console. O comando usa a
-mesma `BASE_URL_TEST`, carrega as variáveis públicas no modo `production` e
-dispensa o backend simulado. Execute as duas suítes em sequência, pois
+esse nonce e que a Home hidrata sem violação de CSP no console, também com o
+tema `dark` ou `light` no cookie, sem atributo `style` no `<html>`. O comando
+usa a mesma `BASE_URL_TEST`, carrega as variáveis públicas no modo `production`
+e dispensa o backend simulado. Execute as duas suítes em sequência, pois
 compartilham a porta e os artefatos de build. O CI executa ambas; a suíte de
 produção também valida o build final.
 

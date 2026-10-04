@@ -238,6 +238,10 @@ release. Add a tool name to select part of the graph. For example, run
   não devolva a CSP nem os demais cabeçalhos a ele.
 - O `script-src` usa o nonce da requisição com `'strict-dynamic'`. Não
   acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts para scripts.
+- O `style-src` é `'self'`, também sem `'unsafe-inline'`: um `<style>` ou um
+  atributo `style` no HTML do servidor é bloqueado. Não use a prop `style` em
+  JSX renderizado no SSR, pois com valor nulo ela sai como `style=""`; use
+  classes. O tema do SSR vai só pela classe `light` ou `dark` do `<html>`.
 - O nonce fica em `locals.nonce`: no build nasce em `src/entry-handler.ts`,
   que também o passa ao `handleRequest` para o script de um redirect depois do
   shell; fora dele, `requestNonce` o cria. Todo `<script>` do `Document` recebe

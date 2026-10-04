@@ -27,11 +27,7 @@ export default function Document(props: ParentProps) {
   const explicitTheme = theme === 'system' ? undefined : theme
 
   return (
-    <html
-      lang={SITE.locale}
-      class={explicitTheme}
-      style={explicitTheme ? { 'color-scheme': explicitTheme } : undefined}
-    >
+    <html lang={SITE.locale} class={explicitTheme}>
       <head>
         <meta charset="utf-8" />
         <title>{SITE.title}</title>
