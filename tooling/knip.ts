@@ -51,8 +51,6 @@ const config = {
   // O env.ts é lido pelo @solidjs/vite-plugin (start.env) para gerar os
   // módulos virtual:env, então nada o importa diretamente.
   entry: [
-    'src/App.tsx!',
-    'src/Document.tsx!',
     // Entradas autorais do SSR, carregadas pelo @solidjs/vite-plugin por convenção.
     'src/entry-server.tsx!',
     'src/entry-client.tsx!',
@@ -62,7 +60,6 @@ const config = {
     'src/infra/server/configureServerErrors/index.ts!',
     // API de transporte do boilerplate; o consumidor atual está na fixture E2E.
     'src/infra/server/requestJson/index.ts!',
-    'tooling/testing/server-only.ts',
     'env.ts!',
     'tooling/testing/error-backend.ts',
     // globalTeardown do Playwright, referenciado por caminho em tooling/playwright.ts.
@@ -84,18 +81,14 @@ const config = {
   playwright: {
     config: ['tooling/playwright.ts']
   },
-  ignoreUnresolved: ['^~icons/'],
-  // O modo strict varre a própria config como produção, mas o scanner é tooling de build.
-  ignoreIssues: { 'tooling/knip.ts': ['unlisted'] },
-  // eslint-plugin-solid entra por jsPlugins em tooling/lint.ts; os plugins de
-  // stylelint são nomes em tooling/css/stylelint.config.mjs, que o knip não resolve.
-  ignoreDependencies: [
-    'eslint-plugin-solid',
-    'stylelint-declaration-strict-value',
-    'stylelint-use-nesting'
-  ],
-  // O Kingfisher é externo; vp e knip são ferramentas de desenvolvimento.
-  ignoreBinaries: ['kingfisher', 'vp!', 'knip!'],
+  // A config fica fora do caminho padrão e roda por tooling/css/check.ts.
+  stylelint: {
+    config: ['tooling/css/stylelint.config.mjs']
+  },
+  // eslint-plugin-solid entra por jsPlugins em tooling/lint.ts.
+  ignoreDependencies: ['eslint-plugin-solid'],
+  // O Kingfisher é externo; o vp do script start vem de uma devDependency.
+  ignoreBinaries: ['kingfisher', 'vp!'],
   treatConfigHintsAsErrors: true
 } satisfies KnipConfig
 
