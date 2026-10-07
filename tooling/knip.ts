@@ -61,7 +61,6 @@ const config = {
     // API de transporte do boilerplate; o consumidor atual está na fixture E2E.
     'src/infra/server/requestJson/index.ts!',
     'env.ts!',
-    'tooling/testing/error-backend.ts',
     // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.
     'src/tests/fixtures/e2e/middleware/index.ts',
     // Testes de tipo: checados pelo tsc, sem execução no Vitest.
@@ -83,8 +82,6 @@ const config = {
   stylelint: {
     config: ['tooling/css/stylelint.config.mjs']
   },
-  // eslint-plugin-solid entra por jsPlugins em tooling/lint.ts.
-  ignoreDependencies: ['eslint-plugin-solid'],
   // O Kingfisher é externo; o vp do script start vem de uma devDependency.
   ignoreBinaries: ['kingfisher', 'vp!'],
   treatConfigHintsAsErrors: true
