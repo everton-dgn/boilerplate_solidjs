@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.8.4 - 2026-10-07
+
+### Fixed
+
+- update toolchain and simplify knip config (78a1734)
+
 ## 1.8.3 - 2026-10-04
 
 ### Fixed
