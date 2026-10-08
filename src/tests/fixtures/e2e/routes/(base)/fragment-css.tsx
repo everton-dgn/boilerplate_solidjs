@@ -16,10 +16,8 @@ function loadLabel(): Promise<string> {
 
 // A memo assíncrona mantém o Loading pendente até depois do shell, e o
 // componente lazy só é criado quando ela resolve. Assim a CSS dele entra no
-// fragmento em streaming, num <link> com handlers inline, e não no <head>.
-// A fixture usa de propósito o padrão que o AGENTS.md proíbe no app: ela
-// reproduz o limite da CSP para o teste com test.fail() acusar a correção
-// quando o runtime deixar de emitir esses handlers.
+// fragmento em streaming, depois do template, e não no <head>. A fixture
+// cobre a liberação do fragmento com CSP estrita e com a folha já em cache.
 function DelayedPanel() {
   const label = createMemo(loadLabel)
   return (

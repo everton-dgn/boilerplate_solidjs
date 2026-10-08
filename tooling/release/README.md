@@ -100,10 +100,13 @@ desativa deploys disparados pela integração Git com
 `git.deploymentEnabled: false`. Isso preserva a exigência de publicar pelo CI
 mesmo se o repositório for reconectado à Vercel.
 
-Na Vercel, `ENABLE_EXPERIMENTAL_COREPACK=1` está configurado para Production,
-Preview e Development; `LEFTHOOK=0`, para Production e Preview. As variáveis
-`HOST`, `PORT` e `BASE_URL_TEST` pertencem à execução local e aos testes. O
-contrato atual em `env.ts` não exige segredos de aplicação.
+O build usa Bun e mantém `ENABLE_EXPERIMENTAL_COREPACK=0`: no ambiente do passo
+`vercel build` do CI e em `build.env` no `vercel.json`. O Corepack não gerencia
+Bun. O valor no passo impede que configurações antigas baixadas por
+`vercel pull` reativem o Corepack no CLI; `build.env` cobre o ambiente do build
+remoto. Preserve também `LEFTHOOK=0` no deploy. As variáveis `HOST`, `PORT` e
+`BASE_URL_TEST` pertencem à execução local e aos testes. O contrato atual em
+`env.ts` não exige segredos de aplicação.
 
 A automação de release usa o token automático do GitHub. Ela só começa após o CI
 completo passar, incluindo o deploy. O merge de versionamento feito pelo

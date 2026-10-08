@@ -265,10 +265,10 @@ release. Add a tool name to select part of the graph. For example, run
 - Mantenha a mesma árvore em `src/entry-server.tsx` e `src/entry-client.tsx`.
 - Só respostas `text/html` recebem o nonce na CSP; as demais saem com
   `script-src 'none'`.
-- Não crie um componente `lazy()` com CSS própria só depois que o dado
-  assíncrono de um `Loading` resolve (por exemplo dentro de
-  `<Show when={dado()}>`): o runtime libera esse fragmento com handlers inline
-  que a CSP bloqueia. Veja o limite no README.
+- Componentes `lazy()` com CSS própria podem aparecer depois que o dado
+  assíncrono de um `Loading` resolve. Preserve a regressão `FragmentCss`:
+  template antes da folha, liberação por script com nonce, renderização
+  estilizada e ausência de violações de CSP, inclusive com a CSS em cache.
 - Em desenvolvimento a CSP não é enviada, porque o Vite injeta scripts sem
   nonce. Confira mudanças de CSP com `vp run test:e2e:production`.
 
