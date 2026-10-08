@@ -7,9 +7,9 @@
   "description": "A SolidJS boilerplate with TypeScript, Vite+, server-side rendering, and automated testing.",
   "repository": "https://github.com/everton-dgn/boilerplate_solidjs",
   "scripts": {
-    "dev": "vp dev",
-    "dev:phone": "vp dev --host 0.0.0.0",
-    "build": "vp build",
+    "dev": "bun --bun node_modules/vite-plus/bin/vp dev",
+    "dev:phone": "bun --bun node_modules/vite-plus/bin/vp dev --host 0.0.0.0",
+    "build": "bun --bun node_modules/vite-plus/bin/vp build",
     "start": "vp preview",
     "typecheck": "vp run typecheck-app && vp run typecheck-node",
     "typecheck:node": "vp run typecheck-node",
@@ -20,6 +20,7 @@
     "check:fix": "vp check --fix",
     "test": "vp test run",
     "test:tooling": "vp run test-tooling",
+    "test:release": "bun test --isolate --timeout=60000 tooling/release",
     "test:ui": "vp test --ui --coverage",
     "test:ci": "vp test run --bail=1 --coverage",
     "test:coverage": "vp test run --coverage",
@@ -32,13 +33,13 @@
     "test:e2e:production": "TEST_PRODUCTION_ROUTES=true playwright test --config tooling/playwright.ts",
     "test:e2e:ui": "playwright test --config tooling/playwright.ts --ui",
     "test:e2e:codegen": "playwright codegen",
-    "deps:update": "pnpm update --interactive --latest",
-    "pnpm:update": "pnpm self-update && vp install",
-    "detect:duplicates": "pnpm dlx jscpd src --pattern '**/*.{ts,tsx}' --reporters console",
+    "deps:update": "vp update --interactive --latest",
+    "bun:update": "vp env pin bun@latest && vp install",
+    "detect:duplicates": "vp dlx jscpd src --pattern '**/*.{ts,tsx}' --reporters console",
     "dead-code": "vp run dead-code-project",
     "dead-code:fix": "knip --config tooling/knip.ts --fix --format",
     "scan:secrets": "kingfisher scan . --git-history none --no-validate --redact --exclude node_modules --exclude dist --exclude dist-ssr --exclude .nitro --exclude .output --exclude .vercel --exclude .tsbuild --exclude playwright-report --exclude test-results --exclude coverage --exclude .vitest",
-    "validate": "pnpm check:ci && pnpm typecheck:node && pnpm test:coverage && pnpm test:tooling && pnpm build",
+    "validate": "vp run check:ci && vp run typecheck:node && vp run test:coverage && vp run test:tooling && vp run build",
     "commitlint": "commitlint"
   },
   "dependencies": {
@@ -76,7 +77,7 @@
     "vitest": "catalog:"
   },
   "type": "module",
-  "packageManager": "pnpm@12.7.0",
+  "packageManager": "bun@1.4.2",
   "engines": {
     "node": ">=24.20.0 <25"
   },
@@ -86,5 +87,24 @@
       "version": "24.20.0",
       "onFail": "download"
     }
+  },
+  "trustedDependencies": [
+    "esbuild",
+    "lefthook"
+  ],
+  "workspaces": {
+    "packages": [],
+    "catalog": {
+      "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
+      "vitest": "5.0.3",
+      "vite-plus": "1.1.0",
+      "@vitest/browser-playwright": "5.0.3",
+      "@vitest/coverage-v8": "5.0.3",
+      "@vitest/ui": "5.0.3"
+    }
+  },
+  "overrides": {
+    "vite@*": "catalog:",
+    "vitest@*": "catalog:"
   }
 }

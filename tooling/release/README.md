@@ -139,15 +139,21 @@ manual.
 ## Validação local
 
 ```sh
-pnpm test
-pnpm typecheck
-actionlint .github/workflows/ci.yml .github/workflows/auto-release.yml
+vp run test
+vp run test:release
+vp run typecheck
+actionlint .github/workflows/auto-release.yml
 ```
 
-Os testes de release integram o projeto `node` do Vitest e executam junto com os
-demais em `pnpm test` e `pnpm test:ci`. A suíte com subprocessos tem timeout de
-30 segundos por teste. Para executar somente os testes de release, use
-`pnpm test --project node tooling/release`.
+O `ci.yml` usa `parallel`, `background` e `wait-all`. Valide esse arquivo com
+uma versão do validador que reconheça essas etapas; a execução nativa fica
+comprovada pelo GitHub Actions.
+
+Os testes de release pertencem à suíte de tooling e executam com Node em
+`vp run test:tooling`. A automação executa em Bun; antes de preparar a release,
+o workflow também roda `vp run test:release` no mesmo runtime. Esse comando
+executa apenas `tooling/release`, com isolamento entre arquivos e timeout de 60
+segundos. A suíte com subprocessos mantém o limite de 30 segundos por teste.
 
 Os testes de integração substituem `git` e `gh` por executáveis sintéticos e
 isolam o `PATH` dos subprocessos. Não usam credenciais reais nem criam releases

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, devices } from '@playwright/test'
 import { loadEnv } from 'vite'
 
-loadEnvFile(new URL('../.env.test', import.meta.url))
+loadEnvFile(fileURLToPath(new URL('../.env.test', import.meta.url)))
 const PRODUCTION_ROUTES = env.TEST_PRODUCTION_ROUTES === 'true'
 const BUILD_MODE = PRODUCTION_ROUTES ? 'production' : 'e2e'
 // Resolver as variáveis públicas no mesmo modo do build mantém os testes e o
@@ -26,6 +26,7 @@ if (!PORT) {
   throw new Error('BASE_URL_TEST must include an explicit port')
 }
 const STARTUP_TIMEOUT = 120_000
+const CI_WORKERS = 2
 // Só a saída do preview vai para o arquivo, sem o ruído do build. O teardown
 // global lê o arquivo depois da suíte e recusa marcadores privados.
 const SERVER_LOG = `test-results/server-${BUILD_MODE}.log`
@@ -45,7 +46,7 @@ const config = defineConfig({
   globalTeardown: './testing/server-log-teardown.ts',
   fullyParallel: true,
   forbidOnly: true,
-  workers: env.CI ? 1 : undefined,
+  workers: env.CI ? CI_WORKERS : undefined,
   reporter: [
     ['list'],
     [
@@ -110,14 +111,14 @@ const config = defineConfig({
       ? []
       : [
           {
-            command: 'node tooling/testing/error-backend.ts',
+            command: 'bun tooling/testing/error-backend.ts',
             cwd: '..',
             url: 'http://127.0.0.1:4318/control',
             reuseExistingServer: false
           }
         ]),
     {
-      command: `pnpm build --mode ${BUILD_MODE} && mkdir -p test-results && pnpm start --strictPort > ${SERVER_LOG} 2>&1`,
+      command: `vp run build --mode ${BUILD_MODE} && mkdir -p test-results && vp run start --strictPort > ${SERVER_LOG} 2>&1`,
       cwd: '..',
       env: { HOST, PORT, NODE_ENV: 'production' },
       url: BASE_URL,

@@ -4,10 +4,15 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, lazyPlugins, loadEnv, type Plugin } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
+import packageJson from './package.json'
 import { fmt } from './tooling/fmt.ts'
 import { lint } from './tooling/lint.ts'
 
 const resolve = { tsconfigPaths: true }
+const CI_TEST_WORKERS = 2
+const TOOLING_TEST_CONCURRENCY = env.CI
+  ? ` --test-concurrency=${CI_TEST_WORKERS}`
+  : ''
 
 // Os plugins do Vite só são importados quando o Vite roda de fato. vp lint,
 // fmt, check, staged e o tooling do editor leem a config sem pagar esse custo
@@ -96,7 +101,17 @@ const appPlugins = (mode: string) =>
           ? { dir: 'src/tests/fixtures/e2e/routes', httpMethods: true }
           : { types: 'src/@types/routes.d.ts', httpMethods: true }
       ),
-      modules.nitro({ serverEntry: false, preset: 'vercel' })
+      // A detecção automática do Nitro segue o runtime do build. O SSR mantém
+      // Node até Bun preservar os contratos de Response e do log de falhas.
+      modules.nitro({
+        serverEntry: false,
+        preset: 'vercel',
+        vercel: {
+          functions: {
+            runtime: `nodejs${packageJson.devEngines.runtime.version.split('.')[0]}.x`
+          }
+        }
+      })
     ]
   })
 
@@ -115,7 +130,7 @@ export default defineConfig(({ mode }) => {
   }
 
   if (mode === 'test') {
-    loadEnvFile(new URL('.env.test', import.meta.url))
+    loadEnvFile(fileURLToPath(new URL('.env.test', import.meta.url)))
   }
 
   const testEnv = {
@@ -128,7 +143,7 @@ export default defineConfig(({ mode }) => {
     run: {
       tasks: {
         'lint-css': {
-          command: 'node tooling/css/check.ts',
+          command: 'bun tooling/css/check.ts',
           cache: { env: ['NODE_ENV'] }
         },
         'dead-code-project': {
@@ -141,24 +156,27 @@ export default defineConfig(({ mode }) => {
               'src/**',
               'tooling/**',
               'package.json',
-              'pnpm-workspace.yaml',
-              'pnpm-lock.yaml',
-              'node_modules/.pnpm/lock.yaml'
+              'bun.lock'
             ],
             output: []
           }
         },
         'lint-project': {
-          command: 'node tooling/css/check.ts && vp lint',
+          command: 'bun tooling/css/check.ts && vp lint',
           cache: { env: ['NODE_ENV'] }
         },
         'check-project': {
-          command: 'node tooling/css/check.ts && vp check',
-          cache: { env: ['NODE_ENV'] }
+          command: 'bun tooling/css/check.ts && vp check',
+          cache: {
+            env: ['NODE_ENV'],
+            // Os arquivos lidos cobrem o código; o manifest e o lock cobrem as
+            // dependências instaladas.
+            input: [{ auto: true }, 'package.json', 'bun.lock']
+          }
         },
         // O rastreamento automático não vê as leituras do tsc nativo, então as
-        // entradas ficam explícitas. O lock do node_modules muda a cada install,
-        // cobrindo os tipos instalados. Com noEmit, nada precisa ser restaurado.
+        // entradas ficam explícitas. O bun.lock representa os tipos instalados.
+        // Com noEmit, nada precisa ser restaurado.
         'typecheck-app': {
           command: 'tsc --project tsconfig.json',
           cache: {
@@ -170,9 +188,7 @@ export default defineConfig(({ mode }) => {
               'vite.config.ts',
               'tooling/**/*.ts',
               'package.json',
-              'pnpm-workspace.yaml',
-              'pnpm-lock.yaml',
-              'node_modules/.pnpm/lock.yaml'
+              'bun.lock'
             ],
             output: []
           }
@@ -186,9 +202,7 @@ export default defineConfig(({ mode }) => {
               'vite.config.ts',
               'tooling/**/*.ts',
               'package.json',
-              'pnpm-workspace.yaml',
-              'pnpm-lock.yaml',
-              'node_modules/.pnpm/lock.yaml'
+              'bun.lock'
             ],
             output: []
           }
@@ -196,8 +210,7 @@ export default defineConfig(({ mode }) => {
         // Os testes criam repositórios e fixtures em diretórios temporários que
         // o cache não rastreia; cada execução precisa rodar de verdade.
         'test-tooling': {
-          command:
-            "node --test --test-timeout=60000 'tooling/**/__tests__/*.test.ts'",
+          command: `node --test${TOOLING_TEST_CONCURRENCY} --test-timeout=60000 'tooling/**/__tests__/*.test.ts'`,
           cache: false
         }
       }
@@ -219,6 +232,7 @@ export default defineConfig(({ mode }) => {
     lint,
     test: {
       pool: 'threads',
+      maxWorkers: env.CI ? CI_TEST_WORKERS : undefined,
       isolate: true,
       css: false,
       globals: true,
