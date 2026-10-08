@@ -34,7 +34,6 @@ export const fmt: NonNullable<UserConfig['fmt']> = {
     'src/@types/routes.d.ts',
     '**/*.svg',
     '*.lock',
-    'pnpm-lock.yaml',
     'AGENTS.md',
     'dist/**',
     'dist-ssr/**',

@@ -58,7 +58,7 @@ jobs:
       - name: Read toolchain versions
         id: toolchain
         run: |
-          vite_plus_version=$(yq -e '.catalog."vite-plus"' pnpm-workspace.yaml)
+          vite_plus_version=$(jq -er '.workspaces.catalog."vite-plus"' package.json)
           node_version=$(jq -er '.devEngines.runtime.version' package.json)
           echo "vite-plus=$vite_plus_version" >> "$GITHUB_OUTPUT"
           echo "node=$node_version" >> "$GITHUB_OUTPUT"
@@ -69,10 +69,15 @@ jobs:
           version: ${{ steps.toolchain.outputs.vite-plus }}
           node-version: ${{ steps.toolchain.outputs.node }}
           cache: true
+          cache-dependency-path: bun.lock
           run-install: false
 
       - name: Install dependencies
         run: vp install --frozen-lockfile
+
+      - name: Test release automation on Bun
+        run: vp run test:release
+
       - name: Prepare release pull request
         id: release
         env:
@@ -80,7 +85,7 @@ jobs:
           RELEASE_MODE: prepare
           RELEASE_SOURCE_RUN_ID:
             ${{ github.event.workflow_run.id || inputs.source_run_id }}
-        run: node tooling/release/automatic-release.ts
+        run: bun tooling/release/automatic-release.ts
 
   validate:
     needs: prepare
@@ -111,7 +116,7 @@ jobs:
       - name: Read toolchain versions
         id: toolchain
         run: |
-          vite_plus_version=$(yq -e '.catalog."vite-plus"' pnpm-workspace.yaml)
+          vite_plus_version=$(jq -er '.workspaces.catalog."vite-plus"' package.json)
           node_version=$(jq -er '.devEngines.runtime.version' package.json)
           echo "vite-plus=$vite_plus_version" >> "$GITHUB_OUTPUT"
           echo "node=$node_version" >> "$GITHUB_OUTPUT"
@@ -122,6 +127,7 @@ jobs:
           version: ${{ steps.toolchain.outputs.vite-plus }}
           node-version: ${{ steps.toolchain.outputs.node }}
           cache: true
+          cache-dependency-path: bun.lock
           run-install: false
 
       - name: Install dependencies
@@ -133,4 +139,4 @@ jobs:
           RELEASE_HEAD: ${{ needs.prepare.outputs.head }}
           RELEASE_SOURCE_RUN_ID:
             ${{ github.event.workflow_run.id || inputs.source_run_id }}
-        run: node tooling/release/automatic-release.ts
+        run: bun tooling/release/automatic-release.ts

@@ -36,10 +36,14 @@ jobs:
       - name: Read toolchain versions
         id: toolchain
         run: |
-          vite_plus_version=$(yq -e '.catalog."vite-plus"' pnpm-workspace.yaml)
+          vite_plus_version=$(jq -er '.workspaces.catalog."vite-plus"' package.json)
           node_version=$(jq -er '.devEngines.runtime.version' package.json)
-          echo "vite-plus=$vite_plus_version" >> "$GITHUB_OUTPUT"
-          echo "node=$node_version" >> "$GITHUB_OUTPUT"
+          bun_version=$(jq -er '.packageManager | capture("^bun@(?<version>[^+]+)").version' package.json)
+          {
+            echo "vite-plus=$vite_plus_version"
+            echo "node=$node_version"
+            echo "bun=$bun_version"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Vite+
         uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
@@ -47,28 +51,66 @@ jobs:
           version: ${{ steps.toolchain.outputs.vite-plus }}
           node-version: ${{ steps.toolchain.outputs.node }}
           cache: true
+          cache-dependency-path: bun.lock
           run-install: false
 
       - name: Install dependencies
         run: vp install --frozen-lockfile
 
-      - name: Check formatting and lint
-        run: pnpm check:ci
+      - name: Restore validation cache
+        id: validation-cache
+        continue-on-error: true
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            node_modules/.vite/task-cache
+            node_modules/.vitest-cache
+            .tsbuild
+          key:
+            ci-validation-v2-${{ runner.os }}-${{ runner.arch }}-node-${{
+            steps.toolchain.outputs.node }}-bun-${{ steps.toolchain.outputs.bun
+            }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}-${{
+            github.run_attempt }}
+          restore-keys: |
+            ci-validation-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.toolchain.outputs.node }}-bun-${{ steps.toolchain.outputs.bun }}-${{ hashFiles('bun.lock') }}-
 
+      # Cria .tsbuild antes do lint também quando o cache está vazio, para
+      # estabilizar a listagem da raiz que o Vite Task rastreia.
       - name: Check Node tooling types
-        run: pnpm typecheck:node
+        run: vp run typecheck:node
 
-      - name: Run tests with coverage
-        run: pnpm test:ci
+      - name: Check formatting and lint
+        run: vp run check:ci
 
-      - name: Run tooling tests
-        run: pnpm test:tooling
+      - parallel:
+          - name: Run tests with coverage
+            run: vp run test:ci
+
+          - name: Run tooling tests
+            run: vp run test:tooling
+
+      - name: Save validation cache
+        if:
+          ${{ !cancelled() && steps.validation-cache.outputs.cache-primary-key
+          != '' }}
+        background: true
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            node_modules/.vite/task-cache
+            node_modules/.vitest-cache
+            .tsbuild
+          key: ${{ steps.validation-cache.outputs.cache-primary-key }}
 
       - name: Run end-to-end tests
-        run: pnpm test:e2e
+        run: vp run test:e2e
 
       - name: Test production routes
-        run: pnpm test:e2e:production
+        run: vp run test:e2e:production
+
+      - name: Wait for cache upload
+        wait-all:
 
       - name: Upload test artifacts
         if: failure()
@@ -106,7 +148,7 @@ jobs:
       - name: Read toolchain versions
         id: toolchain
         run: |
-          vite_plus_version=$(yq -e '.catalog."vite-plus"' pnpm-workspace.yaml)
+          vite_plus_version=$(jq -er '.workspaces.catalog."vite-plus"' package.json)
           node_version=$(jq -er '.devEngines.runtime.version' package.json)
           echo "vite-plus=$vite_plus_version" >> "$GITHUB_OUTPUT"
           echo "node=$node_version" >> "$GITHUB_OUTPUT"
@@ -117,6 +159,7 @@ jobs:
           version: ${{ steps.toolchain.outputs.vite-plus }}
           node-version: ${{ steps.toolchain.outputs.node }}
           cache: true
+          cache-dependency-path: bun.lock
           run-install: false
 
       - name: Install dependencies
@@ -133,18 +176,14 @@ jobs:
       - name: Pull production settings
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run:
-          pnpm dlx --allow-build esbuild vercel@latest pull --yes
-          --environment=production
+        run: vp dlx vercel@latest pull --yes --environment=production
 
       - name: Build for production with Vite+
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: pnpm dlx --allow-build esbuild vercel@latest build --prod --yes
+        run: vp dlx vercel@latest build --prod --yes
 
       - name: Deploy production build
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run:
-          pnpm dlx --allow-build esbuild vercel@latest deploy --prebuilt --prod
-          --yes
+        run: vp dlx vercel@latest deploy --prebuilt --prod --yes

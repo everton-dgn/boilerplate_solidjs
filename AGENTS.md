@@ -26,10 +26,22 @@ release. Add a tool name to select part of the graph. For example, run
 
 <!--VITE PLUS END-->
 
+## Runtime dos comandos
+
+- Use `vp run dev` e `vp run build`: os scripts chamam o CLI local do Vite+
+  com Bun explicitamente. Os comandos embutidos `vp dev` e `vp build` seguem
+  a seleção de Node do CLI global.
+- Preserve Node no Vitest, nos testes de tooling e no SSR de produção até as
+  incompatibilidades descritas no README serem resolvidas e verificadas.
+  O runtime explícito do Nitro impede que executar o build em Bun troque
+  silenciosamente o runtime da função Vercel.
+- O lint de CSS, o backend simulado de E2E e a automação de release executam
+  em Bun. Valide a automação com `vp run test:release`.
+
 ## Documentação de dependências
 
 - Não repita números de versões de dependências em guias, instruções ou
-  comentários. Consulte `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`
+  comentários. Consulte `package.json`, `bun.lock`
   e o workflow responsável por ferramentas instaladas no CI.
 - Documente o contrato, os limites e os comandos de validação. Ao atualizar
   dependências, revise o comportamento e mantenha os números nos arquivos que
@@ -169,8 +181,8 @@ release. Add a tool name to select part of the graph. For example, run
   exportar os helpers.
 - A regra `project/no-export-list` (`tooling/noExportList/index.ts`,
   registrada no plugin de `tooling/css-modules-plugin.ts`) aplica a
-  convenção. Valide com `pnpm check:ci` e, ao mudar a regra, com
-  `pnpm test:tooling`.
+  convenção. Valide com `vp run check:ci` e, ao mudar a regra, com
+  `vp run test:tooling`.
 
 ## Funções que retornam Promise
 
@@ -208,7 +220,7 @@ release. Add a tool name to select part of the graph. For example, run
 - Use nesting para estados e media queries de cada classe. As classes de
   variantes e tamanhos ficam no nível superior, fora da classe base.
 - Importe CSS Modules como `S`. O Stylelint exige snake_case em `src/**/*.css`;
-  valide mudanças com `pnpm lint:css` e `pnpm test:tooling`.
+  valide mudanças com `vp run lint:css` e `vp run test:tooling`.
 
 ## Dependências entre camadas
 
@@ -226,7 +238,7 @@ release. Add a tool name to select part of the graph. For example, run
   com imports dinâmicos ou comentários de disable.
 - Ao criar camada ou alias, atualize a regra e seus testes. Use as APIs de
   `vite-plus/lint/plugins` e `vite-plus/lint/plugins-dev`, sem instalar outra
-  cópia de Oxlint. Rode `pnpm test:tooling` e `pnpm check:ci`. Consulte a
+  cópia de Oxlint. Rode `vp run test:tooling` e `vp run check:ci`. Consulte a
   matriz e os limites no README.
 
 ## Cabeçalhos de segurança e CSP
@@ -258,7 +270,7 @@ release. Add a tool name to select part of the graph. For example, run
   `<Show when={dado()}>`): o runtime libera esse fragmento com handlers inline
   que a CSP bloqueia. Veja o limite no README.
 - Em desenvolvimento a CSP não é enviada, porque o Vite injeta scripts sem
-  nonce. Confira mudanças de CSP com `pnpm test:e2e:production`.
+  nonce. Confira mudanças de CSP com `vp run test:e2e:production`.
 
 ## Erros no servidor e chamadas de backend
 
@@ -302,8 +314,8 @@ release. Add a tool name to select part of the graph. For example, run
   Revise fontes de import calculadas, templates dos outros pacotes e demais
   limites do guia; não contorne o contrato com disable. Fixtures seguem
   protegidas; as exceções de backend cobrem só testes e declarações de tipos.
-- Após mudar essa fronteira, rode `pnpm test:tooling`, os testes Node
-  pertinentes e `pnpm test:e2e src/tests/pages/BackendError
+- Após mudar essa fronteira, rode `vp run test:tooling`, os testes Node
+  pertinentes e `vp run test:e2e src/tests/pages/BackendError
   src/tests/pages/OutsideError`. Preserve no CI
   a verificação do corpo completo em SSR inicial, streaming e chamada HTTP.
 - Em atualizações do Solid/plugin, siga o roteiro do guia. O wrapper fica

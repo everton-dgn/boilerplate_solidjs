@@ -56,8 +56,7 @@ testes e hooks de git), sem aplicação de produto pronta.
       incremental
 - [x] Hooks de git: format + lint no commit, typecheck, testes e build no push
 - [x] Conventional Commits validados no `commit-msg`
-- [x] Versões de Node e pnpm fixadas em `package.json` e baixadas
-      automaticamente quando ausentes (`devEngines`)
+- [x] Versões de Node e Bun fixadas em `package.json` e gerenciadas pelo Vite+
 
 <br />
 
@@ -146,16 +145,16 @@ substitui o contrato de [erros de servidor](docs/server-errors.md).
 
 A implementação usa `defineRule` e `definePlugin` de `vite-plus/lint/plugins`,
 com `RuleTester` de `vite-plus/lint/plugins-dev`, sem dependência adicional.
-Execute os comandos a partir da raiz do projeto. `pnpm check:ci` verifica o
-código atual; `pnpm test:tooling` testa a política, seu registro no lint e as
+Execute os comandos a partir da raiz do projeto. `vp run check:ci` verifica o
+código atual; `vp run test:tooling` testa a política, seu registro no lint e as
 restrições de backend. Os dois comandos rodam no CI.
 
 ### Regras de CSS
 
-Execute `pnpm lint:css` para verificar todos os arquivos CSS de `src/`. O
-comando faz parte de `pnpm lint` e `pnpm check:ci`. O pre-push e o CI executam
-essa verificação. O pre-commit usa apenas `vp check --fix` nos arquivos staged,
-sem executar o lint de CSS. `vp lint` e `vp check` chamados diretamente
+Execute `vp run lint:css` para verificar todos os arquivos CSS de `src/`. O
+comando faz parte de `vp run lint` e `vp run check:ci`. O pre-push e o CI
+executam essa verificação. O pre-commit usa apenas `vp check --fix` nos arquivos
+staged, sem executar o lint de CSS. `vp lint` e `vp check` chamados diretamente
 continuam sendo os comandos internos do Vite+.
 
 - Classes de todo o projeto usam snake_case, como `.home_link` e `.sr_only`.
@@ -211,7 +210,7 @@ arquivos CSS referenciados por imports e reexportações em JS/TS. O comando
 `lint:css` reutiliza essa validação para todos os arquivos CSS em `src/`,
 inclusive aqueles sem imports em JS/TS.
 
-`pnpm test:tooling` verifica o comportamento dos verificadores com casos em
+`vp run test:tooling` verifica o comportamento dos verificadores com casos em
 memória e roda nos hooks e no CI. O lint do CSS real continua automático, e suas
 violações bloqueiam a validação até serem corrigidas.
 
@@ -289,8 +288,9 @@ precisa ser a mesma de `entry-server.tsx`.
 
 Em desenvolvimento a CSP não é enviada, porque o Vite injeta no `<head>` o
 cliente de HMR e o patch de estilos sem nonce; os demais cabeçalhos valem. A CSP
-só pode ser conferida no build, com `pnpm start` ou `pnpm test:e2e:production`.
-Todo script novo no `Document` precisa de `nonce={nonce}`.
+só pode ser conferida no build, com `vp run start` ou
+`vp run test:e2e:production`. Todo script novo no `Document` precisa de
+`nonce={nonce}`.
 
 Limites conhecidos:
 
@@ -574,16 +574,20 @@ do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
 
 As versões exatas vivem no `package.json`, não nesta página:
 
-- **Node**: a linha declarada em `engines.node`. O bloco `devEngines` fixa a
-  versão exata e, com `onFail: download`, o pnpm baixa o runtime se a versão
-  local não bater.
-- **pnpm**: a versão fixada em `packageManager`. Instale qualquer versão recente
-  (`brew install pnpm`) e o próprio pnpm troca para a versão fixada ao rodar
-  dentro do projeto.
-- **Chromium do Playwright**: só para `pnpm test:browser`. Não é baixado no
-  `pnpm install`; instale uma vez com `pnpm test:browser:install`.
+- **Vite+**: instale o CLI global conforme o
+  [guia oficial](https://viteplus.dev/guide/). Ele seleciona o Node e o
+  gerenciador de pacotes declarados no projeto.
+- **Node**: o runtime do Vitest, testes de tooling e SSR de produção.
+  `devEngines.runtime` fixa a versão exata, dentro da linha declarada em
+  `engines.node`.
+- **Bun**: o instalador e runtime de desenvolvimento, build, lint de CSS e
+  automação de release, fixado em `packageManager`. O Vite+ seleciona essa
+  versão para a instalação e para o comando `bun`.
+- **Chromium do Playwright**: só para `vp run test:browser`. Não é baixado no
+  `vp install`; instale uma vez com `vp run test:browser:install`.
 
-Ao subir a linha do Node, altere `engines` e `devEngines` no mesmo commit.
+Ao subir a linha do Node, confirme que a Vercel aceita o runtime de destino e
+altere `engines` e `devEngines` no mesmo commit.
 
 <br />
 
@@ -596,17 +600,14 @@ Ao subir a linha do Node, altere `engines` e `devEngines` no mesmo commit.
 git clone git@github.com:everton-dgn/boilerplate_solidjs.git
 cd boilerplate_solidjs
 
-# Instalar o pnpm (se ainda não tiver)
-brew install pnpm
-
-# Instalar dependências (instala os hooks do Lefthook)
-pnpm i
+# Com o Vite+ instalado, preparar dependências e hooks do Lefthook
+vp install
 
 # Instalar o Chromium para os testes de browser (uma vez)
-pnpm test:browser:install
+vp run test:browser:install
 
 # Iniciar servidor de desenvolvimento
-pnpm dev
+vp run dev
 ```
 
 Disponível em http://127.0.0.1:3000, conforme `HOST` e `PORT` no `.env`.
@@ -614,18 +615,19 @@ Disponível em http://127.0.0.1:3000, conforme `HOST` e `PORT` no `.env`.
 Para conferir o build de produção localmente, incluindo SSR e server functions:
 
 ```bash
-pnpm build && pnpm start
+vp run build && vp run start
 ```
 
 O preview usa o Vite+ com a integração do Nitro. O `.env` versionado contém os
 valores locais de `HOST` e `PORT`, usados tanto pelo dev quanto pelo preview, e
 `VITE_SITE_URL`, a URL pública obrigatória dos metadados de SEO. Ele também é
 carregado durante o build; variáveis já definidas no ambiente têm prioridade.
-Para escolher outra porta ou interface no preview, use `pnpm start --port 3001`
-ou `pnpm start --host 0.0.0.0`.
+Para escolher outra porta ou interface no preview, use
+`vp run start --port 3001` ou `vp run start --host 0.0.0.0`.
 
-`pnpm start` é um alias do preview local. Em produção, configure as variáveis na
-plataforma de hospedagem; o comando `preview` é destinado à conferência local.
+`vp run start` é um alias do preview local. Em produção, configure as variáveis
+na plataforma de hospedagem; o comando `preview` é destinado à conferência
+local.
 
 O Nitro usa `preset: 'vercel'` no `vite.config.ts` e gera a função SSR e os
 estáticos em `.vercel/output/`. A entrada SSR do build é a
@@ -637,11 +639,22 @@ nativa entre Solid e Nitro/srvx.
 Para gerar o artefato da Vercel:
 
 ```bash
-pnpm build
+vp run build
 ```
 
 Esse comando gera `.vercel/output/`, incluindo estáticos e a função SSR com
-runtime Node. Gerar o artefato localmente não publica a aplicação.
+runtime Node. O build executa em Bun; o destino da função é explícito no Nitro e
+acompanha `devEngines.runtime`. Gerar o artefato localmente não publica a
+aplicação.
+
+O SSR de produção permanece em Node por diferenças observadas no Bun declarado
+no projeto: `Response.redirect()` expõe um corpo não nulo e respostas de
+`fetch()` permitem alterar os headers. A proteção do servidor depende desses
+contratos e seus testes recusaram essa substituição. Não remova o runtime
+explícito do Nitro: a detecção automática escolheria Bun por causa do processo
+que executa o build. Antes de migrar o SSR, preserve os contratos de
+[erros de servidor](docs/server-errors.md) e rode os testes da fronteira no
+runtime de destino, além dos E2E completos.
 
 O deploy de produção sai do job `deploy` do
 [workflow do CI](.github/workflows/ci.yml), só em push na `main` e depois do job
@@ -664,51 +677,51 @@ build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
 
 # :wrench: Scripts
 
-| Script                      | Descrição                                                   |
-| --------------------------- | ----------------------------------------------------------- |
-| `pnpm dev`                  | Servidor de desenvolvimento com HMR                         |
-| `pnpm build`                | Build Nitro para Vercel em `.vercel/output/`                |
-| `pnpm start`                | Pré-visualizar o build pelo Vite                            |
-| `pnpm typecheck`            | Tipos da aplicação e das ferramentas Node                   |
-| `pnpm typecheck:node`       | Tipos das ferramentas no ambiente Node                      |
-| `pnpm lint`                 | CSS, lint e tipos com cache do Vite+                        |
-| `pnpm format`               | Formatar código com Oxfmt                                   |
-| `pnpm check:ci`             | Formatação, lint e tipos da aplicação                       |
-| `pnpm check:fix`            | Formatação + lint corrigindo o que for possível             |
-| `pnpm test`                 | Todos os projetos de teste da aplicação                     |
-| `pnpm test:tooling`         | Testes de `tooling/` com `node:test`                        |
-| `pnpm test:unit`            | Só os projetos `node` e `dom` (happy-dom)                   |
-| `pnpm test:browser`         | Só o projeto `browser` (Chromium headless)                  |
-| `pnpm test:browser:install` | Baixar o Chromium do Playwright                             |
-| `pnpm test:watch`           | Testes em modo de observação                                |
-| `pnpm test:shuffle`         | Testes em ordem aleatória, para achar dependência de ordem  |
-| `pnpm test:ui`              | Vitest UI com cobertura; use a URL impressa (traz o token)  |
-| `pnpm validate`             | check:ci + typecheck:node + test:coverage + tooling + build |
-| `pnpm commitlint`           | Validar mensagem de commit                                  |
+| Script                        | Descrição                                                   |
+| ----------------------------- | ----------------------------------------------------------- |
+| `vp run dev`                  | Servidor de desenvolvimento com HMR                         |
+| `vp run build`                | Build Nitro para Vercel em `.vercel/output/`                |
+| `vp run start`                | Pré-visualizar o build pelo Vite                            |
+| `vp run typecheck`            | Tipos da aplicação e das ferramentas Node                   |
+| `vp run typecheck:node`       | Tipos das ferramentas no ambiente Node                      |
+| `vp run lint`                 | CSS, lint e tipos com cache do Vite+                        |
+| `vp run format`               | Formatar código com Oxfmt                                   |
+| `vp run check:ci`             | Formatação, lint e tipos da aplicação                       |
+| `vp run check:fix`            | Formatação + lint corrigindo o que for possível             |
+| `vp run test`                 | Todos os projetos de teste da aplicação                     |
+| `vp run test:tooling`         | Testes de `tooling/` com `node:test`                        |
+| `vp run test:unit`            | Só os projetos `node` e `dom` (happy-dom)                   |
+| `vp run test:browser`         | Só o projeto `browser` (Chromium headless)                  |
+| `vp run test:browser:install` | Baixar o Chromium do Playwright                             |
+| `vp run test:watch`           | Testes em modo de observação                                |
+| `vp run test:shuffle`         | Testes em ordem aleatória, para achar dependência de ordem  |
+| `vp run test:ui`              | Vitest UI com cobertura; use a URL impressa (traz o token)  |
+| `vp run validate`             | check:ci + typecheck:node + test:coverage + tooling + build |
+| `vp run commitlint`           | Validar mensagem de commit                                  |
 
 Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
 comando embutido; `vp run <script>` executa um script do `package.json`. Os dois
 podem divergir, então confira o `package.json` antes de rodar direto.
 
-`pnpm lint`, `pnpm lint:css`, `pnpm check:ci` e `pnpm dead-code` usam as tarefas
-com cache `lint-project`, `lint-css`, `check-project` e `dead-code-project` do
-`vite.config.ts`. `pnpm typecheck` usa `typecheck-app` e `typecheck-node`, e
-`pnpm typecheck:node` executa somente a segunda tarefa; `pnpm test:tooling` usa
-a tarefa `test-tooling`, sem cache, porque os testes dependem de diretórios
-temporários que o cache não rastreia. O Vite+ reaproveita resultados
-bem-sucedidos quando os arquivos lidos, as listagens de diretórios, os
-argumentos e as variáveis de ambiente selecionadas continuam iguais. As tarefas
-de lint incluem `NODE_ENV` na chave do cache; `PATH` e `NODE_OPTIONS` chegam ao
-processo sem invalidar o resultado. O Vite também registra as variáveis que
-carrega. A configuração do servidor limita `loadEnv` aos prefixos `HOST` e
-`PORT`, para não registrar todo o ambiente.
+`vp run lint`, `vp run lint:css`, `vp run check:ci` e `vp run dead-code` usam as
+tarefas com cache `lint-project`, `lint-css`, `check-project` e
+`dead-code-project` do `vite.config.ts`. `vp run typecheck` usa `typecheck-app`
+e `typecheck-node`, e `vp run typecheck:node` executa somente a segunda tarefa;
+`vp run test:tooling` usa a tarefa `test-tooling`, sem cache, porque os testes
+dependem de diretórios temporários que o cache não rastreia. O Vite+ reaproveita
+resultados bem-sucedidos quando os arquivos lidos, as listagens de diretórios,
+os argumentos e as variáveis de ambiente selecionadas continuam iguais. As
+tarefas de lint incluem `NODE_ENV` na chave do cache; `PATH` e `NODE_OPTIONS`
+chegam ao processo sem invalidar o resultado. O Vite também registra as
+variáveis que carrega. A configuração do servidor limita `loadEnv` aos prefixos
+`HOST` e `PORT`, para não registrar todo o ambiente.
 
 O rastreamento automático registra os arquivos que o lint type-aware lê,
 inclusive os tipos em `node_modules`, mas não vê as leituras do `tsc` nativo.
 Por isso `typecheck-app` e `typecheck-node` declaram as entradas explicitamente,
-incluindo fontes, configurações, manifests e locks. O arquivo
-`node_modules/.pnpm/lock.yaml` representa os tipos instalados. O Knip combina
-rastreamento automático com entradas explícitas de fontes, ferramentas e
+incluindo fontes, configurações, `package.json` e `bun.lock`. O lockfile
+representa as dependências que `vp install --frozen-lockfile` instala. O Knip
+combina rastreamento automático com entradas explícitas de fontes, ferramentas e
 dependências, incluindo a descoberta de novas rotas. Ao criar uma tarefa com
 cache, confira com duas execuções que uma mudança num arquivo lido invalida o
 resultado.
@@ -719,6 +732,46 @@ reproduz um resultado anterior. Para executar tudo novamente, use
 das outras tarefas, use `vp run --no-cache typecheck`,
 `vp run --no-cache lint:css` ou `vp run --no-cache dead-code`. `check:fix`,
 build e as suítes do Vitest mantêm seus comandos próprios.
+
+No CI e na automação de release, o `setup-vp` fornece o Node e o Bun declarados
+no projeto e reaproveita o cache de pacotes. `vp install --frozen-lockfile`
+instala com Bun sem permitir mudanças no lockfile. Os scripts `dev` e `build`
+chamam o CLI local do Vite+ explicitamente com Bun, porque o `vp` global e os
+filhos de `vp run` podem selecionar Node novamente. Use `vp run dev` e
+`vp run build` para executar esses scripts. Node continua nos testes da
+aplicação, no tooling e no SSR de produção: o `RuleTester` do Oxlint recusa Bun,
+e a suíte Vitest apresentou incompatibilidades no carregamento de módulos do
+Solid. Depois da instalação, o workflow restaura
+`node_modules/.vite/task-cache`, `node_modules/.vitest-cache` e `.tsbuild`, com
+uma chave por execução e um prefixo de restauração restrito ao sistema
+operacional, arquitetura, Node, Bun e lockfile. Vite Task, Vitest e TypeScript
+conferem suas entradas antes de reaproveitar os dados. Depois dos testes com
+cobertura e de tooling, o cache é enviado em background durante os E2E,
+inclusive quando uma verificação anterior falha. Vite Task só guarda resultados
+bem-sucedidos e Vitest guarda transformações, então uma falha não vira um
+resultado de teste reaproveitado. O workflow aguarda o upload antes de encerrar;
+falhas de cache não dispensam nem reprovam as verificações. Uma execução sem
+cache faz as mesmas verificações. A reutilização do Vite Task entre runners é
+experimental: confira os hits nos logs e compare o tempo economizado com o custo
+de transferir o cache.
+
+As tarefas de lint combinam os arquivos lidos automaticamente com entradas
+explícitas para CSS, ferramentas de CSS, `package.json`, `bun.lock` e
+`bunfig.toml`. Assim, a invalidação do lint de CSS não depende do rastreamento
+de leituras do runtime em cada sistema operacional. A checagem de tipos também
+tem entradas explícitas para fontes, declarações e configurações do TypeScript.
+O Bun usa o linker isolado definido em `bunfig.toml`; somente os pacotes de
+`trustedDependencies` podem executar os scripts de instalação autorizados. Os
+comandos documentados usam `vp run`, e o Vite mantém seu carregamento de
+variáveis por modo. `env = false` no `bunfig.toml` também evita que `bun run`
+antecipe a leitura do `.env` antes de iniciar essas ferramentas.
+
+Os testes com cobertura e os testes de tooling rodam em etapas `parallel` no
+mesmo runner, depois das checagens de formatação, lint e tipos. O workflow
+aguarda ambas terminarem e preserva suas falhas antes dos E2E. Os testes rodam
+em toda execução; o cache do Vitest guarda transformações de módulos. Em
+`CI=true`, Vitest e o runner Node dos testes de tooling usam no máximo dois
+workers cada, para limitar a disputa de CPU entre as etapas.
 
 <br />
 
@@ -740,7 +793,7 @@ O `vite.config.ts` define três projetos do Vitest, escolhidos pelo sufixo do
 arquivo:
 
 Os testes em `tooling/**/__tests__/` usam o executor nativo `node:test`, sem
-configuração adicional, e rodam com `pnpm test:tooling`. Um único glob cobre
+configuração adicional, e rodam com `vp run test:tooling`. Um único glob cobre
 todos os módulos, então um módulo novo não exige script próprio. Essa suíte roda
 em `validate`, no `pre-push` e no CI, mas fica fora dos comandos do Vitest:
 teste, cobertura, UI e watch.
@@ -752,7 +805,7 @@ teste, cobertura, UI e watch.
 | `*.browser.test.{ts,tsx}` | Chromium real | Interação, layout e APIs de browser         |
 
 Testes só de tipos (`expectTypeOf`) usam `Nome[.qualificador].test-d.ts`. Nenhum
-projeto do Vitest inclui esse sufixo, e o `pnpm typecheck` verifica esses
+projeto do Vitest inclui esse sufixo, e o `vp run typecheck` verifica esses
 arquivos. Rodar um deles no Vitest falharia no `expect.requireAssertions`,
 porque `expectTypeOf` não conta como asserção em runtime.
 
@@ -831,10 +884,10 @@ entram no build.
 
 ## Testes da aplicação completa
 
-`pnpm test:e2e` executa os testes em `src/tests/pages/**/*.e2e.test.ts`, exceto
-os arquivos `*.production.e2e.test.ts`, com Chromium. O Playwright gera o build
-e inicia o servidor de produção em `http://127.0.0.1:4317`, encerrando-o ao
-terminar. A porta precisa estar livre. Os cenários cobrem a página inicial,
+`vp run test:e2e` executa os testes em `src/tests/pages/**/*.e2e.test.ts`,
+exceto os arquivos `*.production.e2e.test.ts`, com Chromium. O Playwright gera o
+build e inicia o servidor de produção em `http://127.0.0.1:4317`, encerrando-o
+ao terminar. A porta precisa estar livre. Os cenários cobrem a página inicial,
 hidratação do seletor de tema, teclado, persistência e sincronização entre abas,
 cores sem JavaScript, layout e resposta 404 com navegação de volta ao início.
 Também cobrem a confidencialidade de erros do servidor: HTTP 500 de um backend
@@ -848,12 +901,12 @@ suíte inteira.
 O build E2E usa `--mode e2e` com otimizações de produção e acrescenta a página
 de teste pelo diretório `src/tests/fixtures/e2e/routes/`. O backend simulado
 escuta somente em `127.0.0.1:4318` e é iniciado e encerrado pelo Playwright. O
-build normal (`pnpm build`) usa apenas `src/routes/` e não inclui essa página
+build normal (`vp run build`) usa apenas `src/routes/` e não inclui essa página
 nem o backend simulado. As portas 4317 e 4318 precisam estar livres.
 
-`pnpm test:e2e:production` executa os arquivos `*.production.e2e.test.ts` contra
-um build normal, com a árvore real de `src/routes/`. Essa suíte verifica por
-HTTP que `/robots.txt`, `/llms.txt` e `/sitemap.xml` respondem sem
+`vp run test:e2e:production` executa os arquivos `*.production.e2e.test.ts`
+contra um build normal, com a árvore real de `src/routes/`. Essa suíte verifica
+por HTTP que `/robots.txt`, `/llms.txt` e `/sitemap.xml` respondem sem
 redirecionamento, com conteúdo e headers esperados, e que os helpers locais não
 viram endpoints públicos. Também verifica a ausência de uma rota das fixtures e
 que a Home recebe os cabeçalhos de segurança do middleware real, já que o build
@@ -867,24 +920,27 @@ e dispensa o backend simulado. Execute as duas suítes em sequência, pois
 compartilham a porta e os artefatos de build. O CI executa ambas; a suíte de
 produção também valida o build final.
 
-Use `pnpm test:e2e:ui` para abrir a interface interativa do Playwright. Com
-`CI=true`, os E2E usam um único worker; localmente, mantêm o paralelismo padrão.
+Use `vp run test:e2e:ui` para abrir a interface interativa do Playwright. Com
+`CI=true`, os E2E usam dois workers; localmente, mantêm o paralelismo padrão. O
+grupo que confere a contagem de logs do middleware continua em ordem dentro de
+um worker. Para comparar tempos ou investigar uma falha de concorrência, use
+`CI=true vp run test:e2e --workers=1` e `CI=true vp run test:e2e --workers=2`.
 
 Os relatórios HTML ficam em `playwright-report/e2e/` e
 `playwright-report/production/`. Os traces de falhas ficam em
 `test-results/e2e/` e `test-results/e2e-production/`, respectivamente. Os testes
 do Vitest Browser Mode guardam traces de falhas em
 `test-results/browser-traces/`. Esses artefatos são ignorados pelo Git. Os E2E
-têm comando separado e não fazem parte de `pnpm test` ou `pnpm validate`.
+têm comando separado e não fazem parte de `vp run test` ou `vp run validate`.
 
-Para conferir a interface em um celular na mesma rede, execute `pnpm dev:phone`
-e abra a URL de rede exibida pelo Vite. Esse comando disponibiliza o servidor de
-desenvolvimento nas interfaces de rede da máquina.
+Para conferir a interface em um celular na mesma rede, execute
+`vp run dev:phone` e abra a URL de rede exibida pelo Vite. Esse comando
+disponibiliza o servidor de desenvolvimento nas interfaces de rede da máquina.
 
 # :shield: Hooks de Git
 
-Instalados pelo Lefthook no `pnpm install` (habilitado em `allowBuilds` do
-`pnpm-workspace.yaml`):
+Instalados pelo Lefthook no `vp install`, autorizado em `trustedDependencies` do
+`package.json`:
 
 | Hook         | O que roda                                                                                                 |
 | ------------ | ---------------------------------------------------------------------------------------------------------- |
@@ -901,20 +957,21 @@ os hooks.
 
 # :rotating_light: Considerações Importantes
 
-- As versões de dependências são fixadas sem `^` (`savePrefix` vazio) para
-  evitar quebras silenciosas. Consulte os arquivos de dependências para saber
-  quais estão instaladas.
+- As versões de dependências são fixadas sem `^` (`install.exact` no
+  `bunfig.toml`) para evitar quebras silenciosas. Consulte os arquivos de
+  dependências para saber quais estão instaladas.
 - `vite-plus`, `vite`, `vitest` e os pacotes `@vitest/*` vêm do catálogo em
-  `pnpm-workspace.yaml`; `vite` resolve para o core do Vite+. Atualize as
-  versões lá, não no `package.json`, e mantenha os `@vitest/*` na versão exata
+  `workspaces.catalog` do `package.json`; `vite` resolve para o core do Vite+.
+  Atualize as versões nesse catálogo e mantenha os `@vitest/*` na versão exata
   do Vitest embutido no Vite+. O CI lê a versão do Vite+ desse catálogo.
 - Commits devem seguir Conventional Commits.
 - O lint é type-aware e roda com `typeCheck: true`; erros de tipo aparecem no
-  `pnpm lint` além do `pnpm typecheck`.
-- O CI, o pre-push e `pnpm validate` combinam `check:ci` com `typecheck:node`
+  `vp run lint` além do `vp run typecheck`.
+- O CI, o pre-push e `vp run validate` combinam `check:ci` com `typecheck:node`
   para verificar a aplicação uma vez e preservar a checagem das ferramentas sem
-  os tipos do DOM. `pnpm typecheck` continua verificando os dois projetos.
-- Use as versões de Node e pnpm definidas em `package.json`.
+  os tipos do DOM. `vp run typecheck` continua verificando os dois projetos.
+- Use as versões de Node e Bun definidas em `package.json`. O `bun.lock` é o
+  único lockfile do projeto.
 
 <br />
 

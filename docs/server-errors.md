@@ -370,27 +370,26 @@ com query, invalide a chave antes de `reset()`:
 Após alterar essa fronteira, execute:
 
 ```bash
-pnpm test:tooling
-pnpm test:unit
-pnpm test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError
-pnpm typecheck
-pnpm check:ci
+vp run test:tooling
+vp run test:unit
+vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError
+vp run typecheck
+vp run check:ci
 ```
 
 O [CI](../.github/workflows/ci.yml) executa `test:tooling` e a suíte E2E
-completa; `pnpm validate` e o `pre-push` rodam `test:tooling` localmente, o que
-inclui as duas políticas. Os testes da política verificam as regras no parser
-real e seu registro no lint completo, com casos recusados e permitidos para cada
-exceção. Consulte os resultados de cada execução nos logs da validação local e
-do CI.
+completa; `vp run validate` e o `pre-push` rodam `test:tooling` localmente, o
+que inclui as duas políticas. Os testes da política verificam as regras no
+parser real e seu registro no lint completo, com casos recusados e permitidos
+para cada exceção. Consulte os resultados de cada execução nos logs da validação
+local e do CI.
 
 ## Atualizar o Solid
 
-Consulte as dependências declaradas no [package.json](../package.json), o
-catálogo do [pnpm-workspace.yaml](../pnpm-workspace.yaml) e a resolução no
-[pnpm-lock.yaml](../pnpm-lock.yaml). `vp toolchain` mostra as ferramentas da
-instalação ativa. Esses arquivos e o comando substituem uma lista de versões
-mantida neste guia.
+Consulte as dependências e o catálogo `workspaces.catalog` do
+[package.json](../package.json) e a resolução no [bun.lock](../bun.lock).
+`vp toolchain` mostra as ferramentas da instalação ativa. Esses arquivos e o
+comando substituem uma lista de versões mantida neste guia.
 
 A proteção atual parte da avaliação da versão do Solid resolvida no lockfile
 quando o wrapper foi revisado, que já contém a
@@ -415,9 +414,9 @@ pacote publicado e instalado mudou esse comportamento.
    Confira se `src/entry-server.tsx` e o plugin continuam sem repassá-lo e se o
    módulo `configure` ainda carrega antes do primeiro dispatch.
 3. Rode
-   `pnpm test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError` no
-   build de produção. Os marcadores nos corpos brutos, os controles positivos e
-   o teardown do log são a regressão da fronteira. Se o runtime mudar as
+   `vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError`
+   no build de produção. Os marcadores nos corpos brutos, os controles positivos
+   e o teardown do log são a regressão da fronteira. Se o runtime mudar as
    mensagens que chegam ao navegador, meça antes de ajustar as tolerâncias de
    `pageerror`, inclusive com CPU limitada a 20x.
 4. Reavalie o wrapper só se as notas da versão ou o código publicado indicarem
