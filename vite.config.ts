@@ -9,6 +9,16 @@ import { fmt } from './tooling/fmt.ts'
 import { lint } from './tooling/lint.ts'
 
 const resolve = { tsconfigPaths: true }
+// As entradas explícitas mantêm o cache do lint de CSS independente do
+// rastreamento das leituras feitas pelo runtime em cada sistema operacional.
+const CSS_CACHE_INPUTS = [
+  'src/**/*.css',
+  'tooling/css/**',
+  'tooling/css-filename.ts',
+  'package.json',
+  'bun.lock',
+  'bunfig.toml'
+]
 const CI_TEST_WORKERS = 2
 const TOOLING_TEST_CONCURRENCY = env.CI
   ? ` --test-concurrency=${CI_TEST_WORKERS}`
@@ -144,7 +154,10 @@ export default defineConfig(({ mode }) => {
       tasks: {
         'lint-css': {
           command: 'bun tooling/css/check.ts',
-          cache: { env: ['NODE_ENV'] }
+          cache: {
+            env: ['NODE_ENV'],
+            input: [{ auto: true }, ...CSS_CACHE_INPUTS]
+          }
         },
         'dead-code-project': {
           command:
@@ -163,15 +176,32 @@ export default defineConfig(({ mode }) => {
         },
         'lint-project': {
           command: 'bun tooling/css/check.ts && vp lint',
-          cache: { env: ['NODE_ENV'] }
+          cache: {
+            env: ['NODE_ENV'],
+            input: [
+              { auto: true },
+              ...CSS_CACHE_INPUTS,
+              'src/**',
+              'tooling/**',
+              '*.ts',
+              'tsconfig*.json'
+            ]
+          }
         },
         'check-project': {
           command: 'bun tooling/css/check.ts && vp check',
           cache: {
             env: ['NODE_ENV'],
-            // Os arquivos lidos cobrem o código; o manifest e o lock cobrem as
-            // dependências instaladas.
-            input: [{ auto: true }, 'package.json', 'bun.lock']
+            // A checagem nativa de tipos também precisa das declarações que
+            // o lint e o formatador ignoram, além das configurações do TS.
+            input: [
+              { auto: true },
+              ...CSS_CACHE_INPUTS,
+              'src/**',
+              'tooling/**',
+              '*.ts',
+              'tsconfig*.json'
+            ]
           }
         },
         // O rastreamento automático não vê as leituras do tsc nativo, então as

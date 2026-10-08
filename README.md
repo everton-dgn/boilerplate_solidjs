@@ -755,13 +755,16 @@ cache faz as mesmas verificações. A reutilização do Vite Task entre runners 
 experimental: confira os hits nos logs e compare o tempo economizado com o custo
 de transferir o cache.
 
-`check-project` combina os arquivos lidos pelo lint com `package.json` e
-`bun.lock`, para invalidar mudanças nas dependências. O Bun usa o linker isolado
-definido em `bunfig.toml`; somente os pacotes de `trustedDependencies` podem
-executar os scripts de instalação autorizados. Os comandos documentados usam
-`vp run`, e o Vite mantém seu carregamento de variáveis por modo. `env = false`
-no `bunfig.toml` também evita que `bun run` antecipe a leitura do `.env` antes
-de iniciar essas ferramentas.
+As tarefas de lint combinam os arquivos lidos automaticamente com entradas
+explícitas para CSS, ferramentas de CSS, `package.json`, `bun.lock` e
+`bunfig.toml`. Assim, a invalidação do lint de CSS não depende do rastreamento
+de leituras do runtime em cada sistema operacional. A checagem de tipos também
+tem entradas explícitas para fontes, declarações e configurações do TypeScript.
+O Bun usa o linker isolado definido em `bunfig.toml`; somente os pacotes de
+`trustedDependencies` podem executar os scripts de instalação autorizados. Os
+comandos documentados usam `vp run`, e o Vite mantém seu carregamento de
+variáveis por modo. `env = false` no `bunfig.toml` também evita que `bun run`
+antecipe a leitura do `.env` antes de iniciar essas ferramentas.
 
 Os testes com cobertura e os testes de tooling rodam em etapas `parallel` no
 mesmo runner, depois das checagens de formatação, lint e tipos. O workflow
