@@ -292,26 +292,20 @@ só pode ser conferida no build, com `vp run start` ou
 `vp run test:e2e:production`. Todo script novo no `Document` precisa de
 `nonce={nonce}`.
 
+Componentes `lazy()` com CSS própria podem aparecer em um fragmento depois que o
+dado assíncrono de um `Loading` resolve. O runtime anuncia a folha com
+`data-dfc` e libera o fragmento por um listener instalado por script com nonce,
+sem handlers inline. O template do conteúdo precede os links, inclusive quando a
+CSS já está em cache. A fixture `/fragment-css` verifica a ordem no HTML, a
+renderização com estilos e a ausência de violações de CSP com a folha nova ou
+armazenada no cache do navegador, sem modificar o HTML da aplicação.
+
 Limites conhecidos:
 
 - Na Vercel, arquivos estáticos (`/assets/`, `/images/` e `/favicon/`) saem do
   CDN sem passar pela função. O `vercel.json` grava neles só
   `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`; a CSP e as
   políticas de frame só têm efeito em documentos, que passam pelo middleware.
-- Um componente `lazy()` com CSS própria criado só depois que o dado assíncrono
-  de um `Loading` resolve, por exemplo dentro de `<Show when={dado()}>`, não
-  aparece, por dois motivos independentes, ambos em `sink.fragment`
-  (`@solidjs/web/dist/server.js`). A folha do fragmento vai num `<link>` com
-  `onload` e `onerror` inline; atributos `on*=` não aceitam nonce e a CSP os
-  bloqueia. E o `<link>` sai antes do `<template>` do conteúdo: uma folha em
-  cache dispara `load` antes de o parser chegar ao template, e a troca é
-  descartada, mesmo sem CSP. Importe o componente de forma estática ou crie o
-  `lazy()` fora do trecho que espera o dado assíncrono, para que a CSS dele
-  entre no `<head>`. A fixture `/fragment-css` e o teste
-  `FragmentCss.e2e.test.ts` registram o limite, relatado em
-  [solidjs/solid#3747](https://github.com/solidjs/solid/issues/3747), com a
-  correção proposta em
-  [solidjs/solid#3755](https://github.com/solidjs/solid/pull/3755).
 - `Cross-Origin-Embedder-Policy: require-corp` bloqueia recursos de outra origem
   sem `Cross-Origin-Resource-Policy` ou CORS. Ao adicionar fontes, imagens ou
   scripts externos, confira se o provedor envia esses cabeçalhos ou revise a
@@ -960,6 +954,9 @@ os hooks.
 - As versões de dependências são fixadas sem `^` (`install.exact` no
   `bunfig.toml`) para evitar quebras silenciosas. Consulte os arquivos de
   dependências para saber quais estão instaladas.
+- Os overrides de `@solidjs/compiler` e `@solidjs/babel-plugin` mantêm o
+  compilador alinhado ao runtime do Solid. Atualize os dois junto com `solid-js`
+  e `@solidjs/web`, respeitando a compatibilidade do plugin do Vite.
 - `vite-plus`, `vite`, `vitest` e os pacotes `@vitest/*` vêm do catálogo em
   `workspaces.catalog` do `package.json`; `vite` resolve para o core do Vite+.
   Atualize as versões nesse catálogo e mantenha os `@vitest/*` na versão exata

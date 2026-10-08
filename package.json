@@ -43,17 +43,17 @@
     "commitlint": "commitlint"
   },
   "dependencies": {
-    "@solidjs/router": "2.0.0-next.35",
-    "@solidjs/web": "2.0.0-rc.13",
+    "@solidjs/router": "2.0.0-next.37",
+    "@solidjs/web": "2.0.0-rc.14",
     "filesystem-routing": "0.4.0",
-    "solid-js": "2.0.0-rc.13",
+    "solid-js": "2.0.0-rc.14",
     "valibot": "1.5.0"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
     "@iconify-json/hugeicons": "1.2.35",
-    "@playwright/test": "1.63.0",
+    "@playwright/test": "1.64.0",
     "@solidjs/vite-plugin": "3.0.0-next.47",
     "@testing-library/jest-dom": "7.0.1",
     "@types/node": "24.19.1",
@@ -63,9 +63,9 @@
     "eslint-plugin-solid": "0.18.1",
     "happy-dom": "20.14.5",
     "knip": "6.40.0",
-    "lefthook": "2.1.17",
+    "lefthook": "2.2.0",
     "nitro": "3.0.260903-beta",
-    "playwright": "1.63.0",
+    "playwright": "1.64.0",
     "schema-dts": "2.1.0",
     "stylelint": "17.16.0",
     "stylelint-declaration-strict-value": "1.12.1",
@@ -104,6 +104,8 @@
     }
   },
   "overrides": {
+    "@solidjs/babel-plugin": "2.0.0-rc.14",
+    "@solidjs/compiler": "2.0.0-rc.14",
     "vite@*": "catalog:",
     "vitest@*": "catalog:"
   }

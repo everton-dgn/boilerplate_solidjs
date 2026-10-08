@@ -59,6 +59,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     {
       files: [
         'src/tests/pages/BackendError/BackendError.e2e.test.ts',
+        'src/tests/pages/FragmentCss/FragmentCss.e2e.test.ts',
         'src/tests/pages/OutsideError/OutsideError.e2e.test.ts',
         'src/tests/helpers/readSiteOrigin/index.ts'
       ],
@@ -537,7 +538,11 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'solid/prefer-onSettled-for-side-effects': 'warn',
     'solid/prefer-show': 'off',
     'solid/prefer-structured-class': 'error',
-    'solid/reactivity': 'warn',
+    // O plugin ainda não reconhece o callback reativo desta API do renderer.
+    'solid/reactivity': [
+      'warn',
+      { customReactiveFunctions: ['dynamicComponent'] }
+    ],
     'solid/removed-api': 'error',
     'solid/require-async-server-function': 'error',
     'solid/self-closing-comp': 'warn',

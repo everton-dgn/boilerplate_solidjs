@@ -1,4 +1,4 @@
-import { dynamic, httpStatus } from '@solidjs/web'
+import { dynamicComponent, httpStatus } from '@solidjs/web'
 import { createUniqueId, untrack } from 'solid-js'
 
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
@@ -24,7 +24,7 @@ export function ErrorFallback(props: ErrorFallbackProps) {
   const titleId = `${id}-title`
   const descriptionId = `${id}-description`
   const content = () => ERROR_FALLBACK_CONTENT[props.kind]
-  const Icon = dynamic(() => content().icon)
+  const Icon = dynamicComponent(() => content().icon)
 
   return (
     <main class={S.page} data-error-variant={props.kind}>
