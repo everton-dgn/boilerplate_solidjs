@@ -67,18 +67,20 @@ jobs:
             node_modules/.vitest-cache
             .tsbuild
           key:
-            ci-validation-v1-${{ runner.os }}-${{ runner.arch }}-node-${{
+            ci-validation-v2-${{ runner.os }}-${{ runner.arch }}-node-${{
             steps.toolchain.outputs.node }}-bun-${{ steps.toolchain.outputs.bun
             }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}-${{
             github.run_attempt }}
           restore-keys: |
-            ci-validation-v1-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.toolchain.outputs.node }}-bun-${{ steps.toolchain.outputs.bun }}-${{ hashFiles('bun.lock') }}-
+            ci-validation-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.toolchain.outputs.node }}-bun-${{ steps.toolchain.outputs.bun }}-${{ hashFiles('bun.lock') }}-
+
+      # Cria .tsbuild antes do lint também quando o cache está vazio, para
+      # estabilizar a listagem da raiz que o Vite Task rastreia.
+      - name: Check Node tooling types
+        run: vp run typecheck:node
 
       - name: Check formatting and lint
         run: vp run check:ci
-
-      - name: Check Node tooling types
-        run: vp run typecheck:node
 
       - parallel:
           - name: Run tests with coverage
