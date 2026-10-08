@@ -181,6 +181,8 @@ jobs:
       - name: Build for production with Vite+
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          # O CLI consulta process.env antes de iniciar o build.
+          ENABLE_EXPERIMENTAL_COREPACK: '0'
         run: vp dlx vercel@latest build --prod --yes
 
       - name: Deploy production build
