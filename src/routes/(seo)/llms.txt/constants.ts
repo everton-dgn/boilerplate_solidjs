@@ -3,7 +3,7 @@
 // o site oferece e o que não existe). Cada projeto derivado deve reescrevê-las;
 // notas em branco são ignoradas.
 export const LLMS_NOTES: readonly string[] = [
-  'O conteúdo do site está em português do Brasil.',
-  'As páginas são renderizadas no servidor e podem ser lidas sem JavaScript.',
-  'Não há API pública: as únicas rotas de API servem sitemap.xml, robots.txt e este arquivo.'
+  'Content is available in English (/en), Brazilian Portuguese (/pt) and Spanish (/es). This index uses English.',
+  'Pages are rendered on the server and can be read without JavaScript.',
+  'There is no public API: the only API routes serve sitemap.xml, robots.txt and this file.'
 ]

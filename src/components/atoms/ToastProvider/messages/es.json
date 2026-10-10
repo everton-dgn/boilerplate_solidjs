@@ -1,0 +1,9 @@
+{
+  "toast_close": "Cerrar notificación",
+  "toast_notifications": "Notificaciones",
+  "toast_info": "Información",
+  "toast_success": "Éxito",
+  "toast_warning": "Advertencia",
+  "toast_error": "Error",
+  "toast_loading": "Cargando"
+}

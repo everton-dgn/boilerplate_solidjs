@@ -1,7 +1,12 @@
+import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
+import { m } from '@/paraglide/messages.js'
+import { getLocale } from '@/paraglide/runtime.js'
+
 export const SITE = {
   title: 'SolidJS Boilerplate',
-  description:
-    'Uma base para aplicações web com SolidJS, TypeScript e Vite+, com renderização no servidor e temas claro e escuro.',
+  get description(): string {
+    return m.site_description()
+  },
   author: {
     name: 'Éverton Toffanetto',
     // `url` identifica o autor no nó `Article` do JSON-LD.
@@ -19,7 +24,9 @@ export const SITE = {
   twitter: '@toffanettodev',
   // BCP 47: `lang` do documento e `inLanguage` do JSON-LD; o `og:locale`
   // deriva daqui trocando o hífen por sublinhado.
-  locale: 'pt-BR',
+  get locale(): string {
+    return LOCALE_TAGS[getLocale()]
+  },
   // URL pública fixa para canonical, Open Graph, sitemap e robots, definida
   // por VITE_SITE_URL.
   url: import.meta.env.VITE_SITE_URL,
@@ -37,6 +44,8 @@ export const SITE = {
     path: '/images/og.png',
     width: 1200,
     height: 630,
-    alt: 'Logo do SolidJS sobre o título SolidJS Boilerplate'
+    get alt(): string {
+      return m.site_imageAlt()
+    }
   }
 }

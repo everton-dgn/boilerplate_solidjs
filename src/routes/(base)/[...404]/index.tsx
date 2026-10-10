@@ -2,6 +2,7 @@ import type { RouteDefinition } from '@solidjs/router'
 import { httpStatus } from '@solidjs/web'
 
 import { ErrorFallback } from '@/components/organisms/ErrorFallback/index.tsx'
+import { m } from '@/paraglide/messages.js'
 
 const HTTP_NOT_FOUND = 404
 
@@ -9,8 +10,12 @@ export const route = {
   preload: () => httpStatus(HTTP_NOT_FOUND),
   info: {
     seo: {
-      title: 'Página não encontrada',
-      description: 'A página solicitada não foi encontrada.',
+      get title() {
+        return m.notFound_title()
+      },
+      get description() {
+        return m.notFound_description()
+      },
       noindex: true
     }
   }

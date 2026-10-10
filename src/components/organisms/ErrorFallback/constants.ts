@@ -2,6 +2,8 @@ import type { ComponentProps, JSX } from '@solidjs/web'
 import IconArrowLeft from '~icons/hugeicons/arrow-left-01'
 import IconRefresh from '~icons/hugeicons/refresh'
 
+import { m } from '@/paraglide/messages.js'
+
 import type { ErrorFallbackKind } from './types.ts'
 
 type ErrorFallbackContent = {
@@ -18,17 +20,30 @@ export const ERROR_FALLBACK_CONTENT: Record<
 > = {
   'not-found': {
     badge: '404',
-    title: 'Página não encontrada!',
-    description:
-      'A página que você procura não existe ou pode ter sido movida.',
-    actionLabel: 'Voltar ao início',
+    get title() {
+      return m.errorFallback_notFoundTitle()
+    },
+    get description() {
+      return m.errorFallback_notFoundDescription()
+    },
+    get actionLabel() {
+      return m.errorFallback_home()
+    },
     icon: IconArrowLeft
   },
   runtime: {
-    badge: 'Erro!',
-    title: 'Algo deu errado!',
-    description: 'Não foi possível concluir sua solicitação. Tente novamente.',
-    actionLabel: 'Recarregar página',
+    get badge() {
+      return m.errorFallback_badge()
+    },
+    get title() {
+      return m.errorFallback_runtimeTitle()
+    },
+    get description() {
+      return m.errorFallback_runtimeDescription()
+    },
+    get actionLabel() {
+      return m.errorFallback_reload()
+    },
     icon: IconRefresh
   }
 }

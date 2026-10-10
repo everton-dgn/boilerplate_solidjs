@@ -24,7 +24,7 @@ type StaticPage = RouteState & { path: string }
 
 const DEFAULT_SELECTION: LlmsSelection = {
   include: false,
-  section: 'Páginas',
+  section: 'Pages',
   optional: false
 }
 

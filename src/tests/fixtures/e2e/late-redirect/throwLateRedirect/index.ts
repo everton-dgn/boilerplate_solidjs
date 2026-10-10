@@ -1,5 +1,7 @@
 import { redirect } from '@solidjs/web'
 
+import { localizeHref } from '@/i18n/urls/index.ts'
+
 const REDIRECT_DELAY_MS = 150
 
 // Redirect decidido depois do envio do shell: o atraso mantém o Loading
@@ -11,5 +13,5 @@ export async function throwLateRedirect(): Promise<never> {
     setTimeout(resolve, REDIRECT_DELAY_MS)
   })
   // oxlint-disable-next-line typescript/only-throw-error -- O Solid usa Response como sinal de redirecionamento.
-  throw redirect('/?from=late-redirect')
+  throw redirect(localizeHref({ href: '/?from=late-redirect' }))
 }

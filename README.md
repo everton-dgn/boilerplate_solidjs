@@ -19,6 +19,7 @@ testes e hooks de git), sem aplicação de produto pronta.
 | ----------------- | --------------------------------------------------------- |
 | Framework         | SolidJS (`solid-js` + `@solidjs/web`)                     |
 | Roteamento        | `@solidjs/router`                                         |
+| Traduções         | Paraglide, com português, inglês e espanhol               |
 | Renderização      | SSR com hidratação e server functions                     |
 | Linguagem         | TypeScript (modo estrito, `erasableSyntaxOnly`)           |
 | Toolchain         | Vite+ (`vp`): Vite, Rolldown, Vitest, Oxlint, Oxfmt       |
@@ -40,11 +41,15 @@ testes e hooks de git), sem aplicação de produto pronta.
 - [x] Middleware de servidor: cabeçalhos de segurança, Content-Security-Policy
       com nonce e `requestId` por requisição
 - [x] Roteamento com lazy loading e rota 404 respondendo com status HTTP correto
+- [x] URLs `/pt`, `/en` e `/es`, seletor de idioma, mensagens colocalizadas e
+      validação obrigatória dos três idiomas
 - [x] SEO: canonical e Open Graph por rota com `useHead`, imagem social,
       `sitemap.xml` e `llms.txt` gerados a partir do manifesto de rotas e
       `robots.txt` com bloqueio de robôs de treinamento de IA
 - [x] Layout responsivo com Topbar, página inicial e páginas de erro
-- [x] Botão, menu de tema e componentes de página com CSS Modules
+- [x] Botão, campos de formulário, diálogo modal, notificações e menu de tema
+      com CSS Modules
+- [x] Links, navegação programática e redirects com idioma e tipos do router
 - [x] Tema claro, escuro ou do sistema (padrão), aplicado antes da hidratação,
       com persistência e sincronização entre abas
 - [x] Nitro para servir estáticos e SSR, com preset Vercel e preview local
@@ -66,19 +71,21 @@ testes e hooks de git), sem aplicação de produto pronta.
 
 As páginas em `src/routes` usam `export default` e são descobertas pelo
 `filesystem-routing`. `index.tsx` define `/`, `[id].tsx` define um parâmetro
-dinâmico e `[...404].tsx` captura caminhos desconhecidos. O `export const route`
-define opções como `preload`, usado pelo fallback para responder com HTTP 404.
-Componentes colocalizados podem ficar em pastas `components` dentro de `routes`:
-use exportações nomeadas para que eles não sejam registrados como páginas. Não é
-necessário editar `src/router.ts` ao adicionar uma página.
+dinâmico e `[...404]/index.tsx` captura caminhos desconhecidos. O
+`export const route` define opções como `preload`, usado pelo fallback para
+responder com HTTP 404. Componentes colocalizados podem ficar em pastas
+`components` dentro de `routes`: use exportações nomeadas para que eles não
+sejam registrados como páginas. Não é necessário editar `src/router.ts` ao
+adicionar uma página.
 
 O arquivo `src/routes/(base).tsx` define o layout compartilhado com `Topbar` e
 renderiza `props.children` com `RouteSectionProps`. Sua pasta `(base)/` contém
-`(home)/index.tsx` e `[...404].tsx`. Os grupos entre parênteses não aparecem na
-URL: a Home continua em `/` e o fallback mantém a barra de navegação. `App.tsx`
-mantém o provider, o SEO e a boundary global, que também captura falhas no
-layout. As fixtures E2E têm sua própria árvore e reexportam esse layout para as
-páginas, incluindo Home e 404.
+`(home)/index.tsx` e `[...404]/index.tsx`. Os grupos entre parênteses não
+aparecem na URL. O router usa o caminho sem idioma para matching; a Home
+responde em `/pt`, `/en` e `/es`, e o fallback mantém a barra de navegação.
+`App.tsx` mantém o provider, o SEO e a boundary global, que também captura
+falhas no layout. As fixtures E2E têm sua própria árvore e reexportam esse
+layout para as páginas, incluindo Home e 404.
 
 Rotas de API são módulos de `src/routes` que exportam `GET`, `POST` ou outro
 método HTTP em vez de `export default`. O `createAPIHandler` em
@@ -111,19 +118,205 @@ Imports de CSS Modules usam o nome `S`, por exemplo,
 `import S from './styles.module.css'`. A regra local
 `project/css-modules-import` do lint exige esse formato.
 
+### Traduções com Paraglide
+
+`project.inlang/settings.json` define `pt`, `en` e `es`, com inglês como idioma
+base. Cada página ou componente guarda `messages/pt.json`, `messages/en.json` e
+`messages/es.json` junto do seu código. Mensagens com dois ou mais consumidores
+de produção podem ir para `src/i18n/messages/`; as demais ficam no consumidor.
+As chaves são globais e usam o prefixo do dono, como `home_title` e
+`themeToggle_select`.
+
+```text
+src/routes/(base)/(home)/
+  index.tsx
+  messages/
+    pt.json
+    en.json
+    es.json
+```
+
+Use o mesmo conjunto de chaves e parâmetros nos três arquivos. Por exemplo,
+`"home_welcome": "Olá, {name}!"`, `"Hello, {name}!"` e `"¡Hola, {name}!"`. O
+compilador gera funções e declarações TypeScript em `src/paraglide/`:
+
+```tsx
+import { m } from '@/paraglide/messages.js'
+
+export default function Home() {
+  return <h1>{m.home_title()}</h1>
+}
+```
+
+As funções validam nomes de mensagens, nomes e presença dos parâmetros e o
+idioma opcional, por exemplo `m.home_title({}, { locale: 'es' })`. O tipo
+`Locale` vem de `@/paraglide/runtime.js`. Interpolações simples aceitam valores
+não nulos; valide dados de domínio antes de traduzi-los. Não invoque mensagens
+no topo de um módulo: SSR compartilha módulos entre requisições. Use chamadas no
+componente ou getters nas constantes e em `route.info.seo`, como na 404.
+
+Plurais usam o formato de mensagens do Inlang, com declarações e seletores:
+
+```json
+{
+  "cart_items": [{
+    "declarations": ["input count", "local countPlural = count: plural"],
+    "selectors": ["countPlural"],
+    "match": {
+      "countPlural=one": "{count} item",
+      "countPlural=*": "{count} itens"
+    }
+  }]
+}
+```
+
+Cada idioma pode ter variantes próprias, preservando os parâmetros de entrada.
+`tooling/i18n/` lê os catálogos, valida o formato com o parser oficial e gera os
+agregados intermediários em `.paraglide/messages/`. Falta de idioma, chave ou
+parâmetro, chave extra ou duplicada, mensagem vazia e JSON inválido interrompem
+a geração. Nenhum fallback silencioso cobre traduções esquecidas. Os diretórios
+gerados são ignorados pelo Git; edite somente os catálogos colocalizados.
+
+`vp run i18n:generate` executa essa verificação isoladamente. Desenvolvimento e
+build chamam o mesmo gerador; o watcher bloqueia respostas quando um catálogo
+fica inválido e volta a servir após a correção. Agregados e módulos gerados não
+disparam outra geração; conteúdo idêntico não é regravado nem provoca reload. Os
+scripts de typecheck, `check:ci` e testes geram as mensagens antes da validação,
+inclusive num clone novo. O plugin de formato vem da dependência local, sem
+baixar código de CDN durante a geração.
+
+O bundler elimina mensagens não usadas e mantém as mensagens exclusivas da
+página no seu módulo lazy. Cada módulo contém os três idiomas das mensagens que
+usa. A divisão experimental por idioma está desativada para preservar o
+streaming e a CSP do projeto. O E2E de i18n verifica que a 404 não baixa as
+mensagens da Home até a navegação para ela.
+
+Páginas sem prefixo recebem redirect temporário, sem cache, usando cookie
+`locale`, depois `Accept-Language` e por fim `en`. A URL explícita tem
+prioridade. A detecção ignora idiomas com `q=0` e pesos inválidos; se nenhum
+idioma aceito estiver disponível, usa o idioma base. Essa filtragem usa uma
+cópia dos headers e preserva a requisição original. O middleware isola o idioma
+de cada SSR com `AsyncLocalStorage`, mantém `Content-Language`, `<html lang>`,
+SEO e hidratação consistentes. Server functions usam a página de origem do mesmo
+domínio, com fallback para cookie e cabeçalho de idioma, preservando o corpo da
+requisição e os sinais de controle do Solid. APIs, índices e arquivos estáticos
+continuam sem prefixo.
+
+Para navegar entre páginas, use `LocalizedLink`, `createLocalizedNavigate()` e
+`localizedRedirect()`. Os três preservam query e fragmento e aceitam os caminhos
+tipados de `paths`, que continuam sem prefixo de idioma; só o matching remove
+esse prefixo. Caminhos relativos são resolvidos contra a página atual nos links
+e na navegação. Nos redirects, o middleware fornece a URL da página no SSR; em
+chamadas HTTP de server functions, usa o `Referer` validado da mesma origem. Sem
+uma base de página segura, o helper recusa destinos relativos. Caminhos a partir
+da raiz funcionam também nesse caso.
+
+```tsx
+import { LocalizedLink } from '@/components/atoms/LocalizedLink/index.tsx'
+import { localizedRedirect } from '@/i18n/localizedRedirect/index.ts'
+import { m } from '@/paraglide/messages.js'
+import { createLocalizedNavigate } from '@/primitives/createLocalizedNavigate/index.ts'
+import { paths } from '@/router.ts'
+
+// Dentro de um componente sob o Router:
+const navigate = createLocalizedNavigate()
+const home = <LocalizedLink href={paths}>{m.topbar_home()}</LocalizedLink>
+const goHome = () => navigate({ href: paths, replace: true })
+
+// Em um handler, preload ou server function, retorne ou lance a Response:
+throw localizedRedirect({ href: paths, status: 303 })
+```
+
+`locale` permite escolher outro idioma. `localize: false` preserva URLs de
+endpoints e arquivos sem prefixo; no JSX, use `localize={false}`. URLs externas,
+`mailto:` e `tel:` também são preservadas. Links mantêm atributos nativos como
+`target` e `download`. A navegação no mesmo idioma usa o router; links e
+navegação programática para outro idioma carregam o documento inteiro. Uma
+guarda na raiz do router aplica a mesma regra aos redirects de actions e queries
+e ao histórico entre idiomas, para manter mensagens, documento e SEO no mesmo
+idioma. `localizedRedirect()` preserva status, headers e sinais de controle da
+`Response` do Solid. `state` e `scroll` só se aplicam à navegação pelo router.
+Fora dele, `LocalizedLink` aceita caminhos a partir da raiz, mas não resolve
+caminhos relativos. O helper de baixo nível `localizeHref()` continua disponível
+em `@/i18n/urls/index.ts` para compor URLs de páginas.
+
+Fluxos que precisam avisar sobre alterações não salvas devem tratar também a
+saída do documento, como no evento nativo `beforeunload`. Um guard de
+`useBeforeLeave` na página, isoladamente, não cobre os links nem a navegação
+programática que recarregam o documento ao trocar de idioma.
+
+O seletor chama `setLocale()` e navega o documento inteiro para o idioma
+escolhido. A integração em `entry-client/configureLocaleClient/` mantém a
+navegação e a hidratação quando cookies são bloqueados; nesse caso a preferência
+fica na URL. O servidor grava `locale` nas respostas de páginas e nos redirects
+de negociação quando a preferência ainda não corresponde ao idioma resolvido.
+Essas respostas usam `private, no-store`; `Vary: Cookie` é acrescentado sem
+apagar os valores existentes. O cookie usa `Path=/`, `SameSite=Lax`, `Secure` em
+HTTPS e a duração configurada pelo Paraglide. Chamadas de server functions não
+sobrescrevem a preferência da página. O cliente também atualiza o cookie na
+hidratação e no seletor. Sem JavaScript, links em `noscript` permitem escolher o
+idioma, preservam a query e persistem a escolha pelo servidor.
+
+O sitemap publica uma URL por idioma, com alternates recíprocos e `x-default`.
+Os limites de quantidade e bytes são conferidos após essa expansão. O `llms.txt`
+usa inglês e URLs `/en` para manter um índice único e cacheável.
+
+### Campos, diálogos e notificações
+
+`Input` e `Textarea`, em `components/atoms/`, aceitam as props nativas,
+incluindo `ref`, `name`, `required`, eventos, `value` e `defaultValue`. O valor
+inicial também aparece no HTML do servidor. Use `value` com um signal para
+controlar o campo, ou `defaultValue` para deixá-lo sob controle do navegador e
+permitir o reset nativo do formulário. `Textarea` permite redimensionamento
+vertical. Ambos aceitam `variant="destructive"`, que também define
+`aria-invalid` quando o consumidor não fornece esse atributo. Associe um `label`
+ao `id` e use `aria-describedby` para ligar a mensagem de ajuda ou de erro ao
+campo. Os textos do formulário pertencem ao catálogo da página.
+
+`Dialog`, em `components/molecules/`, usa o elemento nativo `dialog` com
+`showModal()`. Recebe `open`, `onOpenChange`, `title`, `description` opcional e
+`children`. O consumidor mantém o estado, por exemplo `open={open()}` e
+`onOpenChange={setOpen}`. O título e a descrição são associados ao modal por
+atributos ARIA; o botão de fechar já tem tradução. Escape e esse botão solicitam
+o fechamento; clicar no fundo mantém o modal aberto. O navegador confina o foco
+ao modal e o devolve ao controle de origem ao fechar. Um modal inicialmente
+aberto entra na modalidade após a hidratação; sem JavaScript, permanece fechado.
+
+`Provider` já instala um `ToastProvider` para a aplicação. Chame `useToast()` de
+`@/components/atoms/ToastProvider/useToast/index.ts` durante a criação do
+componente e use a API nos eventos:
+
+```ts
+const toast = useToast()
+const id = toast.show({ message: m.save_pending(), variant: 'loading' })
+toast.update({ id, message: m.save_done(), variant: 'success' })
+toast.dismiss(id)
+```
+
+As mensagens do exemplo devem existir no catálogo do consumidor nos três
+idiomas. A API aceita texto simples e as variantes `info`, `success`, `warning`,
+`error` e `loading`. O prazo padrão é de cinco segundos; `loading` sem prazo e
+`duration: 0` permanecem até o fechamento. Atualizar a variante ou a duração
+reinicia o prazo; atualizar apenas o texto preserva o tempo restante. Hover,
+foco e aba oculta pausam o cronômetro. A fila mantém até cinco notificações e
+remove a mais antiga quando esse limite é excedido. Os anúncios de leitores de
+tela são agrupados por prioridade; erros usam a região assertiva. A notificação
+não desloca o foco ao aparecer. Cada provider tem estado próprio e libera os
+temporizadores ao desmontar.
+
 ### Dependências entre camadas
 
 `architecture/layer-imports`, em `tooling/architecturePolicy/index.ts`, verifica
 as dependências diretas de imports e reexportações pelos caminhos locais. As
 restrições são:
 
-| Origem                                                     | Dependências proibidas                                       |
-| ---------------------------------------------------------- | ------------------------------------------------------------ |
-| `helpers`, `constants`, `@types`, `data`, `infra`, `theme` | `primitives`, `components`, `routes` e entradas da aplicação |
-| `primitives`                                               | `components`, `routes` e entradas da aplicação               |
-| `components/atoms`                                         | `components/molecules` e `components/organisms`              |
-| `components/molecules`                                     | `components/organisms`                                       |
-| Qualquer módulo de produção em `src`                       | Testes, fixtures de `src/tests` e `tooling`                  |
+| Origem                                                                          | Dependências proibidas                                       |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `helpers`, `constants`, `@types`, `data`, `infra`, `theme`, `i18n`, `paraglide` | `primitives`, `components`, `routes` e entradas da aplicação |
+| `primitives`                                                                    | `components`, `routes` e entradas da aplicação               |
+| `components/atoms`                                                              | `components/molecules` e `components/organisms`              |
+| `components/molecules`                                                          | `components/organisms`                                       |
+| Qualquer módulo de produção em `src`                                            | Testes, fixtures de `src/tests` e `tooling`                  |
 
 As entradas são `App`, `Document`, `entry-server`, `entry-client`,
 `entry-handler`, `router` e `middleware`. A classificação parte da raiz de
@@ -132,7 +325,7 @@ desse componente. Testes (`*.test.*`, `*.spec.*`, `__tests__` e `src/tests`)
 podem importar as camadas que verificam. A declaração gerada
 `src/@types/routes.d.ts` continua excluída do lint.
 
-Nos diagnósticos, `base` identifica as seis pastas da primeira linha, `entry`
+Nos diagnósticos, `base` identifica as pastas da primeira linha, `entry`
 identifica as entradas e `source` os demais módulos de `src`.
 
 A regra normaliza `@/`, `/src/` e caminhos relativos. Verifica reexportações,
@@ -409,13 +602,18 @@ e perfis oficiais (`SITE.socialLinks`, em `sameAs`). `WebSite.publisher` e
 `Article.publisher` apontam para esse nó pelo `@id`
 `<VITE_SITE_URL>/#organization`. O grafo é tipado com `schema-dts`, então
 propriedade inválida falha no typecheck; as dimensões da imagem ficam só no Open
-Graph. O idioma vem de `SITE.locale`, que também alimenta o `lang` do
-`Document.tsx` e o `og:locale` (com sublinhado). `helpers/serializeJsonLd/`
-escapa `<`, `>` e `&` como sequências JSON para não encerrar o `<script>`. Os
-handles do Twitter saem de `SITE.twitter` (`twitter:site`, a conta do site) e de
-`SITE.author.twitter` (`twitter:creator`, a conta do autor). O LinkedIn não tem
-meta tag própria: ele lê o Open Graph para a prévia, e o perfil entra só no
-`sameAs`. Dados que o projeto não tem, como `hreflang`, não são publicados.
+Graph. O idioma da página vem de `SITE.locale`, que também alimenta o `lang` do
+`Document.tsx` e o `og:locale` (com sublinhado). `og:locale:alternate` lista os
+outros idiomas, e `WebSite.inLanguage` declara os três idiomas disponíveis.
+`helpers/serializeJsonLd/` escapa `<`, `>` e `&` como sequências JSON para não
+encerrar o `<script>`. Os handles do Twitter saem de `SITE.twitter`
+(`twitter:site`, a conta do site) e de `SITE.author.twitter` (`twitter:creator`,
+a conta do autor). O LinkedIn não tem meta tag própria: ele lê o Open Graph para
+a prévia, e o perfil entra só no `sameAs`. Páginas indexáveis publicam
+`hreflang` para os três idiomas e `x-default` apontando para inglês. Canonical e
+URL da página no JSON-LD incluem o idioma; a identidade da organização permanece
+na raiz do site. O fallback de erro publica título e descrição traduzidos com
+`noindex`, mesmo quando a falha acontece antes do Router.
 
 Esse grafo base é fixo de propósito. Tipos que dependem da página (`Product`,
 `FAQPage`, `BreadcrumbList`, `Event`) entram pela primitive

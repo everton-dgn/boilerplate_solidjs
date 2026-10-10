@@ -20,6 +20,9 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'public/**',
     'src/assets/**',
     'src/@types/routes.d.ts',
+    'src/paraglide/**',
+    'project.inlang/cache/**',
+    '.paraglide/**',
     '.agents/**',
     '.claude/**'
   ],
@@ -61,6 +64,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
         'src/tests/pages/BackendError/BackendError.e2e.test.ts',
         'src/tests/pages/FragmentCss/FragmentCss.e2e.test.ts',
         'src/tests/pages/OutsideError/OutsideError.e2e.test.ts',
+        'src/tests/pages/I18n/I18n.production.e2e.test.ts',
         'src/tests/helpers/readSiteOrigin/index.ts'
       ],
       rules: { 'import/no-nodejs-modules': 'off' }
@@ -82,6 +86,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
         'src/middleware/types.ts',
         'src/middleware/containFailures/index.ts',
         'src/middleware/requestContext/index.ts',
+        'src/middleware/index.ts',
         'tooling/**/*.ts',
         'vite.config.ts'
       ],
@@ -150,7 +155,10 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      files: ['src/tests/fixtures/e2e/middleware/index.ts'],
+      files: [
+        'src/tests/fixtures/e2e/middleware/index.ts',
+        'src/middleware/localizeRequest/index.ts'
+      ],
       rules: {
         'node/callback-return': 'off'
       }

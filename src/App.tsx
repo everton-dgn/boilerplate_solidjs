@@ -6,6 +6,7 @@ import { ErrorFallback } from '@/components/organisms/ErrorFallback/index.tsx'
 import { createSeo } from '@/primitives/createSeo/index.ts'
 
 import { Router } from './router.ts'
+import { createLocaleNavigationGuard } from './router/createLocaleNavigationGuard/index.ts'
 
 import './theme/globalStyles.css'
 
@@ -25,6 +26,7 @@ export default function App() {
         <Provider>
           <Router>
             {props => {
+              createLocaleNavigationGuard()
               createSeo({ route: true })
               return props.children
             }}

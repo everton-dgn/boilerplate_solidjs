@@ -2,6 +2,7 @@ import type { RouteDefinition } from '@solidjs/router'
 import SolidLogo from '~icons/my-images/solid'
 
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
+import { m } from '@/paraglide/messages.js'
 
 import S from './styles.module.css'
 
@@ -17,11 +18,14 @@ export default function Home() {
       <section class={S.hero}>
         <PageBadge>SolidJS Boilerplate</PageBadge>
 
-        <h1 class={S.title}>Uma base limpa para produtos modernos</h1>
+        <h1 class={S.title}>{m.home_title()}</h1>
 
         <p class={S.description}>
-          Comece seu próximo projeto com SolidJS 2, Vite+ e TypeScript. Uma base
-          com renderização no servidor, temas claro e escuro.
+          {m.home_description({
+            framework: 'SolidJS 2',
+            toolchain: 'Vite+',
+            language: 'TypeScript'
+          })}
         </p>
 
         <div class={S.logos}>

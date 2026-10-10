@@ -97,7 +97,7 @@ describe('coleta das páginas selecionadas para o llms.txt', () => {
         path: '/',
         title: SITE.title,
         description: SITE.description,
-        section: 'Páginas',
+        section: 'Pages',
         optional: false
       }
     ])

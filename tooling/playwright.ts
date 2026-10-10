@@ -69,7 +69,7 @@ const config = defineConfig({
     // video: 'on',
     // screenshot: 'only-on-failure',
     baseURL: BASE_URL,
-    locale: 'en-US',
+    locale: 'pt-BR',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure'
   },
