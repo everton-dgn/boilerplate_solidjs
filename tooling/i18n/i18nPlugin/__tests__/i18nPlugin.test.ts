@@ -1,7 +1,7 @@
 /* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { createServer as createHttpServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -15,6 +15,7 @@ import { i18nPlugin } from '../index.ts'
 
 type Messages = Record<string, string>
 type MessagesOptions = { root: string; messages: Messages }
+type SettingsOptions = { root: string; baseLocale: string; locales: string[] }
 type Close = () => Promise<unknown>
 type DevServer = {
   root: string
@@ -24,6 +25,8 @@ type DevServer = {
 }
 
 const LOCALES = ['pt', 'en', 'es']
+const SETTINGS_FILE = 'project.inlang/settings.json'
+const RUNTIME_FILE = 'src/paraglide/runtime.js'
 const PLUGIN = path.resolve(
   import.meta.dirname,
   '../../../../node_modules/@inlang/plugin-message-format/dist/index.js'
@@ -45,20 +48,28 @@ async function writeMessages({ root, messages }: MessagesOptions) {
   }
 }
 
-async function writeProject(root: string): Promise<void> {
-  await mkdir(path.join(root, 'project.inlang'))
+async function writeSettings({ root, baseLocale, locales }: SettingsOptions) {
   await writeFile(
-    path.join(root, 'project.inlang/settings.json'),
+    path.join(root, SETTINGS_FILE),
     JSON.stringify({
-      baseLocale: 'pt',
-      locales: LOCALES,
+      baseLocale,
+      locales,
       modules: [PLUGIN],
       'plugin.inlang.messageFormat': {
         pathPattern: './.paraglide/messages/{locale}.json'
       }
     })
   )
+}
+
+async function writeProject(root: string): Promise<void> {
+  await mkdir(path.join(root, 'project.inlang'))
+  await writeSettings({ root, baseLocale: 'pt', locales: LOCALES })
   await writeMessages({ root, messages: MESSAGES })
+}
+
+function readRuntime(root: string): Promise<string> {
+  return readFile(path.join(root, RUNTIME_FILE), 'utf8')
 }
 
 function payloadType(payload: unknown): unknown {
@@ -157,5 +168,41 @@ describe('i18n dev watcher', () => {
     // Agregados, saída e eventos repetidos não podem gerar outro reload.
     await delay(SETTLE_MS)
     assert.deepEqual(server.payloads(), ['full-reload'])
+  })
+
+  // O reload chega pelo `send` do servidor original: um restart trocaria o ws.
+  it('regenerates the runtime when the base locale changes', async context => {
+    const server = await startServer(context)
+    assert.match(await readRuntime(server.root), /baseLocale = "pt";/u)
+
+    await writeSettings({
+      root: server.root,
+      baseLocale: 'en',
+      locales: LOCALES
+    })
+    await waitFor(() => server.payloads().includes('full-reload'))
+    assert.match(await readRuntime(server.root), /baseLocale = "en";/u)
+    assert.ok(!server.payloads().includes('error'))
+  })
+
+  it('blocks requests while the locale settings are invalid and recovers after the fix', async context => {
+    const server = await startServer(context)
+
+    await writeSettings({
+      root: server.root,
+      baseLocale: 'pt',
+      locales: [...LOCALES, 'fr']
+    })
+    await waitFor(() => server.payloads().includes('error'))
+    assert.equal(await server.status(), HTTP_ERROR)
+    assert.match(await server.body(), /missing locales \[fr\]/u)
+
+    await writeSettings({
+      root: server.root,
+      baseLocale: 'pt',
+      locales: LOCALES
+    })
+    await waitFor(() => server.payloads().includes('full-reload'))
+    assert.notEqual(await server.status(), HTTP_ERROR)
   })
 })

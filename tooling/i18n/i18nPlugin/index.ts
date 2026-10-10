@@ -6,12 +6,19 @@ import { generateMessages } from '../generateMessages/index.ts'
 import { isCatalogFile } from '../readCatalogs/index.ts'
 
 type ReportErrorOptions = { server: ViteDevServer; error: Error }
+type SettingsFileOptions = { root: string; file: string }
+
+const SETTINGS_FILE = 'project.inlang/settings.json'
 
 function reportError({ server, error }: ReportErrorOptions): void {
   server.ws.send({
     type: 'error',
     err: { message: error.message, stack: error.stack ?? '' }
   })
+}
+
+function isSettingsFile({ root, file }: SettingsFileOptions): boolean {
+  return path.relative(root, file).split(path.sep).join('/') === SETTINGS_FILE
 }
 
 function toError(error: unknown): Error {
@@ -56,11 +63,17 @@ export function i18nPlugin(): Plugin {
         running = false
       }
       // Agregados em .paraglide/ e a saída em src/paraglide/ são escritos pela
-      // própria geração e não a disparam de novo.
+      // própria geração e não a disparam de novo. As configurações definem os
+      // idiomas e passam pela mesma fila que os catálogos.
       const update = (file: string) => {
-        if (isCatalogFile({ root, file })) void regenerate()
+        if (isSettingsFile({ root, file }) || isCatalogFile({ root, file })) {
+          void regenerate()
+        }
       }
-      server.watcher.add(path.join(root, 'src'))
+      server.watcher.add([
+        path.join(root, 'src'),
+        path.join(root, SETTINGS_FILE)
+      ])
       server.watcher.on('add', update).on('change', update).on('unlink', update)
       // Uma tradução inválida não pode continuar sendo servida a partir da
       // última compilação boa, inclusive num reload completo do navegador.
