@@ -1138,7 +1138,7 @@ Instalados pelo Lefthook no `vp install`, autorizado em `trustedDependencies` do
 | ------------ | ---------------------------------------------------------------------------------------------------------- |
 | `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `scan:secrets --staged` quando Kingfisher está disponível |
 | `commit-msg` | `commitlint` (header até 50 caracteres, corpo até 100)                                                     |
-| `pre-push`   | `check:ci`, `typecheck:node`, `test:ci` e `test:tooling` em paralelo                                       |
+| `pre-push`   | `check:ci` e `typecheck:node` em sequência; depois, `test:ci` e `test:tooling` em paralelo                 |
 
 O `pre-commit` é pulado durante `merge` e `rebase`. Em CI o Lefthook não instala
 os hooks.
