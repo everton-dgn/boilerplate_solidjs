@@ -1,4 +1,6 @@
 import type { SitemapEntry } from '@/@types/sitemap.ts'
+import { localizeHref } from '@/i18n/urls/index.ts'
+import { baseLocale, locales } from '@/paraglide/runtime.js'
 
 type BuildSitemapOptions = {
   entries: readonly SitemapEntry[]
@@ -20,15 +22,27 @@ export function buildSitemap({
   entries,
   siteUrl
 }: BuildSitemapOptions): string {
-  const urls = entries.map(({ path, lastmod }) => {
-    const loc = `<loc>${escapeXml(new URL(path, siteUrl).href)}</loc>`
+  const urls = entries.flatMap(({ path, lastmod }) => {
+    const alternatives = [...locales, 'x-default' as const]
+      .map(hreflang => {
+        const locale = hreflang === 'x-default' ? baseLocale : hreflang
+        const href = escapeXml(
+          new URL(localizeHref({ href: path, locale }), siteUrl).href
+        )
+        return `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${href}"/>`
+      })
+      .join('')
     const modified =
       lastmod === undefined ? '' : `<lastmod>${escapeXml(lastmod)}</lastmod>`
-    return `  <url>${loc}${modified}</url>`
+    return locales.map(locale => {
+      const href = localizeHref({ href: path, locale })
+      const loc = `<loc>${escapeXml(new URL(href, siteUrl).href)}</loc>`
+      return `  <url>${loc}${modified}${alternatives}</url>`
+    })
   })
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
     ...urls,
     '</urlset>',
     ''

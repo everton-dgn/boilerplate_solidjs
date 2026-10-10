@@ -277,7 +277,8 @@ test.describe('exceções no middleware', () => {
       expect(response.headers.get('x-content-type-options')).toBe('nosniff')
       if (errorPage) {
         expect(response.headers.get('content-type')).toContain('text/html')
-        expect(body).toContain('Algo deu errado!')
+        expect(response.headers.get('content-language')).toBe('en')
+        expect(body).toContain('Something went wrong!')
       } else {
         expect(body).toBe(PUBLIC_MESSAGE)
       }

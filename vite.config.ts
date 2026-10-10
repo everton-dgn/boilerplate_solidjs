@@ -28,20 +28,22 @@ const TOOLING_TEST_CONCURRENCY = env.CI
 // fmt, check, staged e o tooling do editor leem a config sem pagar esse custo
 // nem receber os logs de inicialização do Nitro no stdout.
 const loadPluginModules = async () => {
-  const [solidModule, routing, nitroModule, iconsModule, loaders] =
+  const [solidModule, routing, nitroModule, iconsModule, loaders, i18n] =
     await Promise.all([
       import('@solidjs/vite-plugin'),
       import('filesystem-routing/vite'),
       import('nitro/vite'),
       import('unplugin-icons/vite'),
-      import('unplugin-icons/loaders')
+      import('unplugin-icons/loaders'),
+      import('./tooling/i18n/i18nPlugin/index.ts')
     ])
   return {
     solid: solidModule.default,
     fileRoutes: routing.fileRoutes,
     nitro: nitroModule.nitro,
     Icons: iconsModule.default,
-    FileSystemIconLoader: loaders.FileSystemIconLoader
+    FileSystemIconLoader: loaders.FileSystemIconLoader,
+    i18n: i18n.i18nPlugin
   }
 }
 
@@ -62,6 +64,7 @@ const componentPlugins = () =>
   lazyPlugins(async () => {
     const modules = await loadPluginModules()
     return [
+      modules.i18n(),
       icons(modules),
       modules.solid({ serverFunctions: true }),
       modules.fileRoutes({ types: 'src/@types/routes.d.ts', httpMethods: true })
@@ -92,6 +95,7 @@ const appPlugins = (mode: string) =>
   lazyPlugins(async () => {
     const modules = await loadPluginModules()
     return [
+      modules.i18n(),
       icons(modules),
       modules.solid({
         start: {
@@ -152,6 +156,19 @@ export default defineConfig(({ mode }) => {
   return {
     run: {
       tasks: {
+        'i18n-generate': {
+          command: 'node tooling/i18n/generate.ts',
+          cache: {
+            input: [
+              'src/**/messages/*.json',
+              'tooling/i18n/**',
+              'project.inlang/settings.json',
+              'package.json',
+              'bun.lock'
+            ],
+            output: ['src/paraglide/**', '.paraglide/messages/**']
+          }
+        },
         'lint-css': {
           command: 'bun tooling/css/check.ts',
           cache: {
@@ -291,6 +308,7 @@ export default defineConfig(({ mode }) => {
         include: ['src/**/*.{ts,tsx}'],
         exclude: [
           'src/**/*.d.ts',
+          'src/paraglide/**',
           'src/**/{constants,types,@types}/**',
           'src/**/{constants,types}.{ts,tsx}',
           'src/**/*.test.{ts,tsx}',
@@ -340,6 +358,7 @@ export default defineConfig(({ mode }) => {
           test: {
             name: { label: 'dom', color: 'magenta' },
             environment: 'happy-dom',
+            environmentOptions: { happyDOM: { url: 'http://localhost/pt' } },
             setupFiles: ['./tooling/vitest.setup.ts'],
             include: ['src/**/*.dom.test.{ts,tsx}']
           }
@@ -364,6 +383,7 @@ export default defineConfig(({ mode }) => {
               },
               // Os runners do GitHub têm Chrome; execuções locais usam o Chromium do Playwright.
               provider: playwright({
+                contextOptions: { locale: 'pt-BR' },
                 launchOptions: env.CI ? { channel: 'chrome' } : {}
               }),
               instances: [{ browser: 'chromium' }]

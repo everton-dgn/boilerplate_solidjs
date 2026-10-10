@@ -210,6 +210,33 @@ test('a política distingue dependências permitidas e inversões de camada', ()
   })
 })
 
+test('i18n e módulos gerados pertencem à camada base', () => {
+  const rule = architecturePolicy.rules['layer-imports']
+  assert.ok(rule)
+  new RuleTester({ cwd: ROOT }).run('layer-imports', rule, {
+    valid: [
+      {
+        filename: 'src/i18n/urls/index.ts',
+        code: 'import { localizeUrl } from "@/paraglide/runtime.js"'
+      }
+    ],
+    invalid: [
+      {
+        filename: 'src/i18n/urls/index.ts',
+        code: 'import { paths } from "@/router.ts"'
+      },
+      {
+        filename: 'src/paraglide/example.ts',
+        code: 'import { Button } from "@/components/atoms/Button/index.tsx"'
+      }
+    ].map(({ filename, code }) => ({
+      filename,
+      code,
+      errors: [{ messageId: 'forbidden' }]
+    }))
+  })
+})
+
 test('o lint completo ativa a regra sem perder as restrições de backend', context => {
   const directory = mkdtempSync(path.join(tmpdir(), 'solid-architecture-'))
   // Sandbox criado pelo próprio teste: a remoção direta é o descarte correto.

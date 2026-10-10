@@ -128,7 +128,7 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
     history.set({ value: '/publica', scroll: false })
     await vi.waitUntil(
       () =>
-        canonical() === `${SITE.url}/publica` &&
+        canonical() === `${SITE.url}/pt/publica` &&
         scripts().length === ALL_SCRIPTS,
       POLL
     )
@@ -136,7 +136,7 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
 
     history.set({ value: '/vazia', scroll: false })
     await vi.waitUntil(
-      () => canonical() === `${SITE.url}/vazia` && scripts().length === 1,
+      () => canonical() === `${SITE.url}/pt/vazia` && scripts().length === 1,
       POLL
     )
     expect([hasScript('Retomado'), hasScript('Fixo')]).toStrictEqual([

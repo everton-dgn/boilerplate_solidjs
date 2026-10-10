@@ -7,6 +7,9 @@ import { SITE } from '@/constants/site.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { serializeJsonLd } from '@/helpers/serializeJsonLd/index.ts'
+import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
+import { localizeHref } from '@/i18n/urls/index.ts'
+import { baseLocale, getLocale, locales } from '@/paraglide/runtime.js'
 
 import { buildStructuredData } from './buildStructuredData/index.ts'
 
@@ -48,7 +51,8 @@ function publishRouteSeo(): void {
   const matches = useRouteMatches()
   const seo = () =>
     resolveRouteSeo(matches().map(match => match.route.info?.seo))
-  const canonical = () => resolveSiteUrl(location.pathname)
+  const canonical = () =>
+    resolveSiteUrl(localizeHref({ href: location.pathname }))
   const image = () => resolveSiteUrl(seo().image.path)
   const structuredData = () =>
     buildStructuredData({ seo: seo(), url: canonical(), image: image() })
@@ -93,6 +97,16 @@ function publishRouteSeo(): void {
         content: SITE.locale.replaceAll('-', '_')
       }
     },
+    ...locales
+      .filter(locale => locale !== getLocale())
+      .map(locale => ({
+        tag: 'meta' as const,
+        key: `og:locale:alternate:${locale}`,
+        props: {
+          property: 'og:locale:alternate',
+          content: LOCALE_TAGS[locale].replaceAll('-', '_')
+        }
+      })),
     { tag: 'meta', props: { property: 'og:site_name', content: SITE.title } },
     {
       tag: 'meta',
@@ -115,6 +129,19 @@ function publishRouteSeo(): void {
       props: { name: 'twitter:description', content: seo().description }
     },
     { tag: 'link', props: { rel: 'canonical', href: canonical() } },
+    ...[...locales, 'x-default' as const].map(hreflang => ({
+      tag: 'link' as const,
+      props: {
+        rel: 'alternate',
+        hreflang,
+        href: resolveSiteUrl(
+          localizeHref({
+            href: location.pathname,
+            locale: hreflang === 'x-default' ? baseLocale : hreflang
+          })
+        )
+      }
+    })),
     { tag: 'meta', props: { property: 'og:url', content: canonical() } },
     { tag: 'meta', props: { property: 'og:image', content: image() } },
     {

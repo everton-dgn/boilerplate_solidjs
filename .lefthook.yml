@@ -27,16 +27,18 @@ pre-commit:
 
 pre-push:
   jobs:
-    - name: checks
+    # Estes comandos restauram a mesma saída do Paraglide pelo cache do Vite
+    # Task. Terminá-los antes dos testes evita restaurações concorrentes.
+    - name: check-ci
+      run: vp run check:ci
+
+    - name: typecheck-node
+      run: vp run typecheck:node
+
+    - name: tests
       group:
         parallel: true
         jobs:
-          - name: check-ci
-            run: vp run check:ci
-
-          - name: typecheck-node
-            run: vp run typecheck:node
-
           - name: test
             run: vp run test:ci
 

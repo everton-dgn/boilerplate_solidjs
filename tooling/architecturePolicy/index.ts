@@ -43,7 +43,9 @@ function layer(file: string): Layer | undefined {
     return 'test'
   }
   if (
-    /^src\/(?:@types|constants|helpers|data|infra|theme)(?:\/|$)/u.test(file)
+    /^src\/(?:@types|constants|helpers|data|infra|theme|i18n|paraglide)(?:\/|$)/u.test(
+      file
+    )
   ) {
     return 'base'
   }

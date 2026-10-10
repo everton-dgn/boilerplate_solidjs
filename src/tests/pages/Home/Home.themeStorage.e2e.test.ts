@@ -60,7 +60,9 @@ test('retorna ao sistema após remover o cookie e simular foco', async ({
   await other.evaluate(() => {
     document.cookie = 'app-theme=; Path=/; Max-Age=0'
   })
-  expect(await context.cookies(baseURL)).toEqual([])
+  expect(await context.cookies(baseURL)).not.toEqual(
+    expect.arrayContaining([expect.objectContaining({ name: 'app-theme' })])
+  )
   await expect(page.locator('html')).toHaveClass('dark')
   await page.evaluate(() => globalThis.dispatchEvent(new FocusEvent('focus')))
   await expect(page.locator('html')).toHaveClass('light')
@@ -70,7 +72,7 @@ test('retorna ao sistema após remover o cookie e simular foco', async ({
   ).toHaveAttribute('aria-checked', 'true')
 })
 
-test('alterna imediatamente quando todo acesso a cookie está bloqueado', async ({
+test('alterna imediatamente quando o acesso a document.cookie está bloqueado', async ({
   context,
   page
 }) => {
@@ -90,7 +92,9 @@ test('alterna imediatamente quando todo acesso a cookie está bloqueado', async 
   await page.getByRole('button', { name: 'Selecionar tema' }).click()
   await page.getByRole('menuitemradio', { name: 'Escuro' }).click()
   await expect(page.locator('html')).toHaveClass('dark')
-  expect(await context.cookies(page.url())).toEqual([])
+  const cookies = await context.cookies(page.url())
+  expect(cookies.some(cookie => cookie.name === 'app-theme')).toBe(false)
+  expect(cookies.find(cookie => cookie.name === 'locale')?.value).toBe('pt')
   await page.reload()
   await expect(page.locator('html')).toHaveClass('light')
 })

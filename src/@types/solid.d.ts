@@ -3,6 +3,8 @@ import '@solidjs/web'
 declare module '@solidjs/web' {
   interface RequestEventLocals {
     requestId?: string
+    // Base de página validada pelo middleware; ausente em RPC sem Referer seguro.
+    localizedPageBase?: string
     // Nonce CSP da requisição: no build nasce em src/entry-handler.ts; fora
     // dele, requestNonce o cria no middleware.
     nonce?: string

@@ -2,8 +2,12 @@ import * as v from 'valibot'
 
 import type { SitemapEntry, SitemapRouteInfo } from '@/@types/sitemap.ts'
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
+import { locales } from '@/paraglide/runtime.js'
 
-import { SITEMAP_SOURCES_TIMEOUT_MS } from '../../constants.ts'
+import {
+  SITEMAP_SOURCES_TIMEOUT_MS,
+  SITEMAP_URL_LIMIT
+} from '../../constants.ts'
 import type { SitemapManifest } from '../../types.ts'
 import { buildSitemap } from '../buildSitemap/index.ts'
 import { normalizeSitemapEntries } from '../normalizeSitemapEntries/index.ts'
@@ -62,6 +66,9 @@ export async function buildSitemapResponse({
   try {
     const dynamic = await readSources(manifest.sources)
     const entries = normalizeSitemapEntries([...manifest.entries, ...dynamic])
+    if (entries.length * locales.length > SITEMAP_URL_LIMIT) {
+      throw new Error('Sitemap acima do limite de URLs após localização')
+    }
     xml = buildSitemap({ entries, siteUrl })
     if (new TextEncoder().encode(xml).byteLength > SITEMAP_BYTE_LIMIT) {
       throw new Error('Sitemap acima do limite de bytes')

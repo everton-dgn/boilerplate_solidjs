@@ -10,10 +10,12 @@ const SITE_URL = 'https://example.com'
 const HTTP_OK = 200
 const HTTP_SERVICE_UNAVAILABLE = 503
 const SITEMAP_BYTE_LIMIT = 52_428_800
-const BASE_PATH_LENGTH = 1200
+const BASE_PATH_LENGTH = 100
+const BASE_ENTRY_COUNT = 4000
+const URL_COPIES = 15
 
 function baseEntries(): SitemapEntry[] {
-  return Array.from({ length: 40_000 }, (_, index) => ({
+  return Array.from({ length: BASE_ENTRY_COUNT }, (_, index) => ({
     path: `/page-${index}-${'a'.repeat(BASE_PATH_LENGTH)}`
   }))
 }
@@ -28,14 +30,18 @@ function sitemapBytes(entries: SitemapEntry[]): number {
 // custaria dezenas de MB por teste.
 function computeBaseBytes(entries: SitemapEntry[]): number {
   const frame = sitemapBytes([])
-  const perEntry = sitemapBytes([{ path: '/' }]) - frame - '/'.length
+  const samplePath = '/x'
+  const perEntry =
+    sitemapBytes([{ path: samplePath }]) -
+    frame -
+    samplePath.length * URL_COPIES
   const paths = entries.reduce((total, { path }) => total + path.length, 0)
-  return frame + entries.length * perEntry + paths
+  return frame + entries.length * perEntry + paths * URL_COPIES
 }
 
 function entriesAtByteSize(size: number): SitemapEntry[] {
   const entries = baseEntries()
-  const padding = size - computeBaseBytes(entries)
+  const padding = Math.floor((size - computeBaseBytes(entries)) / URL_COPIES)
   const perEntry = Math.floor(padding / entries.length)
   for (const entry of entries) entry.path += 'a'.repeat(perEntry)
   const [first] = entries
@@ -78,22 +84,23 @@ describe('resposta do sitemap', () => {
     vi.useRealTimers()
   })
 
-  it('aceita XML exatamente no limite de bytes', async () => {
+  it('aceita XML imediatamente abaixo do limite de bytes após incluir os idiomas', async () => {
     const response = await buildSitemapResponse({
       siteUrl: SITE_URL,
       manifest: { entries: entriesAtByteSize(SITEMAP_BYTE_LIMIT), sources: [] }
     })
     const body = await response.arrayBuffer()
     expect(response.status).toBe(HTTP_OK)
-    expect(body.byteLength).toBe(SITEMAP_BYTE_LIMIT)
+    expect(body.byteLength).toBeLessThanOrEqual(SITEMAP_BYTE_LIMIT)
+    expect(body.byteLength).toBeGreaterThan(SITEMAP_BYTE_LIMIT - URL_COPIES)
     expect(response.headers.get('cache-control')).toBe(SITE_CACHE_CONTROL)
   })
 
-  it('responde 503 sem cache um byte acima do limite', async () => {
+  it('responde 503 sem cache acima do limite após incluir os idiomas', async () => {
     const response = await buildSitemapResponse({
       siteUrl: SITE_URL,
       manifest: {
-        entries: entriesAtByteSize(SITEMAP_BYTE_LIMIT + 1),
+        entries: entriesAtByteSize(SITEMAP_BYTE_LIMIT + URL_COPIES),
         sources: []
       }
     })
@@ -114,18 +121,24 @@ describe('resposta do sitemap', () => {
       'application/xml; charset=utf-8'
     )
     expect(response.headers.get('cache-control')).toBe(SITE_CACHE_CONTROL)
-    await expect(response.text()).resolves.toBe(
-      [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-        '  <url><loc>https://example.com/</loc></url>',
-        '  <url><loc>https://example.com/docs</loc></url>',
-        '  <url><loc>https://example.com/blog/a</loc><lastmod>2026-09-01</lastmod></url>',
-        '  <url><loc>https://example.com/blog/b</loc></url>',
-        '</urlset>',
-        ''
-      ].join('\n')
+    const xml = await response.text()
+    const locations = [...xml.matchAll(/<loc>(?<url>[^<]+)<\/loc>/gu)].map(
+      match => match.groups?.url
     )
+    expect(locations).toStrictEqual([
+      'https://example.com/pt',
+      'https://example.com/en',
+      'https://example.com/es',
+      'https://example.com/pt/docs',
+      'https://example.com/en/docs',
+      'https://example.com/es/docs',
+      'https://example.com/pt/blog/a',
+      'https://example.com/en/blog/a',
+      'https://example.com/es/blog/a',
+      'https://example.com/pt/blog/b',
+      'https://example.com/en/blog/b',
+      'https://example.com/es/blog/b'
+    ])
   })
 
   it('publica só path e lastmod da fonte e mantém a página estática em caminho repetido', async () => {
@@ -140,9 +153,11 @@ describe('resposta do sitemap', () => {
     })
     const xml = await response.text()
 
-    expect(xml).toContain('<url><loc>https://example.com/docs</loc></url>')
     expect(xml).toContain(
-      '<url><loc>https://example.com/x</loc><lastmod>2026-09-21</lastmod></url>'
+      '<url><loc>https://example.com/pt/docs</loc><xhtml:link'
+    )
+    expect(xml).toContain(
+      '<url><loc>https://example.com/pt/x</loc><lastmod>2026-09-21</lastmod>'
     )
     expect(xml).not.toContain('Não publicado')
   })
@@ -155,7 +170,7 @@ describe('resposta do sitemap', () => {
 
     expect(response.status).toBe(HTTP_OK)
     await expect(response.text()).resolves.toContain(
-      '<loc>https://example.com/docs</loc>'
+      '<loc>https://example.com/pt/docs</loc>'
     )
   })
 

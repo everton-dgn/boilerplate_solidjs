@@ -39,7 +39,7 @@ describe('dados estruturados da página', () => {
         url: `${SITE.url}/`,
         name: SITE.title,
         description: SITE.description,
-        inLanguage: SITE.locale,
+        inLanguage: ['pt-BR', 'en-US', 'es-ES'],
         publisher: { '@id': `${SITE.url}/#organization` }
       },
       {

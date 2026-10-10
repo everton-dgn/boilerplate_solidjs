@@ -54,13 +54,24 @@ const config = {
     // Entradas autorais do SSR, carregadas pelo @solidjs/vite-plugin por convenção.
     'src/entry-server.tsx!',
     'src/entry-client.tsx!',
+    // O runtime gerado importa o polyfill de URLPattern do pacote Paraglide.
+    'src/paraglide/runtime.js!',
     // Entrada SSR do build, ligada pelo plugin local do vite.config.ts.
     'src/entry-handler.ts!',
     'src/middleware/index.ts!',
     'src/infra/server/configureServerErrors/index.ts!',
     // API de transporte do boilerplate; o consumidor atual está na fixture E2E.
     'src/infra/server/requestJson/index.ts!',
+    // Componentes e APIs públicas reutilizáveis, exercitados pelas fixtures.
+    'src/components/atoms/Input/index.tsx!',
+    'src/components/atoms/Textarea/index.tsx!',
+    'src/components/molecules/Dialog/index.tsx!',
+    'src/components/atoms/ToastProvider/useToast/index.ts!',
+    'src/primitives/createLocalizedNavigate/index.ts!',
+    'src/i18n/localizedRedirect/index.ts!',
     'env.ts!',
+    // Factory carregada por lazyPlugins no Vite; não é entrada de runtime.
+    'tooling/i18n/i18nPlugin/index.ts',
     // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.
     'src/tests/fixtures/e2e/middleware/index.ts',
     // Testes de tipo: checados pelo tsc, sem execução no Vitest.

@@ -72,6 +72,24 @@ release. Add a tool name to select part of the graph. For example, run
 - Ao renomear um módulo, atualize seus imports, referências documentais e
   nomes dos testes correspondentes, preservando os sufixos de ambiente.
 
+## Traduções
+
+- Idiomas e idioma base vêm de `project.inlang/settings.json`. Cada consumidor
+  mantém `messages/{pt,en,es}.json` colocalizados. Compartilhe em
+  `src/i18n/messages/` somente a partir do segundo consumidor de produção.
+- Use IDs globais com prefixo do dono e os mesmos parâmetros nos três idiomas.
+  Importe `m` de `@/paraglide/messages.js` e `Locale` de
+  `@/paraglide/runtime.js`; não edite `src/paraglide/` nem `.paraglide/`.
+- Chame mensagens no componente ou em getters. Não capture idioma nem texto
+  traduzido no topo de módulo compartilhado entre requisições SSR.
+- Links e redirects de páginas usam `localizeHref({ href })`. `paths` mantém
+  os caminhos tipados sem idioma. Endpoints e assets ficam sem prefixo.
+- Preserve `AsyncLocalStorage`, o corpo original das server functions, a
+  navegação de documento na troca de idioma e a tolerância a cookies bloqueados.
+- Rode `vp run i18n:generate` para conferir paridade, duplicatas e parâmetros.
+  Mudanças de integração exigem typecheck, tooling, testes e os E2E de i18n.
+  A divisão é por página e mensagem; cada módulo inclui os três idiomas usados.
+
 ## Tipos TypeScript
 
 - Nunca escreva tipagens inline grandes ou estruturadas em parâmetros,

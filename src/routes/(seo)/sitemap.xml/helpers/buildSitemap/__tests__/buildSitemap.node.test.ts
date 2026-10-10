@@ -9,16 +9,22 @@ describe('geração do sitemap', () => {
       entries: [{ path: '/' }, { path: '/docs' }, { path: '/docs/guia' }]
     })
 
-    expect(sitemap).toBe(
-      [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-        '  <url><loc>https://example.com/</loc></url>',
-        '  <url><loc>https://example.com/docs</loc></url>',
-        '  <url><loc>https://example.com/docs/guia</loc></url>',
-        '</urlset>',
-        ''
-      ].join('\n')
+    const locations = [...sitemap.matchAll(/<loc>(?<url>[^<]+)<\/loc>/gu)].map(
+      match => match.groups?.url
+    )
+    expect(locations).toStrictEqual([
+      'https://example.com/pt',
+      'https://example.com/en',
+      'https://example.com/es',
+      'https://example.com/pt/docs',
+      'https://example.com/en/docs',
+      'https://example.com/es/docs',
+      'https://example.com/pt/docs/guia',
+      'https://example.com/en/docs/guia',
+      'https://example.com/es/docs/guia'
+    ])
+    expect(sitemap).toContain(
+      'hreflang="x-default" href="https://example.com/en"'
     )
   })
 
@@ -29,9 +35,11 @@ describe('geração do sitemap', () => {
     })
 
     expect(sitemap).toContain(
-      '  <url><loc>https://example.com/artigo</loc><lastmod>2026-09-21</lastmod></url>\n'
+      '  <url><loc>https://example.com/pt/artigo</loc><lastmod>2026-09-21</lastmod>'
     )
-    expect(sitemap).toContain('  <url><loc>https://example.com/</loc></url>\n')
+    expect(sitemap).toContain(
+      '  <url><loc>https://example.com/pt</loc><xhtml:link'
+    )
   })
 
   it('publica um urlset vazio quando não há páginas estáticas', () => {
@@ -40,7 +48,7 @@ describe('geração do sitemap', () => {
     expect(sitemap).toBe(
       [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
         '</urlset>',
         ''
       ].join('\n')
@@ -53,7 +61,9 @@ describe('geração do sitemap', () => {
       entries: [{ path: "/a&b'c", lastmod: '<2026>' }]
     })
 
-    expect(sitemap).toContain('<loc>https://example.com/a&amp;b&apos;c</loc>')
+    expect(sitemap).toContain(
+      '<loc>https://example.com/pt/a&amp;b&apos;c</loc>'
+    )
     expect(sitemap).toContain('<lastmod>&lt;2026&gt;</lastmod>')
   })
 
@@ -63,7 +73,9 @@ describe('geração do sitemap', () => {
       entries: [{ path: '/a<b>"c d' }]
     })
 
-    expect(sitemap).toContain('<loc>https://example.com/a%3Cb%3E%22c%20d</loc>')
+    expect(sitemap).toContain(
+      '<loc>https://example.com/pt/a%3Cb%3E%22c%20d</loc>'
+    )
   })
 
   it('escapa <, > e " que sobrevivem em URLs de caminho opaco', () => {
@@ -81,6 +93,6 @@ describe('geração do sitemap', () => {
       entries: [{ path: '/docs' }]
     })
 
-    expect(sitemap).toContain('<loc>https://example.com/docs</loc>')
+    expect(sitemap).toContain('<loc>https://example.com/pt/docs</loc>')
   })
 })

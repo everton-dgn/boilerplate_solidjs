@@ -1,0 +1,11 @@
+.fallback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: var(--font-size-14);
+
+  & a {
+    color: var(--color-foreground);
+    text-decoration: underline;
+  }
+}

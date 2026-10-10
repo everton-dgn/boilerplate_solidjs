@@ -1,3 +1,5 @@
+import { m } from '@/paraglide/messages.js'
+
 type NavLink = {
   href: string
   label: string
@@ -6,6 +8,11 @@ type NavLink = {
 export const BRAND_NAME = 'SolidJS Boilerplate'
 
 export const NAV_LINKS: readonly NavLink[] = [
-  { href: '/', label: 'Início' },
+  {
+    href: '/',
+    get label() {
+      return m.topbar_home()
+    }
+  },
   { href: '/404', label: '404' }
 ]

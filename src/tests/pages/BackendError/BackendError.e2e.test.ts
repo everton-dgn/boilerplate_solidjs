@@ -58,11 +58,11 @@ test('um redirect lançado por server function no SSR continua redirecionando', 
   page,
   request
 }) => {
-  const response = await request.get('/control-signal', { maxRedirects: 0 })
+  const response = await request.get('/pt/control-signal', { maxRedirects: 0 })
   expect(response.status()).toBe(HTTP_FOUND)
-  expect(response.headers().location).toBe('/?from=control-signal')
+  expect(response.headers().location).toBe('/pt?from=control-signal')
   await page.goto('/control-signal')
-  await expect(page).toHaveURL(/\/\?from=control-signal$/u)
+  await expect(page).toHaveURL(/\/pt\?from=control-signal$/u)
 })
 
 test('um envelope devolvido por server function no SSR entrega o valor', async ({
@@ -104,7 +104,8 @@ test('um envelope lançado por server function no SSR vira falha de render sem e
   const document = await response.text()
   expect(response.status()).toBe(HTTP_INTERNAL_SERVER_ERROR)
   expect(document).not.toContain(marker)
-  expect(document).toContain('Algo deu errado!')
+  expect(response.headers()['content-language']).toBe('en')
+  expect(document).toContain('Something went wrong!')
   // Controle positivo: a server function leu o marcador antes de lançar.
   const after = await request.get(`${BACKEND}/control?id=${id}`)
   expect(v.parse(backendState, await after.json()).attempts).toBe(1)

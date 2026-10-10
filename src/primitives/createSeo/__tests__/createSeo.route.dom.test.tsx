@@ -76,8 +76,8 @@ describe('metadados de SEO no head', () => {
   it('publica canonical e og:url absolutos sem a query da rota', async () => {
     const base = await renderAt({ pathname: '/docs?tab=2' })
 
-    expect(readCanonical()).toBe(`${base}/docs`)
-    expect(readMeta('meta[property="og:url"]')).toBe(`${base}/docs`)
+    expect(readCanonical()).toBe(`${base}/pt/docs`)
+    expect(readMeta('meta[property="og:url"]')).toBe(`${base}/pt/docs`)
   })
 
   it('aponta a imagem social absoluta para Open Graph e Twitter', async () => {
@@ -119,7 +119,7 @@ describe('metadados de SEO no head', () => {
     ])
     expect(readNode('WebSite')).toBeDefined()
     expect(readNode('WebPage')).toMatchObject({
-      url: `${base}/`,
+      url: `${base}/pt`,
       name: SITE.title
     })
   })
@@ -162,7 +162,7 @@ describe('metadados de SEO no head', () => {
     await vi.waitUntil(() => readCanonical() === null, POLL)
     const base = await renderAt({ pathname: '/' })
 
-    expect(readCanonical()).toBe(`${base}/`)
+    expect(readCanonical()).toBe(`${base}/pt`)
   })
 
   it('usa os metadados de SITE quando a rota não declara SEO', async () => {

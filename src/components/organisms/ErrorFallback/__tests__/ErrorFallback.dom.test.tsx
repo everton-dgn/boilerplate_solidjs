@@ -30,7 +30,7 @@ describe('navegação após falha', () => {
     const home = host.querySelector<HTMLAnchorElement>('a')
     assert(home)
     expect(home.textContent).toBe('Voltar ao início')
-    expect(new URL(home.href).pathname).toBe('/')
+    expect(new URL(home.href).pathname).toBe('/pt')
   })
 
   it('troca o ícone quando a variante muda e restaura o ícone anterior', async () => {

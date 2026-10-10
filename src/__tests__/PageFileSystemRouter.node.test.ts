@@ -26,10 +26,10 @@ describe('roteamento por arquivo', () => {
     expect(routes.map(route => route.path).toSorted()).toStrictEqual([
       '/(base)',
       '/(base)/(home)/',
-      '/(base)/*404'
+      '/(base)/*404/'
     ])
     expect(
-      routes.find(route => route.path === '/(base)/*404')?.$$route
+      routes.find(route => route.path === '/(base)/*404/')?.$$route
     ).toBeDefined()
   })
 
@@ -46,7 +46,7 @@ describe('roteamento por arquivo', () => {
     expect(pages[0]?.children).toStrictEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: '/(home)/', path: '/' }),
-        expect.objectContaining({ id: '/*404', path: '/*404' })
+        expect.objectContaining({ id: '/*404/', path: '/*404/' })
       ])
     )
     expect(pages[0]?.children).toHaveLength(BASE_LAYOUT_PAGE_COUNT)
