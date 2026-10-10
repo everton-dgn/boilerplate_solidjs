@@ -25,13 +25,13 @@ type CatalogFileOptions = { root: string; file: string }
 
 // O glob da leitura e o filtro do watcher descrevem o mesmo conjunto: os
 // agregados em .paraglide/ e a saída em src/paraglide/ nunca são catálogos.
-const CATALOG_GLOB = 'src/**/messages/*.json'
+const CATALOG_GLOB = 'src/**/i18n/*.json'
 const CATALOG_EXCLUDES = [
   'src/tests/**',
   'src/**/__tests__/**',
   'src/paraglide/**'
 ]
-const CATALOG_PATH = /^src\/(?:[^/]+\/)*messages\/[^/]+\.json$/u
+const CATALOG_PATH = /^src\/(?:[^/]+\/)*i18n\/[^/]+\.json$/u
 const EXCLUDED_PATH = /^src\/(?:tests|paraglide)\/|\/__tests__\//u
 
 function claimMessages({ keys, directory, owners }: ClaimOptions): void {

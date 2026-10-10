@@ -38,7 +38,7 @@ const SETTLE_MS = 1500
 const HTTP_ERROR = 500
 
 async function writeMessages({ root, messages }: MessagesOptions) {
-  const directory = path.join(root, 'src/routes/Home/messages')
+  const directory = path.join(root, 'src/routes/Home/i18n')
   await mkdir(directory, { recursive: true })
   for (const locale of LOCALES) {
     await writeFile(
@@ -145,7 +145,7 @@ describe('i18n dev watcher', () => {
     assert.notEqual(await server.status(), HTTP_ERROR)
 
     await writeFile(
-      path.join(server.root, 'src/routes/Home/messages/es.json'),
+      path.join(server.root, 'src/routes/Home/i18n/es.json'),
       JSON.stringify({ home_title: 'Title' })
     )
     await waitFor(() => server.payloads().includes('error'))

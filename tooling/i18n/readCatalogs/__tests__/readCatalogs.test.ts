@@ -38,7 +38,7 @@ async function writeCatalog({
   value,
   consumer = 'Home'
 }: WriteOptions): Promise<void> {
-  const directory = path.join(root, 'src/routes', consumer, 'messages')
+  const directory = path.join(root, 'src/routes', consumer, 'i18n')
   await mkdir(directory, { recursive: true })
   await writeFile(path.join(directory, `${locale}.json`), JSON.stringify(value))
 }
@@ -56,11 +56,23 @@ async function fixture({
 }
 
 describe('colocated translations', () => {
-  it('collects all three locales and parameters', async context => {
+  it('collects colocated and shared catalogs in all three locales', async context => {
     const parent = await sandbox(context)
-    const catalogs = await readCatalogs(await fixture({ parent }))
+    const options = await fixture({ parent })
+    const shared = path.join(options.root, 'src/i18n')
+    await mkdir(shared, { recursive: true })
+    for (const locale of LOCALES) {
+      await writeFile(
+        path.join(shared, `${locale}.json`),
+        JSON.stringify({ site_title: 'Site' })
+      )
+    }
+    const catalogs = await readCatalogs(options)
     assert.deepEqual(Object.keys(catalogs), LOCALES)
-    assert.equal(catalogs.en?.home_hello, 'Hello {name}')
+    for (const locale of LOCALES) {
+      assert.equal(catalogs[locale]?.home_hello, 'Hello {name}')
+      assert.equal(catalogs[locale].site_title, 'Site')
+    }
   })
 
   it('fails when a locale file is absent, even when it is the reference', async context => {
@@ -100,7 +112,7 @@ describe('colocated translations', () => {
     ]) {
       const options = await fixture({ parent })
       await writeFile(
-        path.join(options.root, 'src/routes/Home/messages/es.json'),
+        path.join(options.root, 'src/routes/Home/i18n/es.json'),
         source
       )
       await assert.rejects(readCatalogs(options), /Invalid catalog.*es\.json/u)
@@ -160,19 +172,22 @@ describe('catalog file filter', () => {
   it('matches only the colocated catalogs that the generator reads', () => {
     const root = path.join(tmpdir(), 'project')
     const accepted = [
-      'src/routes/(base)/(home)/messages/pt.json',
-      'src/components/atoms/Button/messages/en.json',
-      'src/messages/es.json'
+      'src/routes/(base)/(home)/i18n/pt.json',
+      'src/components/atoms/Button/i18n/en.json',
+      'src/i18n/es.json'
     ]
     const ignored = [
       '.paraglide/messages/pt.json',
       'src/paraglide/messages/home_title.js',
       'src/paraglide/messages/pt.json',
-      'src/tests/fixtures/messages/pt.json',
-      'src/components/Button/__tests__/messages/pt.json',
-      'src/routes/Home/messages/nested/pt.json',
-      'src/routes/Home/messages/pt.js',
-      '../outside/src/routes/Home/messages/pt.json'
+      'src/paraglide/i18n/pt.json',
+      'src/routes/Home/messages/pt.json',
+      'src/i18n/messages/pt.json',
+      'src/tests/fixtures/i18n/pt.json',
+      'src/components/Button/__tests__/i18n/pt.json',
+      'src/routes/Home/i18n/nested/pt.json',
+      'src/routes/Home/i18n/pt.js',
+      '../outside/src/routes/Home/i18n/pt.json'
     ]
     for (const file of accepted) {
       assert.equal(isCatalogFile({ root, file: path.join(root, file) }), true)

@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
 
-import english from '@/components/organisms/ErrorFallback/messages/en.json' with { type: 'json' }
-import spanish from '@/components/organisms/ErrorFallback/messages/es.json' with { type: 'json' }
-import portuguese from '@/components/organisms/ErrorFallback/messages/pt.json' with { type: 'json' }
+import english from '@/components/organisms/ErrorFallback/i18n/en.json' with { type: 'json' }
+import spanish from '@/components/organisms/ErrorFallback/i18n/es.json' with { type: 'json' }
+import portuguese from '@/components/organisms/ErrorFallback/i18n/pt.json' with { type: 'json' }
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const LANGUAGES = [

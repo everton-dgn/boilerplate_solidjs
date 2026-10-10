@@ -121,16 +121,15 @@ Imports de CSS Modules usam o nome `S`, por exemplo,
 ### Traduções com Paraglide
 
 `project.inlang/settings.json` define `pt`, `en` e `es`, com inglês como idioma
-base. Cada página ou componente guarda `messages/pt.json`, `messages/en.json` e
-`messages/es.json` junto do seu código. Mensagens com dois ou mais consumidores
-de produção podem ir para `src/i18n/messages/`; as demais ficam no consumidor.
-As chaves são globais e usam o prefixo do dono, como `home_title` e
-`themeToggle_select`.
+base. Cada página ou componente guarda `i18n/pt.json`, `i18n/en.json` e
+`i18n/es.json` junto do seu código. Mensagens com dois ou mais consumidores de
+produção podem ir para `src/i18n/`; as demais ficam no consumidor. As chaves são
+globais e usam o prefixo do dono, como `home_title` e `themeToggle_select`.
 
 ```text
 src/routes/(base)/(home)/
   index.tsx
-  messages/
+  i18n/
     pt.json
     en.json
     es.json

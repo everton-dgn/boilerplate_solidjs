@@ -75,8 +75,8 @@ release. Add a tool name to select part of the graph. For example, run
 ## Traduções
 
 - Idiomas e idioma base vêm de `project.inlang/settings.json`. Cada consumidor
-  mantém `messages/{pt,en,es}.json` colocalizados. Compartilhe em
-  `src/i18n/messages/` somente a partir do segundo consumidor de produção.
+  mantém `i18n/{pt,en,es}.json` colocalizados. Compartilhe em
+  `src/i18n/` somente a partir do segundo consumidor de produção.
 - Use IDs globais com prefixo do dono e os mesmos parâmetros nos três idiomas.
   Importe `m` de `@/paraglide/messages.js` e `Locale` de
   `@/paraglide/runtime.js`; não edite `src/paraglide/` nem `.paraglide/`.

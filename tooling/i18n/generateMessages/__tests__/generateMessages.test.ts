@@ -40,7 +40,7 @@ async function sandbox(context: TestContext): Promise<string> {
 }
 
 async function writeMessages({ root, messages }: MessagesOptions) {
-  const directory = path.join(root, 'src/routes/Home/messages')
+  const directory = path.join(root, 'src/routes/Home/i18n')
   await mkdir(directory, { recursive: true })
   for (const locale of LOCALES) {
     await writeFile(
@@ -123,7 +123,7 @@ describe('generated messages', () => {
     })
     await generateMessages(root)
     const reference = await output(root)
-    const catalog = path.join(root, 'src/routes/Home/messages/es.json')
+    const catalog = path.join(root, 'src/routes/Home/i18n/es.json')
     await writeFile(catalog, JSON.stringify({ home_title: 'Title {name}' }))
     await assert.rejects(
       generateMessages(root),

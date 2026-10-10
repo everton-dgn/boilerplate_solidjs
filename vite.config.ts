@@ -160,7 +160,7 @@ export default defineConfig(({ mode }) => {
           command: 'node tooling/i18n/generate.ts',
           cache: {
             input: [
-              'src/**/messages/*.json',
+              'src/**/i18n/*.json',
               'tooling/i18n/**',
               'project.inlang/settings.json',
               'package.json',
