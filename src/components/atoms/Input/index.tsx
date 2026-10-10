@@ -8,6 +8,11 @@ type InputProps = Omit<ComponentProps<'input'>, 'class'> & {
   class?: string
 }
 
+type InputFieldState = Pick<
+  InputProps,
+  'defaultValue' | 'value' | 'defaultChecked' | 'checked'
+>
+
 export function Input(props: InputProps) {
   const rest = omit(
     props,
@@ -22,19 +27,22 @@ export function Input(props: InputProps) {
   const initialChecked = untrack(() => props.defaultChecked)
   // Preserve absent native properties (a checkbox without value submits "on").
   // The SSR renderer needs value/checked rather than defaultValue/defaultChecked.
-  const fieldState = () => {
+  const fieldState = (): InputFieldState => {
     const value = props.value ?? initialValue
     const checked = props.checked ?? initialChecked
-    return {
-      ...(initialValue !== undefined && !isServer
-        ? { defaultValue: initialValue }
-        : {}),
-      ...(value === undefined ? {} : { value }),
-      ...(initialChecked !== undefined && !isServer
-        ? { defaultChecked: initialChecked }
-        : {}),
-      ...(checked === undefined ? {} : { checked })
+    const fields: InputFieldState = {}
+
+    if (initialValue !== undefined && !isServer) {
+      fields.defaultValue = initialValue
     }
+    if (value !== undefined) fields.value = value
+
+    if (initialChecked !== undefined && !isServer) {
+      fields.defaultChecked = initialChecked
+    }
+    if (checked !== undefined) fields.checked = checked
+
+    return fields
   }
   return (
     <input
