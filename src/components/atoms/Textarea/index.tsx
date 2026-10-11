@@ -1,7 +1,7 @@
 import type { ComponentProps } from '@solidjs/web'
 import { omit, untrack } from 'solid-js'
 
-import S from './styles.module.css'
+import S from '../Input/styles.module.css'
 
 type TextareaProps = Omit<ComponentProps<'textarea'>, 'class'> & {
   variant?: 'default' | 'destructive'
@@ -21,6 +21,7 @@ export function Textarea(props: TextareaProps) {
         (props.variant === 'destructive' ? 'true' : undefined)
       }
       class={[
+        S.field,
         S.textarea,
         S[`variant_${props.variant ?? 'default'}`],
         props.class

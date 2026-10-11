@@ -52,7 +52,12 @@ export function Input(props: InputProps) {
         props['aria-invalid'] ??
         (props.variant === 'destructive' ? 'true' : undefined)
       }
-      class={[S.input, S[`variant_${props.variant ?? 'default'}`], props.class]}
+      class={[
+        S.field,
+        S.input,
+        S[`variant_${props.variant ?? 'default'}`],
+        props.class
+      ]}
     />
   )
 }
