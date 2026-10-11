@@ -97,7 +97,7 @@ export function ToastProvider(props: ParentProps) {
                     }
                   }}
                 >
-                  <span class={S.icon} aria-hidden="true">
+                  <span class={S.icon}>
                     <Icon width={20} height={20} />
                   </span>
                   <div class={S.content}>
@@ -110,7 +110,7 @@ export function ToastProvider(props: ParentProps) {
                     aria-label={m.toast_close()}
                     onClick={() => state.api.dismiss(id)}
                   >
-                    <IconClose width={18} height={18} aria-hidden="true" />
+                    <IconClose width={18} height={18} />
                   </button>
                 </li>
               )

@@ -1070,13 +1070,15 @@ O `unplugin-icons` carrega a coleção `my-images` de `src/assets/images/` com
 ```tsx
 import SolidLogo from '~icons/my-images/solid'
 
-<SolidLogo width="96" height="90" aria-hidden="true" />
+<SolidLogo width="96" height="90" />
 ```
 
 Adicione arquivos `.svg` nessa pasta e importe pelo nome, sem extensão. As cores
-originais são preservadas. PNG, JPEG e WebP continuam sendo imagens comuns.
-`src/@types/icons.d.ts` declara os componentes com os tipos de `@solidjs/web`
-para manter os ícones alinhados à API usada pelo projeto.
+originais são preservadas. PNG, JPEG e WebP continuam sendo imagens comuns. A
+configuração do plugin já adiciona `aria-hidden="true"` aos SVGs importados; não
+repita o atributo em cada uso do componente. `src/@types/icons.d.ts` declara os
+componentes com os tipos de `@solidjs/web` para manter os ícones alinhados à API
+usada pelo projeto.
 
 O
 [SVG do Solid vem do template oficial do Vite](https://github.com/vitejs/vite/blob/main/packages/create-vite/template-solid/src/assets/solid.svg).
