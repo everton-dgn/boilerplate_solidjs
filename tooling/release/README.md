@@ -77,8 +77,8 @@ O job faz checkout do SHA validado, prepara Node e Vite+ com as versões do
 `package.json` e instala com `vp install --frozen-lockfile`. A CLI Vercel,
 selecionada no [workflow do CI](../../.github/workflows/ci.yml), carrega as
 configurações de produção, executa `vercel build --prod` e publica o resultado
-com `vercel deploy --prebuilt --prod`. O script `build` do projeto continua
-usando `vp build`.
+com `vercel deploy --prebuilt --prod`. O script `build` chama o CLI local do
+Vite+ com Bun explicitamente; para executá-lo, use `vp run build`.
 
 O GitHub precisa destas configurações em Settings > Secrets and variables >
 Actions:

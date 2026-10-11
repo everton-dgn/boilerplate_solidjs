@@ -32,7 +32,8 @@ release. Add a tool name to select part of the graph. For example, run
   com Bun explicitamente. Os comandos embutidos `vp dev` e `vp build` seguem
   a seleção de Node do CLI global.
 - Preserve Node no Vitest, nos testes de tooling e no SSR de produção até as
-  incompatibilidades descritas no README serem resolvidas e verificadas.
+  incompatibilidades descritas em [desenvolvimento](docs/development.md)
+  serem resolvidas e verificadas.
   O runtime explícito do Nitro impede que executar o build em Bun troque
   silenciosamente o runtime da função Vercel.
 - O lint de CSS, o backend simulado de E2E e a automação de release executam
@@ -170,7 +171,7 @@ release. Add a tool name to select part of the graph. For example, run
   colocalizados não exportam esses nomes.
 - Previsão de reuso não justifica a extração. Mova para a pasta global
   correspondente quando o segundo consumidor aparecer, atualizando imports,
-  testes e o README.
+  testes e os guias correspondentes em `docs/`.
 - Testes não decidem a localização. Um módulo colocalizado mantém seus
   testes em `__tests__/` ao lado dele.
 
@@ -312,7 +313,7 @@ release. Add a tool name to select part of the graph. For example, run
 - Ao criar camada ou alias, atualize a regra e seus testes. Use as APIs de
   `vite-plus/lint/plugins` e `vite-plus/lint/plugins-dev`, sem instalar outra
   cópia de Oxlint. Rode `vp run test:tooling` e `vp run check:ci`. Consulte a
-  matriz e os limites no README.
+  matriz e os limites em [arquitetura](docs/architecture.md#dependências-entre-camadas).
 
 ## Cabeçalhos de segurança e CSP
 

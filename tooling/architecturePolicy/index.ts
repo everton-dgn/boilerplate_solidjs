@@ -98,7 +98,7 @@ const layerImports = defineRule({
     schema: [],
     messages: {
       forbidden:
-        'A camada {{from}} não pode depender de {{to}} ({{target}}). Consulte as regras de camadas no README.'
+        'A camada {{from}} não pode depender de {{to}} ({{target}}). Consulte as regras de camadas em docs/architecture.md.'
     }
   },
   create(context) {
