@@ -1,0 +1,40 @@
+name: Set up project
+description:
+  Install the declared toolchain and frozen dependencies with package caching.
+
+outputs:
+  node:
+    description: Declared Node version
+    value: ${{ steps.toolchain.outputs.node }}
+  bun:
+    description: Declared Bun version
+    value: ${{ steps.toolchain.outputs.bun }}
+
+runs:
+  using: composite
+  steps:
+    - name: Read toolchain versions
+      id: toolchain
+      shell: bash
+      run: |
+        vite_plus_version=$(jq -er '.workspaces.catalog."vite-plus"' package.json)
+        node_version=$(jq -er '.devEngines.runtime.version' package.json)
+        bun_version=$(jq -er '.packageManager | capture("^bun@(?<version>[^+]+)").version' package.json)
+        {
+          echo "vite-plus=$vite_plus_version"
+          echo "node=$node_version"
+          echo "bun=$bun_version"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Set up Vite+
+      uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+      with:
+        version: ${{ steps.toolchain.outputs.vite-plus }}
+        node-version: ${{ steps.toolchain.outputs.node }}
+        cache: true
+        cache-dependency-path: bun.lock
+        run-install: false
+
+    - name: Install dependencies
+      shell: bash
+      run: vp install --frozen-lockfile

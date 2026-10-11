@@ -30,6 +30,8 @@ function toError(error: unknown): Error {
 export function i18nPlugin(): Plugin {
   let root = process.cwd()
   let failure: Error | undefined
+  let pendingGeneration: Promise<void> | undefined
+  let stopWatching: (() => void) | undefined
   return {
     name: 'project:i18n',
     enforce: 'pre',
@@ -39,7 +41,7 @@ export function i18nPlugin(): Plugin {
     },
     configureServer(server) {
       let requested = 0
-      let running = false
+      let isRunning = false
       const generate = async () => {
         try {
           const recovering = failure !== undefined
@@ -52,24 +54,30 @@ export function i18nPlugin(): Plugin {
           reportError({ server, error: failure })
         }
       }
-      // Eventos que chegam durante uma geração viram uma única rodada extra.
-      const regenerate = async () => {
-        requested += 1
-        if (running) return
-        running = true
-        let handled = 0
-        while (handled < requested) {
-          handled = requested
-          await generate()
+      const generateRequested = async () => {
+        isRunning = true
+        try {
+          let handled = 0
+          while (handled < requested) {
+            handled = requested
+            await generate()
+          }
+        } finally {
+          isRunning = false
         }
-        running = false
+      }
+      // Eventos que chegam durante uma geração viram uma única rodada extra.
+      const regenerate = () => {
+        requested += 1
+        if (isRunning) return
+        pendingGeneration = generateRequested()
       }
       // Agregados em .paraglide/ e a saída em paraglide/ são escritos pela
       // própria geração e não a disparam de novo. As configurações definem os
       // idiomas e passam pela mesma fila que os catálogos.
       const update = (file: string) => {
         if (isSettingsFile({ root, file }) || isCatalogFile({ root, file })) {
-          void regenerate()
+          regenerate()
         }
       }
       server.watcher.add([
@@ -90,12 +98,17 @@ export function i18nPlugin(): Plugin {
         response.setHeader('Content-Type', 'text/plain; charset=utf-8')
         response.end(failure.message)
       })
-      server.httpServer?.once('close', () => {
+      stopWatching = () => {
         server.watcher
           .off('add', update)
           .off('change', update)
           .off('unlink', update)
-      })
+      }
+      server.httpServer?.once('close', stopWatching)
+    },
+    closeServer() {
+      stopWatching?.()
+      return pendingGeneration
     }
   }
 }

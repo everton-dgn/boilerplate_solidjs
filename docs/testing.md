@@ -110,8 +110,9 @@ cada requisição, que todos os `<script>` e `modulepreload` do HTML bruto traze
 esse nonce e que a Home hidrata sem violação de CSP no console, também com o
 tema `dark` ou `light` no cookie, sem atributo `style` no `<html>`. O comando
 usa a mesma `BASE_URL_TEST`, carrega as variáveis públicas no modo `production`
-e dispensa o backend simulado. Execute as duas suítes em sequência, pois
-compartilham a porta e os artefatos de build. O CI executa ambas; a suíte de
+e dispensa o backend simulado. No mesmo checkout local, execute as duas suítes
+em sequência, pois compartilham a porta e os artefatos de build. O CI executa
+ambas em paralelo, em runners separados para isolar portas e builds; a suíte de
 produção também valida o build final.
 
 Use `vp run test:e2e:ui` para abrir a interface interativa do Playwright. Com

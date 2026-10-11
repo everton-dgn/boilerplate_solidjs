@@ -24,6 +24,8 @@ type DevServer = {
   payloads: () => unknown[]
   status: () => Promise<number>
   body: () => Promise<string>
+  change: (file: string) => void
+  close: () => Promise<void>
 }
 
 const RUNTIME_FILE = 'paraglide/runtime.js'
@@ -90,6 +92,10 @@ async function startServer(context: TestContext): Promise<DevServer> {
   const url = `http://127.0.0.1:${address.port}/`
   return {
     root,
+    change: file => {
+      server.watcher.emit('change', path.join(server.config.root, file))
+    },
+    close: () => server.close(),
     payloads: () => send.mock.calls.map(call => payloadType(call.arguments[0])),
     status: async () => {
       const response = await fetch(url)
@@ -104,6 +110,20 @@ async function startServer(context: TestContext): Promise<DevServer> {
 }
 
 describe('i18n dev watcher', () => {
+  it('waits for a pending generation when the server closes', async context => {
+    const server = await startServer(context)
+    await writeSettings({
+      root: server.root,
+      baseLocale: 'en',
+      locales: LOCALES
+    })
+    server.change('project.inlang/settings.json')
+
+    await server.close()
+
+    assert.match(await readRuntime(server.root), /baseLocale = "en";/u)
+  })
+
   it('blocks requests while a catalog is invalid and recovers after the fix', async context => {
     const server = await startServer(context)
     assert.notEqual(await server.status(), HTTP_ERROR)

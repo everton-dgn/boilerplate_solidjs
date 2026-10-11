@@ -162,9 +162,9 @@ vp run typecheck
 actionlint .github/workflows/auto-release.yml
 ```
 
-O `ci.yml` usa `parallel`, `background` e `wait-all`. Valide esse arquivo com
-uma versão do validador que reconheça essas etapas; a execução nativa fica
-comprovada pelo GitHub Actions.
+O `ci.yml` usa etapas `parallel`. Valide esse arquivo com uma versão do
+validador que reconheça essas etapas; a execução nativa fica comprovada pelo
+GitHub Actions.
 
 Os testes de release pertencem à suíte de tooling e executam com Node em
 `vp run test:tooling`. A automação executa em Bun; antes de preparar a release,
