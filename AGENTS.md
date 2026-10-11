@@ -192,6 +192,22 @@ release. Add a tool name to select part of the graph. For example, run
   ficam como o contrato exige, sem adaptação: middlewares `(request, next)` em
   `src/middleware/`, callbacks de teste e hooks de plugin do Vite.
 
+## Condicionais e fluxo de controle
+
+- Evite ao máximo encadear condições com `else if`. Prefira guard clauses
+  (cláusulas de guarda) e retornos antecipados quando cada ramo puder encerrar
+  o fluxo. `if` isolado e `if/else` simples continuam permitidos.
+- Para selecionar valores por uma chave, prefira mapas de consulta quando a
+  correspondência for direta. Considere `switch` para vários casos discretos
+  da mesma expressão, quando isso deixar a decisão mais clara.
+- Preserve a ordem de avaliação e a exclusividade dos ramos. Não transforme
+  uma cadeia de `else if` em vários `if` independentes que possam executar
+  mais de um ramo, nem em ternários aninhados ou abstrações artificiais.
+- Mantenha `else if` quando as alternativas prejudicarem a clareza ou exigirem
+  duplicar trabalho comum necessário após os ramos.
+- Aplique a regra em código novo e nos trechos alterados pela tarefa. Ela não
+  autoriza refatoração em massa de código adjacente.
+
 ## Exports
 
 - Exporte na própria declaração: `export function`, `export const`,
