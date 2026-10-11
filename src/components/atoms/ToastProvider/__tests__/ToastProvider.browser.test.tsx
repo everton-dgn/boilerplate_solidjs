@@ -22,6 +22,10 @@ function Trigger() {
 
 describe('notificações no navegador', () => {
   it('preserva foco ao aparecer, pausa com foco e fecha pelo teclado', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] })
+    onTestFinished(() => {
+      vi.useRealTimers()
+    })
     renderComponent(
       () => (
         <ToastProvider>
@@ -36,9 +40,7 @@ describe('notificações no navegador', () => {
     await userEvent.keyboard('{Tab}')
     const close = page.getByRole('button', { name: m.toast_close() })
     await expect.element(close).toHaveFocus()
-    const { promise, resolve } = Promise.withResolvers<boolean>()
-    setTimeout(() => resolve(true), FOCUS_WAIT)
-    await promise
+    await vi.advanceTimersByTimeAsync(FOCUS_WAIT)
     await expect.element(close).toBeVisible()
     await userEvent.keyboard('{Enter}')
     await expect.element(close).not.toBeInTheDocument()
