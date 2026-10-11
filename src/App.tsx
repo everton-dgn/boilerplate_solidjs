@@ -10,9 +10,7 @@ import { createLocaleNavigationGuard } from './router/createLocaleNavigationGuar
 
 import './theme/globalStyles.css'
 
-// Quando containFailures renderiza a página de erro, o erro público gravado
-// em locals é lançado aqui, antes do Router, e o Errored raiz mostra o
-// fallback. No cliente o boundary hidrata a partir do erro serializado.
+// O gate precisa lançar antes do Router para alcançar o Errored raiz.
 function ServerFailureGate(props: ParentProps) {
   const failure = isServer ? getRequestEvent()?.locals.serverFailure : undefined
   if (failure) throw failure

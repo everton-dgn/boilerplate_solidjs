@@ -25,8 +25,6 @@ function resolveImage({ base, image }: ResolveImageOptions): SeoImage {
   }
 }
 
-// Só grava as datas declaradas, para o resultado não carregar chaves
-// `undefined` quando nenhuma rota fala de artigo.
 function resolveArticle({
   base,
   article
@@ -42,8 +40,6 @@ function resolveArticle({
   return resolved
 }
 
-// A rota mais específica sobrescreve apenas os campos que declara; a imagem e
-// as datas de artigo também são mescladas atributo a atributo.
 export function resolveRouteSeo(
   metadata: readonly (SeoRouteInfo | undefined)[]
 ): SeoMetadata {

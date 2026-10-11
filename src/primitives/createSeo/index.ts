@@ -38,14 +38,10 @@ type CreateSeoOptions =
   | { route: true; structuredData?: never }
   | { route?: never; structuredData: Accessor<StructuredData | undefined> }
 
-// `index, follow` já é o padrão do crawler; o ganho está em
-// `max-image-preview:large`, que libera a prévia grande da imagem.
 const ROBOTS_INDEX = 'index, follow, max-image-preview:large'
 const ROBOTS_NOINDEX = 'noindex'
 
-// Escolha do projeto: página `noindex` publica só `robots`, título e
-// descrição. Canonical, Open Graph, Twitter e o grafo base ficam restritos às
-// páginas indexáveis, inclusive as tags que não variam por rota.
+// Páginas noindex omitem canonical, redes sociais e o grafo base.
 function publishRouteSeo(): void {
   const location = useLocation()
   const matches = useRouteMatches()
@@ -69,7 +65,6 @@ function publishRouteSeo(): void {
     { tag: 'meta', props: { name: 'description', content: seo().description } }
   ]
 
-  // Datas do artigo no Open Graph, só as que a rota declara.
   const articleTags = (): HeadTag[] => {
     if (seo().type !== 'article') return []
     const tags: HeadTag[] = []
@@ -177,9 +172,6 @@ function publishRouteSeo(): void {
   )
 }
 
-// O modo de rota registra o SEO global uma vez na raiz do Router.
-// Dados próprios pertencem ao owner da chamada, inclusive em rota noindex.
-// Retornar undefined suspende somente o script desta instância.
 export function createSeo(options: CreateSeoOptions): void {
   if (options.route) {
     publishRouteSeo()

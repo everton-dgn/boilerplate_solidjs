@@ -25,10 +25,7 @@ function isHtml(response: Response): boolean {
   return contentType.toLowerCase().includes('text/html')
 }
 
-// Uma resposta sem corpo e com headers imutáveis, como Response.redirect(), vai
-// numa cópia com o mesmo status e os mesmos headers. Com corpo, ela é o retorno
-// cru de fetch(), que carrega dados e headers upstream; o erro segue para a
-// contenção.
+// Respostas de controle aceitam cópia de headers; um corpo upstream exige contenção.
 function withHeaders({ response, headers }: HeaderUpdate): Response {
   try {
     for (const [name, value] of Object.entries(headers)) {
@@ -45,12 +42,6 @@ function withHeaders({ response, headers }: HeaderUpdate): Response {
   }
 }
 
-// Nonce CSP da requisição, guardado em locals. Em produção ele chega pronto da
-// src/entry-handler.ts; nos demais casos nasce no primeiro acesso. O
-// securityHeaders o lê antes do render; a contenção lê o mesmo valor ou cria
-// um quando a falha veio antes dele. O src/entry-server.tsx o repassa ao
-// renderToStream e o Document aos scripts que renderiza. Fora de uma
-// requisição não há nonce.
 export function requestNonce(): string | undefined {
   const event = getRequestEvent()
   if (!event) return undefined
@@ -58,9 +49,7 @@ export function requestNonce(): string | undefined {
   return event.locals.nonce
 }
 
-// Em desenvolvimento a CSP fica de fora: o Vite injeta no <head> scripts sem
-// nonce (cliente de HMR e patch de estilos). Os demais cabeçalhos valem em
-// todos os modos.
+// O Vite injeta scripts sem nonce; a CSP só é enviada em produção.
 export function applySecurityHeaders({
   response,
   nonce

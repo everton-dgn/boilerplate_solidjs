@@ -28,8 +28,6 @@ const DEFAULT_SELECTION: LlmsSelection = {
   optional: false
 }
 
-// A rota decide a inclusão e sobrescreve só o que declara; seção e marcação
-// opcional são herdadas do layout.
 function resolveRouteLlms({
   parent,
   info
@@ -43,8 +41,7 @@ function resolveRouteLlms({
   }
 }
 
-// Páginas estáticas selecionadas por `route.info.llms` e sem `noindex`. O
-// índice filho pode compartilhar a URL do layout; seus metadados prevalecem.
+// O índice filho pode compartilhar a URL do layout; seus metadados prevalecem.
 export function collectLlmsPages(routes: readonly StaticRoute[]): LlmsPage[] {
   const pages = new Map<string, StaticPage>()
   walkStaticRoutes<RouteState>({

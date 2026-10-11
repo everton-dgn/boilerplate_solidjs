@@ -7,7 +7,6 @@ import { configureLocaleClient } from './entry-client/configureLocaleClient/inde
 const disposeLocaleClient = configureLocaleClient()
 if (import.meta.hot) import.meta.hot.dispose(disposeLocaleClient)
 
-// Hidrata a mesma árvore que src/entry-server.tsx renderiza.
 hydrate(
   () => (
     <Document>

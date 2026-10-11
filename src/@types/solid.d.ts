@@ -5,10 +5,7 @@ declare module '@solidjs/web' {
     requestId?: string
     // Base de página validada pelo middleware; ausente em RPC sem Referer seguro.
     localizedPageBase?: string
-    // Nonce CSP da requisição: no build nasce em src/entry-handler.ts; fora
-    // dele, requestNonce o cria no middleware.
     nonce?: string
-    // Erro público gravado por containFailures para renderizar a página de erro.
     serverFailure?: Error
   }
 }

@@ -5,8 +5,6 @@ import type { StaticRoute } from '@/helpers/walkStaticRoutes/types.ts'
 
 import type { SitemapManifest } from '../../types.ts'
 
-// Só o que o sitemap consome, herdado pela cadeia como no createSeo: título e
-// descrição não são lidos.
 type RouteState = {
   noindex: boolean
   article: boolean
@@ -40,7 +38,6 @@ function resolveState({ parent, seo }: ResolveStateOptions): RouteState {
   }
 }
 
-// `lastmod` só em artigo, com as mesmas datas que a página publica no JSON-LD.
 function resolveEntry({ path, state }: ResolveEntryOptions): SitemapEntry {
   const lastmod = state.article
     ? (state.dateModified ?? state.datePublished)
@@ -48,9 +45,6 @@ function resolveEntry({ path, state }: ResolveEntryOptions): SitemapEntry {
   return lastmod === undefined ? { path } : { path, lastmod }
 }
 
-// Páginas estáticas do manifesto, sem `noindex`, sem o fallback 404 e sem
-// duplicatas, mais as fontes das rotas com parâmetros que declaram
-// `route.info.sitemap`. Uma fonte não é executada aqui: só coletada.
 export function collectSitemapEntries(
   routes: readonly StaticRoute[]
 ): SitemapManifest {

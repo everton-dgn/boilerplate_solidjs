@@ -20,22 +20,18 @@ type BuildSitemapResponseOptions = {
 const HTTP_SERVICE_UNAVAILABLE = 503
 const SITEMAP_BYTE_LIMIT = 52_428_800
 
-// Fronteira com as fontes: só `path` e `lastmod` seguem adiante.
 const EntrySchema = v.object({
   path: v.string(),
   lastmod: v.optional(v.string())
 })
 const EntriesSchema = v.array(EntrySchema)
 
-// Uma fonte síncrona vira promise para correr junto com as demais.
 async function readSource(
   source: SitemapRouteInfo
 ): Promise<readonly SitemapEntry[]> {
   return source()
 }
 
-// Todas as fontes rodam em paralelo, com um prazo total; o timer é limpo ao
-// fim para não segurar o processo.
 async function readSources(
   sources: readonly SitemapRouteInfo[]
 ): Promise<SitemapEntry[]> {
@@ -55,9 +51,7 @@ async function readSources(
   }
 }
 
-// Qualquer falha (fonte rejeitada, entrada inválida, prazo ou limite) vira
-// 503 sem corpo e sem cache: o crawler tenta de novo e o CDN mantém a última
-// cópia boa. Um sitemap parcial em cache esconderia a falha por uma hora.
+// Um sitemap parcial em cache esconderia falhas; retorne 503 sem cache.
 export async function buildSitemapResponse({
   manifest,
   siteUrl

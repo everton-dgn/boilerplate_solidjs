@@ -21,8 +21,6 @@ type DialogProps = {
   class?: string
 }
 
-// O backdrop não fecha o modal. Escape e o botão solicitam a mudança ao
-// consumidor; um fechamento nativo (inclusive method="dialog") é reconciliado.
 export function Dialog(props: DialogProps) {
   const id = createUniqueId()
   let element: HTMLDialogElement | undefined
@@ -55,8 +53,7 @@ export function Dialog(props: DialogProps) {
     // close é assíncrono: uma notificação antiga não pode fechar a reabertura.
     if (disposed || element?.open || !props.open) return
     props.onOpenChange(false)
-    // O consumidor pode recusar o fechamento. Espere a publicação do signal
-    // antes de repor a modalidade quando open continuar true.
+    // Aguarda o signal antes de reabrir caso o consumidor recuse o fechamento.
     queueMicrotask(() => synchronize(untrack(() => props.open)))
   }
 

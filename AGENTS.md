@@ -226,6 +226,19 @@ release. Add a tool name to select part of the graph. For example, run
   `typescript/return-await`; não adicione `await` ou comentários de disable
   apenas para satisfazer a antiga exigência de `async`.
 
+## Comentários no código
+
+- Não acrescente comentários que repitam nomes, tipos, condições ou passos
+  visíveis no código. Isso vale também para JSDoc, cabeçalhos de funções e
+  resumos inseridos por agentes de IA.
+- Comente apenas um motivo ou restrição que o código não esclarece, como uma
+  exigência de segurança, uma incompatibilidade de biblioteca ou uma condição
+  de corrida. Use o menor comentário que preserve essa informação.
+- Guias de uso, decisões de arquitetura e explicações extensas ficam na
+  documentação. Não copie esses textos para cada implementação.
+- Preserve diretivas de ferramentas, licenças e contratos relevantes. Ao
+  editar, remova comentários redundantes ou desatualizados no trecho alterado.
+
 ## Nomes de booleanos
 
 - Booleanos próprios do projeto usam um prefixo que expresse seu significado:

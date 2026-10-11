@@ -19,12 +19,10 @@ function optionalLocation() {
   try {
     return useLocation()
   } catch {
-    // Como na consulta opcional de contexto do Router, a ausência é válida aqui.
     return null
   }
 }
 
-/** Links relativos à raiz funcionam sem Router, inclusive na tela de erro da raiz. */
 export function LocalizedLink(props: LocalizedLinkProps) {
   const location = optionalLocation()
   const nativeProps = omit(

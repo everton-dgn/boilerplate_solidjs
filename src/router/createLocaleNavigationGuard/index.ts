@@ -2,7 +2,6 @@ import { extractLocaleFromUrl, getLocale } from '@paraglide/runtime.js'
 import { useBeforeLeave } from '@solidjs/router'
 import { isServer } from '@solidjs/web'
 
-/** Mantém o idioma do documento montado alinhado ao da requisição nos redirecionamentos do Router. */
 export function createLocaleNavigationGuard(): void {
   if (isServer) return
   const documentLocale = getLocale()

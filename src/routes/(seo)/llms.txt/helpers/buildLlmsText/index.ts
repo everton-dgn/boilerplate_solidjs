@@ -3,7 +3,6 @@ import type { LlmsPage } from '@/@types/llms.ts'
 type BuildLlmsTextOptions = {
   title: string
   description: string
-  // Fatos sobre o site, publicados como lista entre o resumo e as seções.
   notes?: readonly string[]
   pages: readonly LlmsPage[]
   siteUrl: string
@@ -18,8 +17,6 @@ type FormatLinkOptions = {
 // bucket opcional, que sai sempre por último.
 const OPTIONAL_SECTION = 'Optional'
 
-// Só o que quebra a estrutura é escapado: quebras de linha viram espaço, e
-// colchetes, barras invertidas e crases não encerram o link nem abrem código.
 function escapeMarkdownText(text: string): string {
   return text
     .replaceAll(/\s+/gu, ' ')
@@ -41,9 +38,6 @@ function formatLink({ page, siteUrl }: FormatLinkOptions): string {
   return `- [${label}](${url})${summary ? `: ${summary}` : ''}`
 }
 
-// Formato do llms.txt: título em H1, resumo em citação, notas livres sem
-// cabeçalho, uma seção por grupo na ordem em que aparece no manifesto e as
-// páginas opcionais em `## Optional`.
 export function buildLlmsText({
   title,
   description,

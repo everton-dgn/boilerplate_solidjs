@@ -8,7 +8,6 @@ export function installLocaleHistoryGuard(
   function onPopState(event: PopStateEvent): void {
     const locale = extractLocaleFromUrl(globalThis.location.href)
     if (locale === undefined || locale === documentLocale) return
-    // Preserva a entrada já selecionada pelo navegador, incluindo seu estado e índice.
     event.stopImmediatePropagation()
     reload()
   }

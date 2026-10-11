@@ -8,9 +8,7 @@ import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
 
 type BuildStructuredDataOptions = {
   seo: SeoMetadata
-  // URL canônica absoluta da página.
   url: string
-  // URL absoluta da imagem social.
   image: string
 }
 
@@ -21,9 +19,6 @@ type StructuredDataGraph = Omit<Graph, '@graph'> & {
   '@graph': readonly [SiteNode, PageNode, OrganizationNode]
 }
 
-// JSON-LD (schema.org) com o site, a página atual e a organização que os
-// publica, serializado para o `<script>` do `createSeo`. Nós próprios de uma
-// página usam `createSeo`, em um script separado.
 export function buildStructuredData({
   seo,
   url,

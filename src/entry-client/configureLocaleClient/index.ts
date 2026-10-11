@@ -29,7 +29,5 @@ export function configureLocaleClient(): () => void {
     const target = localizeUrl(location.href, { locale })
     if (target.href !== location.href) location.assign(target.href)
   })
-  // Executa antes de hydrate montar o Router. O ouvinte dura enquanto o
-  // documento existir; a função retornada o remove nos testes e no HMR.
   return installLocaleHistoryGuard()
 }

@@ -12,7 +12,6 @@ type VisitStaticRouteOptions<State> = {
   route: StaticRoute
   path: string
   parentState: State
-  // `true` quando o caminho completo tem algum segmento com parâmetro.
   dynamic: boolean
 }
 
