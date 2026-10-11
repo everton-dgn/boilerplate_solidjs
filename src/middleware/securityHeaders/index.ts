@@ -80,7 +80,6 @@ export function applySecurityHeaders({
 
 // O nonce nasce antes de next(): o render o lê de locals, e a CSP da resposta
 // leva o mesmo valor.
-// oxlint-disable-next-line eslint/max-params -- A cadeia de middleware impõe a assinatura (request, next).
 export async function securityHeaders(
   _request: Request,
   next: Next

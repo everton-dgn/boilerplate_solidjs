@@ -220,7 +220,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
       { max: 200, skipBlankLines: true, skipComments: true }
     ],
     'eslint/max-nested-callbacks': ['warn', { max: 3 }],
-    'eslint/max-params': ['error', { max: 1 }],
+    'eslint/max-params': ['error', { max: 2 }],
     'eslint/max-statements': 'off',
     'eslint/new-cap': 'off',
     'eslint/no-alert': 'off',

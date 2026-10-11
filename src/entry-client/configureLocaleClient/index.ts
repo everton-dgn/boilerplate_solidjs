@@ -12,7 +12,6 @@ import {
 import { installLocaleHistoryGuard } from './installLocaleHistoryGuard/index.ts'
 
 export function configureLocaleClient(): () => void {
-  // oxlint-disable-next-line eslint/max-params -- A assinatura do callback é definida pelo Paraglide.
   overwriteSetLocale((newLocale, options) => {
     const locale = assertIsLocale(newLocale)
     try {

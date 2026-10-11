@@ -167,17 +167,19 @@ release. Add a tool name to select part of the graph. For example, run
 
 ## Parâmetros de função
 
-- Função com dois parâmetros ou mais recebe um único objeto nomeado:
-  `makeBroadcastChannel({ name, receive })`, não `makeBroadcastChannel(name, receive)`.
+- Prefira um único parâmetro nas funções do projeto. Quando houver vários
+  valores, prefira um objeto nomeado: `makeBroadcastChannel({ name, receive })`.
   Desestruture na assinatura e nomeie o tipo do objeto conforme a seção
   "Localização de tipos".
+- O lint permite até dois parâmetros. Esse limite mantém espaço para
+  assinaturas de bibliotecas, sem mudar a preferência por um argumento.
 - O motivo é o ponto de chamada. Com dois argumentos posicionais, um booleano
   ou uma string solta não dizem o que significam: `publish('dark', true)` exige
   abrir a assinatura, enquanto `publish({ theme: 'dark', persisted: true })` se
   explica sozinho.
 - Um parâmetro só permanece posicional. Não crie objeto para envolver um
   argumento único.
-- A regra vale para as funções do projeto. Assinaturas ditadas por terceiros
+- A preferência vale para as funções do projeto. Assinaturas ditadas por terceiros
   ficam como o contrato exige, sem adaptação: middlewares `(request, next)` em
   `src/middleware/`, callbacks de teste e hooks de plugin do Vite.
 

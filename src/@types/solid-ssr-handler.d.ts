@@ -9,7 +9,6 @@ declare module 'virtual:solid-ssr-handler' {
     event: Partial<RequestEvent>
   }
 
-  // oxlint-disable-next-line eslint/max-params -- O plugin define a assinatura (request, options).
   export function handleRequest(
     request: Request,
     options: HandleRequestNonceOptions
