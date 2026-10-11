@@ -184,11 +184,11 @@ módulos do Solid. O job `Quality` restaura `node_modules/.vite/task-cache`,
 `node_modules/.vitest-cache` e `.tsbuild`, com uma chave por execução e um
 prefixo de restauração restrito ao sistema operacional, arquitetura, Node, Bun e
 lockfile. Vite Task, Vitest e TypeScript conferem suas entradas antes de
-reaproveitar os dados. Depois dos testes com cobertura e de tooling, o cache é
-enviado ao GitHub, inclusive quando uma verificação anterior falha. Vite Task só
-guarda resultados bem-sucedidos e Vitest guarda transformações, então uma falha
-não vira um resultado de teste reaproveitado. O workflow aguarda o upload antes
-de encerrar; falhas de cache não dispensam nem reprovam as verificações. Uma
+reaproveitar os dados. Depois dos testes com cobertura, o cache é enviado ao
+GitHub, inclusive quando uma verificação anterior falha. Vite Task só guarda
+resultados bem-sucedidos e Vitest guarda transformações, então uma falha não
+vira um resultado de teste reaproveitado. O workflow aguarda o upload antes de
+encerrar; falhas de cache não dispensam nem reprovam as verificações. Uma
 execução sem cache faz as mesmas verificações. A reutilização do Vite Task entre
 runners é experimental: confira os hits nos logs e compare o tempo economizado
 com o custo de transferir o cache.
@@ -204,20 +204,20 @@ comandos documentados usam `vp run`, e o Vite mantém seu carregamento de
 variáveis por modo. `env = false` no `bunfig.toml` também evita que `bun run`
 antecipe a leitura do `.env` antes de iniciar essas ferramentas.
 
-O CI distribui as verificações entre três runners independentes: `Quality`, E2E
-com fixtures e E2E de produção. `Quality` executa formatação, lint e tipos,
-depois roda cobertura e tooling em etapas `parallel` no mesmo runner. Os dois
-jobs E2E começam junto com ele, cada um com seu checkout, portas e artefatos de
-build isolados. A ação local `setup-project` compartilha a instalação entre os
-jobs e o deploy. Esse paralelismo reduz a espera, mas repete a preparação nos
-runners e pode aumentar o consumo de minutos do GitHub Actions.
+O CI distribui as verificações entre quatro runners independentes: `Quality`,
+`Tooling`, E2E com fixtures e E2E de produção. `Quality` executa formatação,
+lint, tipos e cobertura. `Tooling` executa os testes de tooling após a
+instalação, sem aguardar os checks de `Quality` nem compartilhar CPU com a
+cobertura. Os quatro jobs começam juntos, cada um com seu checkout, portas e
+artefatos de build isolados. A ação local `setup-project` compartilha a
+instalação entre os jobs e o deploy. Esse paralelismo reduz a espera, mas repete
+a preparação nos runners e pode aumentar o consumo de minutos do GitHub Actions.
 
 `CI required` aguarda todos os jobs e só passa se todos tiverem sucesso; falhas,
 cancelamentos e verificações puladas impedem sua aprovação. O deploy depende
 desse resultado, e a release reutiliza o mesmo workflow. Os testes rodam em toda
 execução; o cache do Vitest guarda transformações de módulos. Em `CI=true`,
-Vitest e o runner Node dos testes de tooling usam no máximo dois workers cada,
-para limitar a disputa de CPU entre as etapas.
+Vitest e o runner Node dos testes de tooling usam no máximo dois workers cada.
 
 ## Hooks de Git
 

@@ -62,12 +62,8 @@ jobs:
       - name: Check formatting and lint
         run: vp run check:ci
 
-      - parallel:
-          - name: Run tests with coverage
-            run: vp run test:ci
-
-          - name: Run tooling tests
-            run: vp run test:tooling
+      - name: Run tests with coverage
+        run: vp run test:ci
 
       - name: Save validation cache
         if:
@@ -91,6 +87,23 @@ jobs:
           if-no-files-found: ignore
           include-hidden-files: true
           retention-days: 14
+
+  tooling:
+    name: Tooling
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Set up project
+        uses: ./.github/actions/setup-project
+
+      - name: Run tooling tests
+        run: vp run test:tooling
 
   e2e:
     name: E2E (${{ matrix.suite }})
@@ -131,7 +144,7 @@ jobs:
 
   check:
     name: CI required
-    needs: [quality, e2e]
+    needs: [quality, tooling, e2e]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 1
@@ -139,9 +152,11 @@ jobs:
       - name: Require all validation jobs
         env:
           QUALITY_RESULT: ${{ needs.quality.result }}
+          TOOLING_RESULT: ${{ needs.tooling.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
         run: |
           test "$QUALITY_RESULT" = success
+          test "$TOOLING_RESULT" = success
           test "$E2E_RESULT" = success
 
   deploy:
