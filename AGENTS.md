@@ -226,10 +226,25 @@ release. Add a tool name to select part of the graph. For example, run
   `typescript/return-await`; não adicione `await` ou comentários de disable
   apenas para satisfazer a antiga exigência de `async`.
 
+## Nomes de booleanos
+
+- Booleanos próprios do projeto usam um prefixo que expresse seu significado:
+  `is` para estado (`isOpen`), `has` para presença (`hasErrors`), `can` para
+  capacidade (`canSubmit`) e `should` para uma decisão (`shouldLocalize`).
+  Prefira nomes afirmativos, sem dupla negação.
+- A convenção vale para variáveis, parâmetros, propriedades e getters de
+  signals booleanos. O setter acompanha o getter: `[isOpen, setIsOpen]`.
+- Preserve nomes de contratos externos, atributos HTML, propriedades ARIA,
+  APIs de bibliotecas e código gerado, como `disabled`, `checked` e `reload`.
+  Uma função que executa uma ação e retorna sucesso continua com nome de ação,
+  como `saveTheme`; o retorno booleano não a transforma em uma consulta.
+- Esta convenção é conferida na revisão. O lint atual não verifica nomes pelo
+  tipo booleano; não crie exceções genéricas nem afirme cobertura automática.
+
 ## Nomes de signal
 
 - O par desestruturado de `createSignal` usa `[x, setX]`: o nome do setter é o
-  do getter com prefixo `set`. `[open, setOpen]`, `[ready, setReady]`.
+  do getter com prefixo `set`. `[isOpen, setIsOpen]`, `[isReady, setIsReady]`.
   Nunca `[theme, setPreference]` nem `[systemTheme, setSystem]`.
 - Quando o nome interno e o nome público divergem, renomeie o getter, não o
   setter, e exponha o alias no retorno. Em `createTheme` o signal interno é

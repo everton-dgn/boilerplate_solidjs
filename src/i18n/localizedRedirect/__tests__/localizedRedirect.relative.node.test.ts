@@ -10,7 +10,7 @@ type RedirectRequest = {
   href: string
   url?: string
   referer?: string
-  localize?: boolean
+  shouldLocalize?: boolean
 }
 
 const ORIGIN = 'https://example.com'
@@ -39,7 +39,7 @@ function redirectRequest({
   href,
   url = `${ORIGIN}${endpoint}/save`,
   referer,
-  localize
+  shouldLocalize
 }: RedirectRequest) {
   const request = new Request(url, {
     headers: referer ? { referer } : undefined
@@ -51,7 +51,7 @@ function redirectRequest({
         Promise.resolve(
           localizedRedirect({
             href,
-            localize,
+            shouldLocalize,
             locale: 'pt',
             status: TEMPORARY_REDIRECT,
             headers: { 'x-marker': 'kept' }
@@ -122,7 +122,7 @@ describe('relative localized redirects', () => {
     })
     const endpointRedirect = await redirectRequest({
       href: '?saved=1',
-      localize: false
+      shouldLocalize: false
     })
     expect(root.headers.get('location')).toBe('/pt/docs')
     expect(external.headers.get('location')).toBe(

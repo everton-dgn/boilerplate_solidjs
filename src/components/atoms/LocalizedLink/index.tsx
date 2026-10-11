@@ -11,8 +11,8 @@ type LocalizedLinkProps = Omit<
 > & {
   href: string | TypedPath
   locale?: Locale
-  /** Desativa a localização e a interceptação da SPA para endpoints e arquivos estáticos. */
-  localize?: boolean
+  /** Use false para preservar URLs de endpoints e arquivos estáticos e navegar fora da SPA. */
+  shouldLocalize?: boolean
 }
 
 function optionalLocation() {
@@ -31,7 +31,7 @@ export function LocalizedLink(props: LocalizedLinkProps) {
     props,
     'href',
     'locale',
-    'localize',
+    'shouldLocalize',
     'target',
     'children'
   )
@@ -39,17 +39,17 @@ export function LocalizedLink(props: LocalizedLinkProps) {
     resolveLocalizedHref({
       href: String(props.href),
       locale: props.locale,
-      localize: props.localize,
+      shouldLocalize: props.shouldLocalize,
       base: location
         ? `${location.pathname}${location.search}${location.hash}`
         : undefined
     })
-  const documentNavigation = () =>
-    props.localize === false ||
+  const shouldUseDocumentNavigation = () =>
+    props.shouldLocalize === false ||
     (props.locale !== undefined && props.locale !== getLocale())
   const target = () => {
     if (props.target !== undefined && props.target !== '') return props.target
-    return documentNavigation() ? '_self' : undefined
+    return shouldUseDocumentNavigation() ? '_self' : undefined
   }
 
   return (

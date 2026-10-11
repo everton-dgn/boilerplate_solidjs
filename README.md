@@ -239,18 +239,18 @@ const goHome = () => navigate({ href: paths, replace: true })
 throw localizedRedirect({ href: paths, status: 303 })
 ```
 
-`locale` permite escolher outro idioma. `localize: false` preserva URLs de
-endpoints e arquivos sem prefixo; no JSX, use `localize={false}`. URLs externas,
-`mailto:` e `tel:` também são preservadas. Links mantêm atributos nativos como
-`target` e `download`. A navegação no mesmo idioma usa o router; links e
-navegação programática para outro idioma carregam o documento inteiro. Uma
-guarda na raiz do router aplica a mesma regra aos redirects de actions e queries
-e ao histórico entre idiomas, para manter mensagens, documento e SEO no mesmo
-idioma. `localizedRedirect()` preserva status, headers e sinais de controle da
-`Response` do Solid. `state` e `scroll` só se aplicam à navegação pelo router.
-Fora dele, `LocalizedLink` aceita caminhos a partir da raiz, mas não resolve
-caminhos relativos. O helper de baixo nível `localizeHref()` continua disponível
-em `@/i18n/urls/index.ts` para compor URLs de páginas.
+`locale` permite escolher outro idioma. `shouldLocalize: false` preserva URLs de
+endpoints e arquivos sem prefixo; no JSX, use `shouldLocalize={false}`. URLs
+externas, `mailto:` e `tel:` também são preservadas. Links mantêm atributos
+nativos como `target` e `download`. A navegação no mesmo idioma usa o router;
+links e navegação programática para outro idioma carregam o documento inteiro.
+Uma guarda na raiz do router aplica a mesma regra aos redirects de actions e
+queries e ao histórico entre idiomas, para manter mensagens, documento e SEO no
+mesmo idioma. `localizedRedirect()` preserva status, headers e sinais de
+controle da `Response` do Solid. `state` e `scroll` só se aplicam à navegação
+pelo router. Fora dele, `LocalizedLink` aceita caminhos a partir da raiz, mas
+não resolve caminhos relativos. O helper de baixo nível `localizeHref()`
+continua disponível em `@/i18n/urls/index.ts` para compor URLs de páginas.
 
 Fluxos que precisam avisar sobre alterações não salvas devem tratar também a
 saída do documento, como no evento nativo `beforeunload`. Um guard de

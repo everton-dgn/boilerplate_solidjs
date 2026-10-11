@@ -55,7 +55,7 @@ describe('resolveLocalizedHref contracts', () => {
       '?file=1'
     ]) {
       expect(
-        resolveLocalizedHref({ href, localize: false, locale: 'en' })
+        resolveLocalizedHref({ href, shouldLocalize: false, locale: 'en' })
       ).toBe(href)
     }
   })

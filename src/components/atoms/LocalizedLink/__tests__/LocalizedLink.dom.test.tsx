@@ -59,7 +59,7 @@ describe('localizedLink contracts', () => {
     const host = renderComponent(
       () => (
         <>
-          <LocalizedLink href="/api/report" localize={false}>
+          <LocalizedLink href="/api/report" shouldLocalize={false}>
             Report
           </LocalizedLink>
           <LocalizedLink href="/guide.pdf">Page</LocalizedLink>

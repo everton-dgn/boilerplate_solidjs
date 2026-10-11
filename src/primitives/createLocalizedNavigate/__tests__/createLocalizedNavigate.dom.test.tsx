@@ -102,7 +102,7 @@ describe('createLocalizedNavigate contracts', () => {
     assert(navigate)
     navigate({ href: '/docs?q=1#part', locale: 'en' })
     expect(assign).toHaveBeenLastCalledWith('/en/docs?q=1#part')
-    navigate({ href: '/api/report', localize: false, replace: true })
+    navigate({ href: '/api/report', shouldLocalize: false, replace: true })
     expect(replace).toHaveBeenCalledWith('/api/report')
     navigate({ href: 'https://example.com' })
     expect(assign).toHaveBeenLastCalledWith('https://example.com')

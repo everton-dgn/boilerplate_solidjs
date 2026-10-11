@@ -30,7 +30,7 @@ export default function UiKit() {
         <LocalizedLink href="/ui-kit?source=language#target" locale="es">
           Spanish page
         </LocalizedLink>
-        <LocalizedLink href="/robots.txt" localize={false}>
+        <LocalizedLink href="/robots.txt" shouldLocalize={false}>
           Robots file
         </LocalizedLink>
         <Button onClick={() => navigate({ href: '?source=navigate#target' })}>

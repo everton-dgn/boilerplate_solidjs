@@ -12,7 +12,7 @@ import { resolveLocalizedHref } from '@/i18n/urls/index.ts'
 type LocalizedNavigateOptions = Omit<Partial<NavigateOptions>, 'resolve'> & {
   href: string | TypedPath
   locale?: Locale
-  localize?: boolean
+  shouldLocalize?: boolean
 }
 
 /** Requer um Router. A navegação de documento não transporta estado do roteador nem opções de rolagem. */
@@ -23,7 +23,7 @@ export function createLocalizedNavigate() {
   return ({
     href,
     locale,
-    localize,
+    shouldLocalize,
     ...options
   }: LocalizedNavigateOptions): void => {
     const requestedHref = String(href)
@@ -34,16 +34,16 @@ export function createLocalizedNavigate() {
         ? `${location.pathname}${location.search}${requestedHref}`
         : requestedHref
     const target = resolveLocalizedHref({
-      href: localize === false ? requestedHref : resolvedHref,
+      href: shouldLocalize === false ? requestedHref : resolvedHref,
       locale,
-      localize,
+      shouldLocalize,
       base: `${location.pathname}${location.search}${location.hash}`
     })
-    const documentNavigation =
-      localize === false ||
+    const shouldUseDocumentNavigation =
+      shouldLocalize === false ||
       (locale !== undefined && locale !== getLocale()) ||
       /^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(target)
-    if (documentNavigation && !isServer) {
+    if (shouldUseDocumentNavigation && !isServer) {
       if (options.replace) globalThis.location.replace(target)
       else globalThis.location.assign(target)
       return

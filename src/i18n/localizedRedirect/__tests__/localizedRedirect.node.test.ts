@@ -38,7 +38,10 @@ describe('localizedRedirect contracts', () => {
     expect(
       localizedRedirect({ href: 'https://example.com' }).headers.get('location')
     ).toBe('https://example.com')
-    const response = localizedRedirect({ href: '/api/report', localize: false })
+    const response = localizedRedirect({
+      href: '/api/report',
+      shouldLocalize: false
+    })
     expect(response.headers.get('location')).toBe('/api/report')
     expect(response.status).toBe(FOUND)
     expect(response.body).toBeNull()
