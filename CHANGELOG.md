@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 1.9.0 - 2026-10-11
+
+### Added
+
+- add typed multilingual routing and UI primitives (767ad4a)
+
+### Fixed
+
+- verify main protection before preparation (017ddf3)
+- enforce exact locale tags (7a4cbbd)
+- watch locale settings during development (f02185f)
+- serialize i18n cache restoration (a10a071)
+- update Solid and browser tooling (fd43c63)
+- disable Corepack for Bun builds (0659891)
+- stabilize lint cache across fresh runners (2d3b9a1)
+- declare complete lint cache inputs (b84fc10)
+- adopt Bun and cache parallel validation (e700fda)
+
 ## 1.8.4 - 2026-10-07
 
 ### Fixed
