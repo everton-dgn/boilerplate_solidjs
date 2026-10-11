@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.9.2 - 2026-10-11
+
+### Fixed
+
+- isolate tooling tests on a dedicated runner (1597c76)
+
 ## 1.9.1 - 2026-10-11
 
 ### Fixed
