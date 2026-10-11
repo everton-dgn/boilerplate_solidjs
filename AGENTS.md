@@ -47,6 +47,15 @@ release. Add a tool name to select part of the graph. For example, run
   dependências, revise o comportamento e mantenha os números nos arquivos que
   controlam a instalação.
 
+## Arquivos gerados do i18n
+
+- O CLI oficial do Paraglide pode substituir e remover módulos em
+  `src/paraglide/`. Temporários produzidos pelo gerador em `.paraglide/`
+  também podem ser removidos diretamente, assim como as raízes temporárias
+  criadas pelos testes de `tooling/i18n/`. A dispensa de lixeira vale somente
+  para esses artefatos; catálogos autorais em `src/**/i18n/` continuam
+  seguindo a regra de exclusão pela lixeira.
+
 ## Nomes de arquivos e pastas de módulos
 
 - Quando um módulo exportar uma única função, componente ou classe, use o

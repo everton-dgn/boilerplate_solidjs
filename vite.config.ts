@@ -163,6 +163,7 @@ export default defineConfig(({ mode }) => {
               'src/**/i18n/*.json',
               'tooling/i18n/**',
               'project.inlang/settings.json',
+              'project.inlang/paraglide.config.ts',
               'package.json',
               'bun.lock'
             ],

@@ -2,11 +2,14 @@
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import {
+  copyFile,
   mkdir,
   mkdtemp,
   readdir,
   readFile,
+  rm,
   stat,
+  symlink,
   writeFile
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -14,7 +17,6 @@ import path from 'node:path'
 import { describe, it, type TestContext } from 'node:test'
 import { promisify } from 'node:util'
 
-import { moveToTrash } from '../../moveToTrash/index.ts'
 import { generateMessages } from '../index.ts'
 
 type Messages = Record<string, string>
@@ -28,13 +30,20 @@ const PLUGIN = path.resolve(
   '../../../../node_modules/@inlang/plugin-message-format/dist/index.js'
 )
 const GENERATE = path.resolve(import.meta.dirname, '../../generate.ts')
+const COMPILER_CONFIG = path.resolve(
+  import.meta.dirname,
+  '../../../../project.inlang/paraglide.config.ts'
+)
+const NODE_MODULES = path.resolve(
+  import.meta.dirname,
+  '../../../../node_modules'
+)
 const MESSAGES = { home_title: 'Title {name}', home_body: 'Body' }
 
-// Sem comando de lixeira (CI sem GLib), o diretório fica no runner efêmero.
 async function sandbox(context: TestContext): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), 'i18n-generate-'))
   context.after(async () => {
-    await moveToTrash([directory])
+    await rm(directory, { recursive: true, force: true })
   })
   return directory
 }
@@ -53,6 +62,11 @@ async function writeMessages({ root, messages }: MessagesOptions) {
 async function project({ parent, messages }: ProjectOptions): Promise<string> {
   const root = await mkdtemp(path.join(parent, 'project-'))
   await mkdir(path.join(root, 'project.inlang'))
+  await copyFile(
+    COMPILER_CONFIG,
+    path.join(root, 'project.inlang/paraglide.config.ts')
+  )
+  await symlink(NODE_MODULES, path.join(root, 'node_modules'))
   await writeFile(
     path.join(root, 'project.inlang/settings.json'),
     JSON.stringify({
@@ -111,6 +125,9 @@ describe('generated messages', () => {
     assert.deepEqual(await generateMessages(root), { changed: false })
     assert.deepEqual(await modifiedTimes(root), times)
 
+    await execute(process.execPath, [GENERATE], { cwd: root })
+    assert.deepEqual(await modifiedTimes(root), times)
+
     await writeFile(path.join(root, 'src/paraglide/runtime.js'), 'broken')
     assert.deepEqual(await generateMessages(root), { changed: true })
     assert.deepEqual(await output(root), reference)
@@ -160,24 +177,18 @@ describe('generated messages', () => {
     assert.deepEqual(await temporaryFiles(processes), [])
   })
 
-  it('sends obsolete modules to the trash and never deletes them', async context => {
+  it('lets Paraglide remove obsolete modules, including in a new process', async context => {
     const parent = await sandbox(context)
     const root = await project({ parent, messages: MESSAGES })
     await generateMessages(root)
     const obsolete = path.join(root, 'src/paraglide/messages/home_body.js')
-    const content = await readFile(obsolete, 'utf8')
+    await stat(obsolete)
 
     await writeMessages({ root, messages: { home_title: 'Title {name}' } })
-    assert.deepEqual(await generateMessages(root), { changed: true })
+    await execute(process.execPath, [GENERATE], { cwd: root })
     const files = await output(root)
     assert.ok(files.has('messages/home_title.js'))
 
-    const probe = path.join(parent, 'probe')
-    await writeFile(probe, '')
-    if (await moveToTrash([probe])) {
-      await assert.rejects(stat(obsolete), { code: 'ENOENT' })
-    } else {
-      assert.equal(await readFile(obsolete, 'utf8'), content)
-    }
+    await assert.rejects(stat(obsolete), { code: 'ENOENT' })
   })
 })

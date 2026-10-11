@@ -9,6 +9,7 @@ type ReportErrorOptions = { server: ViteDevServer; error: Error }
 type SettingsFileOptions = { root: string; file: string }
 
 const SETTINGS_FILE = 'project.inlang/settings.json'
+const COMPILER_CONFIG = 'project.inlang/paraglide.config.ts'
 
 function reportError({ server, error }: ReportErrorOptions): void {
   server.ws.send({
@@ -18,7 +19,8 @@ function reportError({ server, error }: ReportErrorOptions): void {
 }
 
 function isSettingsFile({ root, file }: SettingsFileOptions): boolean {
-  return path.relative(root, file).split(path.sep).join('/') === SETTINGS_FILE
+  const relative = path.relative(root, file).split(path.sep).join('/')
+  return relative === SETTINGS_FILE || relative === COMPILER_CONFIG
 }
 
 function toError(error: unknown): Error {
@@ -72,7 +74,8 @@ export function i18nPlugin(): Plugin {
       }
       server.watcher.add([
         path.join(root, 'src'),
-        path.join(root, SETTINGS_FILE)
+        path.join(root, SETTINGS_FILE),
+        path.join(root, COMPILER_CONFIG)
       ])
       server.watcher.on('add', update).on('change', update).on('unlink', update)
       // Uma tradução inválida não pode continuar sendo servida a partir da

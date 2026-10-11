@@ -1,11 +1,10 @@
 /* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, it, type TestContext } from 'node:test'
 
-import { moveToTrash } from '../../moveToTrash/index.ts'
 import { isCatalogFile, readCatalogs } from '../index.ts'
 
 type FixtureOptions = {
@@ -22,12 +21,10 @@ type WriteOptions = {
 
 const LOCALES = ['pt', 'en', 'es']
 
-// Sem `trash` nem `gio`, como num runner de CI sem GLib, o diretório fica no
-// temporário da máquina efêmera: os testes nunca apagam de forma permanente.
 async function sandbox(context: TestContext): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), 'i18n-catalogs-'))
   context.after(async () => {
-    await moveToTrash([directory])
+    await rm(directory, { recursive: true, force: true })
   })
   return directory
 }

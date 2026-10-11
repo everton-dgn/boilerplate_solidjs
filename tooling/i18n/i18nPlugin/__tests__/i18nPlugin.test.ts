@@ -1,7 +1,15 @@
 /* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile
+} from 'node:fs/promises'
 import { createServer as createHttpServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -10,7 +18,6 @@ import { setTimeout as delay } from 'node:timers/promises'
 
 import { createServer } from 'vite-plus'
 
-import { moveToTrash } from '../../moveToTrash/index.ts'
 import { i18nPlugin } from '../index.ts'
 
 type Messages = Record<string, string>
@@ -26,6 +33,14 @@ type DevServer = {
 
 const LOCALES = ['pt', 'en', 'es']
 const SETTINGS_FILE = 'project.inlang/settings.json'
+const COMPILER_CONFIG = path.resolve(
+  import.meta.dirname,
+  '../../../../project.inlang/paraglide.config.ts'
+)
+const NODE_MODULES = path.resolve(
+  import.meta.dirname,
+  '../../../../node_modules'
+)
 const RUNTIME_FILE = 'src/paraglide/runtime.js'
 const PLUGIN = path.resolve(
   import.meta.dirname,
@@ -64,6 +79,11 @@ async function writeSettings({ root, baseLocale, locales }: SettingsOptions) {
 
 async function writeProject(root: string): Promise<void> {
   await mkdir(path.join(root, 'project.inlang'))
+  await copyFile(
+    COMPILER_CONFIG,
+    path.join(root, 'project.inlang/paraglide.config.ts')
+  )
+  await symlink(NODE_MODULES, path.join(root, 'node_modules'))
   await writeSettings({ root, baseLocale: 'pt', locales: LOCALES })
   await writeMessages({ root, messages: MESSAGES })
 }
@@ -89,15 +109,14 @@ async function waitFor(check: () => boolean): Promise<void> {
 }
 
 // Servidor de desenvolvimento real, com o watcher do Vite, numa raiz
-// temporária. Um único teardown fecha HTTP e Vite antes de mover a raiz para a
-// lixeira, para o watcher não reagir à remoção. Sem comando de lixeira (CI sem
-// GLib), a raiz fica no runner efêmero.
+// temporária. O teardown fecha HTTP e Vite antes de limpar a raiz, para o
+// watcher não reagir à remoção.
 async function startServer(context: TestContext): Promise<DevServer> {
   const root = await mkdtemp(path.join(tmpdir(), 'i18n-plugin-'))
   const closers: Close[] = []
   context.after(async () => {
     for (const close of closers.toReversed()) await close()
-    await moveToTrash([root])
+    await rm(root, { recursive: true, force: true })
   })
   await writeProject(root)
   const server = await createServer({
@@ -183,6 +202,27 @@ describe('i18n dev watcher', () => {
     await waitFor(() => server.payloads().includes('full-reload'))
     assert.match(await readRuntime(server.root), /baseLocale = "en";/u)
     assert.ok(!server.payloads().includes('error'))
+  })
+
+  it('reloads compiler configuration and blocks invalid options', async context => {
+    const server = await startServer(context)
+    const file = path.join(server.root, 'project.inlang/paraglide.config.ts')
+    const source = await readFile(file, 'utf8')
+
+    await writeFile(
+      file,
+      source.replace("trailingSlash: 'never'", "trailingSlash: 'invalid'")
+    )
+    await waitFor(() => server.payloads().includes('error'))
+    assert.equal(await server.status(), HTTP_ERROR)
+
+    await writeFile(
+      file,
+      source.replace("cookieName: 'locale'", "cookieName: 'test-locale'")
+    )
+    await waitFor(() => server.payloads().includes('full-reload'))
+    assert.notEqual(await server.status(), HTTP_ERROR)
+    assert.match(await readRuntime(server.root), /cookieName = "test-locale"/u)
   })
 
   it('blocks requests while the locale settings are invalid and recovers after the fix', async context => {

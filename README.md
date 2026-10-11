@@ -177,12 +177,21 @@ a geração. Nenhum fallback silencioso cobre traduções esquecidas. Os diretó
 gerados são ignorados pelo Git; edite somente os catálogos colocalizados.
 
 `vp run i18n:generate` executa essa verificação isoladamente. Desenvolvimento e
-build chamam o mesmo gerador; o watcher bloqueia respostas quando um catálogo
-fica inválido e volta a servir após a correção. Agregados e módulos gerados não
-disparam outra geração; conteúdo idêntico não é regravado nem provoca reload. Os
-scripts de typecheck, `check:ci` e testes geram as mensagens antes da validação,
-inclusive num clone novo. O plugin de formato vem da dependência local, sem
-baixar código de CDN durante a geração.
+build chamam o mesmo gerador antes de continuar; o watcher bloqueia respostas
+quando um catálogo fica inválido e volta a servir após a correção. Agregados e
+módulos gerados não disparam outra geração; conteúdo idêntico não é regravado
+nem provoca reload. Os scripts de typecheck, `check:ci` e testes geram as
+mensagens antes da validação, inclusive num clone novo. O plugin de formato vem
+da dependência local, sem baixar código de CDN durante a geração.
+
+As opções do compilador ficam em `project.inlang/paraglide.config.ts`. O gerador
+valida e agrega os catálogos, então executa o CLI oficial do Paraglide em Node.
+O próprio compilador reaproveita os hashes da saída, escreve as mudanças e
+remove módulos obsoletos de `src/paraglide/`. Esses arquivos gerados dispensam
+lixeira. A fila e a comparação de conteúdo evitam gerações e reloads repetidos
+no mesmo processo; a tarefa do Vite+ acrescenta cache entre execuções. O custo
+fica na preparação do desenvolvimento/build e nas verificações, sem executar o
+gerador nas requisições de produção.
 
 O bundler elimina mensagens não usadas e mantém as mensagens exclusivas da
 página no seu módulo lazy. Cada módulo contém os três idiomas das mensagens que
