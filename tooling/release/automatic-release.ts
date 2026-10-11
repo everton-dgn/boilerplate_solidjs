@@ -51,6 +51,13 @@ type Prepared = {
   head: string
   pr: PullRequest
 }
+type BranchRule = {
+  type: string
+  parameters?: {
+    strict_required_status_checks_policy?: boolean
+    required_status_checks?: { context: string; integration_id: number }[]
+  }
+}
 
 function required(name: string): string {
   const value = env[name]
@@ -98,6 +105,28 @@ async function context(): Promise<Context> {
 async function mainSha(ctx: Context): Promise<string> {
   const ref = await api<GitReference>(`${ctx.root}/git/ref/heads/main`)
   return requireSha(ref.object.sha)
+}
+
+async function assertMainProtection(ctx: Context): Promise<void> {
+  const rules = await api<BranchRule[]>(
+    `${ctx.root}/rules/branches/main?per_page=100`
+  )
+  const hasPullRequestRule = rules.some(rule => rule.type === 'pull_request')
+  const hasStrictCi = rules.some(
+    rule =>
+      rule.type === 'required_status_checks' &&
+      rule.parameters?.strict_required_status_checks_policy === true &&
+      rule.parameters.required_status_checks?.some(
+        check =>
+          check.context === REQUIRED_CHECK &&
+          check.integration_id === GITHUB_ACTIONS_APP_ID
+      )
+  )
+  if (!hasPullRequestRule || !hasStrictCi) {
+    throw new Error(
+      'Main requires strict CI protection before release merge. Configure the CI required check from GitHub Actions with an up-to-date branch before preparing a release.'
+    )
+  }
 }
 
 async function createPlan(ctx: Context): Promise<ReleasePlan | undefined> {
@@ -206,10 +235,7 @@ async function prepare(
     `${ctx.root}/pulls?state=all&base=main&head=${owner}:${branch}&per_page=100`
   )
   if (pulls.length > 1) throw new Error('Ambiguous release pull requests.')
-  let ref = await optionalApi<GitReference>(
-    `${ctx.root}/git/ref/heads/${branch}`
-  )
-  if (!ref && pulls[0]) {
+  if (pulls[0]) {
     const pr = await api<PullRequest>(`${ctx.root}/pulls/${pulls[0].number}`)
     if (pr.merged) {
       const head = requireSha(pr.head.sha)
@@ -218,6 +244,10 @@ async function prepare(
       return { plan, branch, head, pr }
     }
   }
+  if (create) await assertMainProtection(ctx)
+  let ref = await optionalApi<GitReference>(
+    `${ctx.root}/git/ref/heads/${branch}`
+  )
   if (!ref) {
     if (!create) throw new Error('Prepared release branch is missing.')
     if ((await mainSha(ctx)) !== ctx.source) {
@@ -301,32 +331,7 @@ async function publish(ctx: Context, prepared: Prepared): Promise<void> {
   let merge = prepared.pr.merge_commit_sha
   if (!prepared.pr.merged) {
     // Os strict checks rejeitam atualização concorrente da base dentro da operação de merge do GitHub.
-    const rules = await api<
-      {
-        type: string
-        parameters?: {
-          strict_required_status_checks_policy?: boolean
-          required_status_checks?: { context: string; integration_id: number }[]
-        }
-      }[]
-    >(`${ctx.root}/rules/branches/main?per_page=100`)
-    if (
-      !rules.some(rule => rule.type === 'pull_request') ||
-      !rules.some(
-        rule =>
-          rule.type === 'required_status_checks' &&
-          rule.parameters?.strict_required_status_checks_policy === true &&
-          rule.parameters.required_status_checks?.some(
-            check =>
-              check.context === REQUIRED_CHECK &&
-              check.integration_id === GITHUB_ACTIONS_APP_ID
-          )
-      )
-    ) {
-      throw new Error(
-        'Main requires strict CI protection before release merge.'
-      )
-    }
+    await assertMainProtection(ctx)
     if ((await mainSha(ctx)) !== ctx.source) {
       throw new Error(
         'Main advanced during release validation; refusing merge.'
