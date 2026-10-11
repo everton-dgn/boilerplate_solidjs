@@ -59,12 +59,12 @@ if (process.argv[1].endsWith('/git')) {
   else if (endpoint.startsWith(root + '/git/ref/heads/release/')) value = s.ref === null ? undefined : s.release && s.cleanupAdvanced ? {object:{sha:source}} : s.ref;
   else if (endpoint === root + '/git/commits/' + source) value = { sha: source, tree: { sha: 'base-tree' }, parents: [] };
   else if (endpoint === root + '/git/commits/' + head) value = { sha: head, tree: { sha: 'release-tree' }, parents: [{sha: source}] };
-  else if (endpoint === root + '/git/commits/' + merge) value = { sha: merge, tree: { sha: s.race ? 'wrong-tree' : 'release-tree' }, parents: [{sha: source}, {sha: head}] };
+  else if (endpoint === root + '/git/commits/' + merge) value = { sha: merge, tree: { sha: s.race ? 'wrong-tree' : 'release-tree' }, parents: [{sha: s.hasDifferentMergeBase ? 'e'.repeat(40) : source}, {sha: head}] };
   else if (endpoint === root + '/git/trees') { s.files = Object.fromEntries(body.tree.map(f => [f.path, f.content])); value = {sha: 'release-tree'}; }
   else if (endpoint === root + '/git/commits') value = {sha: head};
   else if (endpoint === root + '/git/refs') {
     if (body.ref.startsWith('refs/heads/')) { s.branch = body.ref.slice(11); value = s.ref = {object: {sha: head, type: 'commit'}}; }
-    else value = s.tagRef = {object: {sha: tag, type: 'tag'}};
+    else { if (s.hasTagRefFailure) { save(); process.exitCode = 1; return; } value = s.tagRef = {object: {sha: tag, type: 'tag'}}; }
   }
   else if (endpoint.startsWith(root + '/pulls?')) value = s.pr ? [{number:s.pr.number}] : [];
   else if (endpoint === root + '/pulls') value = s.pr = {number: 1, state: 'open', merged: false, merge_commit_sha: null, user: {login: 'github-actions[bot]'}, head: {sha: head, ref: s.branch, repo: {full_name: 'owner/repo'}}, base: {ref: 'main', repo: {full_name: 'owner/repo'}}};
@@ -92,6 +92,8 @@ if (process.argv[1].endsWith('/git')) {
 
 type State = {
   calls: string[]
+  hasTagRefFailure?: boolean
+  hasDifferentMergeBase?: boolean
   failRelease?: boolean
   badRun?: boolean
   advanced?: boolean
@@ -156,6 +158,62 @@ describe(
   'release orchestration with isolated Git and GitHub',
   { timeout: 30_000, concurrency: true },
   () => {
+    it('rejects invalid main protection before creating any release artifact', async context => {
+      for (const protection of ['unprotected', 'loose'] as const) {
+        const f = await fixture(context)
+        await f.patch({ [protection]: true })
+        await assert.rejects(
+          f.run('prepare'),
+          /Main requires strict CI protection/u
+        )
+        const state = await f.state()
+        assert.deepEqual(
+          state.calls.filter(call => !call.startsWith('GET ')),
+          []
+        )
+      }
+    })
+
+    it('recovers a merged release after tag creation fails even if protection changed', async context => {
+      const f = await fixture(context)
+      await f.run('prepare')
+      await f.patch({ hasTagRefFailure: true })
+      await assert.rejects(f.run('publish'), /GitHub API POST/u)
+      const mergedState = await f.state()
+      assert.equal(mergedState.merged, true)
+      await f.patch({ hasTagRefFailure: false, unprotected: true })
+      await f.run('prepare')
+      await f.run('publish')
+      const state = await f.state()
+      assert.equal(state.release?.tag_name, 'v1.0.0')
+      assert.equal(
+        state.calls.filter(
+          call => call === 'PUT repos/owner/repo/pulls/1/merge'
+        ).length,
+        1
+      )
+    })
+
+    it('refuses recovery when a manual merge used a different base', async context => {
+      const f = await fixture(context)
+      await f.run('prepare')
+      await f.patch({ hasTagRefFailure: true })
+      await assert.rejects(f.run('publish'), /GitHub API POST/u)
+      const before = await f.state()
+      await f.patch({ hasTagRefFailure: false, hasDifferentMergeBase: true })
+      await f.run('prepare')
+      await assert.rejects(
+        f.run('publish'),
+        /Merge differs from the validated release tree/u
+      )
+      const after = await f.state()
+      assert.equal(after.release, undefined)
+      assert.deepEqual(
+        after.calls.filter(call => !call.startsWith('GET ')),
+        before.calls.filter(call => !call.startsWith('GET '))
+      )
+    })
+
     it('recovers after a release API failure without recreating commit, PR, merge or tag', async context => {
       const f = await fixture(context)
       try {

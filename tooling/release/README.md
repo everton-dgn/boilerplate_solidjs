@@ -49,9 +49,11 @@ PRs criados pelo `GITHUB_TOKEN` não dependem de um novo evento de PR para
 validação: a automação chama `ci.yml` diretamente com o SHA preparado. Esse job
 tem apenas `contents: read`. Após seu sucesso, o job `publish`, com
 `checks: write`, associa o resultado ao SHA exato preparado usando a API de
-check runs. Antes disso, o script confere as regras ativas da `main` e recusa o
-merge se faltar a exigência de CI estrito. As versões de Node e Vite+ vêm do
-`package.json`; as dependências são instaladas com lockfile congelado.
+check runs. O script confere as regras ativas da `main` antes de criar qualquer
+artefato de release e repete a conferência imediatamente antes do merge. Se
+faltar a exigência de CI estrito, a preparação para sem criar commit, branch ou
+PR. As versões de Node e Vite+ vêm do `package.json`; as dependências são
+instaladas com lockfile congelado.
 
 Os testes mantêm os projetos node, dom e browser. No CI, o provider usa o canal
 `chrome` disponível no runner definido no
@@ -120,6 +122,18 @@ informando em `source_run_id` o ID do CI de push que originou a release. Uma
 nova execução reutiliza a branch e o PR existentes, valida novamente o commit e
 retoma após merge ou criação da tag, se necessário. Tags existentes com outro
 SHA e releases com notas divergentes provocam erro; não são sobrescritas.
+
+Uma release já integrada pode retomar a publicação mesmo se a proteção da `main`
+tiver mudado depois do merge, pois essa retomada não altera a branch. Continuam
+obrigatórias a identidade do PR, a validação do conteúdo preparado e a igualdade
+dos pais e da árvore do merge com o resultado validado.
+
+Se a versão do `package.json` estiver à frente da última tag estável, recupere a
+execução original antes de iniciar outra release. Não integre manualmente um PR
+de release bloqueado: uma base diferente ou alterações no merge impedem a
+retomada automática. Nesse caso, é necessário revisar o SHA validado e o estado
+da publicação antes de corrigir os metadados; não crie uma tag na ponta atual da
+`main` apenas para fazer as versões coincidirem.
 
 Após confirmar a publicação, a automação exclui a branch de release somente se
 ela ainda aponta para o SHA validado. A exclusão usa uma comparação atômica de
