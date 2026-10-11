@@ -1,3 +1,4 @@
+import { getLocale, locales } from '@paraglide/runtime.js'
 import { useLocation, useRouteMatches } from '@solidjs/router'
 import { type HeadTag, useHead } from '@solidjs/web'
 import type { Thing } from 'schema-dts'
@@ -7,6 +8,9 @@ import { SITE } from '@/constants/site.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { serializeJsonLd } from '@/helpers/serializeJsonLd/index.ts'
+import { buildLocaleAlternates } from '@/i18n/buildLocaleAlternates/index.ts'
+import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
+import { localizeHref } from '@/i18n/urls/index.ts'
 
 import { buildStructuredData } from './buildStructuredData/index.ts'
 
@@ -35,20 +39,17 @@ type CreateSeoOptions =
   | { route: true; structuredData?: never }
   | { route?: never; structuredData: Accessor<StructuredData | undefined> }
 
-// `index, follow` já é o padrão do crawler; o ganho está em
-// `max-image-preview:large`, que libera a prévia grande da imagem.
 const ROBOTS_INDEX = 'index, follow, max-image-preview:large'
 const ROBOTS_NOINDEX = 'noindex'
 
-// Escolha do projeto: página `noindex` publica só `robots`, título e
-// descrição. Canonical, Open Graph, Twitter e o grafo base ficam restritos às
-// páginas indexáveis, inclusive as tags que não variam por rota.
+// Páginas noindex omitem canonical, redes sociais e o grafo base.
 function publishRouteSeo(): void {
   const location = useLocation()
   const matches = useRouteMatches()
   const seo = () =>
     resolveRouteSeo(matches().map(match => match.route.info?.seo))
-  const canonical = () => resolveSiteUrl(location.pathname)
+  const canonical = () =>
+    resolveSiteUrl(localizeHref({ href: location.pathname }))
   const image = () => resolveSiteUrl(seo().image.path)
   const structuredData = () =>
     buildStructuredData({ seo: seo(), url: canonical(), image: image() })
@@ -65,7 +66,6 @@ function publishRouteSeo(): void {
     { tag: 'meta', props: { name: 'description', content: seo().description } }
   ]
 
-  // Datas do artigo no Open Graph, só as que a rota declara.
   const articleTags = (): HeadTag[] => {
     if (seo().type !== 'article') return []
     const tags: HeadTag[] = []
@@ -93,6 +93,16 @@ function publishRouteSeo(): void {
         content: SITE.locale.replaceAll('-', '_')
       }
     },
+    ...locales
+      .filter(locale => locale !== getLocale())
+      .map(locale => ({
+        tag: 'meta' as const,
+        key: `og:locale:alternate:${locale}`,
+        props: {
+          property: 'og:locale:alternate',
+          content: LOCALE_TAGS[locale].replaceAll('-', '_')
+        }
+      })),
     { tag: 'meta', props: { property: 'og:site_name', content: SITE.title } },
     {
       tag: 'meta',
@@ -115,6 +125,13 @@ function publishRouteSeo(): void {
       props: { name: 'twitter:description', content: seo().description }
     },
     { tag: 'link', props: { rel: 'canonical', href: canonical() } },
+    ...buildLocaleAlternates({
+      href: location.pathname,
+      siteUrl: SITE.url
+    }).map(({ hreflang, href }) => ({
+      tag: 'link' as const,
+      props: { rel: 'alternate', hreflang, href }
+    })),
     { tag: 'meta', props: { property: 'og:url', content: canonical() } },
     { tag: 'meta', props: { property: 'og:image', content: image() } },
     {
@@ -150,9 +167,6 @@ function publishRouteSeo(): void {
   )
 }
 
-// O modo de rota registra o SEO global uma vez na raiz do Router.
-// Dados próprios pertencem ao owner da chamada, inclusive em rota noindex.
-// Retornar undefined suspende somente o script desta instância.
 export function createSeo(options: CreateSeoOptions): void {
   if (options.route) {
     publishRouteSeo()

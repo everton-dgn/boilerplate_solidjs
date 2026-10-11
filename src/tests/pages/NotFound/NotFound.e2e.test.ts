@@ -6,7 +6,7 @@ test.describe('aplicação', () => {
   test('responde com status 404 e permite voltar ao início', async ({
     page
   }) => {
-    const response = await page.goto('/pagina-inexistente')
+    const response = await page.goto('/pt/pagina-inexistente')
 
     expect(response?.status()).toBe(HTTP_NOT_FOUND)
     await expect(
@@ -15,7 +15,7 @@ test.describe('aplicação', () => {
 
     await page.getByRole('link', { name: 'Voltar ao início' }).click()
 
-    await expect(page).toHaveURL('/')
+    await expect(page).toHaveURL('/pt')
     await expect(
       page.getByRole('heading', {
         name: 'Uma base limpa para produtos modernos'

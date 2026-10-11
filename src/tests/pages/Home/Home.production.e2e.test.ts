@@ -14,7 +14,7 @@ test.describe('layout na árvore de produção', () => {
     })
     const page = await context.newPage()
     try {
-      const home = await page.goto('/')
+      const home = await page.goto('/pt')
       expect(home?.status()).toBe(HTTP_OK)
       await expect(page.getByRole('banner')).toHaveCount(1)
       await expect(
@@ -24,7 +24,7 @@ test.describe('layout na árvore de produção', () => {
       ).toBeVisible()
       await expect(page.locator('head link[rel="canonical"]')).toHaveCount(1)
 
-      const missing = await page.goto('/pagina-inexistente')
+      const missing = await page.goto('/pt/pagina-inexistente')
       expect(missing?.status()).toBe(HTTP_NOT_FOUND)
       await expect(page.getByRole('banner')).toHaveCount(1)
       await expect(page).toHaveTitle('Página não encontrada')
@@ -41,7 +41,7 @@ test.describe('layout na árvore de produção', () => {
   test('preserva a mesma barra ao navegar entre Home e 404', async ({
     page
   }) => {
-    await page.goto('/')
+    await page.goto('/pt')
     await page.getByRole('button', { name: 'Selecionar tema' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
     await page.keyboard.press('Escape')
@@ -58,7 +58,7 @@ test.describe('layout na árvore de produção', () => {
       )
     ).toBe(true)
     await page.getByRole('link', { name: 'Voltar ao início' }).click()
-    await expect(page).toHaveURL('/')
+    await expect(page).toHaveURL('/pt')
     await expect(
       page.getByRole('heading', {
         name: 'Uma base limpa para produtos modernos'

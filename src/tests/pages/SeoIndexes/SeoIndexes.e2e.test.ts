@@ -7,7 +7,7 @@ const HTTP_OK = 200
 const BLOG_ENTRIES = 2
 const SITE_TITLE = 'SolidJS Boilerplate'
 const SITE_DESCRIPTION =
-  'Uma base para aplicações web com SolidJS, TypeScript e Vite+, com renderização no servidor e temas claro e escuro.'
+  'A foundation for web applications with SolidJS, TypeScript and Vite+, with server-side rendering and light and dark themes.'
 // Grupo dos robôs de treinamento de IA: começa em GPTBot e termina bloqueando tudo.
 const AI_BOTS_GROUP =
   /\nUser-agent: GPTBot\n(?:User-agent: [^\n]+\n)*Disallow: \/\n/u
@@ -24,19 +24,21 @@ test.describe('índices gerados do manifesto de rotas', () => {
     expect(sitemap.headers()['content-type']).toContain('application/xml')
     expect(sitemap.headers()['cache-control']).toBe(cacheControl)
     const xml = await sitemap.text()
-    expect(xml).toContain(`<loc>${siteUrl}/</loc>`)
-    expect(xml).toContain(`<loc>${siteUrl}/backend-error</loc>`)
-    expect(xml).toContain(`<loc>${siteUrl}/seo-public</loc>`)
-    expect(xml).toContain(`<loc>${siteUrl}/seo-sitemap-only</loc>`)
+    expect(xml).toContain(`<loc>${siteUrl}/pt</loc>`)
+    expect(xml).toContain(`<loc>${siteUrl}/pt/backend-error</loc>`)
+    expect(xml).toContain(`<loc>${siteUrl}/pt/seo-public</loc>`)
+    expect(xml).toContain(`<loc>${siteUrl}/pt/seo-sitemap-only</loc>`)
     expect(xml).toContain(
-      `<url><loc>${siteUrl}/seo-article</loc><lastmod>2026-09-21</lastmod></url>`
+      `<url><loc>${siteUrl}/pt/seo-article</loc><lastmod>2026-09-21</lastmod><xhtml:link`
     )
-    expect(xml).toContain(`<url><loc>${siteUrl}/</loc></url>`)
+    expect(xml).toContain(`<url><loc>${siteUrl}/pt</loc><xhtml:link`)
     // Fonte de `blog/[slug]`: barra final normalizada e data inválida omitida.
     expect(xml).toContain(
-      `<url><loc>${siteUrl}/blog/primeiro-post</loc><lastmod>2026-09-10</lastmod></url>`
+      `<url><loc>${siteUrl}/pt/blog/primeiro-post</loc><lastmod>2026-09-10</lastmod><xhtml:link`
     )
-    expect(xml).toContain(`<url><loc>${siteUrl}/blog/segundo-post</loc></url>`)
+    expect(xml).toContain(
+      `<url><loc>${siteUrl}/pt/blog/segundo-post</loc><xhtml:link`
+    )
     expect(xml).not.toContain('ontem')
     expect(xml).not.toContain('/private')
     expect(xml).not.toContain('/seo-noindex')
@@ -62,19 +64,19 @@ test.describe('índices gerados do manifesto de rotas', () => {
     const markdown = await llms.text()
     expect(markdown.startsWith('# ')).toBe(true)
     expect(markdown).toContain(
-      `> ${SITE_DESCRIPTION}\n\n- O conteúdo do site está em português do Brasil.\n`
+      `> ${SITE_DESCRIPTION}\n\n- Content is available in English (/en), Brazilian Portuguese (/pt) and Spanish (/es). This index uses English.\n`
     )
-    expect(markdown.indexOf('- O conteúdo do site')).toBeLessThan(
+    expect(markdown.indexOf('- Content is available')).toBeLessThan(
       markdown.indexOf('## ')
     )
     expect(markdown).toContain(
-      `## Páginas\n\n- [${SITE_TITLE}](${siteUrl}/): ${SITE_DESCRIPTION}\n`
+      `## Pages\n\n- [${SITE_TITLE}](${siteUrl}/en): ${SITE_DESCRIPTION}\n`
     )
     expect(markdown).toContain(
-      `## Guias\n\n- [Guia público](${siteUrl}/seo-public): Conteúdo público do guia.\n`
+      `## Guias\n\n- [Guia público](${siteUrl}/en/seo-public): Conteúdo público do guia.\n`
     )
     expect(markdown).toContain(
-      `## Optional\n\n- [Dados do backend](${siteUrl}/backend-error): Página de testes para os estados de resposta do backend.\n`
+      `## Optional\n\n- [Dados do backend](${siteUrl}/en/backend-error): Página de testes para os estados de resposta do backend.\n`
     )
     expect(markdown.indexOf('## Optional')).toBeGreaterThan(
       markdown.indexOf('## Guias')
@@ -87,17 +89,18 @@ test.describe('índices gerados do manifesto de rotas', () => {
     ].map(match => match.groups?.url)
     // Páginas indexáveis sem `route.info.llms`: só no sitemap.
     const sitemapOnly = new Set([
-      `${siteUrl}/seo-sitemap-only`,
-      `${siteUrl}/seo-article`,
-      `${siteUrl}/structured-data-stream`,
-      `${siteUrl}/fragment-css`
+      `${siteUrl}/en/seo-sitemap-only`,
+      `${siteUrl}/en/seo-article`,
+      `${siteUrl}/en/structured-data-stream`,
+      `${siteUrl}/en/fragment-css`
     ])
     expect(new Set(llmsUrls)).toStrictEqual(
       new Set(
         sitemapUrls.filter(
           url =>
+            String(url).startsWith(`${siteUrl}/en`) &&
             !sitemapOnly.has(String(url)) &&
-            !String(url).startsWith(`${siteUrl}/blog/`)
+            !String(url).startsWith(`${siteUrl}/en/blog/`)
         )
       )
     )
@@ -105,7 +108,7 @@ test.describe('índices gerados do manifesto de rotas', () => {
     // As URLs usam a origem pública; o servidor de teste responde pelo caminho.
     const blogPaths = sitemapUrls
       .map(url => String(url).slice(siteUrl.length))
-      .filter(path => path.startsWith('/blog/'))
+      .filter(path => path.startsWith('/pt/blog/'))
     expect(blogPaths).toHaveLength(BLOG_ENTRIES)
     for (const path of blogPaths) {
       const page = await request.get(path)

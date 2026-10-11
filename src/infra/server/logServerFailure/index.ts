@@ -8,9 +8,7 @@ type FailureSource =
 type FailureLog = { source: FailureSource; error?: unknown }
 type NameCheck = { error: Error; name: string }
 
-// Primeira linha de todo log, igual byte a byte por origem: o E2E conta essas
-// linhas. O restante nunca traz mensagem, cause, propriedades próprias nem
-// error.name, e só existe quando o valor recebido é um Error.
+// Linha fixa por origem: nunca inclua mensagem, cause ou propriedades do erro.
 const MESSAGES = {
   'server-operation':
     '[server-operation] Unexpected failure; private details omitted',
@@ -19,18 +17,13 @@ const MESSAGES = {
   'error-page': '[error-page] Unexpected failure; private details omitted'
 } as const satisfies Record<FailureSource, string>
 
-// Frames gravados por log; o V8 captura 10 por padrão (Error.stackTraceLimit).
 const MAX_FRAMES = 10
-// Linhas lidas depois do cabeçalho e tamanho máximo da linha examinada. Uma
-// linha maior é descartada antes de passar pelas expressões.
 const MAX_STACK_LINES = 50
 const MAX_LINE_LENGTH = 1024
-// Nome da classe, lido do construtor do protótipo: um identificador simples.
 const CLASS_NAME = /^[A-Za-z_$][\w$]{0,63}$/u
 // Nome no cabeçalho que o V8 monta com o name atual do erro. Aceita o código
 // dos erros internos do Node, como "TypeError [ERR_INVALID_ARG_TYPE]".
 const HEADER_NAME = /^[\w$.]{1,64}(?: \[[A-Z][A-Z0-9_]{0,63}\])?/u
-// Formas do name e do code atuais que podem compor o nome do cabeçalho.
 const SIMPLE_NAME = /^[\w$.]{1,64}$/u
 const NODE_CODE = /^[A-Z][A-Z0-9_]{0,63}$/u
 // Frames do V8 com local em arquivo: file://, node: ou caminho absoluto, sem
@@ -39,7 +32,6 @@ const NODE_CODE = /^[A-Z][A-Z0-9_]{0,63}$/u
 // <anonymous> e o alias [as nome].
 const CALL_FRAME =
   /^ {4}at [\w$.<>[\] ]+ \((?:file:\/\/|node:|\/)[^\s()\p{C}]*:\d+:\d+\)$/u
-// Frame sem nome de função; "async" marca uma função anônima assíncrona.
 const LOCATION_FRAME =
   /^ {4}at (?:async )?(?:file:\/\/|node:|\/)[^\s()\p{C}]*:\d+:\d+$/u
 

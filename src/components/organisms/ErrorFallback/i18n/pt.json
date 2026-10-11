@@ -1,0 +1,9 @@
+{
+  "errorFallback_notFoundTitle": "Página não encontrada!",
+  "errorFallback_notFoundDescription": "A página que você procura não existe ou pode ter sido movida.",
+  "errorFallback_home": "Voltar ao início",
+  "errorFallback_badge": "Erro!",
+  "errorFallback_runtimeTitle": "Algo deu errado!",
+  "errorFallback_runtimeDescription": "Não foi possível concluir sua solicitação. Tente novamente.",
+  "errorFallback_reload": "Recarregar página"
+}

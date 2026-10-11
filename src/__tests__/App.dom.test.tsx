@@ -138,7 +138,7 @@ describe('feedback de erro da aplicação', () => {
 
       await expect
         .poll(() => host.querySelector('h1')?.textContent)
-        .toBe('Algo deu errado!')
+        .toBe('Something went wrong!')
       expect(host.textContent).not.toContain('Detalhe interno')
 
       expect(host.querySelector('header')).toBeNull()
@@ -146,7 +146,7 @@ describe('feedback de erro da aplicação', () => {
         '[data-error-variant="runtime"] a'
       )
       assert(reload, 'A falha precisa permitir recarregar a página')
-      expect(reload.textContent).toBe('Recarregar página')
+      expect(reload.textContent).toBe('Reload page')
       expect(reload.href).toBe(globalThis.location.href)
       expect(reload.target).toBe('_self')
       expectBoundaryReport('Detalhe interno que não deve aparecer')

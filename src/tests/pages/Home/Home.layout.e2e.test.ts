@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+test.use({ locale: 'pt-BR' })
+
 const MOBILE_WIDTH = 375
 const DESKTOP_WIDTH = 1280
 

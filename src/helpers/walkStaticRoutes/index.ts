@@ -2,8 +2,6 @@ import type { WalkFrame, WalkStaticRoutesOptions } from './types.ts'
 
 const DYNAMIC_SEGMENT = /[:*]/u
 
-// O frame atual fica fora da pilha, que guarda só os ancestrais: um frame por
-// nível, sem recursão nem cópia dos irmãos.
 export function walkStaticRoutes<State>({
   routes,
   initialState,

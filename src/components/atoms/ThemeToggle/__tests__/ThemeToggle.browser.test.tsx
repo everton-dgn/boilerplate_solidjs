@@ -19,12 +19,12 @@ describe('seletor de tema', () => {
 
   it('seleciona cada preferência e atualiza o estado acessível', async () => {
     renderComponent(() => <ThemeToggle />)
-    const trigger = page.getByRole('button', { name: 'Selecionar tema' })
+    const trigger = page.getByRole('button', { name: 'Select theme' })
     await userEvent.click(trigger)
     for (const [label, value] of [
-      ['Escuro', 'dark'],
-      ['Claro', 'light'],
-      ['Sistema', 'system']
+      ['Dark', 'dark'],
+      ['Light', 'light'],
+      ['System', 'system']
     ]) {
       await userEvent.click(
         page.getByRole('menuitemradio', { name: label, exact: true })

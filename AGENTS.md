@@ -32,7 +32,8 @@ release. Add a tool name to select part of the graph. For example, run
   com Bun explicitamente. Os comandos embutidos `vp dev` e `vp build` seguem
   a seleção de Node do CLI global.
 - Preserve Node no Vitest, nos testes de tooling e no SSR de produção até as
-  incompatibilidades descritas no README serem resolvidas e verificadas.
+  incompatibilidades descritas em [desenvolvimento](docs/development.md)
+  serem resolvidas e verificadas.
   O runtime explícito do Nitro impede que executar o build em Bun troque
   silenciosamente o runtime da função Vercel.
 - O lint de CSS, o backend simulado de E2E e a automação de release executam
@@ -46,6 +47,15 @@ release. Add a tool name to select part of the graph. For example, run
 - Documente o contrato, os limites e os comandos de validação. Ao atualizar
   dependências, revise o comportamento e mantenha os números nos arquivos que
   controlam a instalação.
+
+## Arquivos gerados do i18n
+
+- O CLI oficial do Paraglide pode substituir e remover módulos em
+  `paraglide/`. Temporários produzidos pelo gerador em `.paraglide/`
+  também podem ser removidos diretamente, assim como as raízes temporárias
+  criadas pelos testes de `tooling/i18n/`. A dispensa de lixeira vale somente
+  para esses artefatos; catálogos autorais em `src/**/i18n/` continuam
+  seguindo a regra de exclusão pela lixeira.
 
 ## Nomes de arquivos e pastas de módulos
 
@@ -71,6 +81,24 @@ release. Add a tool name to select part of the graph. For example, run
   e `context.ts`. Esta regra não exige renomear pastas organizacionais.
 - Ao renomear um módulo, atualize seus imports, referências documentais e
   nomes dos testes correspondentes, preservando os sufixos de ambiente.
+
+## Traduções
+
+- Idiomas e idioma base vêm de `project.inlang/settings.json`. Cada consumidor
+  mantém `i18n/{pt,en,es}.json` colocalizados. Compartilhe em
+  `src/i18n/` somente a partir do segundo consumidor de produção.
+- Use IDs globais com prefixo do dono e os mesmos parâmetros nos três idiomas.
+  Importe `m` de `@paraglide/messages.js` e `Locale` de
+  `@paraglide/runtime.js`; não edite `paraglide/` nem `.paraglide/`.
+- Chame mensagens no componente ou em getters. Não capture idioma nem texto
+  traduzido no topo de módulo compartilhado entre requisições SSR.
+- Links e redirects de páginas usam `localizeHref({ href })`. `paths` mantém
+  os caminhos tipados sem idioma. Endpoints e assets ficam sem prefixo.
+- Preserve `AsyncLocalStorage`, o corpo original das server functions, a
+  navegação de documento na troca de idioma e a tolerância a cookies bloqueados.
+- Rode `vp run i18n:generate` para conferir paridade, duplicatas e parâmetros.
+  Mudanças de integração exigem typecheck, tooling, testes e os E2E de i18n.
+  A divisão é por página e mensagem; cada módulo inclui os três idiomas usados.
 
 ## Tipos TypeScript
 
@@ -143,25 +171,43 @@ release. Add a tool name to select part of the graph. For example, run
   colocalizados não exportam esses nomes.
 - Previsão de reuso não justifica a extração. Mova para a pasta global
   correspondente quando o segundo consumidor aparecer, atualizando imports,
-  testes e o README.
+  testes e os guias correspondentes em `docs/`.
 - Testes não decidem a localização. Um módulo colocalizado mantém seus
   testes em `__tests__/` ao lado dele.
 
 ## Parâmetros de função
 
-- Função com dois parâmetros ou mais recebe um único objeto nomeado:
-  `makeBroadcastChannel({ name, receive })`, não `makeBroadcastChannel(name, receive)`.
+- Prefira um único parâmetro nas funções do projeto. Quando houver vários
+  valores, prefira um objeto nomeado: `makeBroadcastChannel({ name, receive })`.
   Desestruture na assinatura e nomeie o tipo do objeto conforme a seção
   "Localização de tipos".
+- O lint permite até dois parâmetros. Esse limite mantém espaço para
+  assinaturas de bibliotecas, sem mudar a preferência por um argumento.
 - O motivo é o ponto de chamada. Com dois argumentos posicionais, um booleano
   ou uma string solta não dizem o que significam: `publish('dark', true)` exige
   abrir a assinatura, enquanto `publish({ theme: 'dark', persisted: true })` se
   explica sozinho.
 - Um parâmetro só permanece posicional. Não crie objeto para envolver um
   argumento único.
-- A regra vale para as funções do projeto. Assinaturas ditadas por terceiros
+- A preferência vale para as funções do projeto. Assinaturas ditadas por terceiros
   ficam como o contrato exige, sem adaptação: middlewares `(request, next)` em
   `src/middleware/`, callbacks de teste e hooks de plugin do Vite.
+
+## Condicionais e fluxo de controle
+
+- Evite ao máximo encadear condições com `else if`. Prefira guard clauses
+  (cláusulas de guarda) e retornos antecipados quando cada ramo puder encerrar
+  o fluxo. `if` isolado e `if/else` simples continuam permitidos.
+- Para selecionar valores por uma chave, prefira mapas de consulta quando a
+  correspondência for direta. Considere `switch` para vários casos discretos
+  da mesma expressão, quando isso deixar a decisão mais clara.
+- Preserve a ordem de avaliação e a exclusividade dos ramos. Não transforme
+  uma cadeia de `else if` em vários `if` independentes que possam executar
+  mais de um ramo, nem em ternários aninhados ou abstrações artificiais.
+- Mantenha `else if` quando as alternativas prejudicarem a clareza ou exigirem
+  duplicar trabalho comum necessário após os ramos.
+- Aplique a regra em código novo e nos trechos alterados pela tarefa. Ela não
+  autoriza refatoração em massa de código adjacente.
 
 ## Exports
 
@@ -197,10 +243,38 @@ release. Add a tool name to select part of the graph. For example, run
   `typescript/return-await`; não adicione `await` ou comentários de disable
   apenas para satisfazer a antiga exigência de `async`.
 
+## Comentários no código
+
+- Não acrescente comentários que repitam nomes, tipos, condições ou passos
+  visíveis no código. Isso vale também para JSDoc, cabeçalhos de funções e
+  resumos inseridos por agentes de IA.
+- Comente apenas um motivo ou restrição que o código não esclarece, como uma
+  exigência de segurança, uma incompatibilidade de biblioteca ou uma condição
+  de corrida. Use o menor comentário que preserve essa informação.
+- Guias de uso, decisões de arquitetura e explicações extensas ficam na
+  documentação. Não copie esses textos para cada implementação.
+- Preserve diretivas de ferramentas, licenças e contratos relevantes. Ao
+  editar, remova comentários redundantes ou desatualizados no trecho alterado.
+
+## Nomes de booleanos
+
+- Booleanos próprios do projeto usam um prefixo que expresse seu significado:
+  `is` para estado (`isOpen`), `has` para presença (`hasErrors`), `can` para
+  capacidade (`canSubmit`) e `should` para uma decisão (`shouldLocalize`).
+  Prefira nomes afirmativos, sem dupla negação.
+- A convenção vale para variáveis, parâmetros, propriedades e getters de
+  signals booleanos. O setter acompanha o getter: `[isOpen, setIsOpen]`.
+- Preserve nomes de contratos externos, atributos HTML, propriedades ARIA,
+  APIs de bibliotecas e código gerado, como `disabled`, `checked` e `reload`.
+  Uma função que executa uma ação e retorna sucesso continua com nome de ação,
+  como `saveTheme`; o retorno booleano não a transforma em uma consulta.
+- Esta convenção é conferida na revisão. O lint atual não verifica nomes pelo
+  tipo booleano; não crie exceções genéricas nem afirme cobertura automática.
+
 ## Nomes de signal
 
 - O par desestruturado de `createSignal` usa `[x, setX]`: o nome do setter é o
-  do getter com prefixo `set`. `[open, setOpen]`, `[ready, setReady]`.
+  do getter com prefixo `set`. `[isOpen, setIsOpen]`, `[isReady, setIsReady]`.
   Nunca `[theme, setPreference]` nem `[systemTheme, setSystem]`.
 - Quando o nome interno e o nome público divergem, renomeie o getter, não o
   setter, e exponha o alias no retorno. Em `createTheme` o signal interno é
@@ -239,7 +313,7 @@ release. Add a tool name to select part of the graph. For example, run
 - Ao criar camada ou alias, atualize a regra e seus testes. Use as APIs de
   `vite-plus/lint/plugins` e `vite-plus/lint/plugins-dev`, sem instalar outra
   cópia de Oxlint. Rode `vp run test:tooling` e `vp run check:ci`. Consulte a
-  matriz e os limites no README.
+  matriz e os limites em [arquitetura](docs/architecture.md#dependências-entre-camadas).
 
 ## Cabeçalhos de segurança e CSP
 

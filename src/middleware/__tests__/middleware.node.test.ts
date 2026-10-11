@@ -24,6 +24,13 @@ vi.mock(import('filesystem-routing/api'), async importOriginal => {
   const api = await importOriginal()
   return {
     ...api,
+    createAPIMatcher: () =>
+      api.createAPIMatcher([
+        {
+          path: API_PATH,
+          $GET: { require: () => ({ GET: () => new Response('api') }) }
+        }
+      ]),
     createAPIHandler: () =>
       api.createAPIHandler([
         {
@@ -41,7 +48,7 @@ vi.mock(import('filesystem-routing/api'), async importOriginal => {
   }
 })
 
-function pageEvent(path = '/'): LocalsEvent {
+function pageEvent(path = '/pt'): LocalsEvent {
   const request = new Request(new URL(path, TEST_ORIGIN), {
     headers: { accept: 'text/html,application/xhtml+xml' }
   })
@@ -60,7 +67,7 @@ describe('export padrão do middleware', () => {
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
     provideRequestEvent(pageEvent(), vi.fn())
 
-    const request = new Request(new URL('/pagina', TEST_ORIGIN))
+    const request = new Request(new URL('/pt/pagina', TEST_ORIGIN))
 
     await expect(middleware(request, next)).resolves.toBe(response)
     expect(next).toHaveBeenCalledOnce()
@@ -71,7 +78,7 @@ describe('export padrão do middleware', () => {
   // mantém a contenção.
   it('troca uma falha da cadeia por 500 público', async () => {
     const event: LocalsEvent = {
-      request: new Request(TEST_ORIGIN),
+      request: new Request(`${TEST_ORIGIN}/pt`),
       locals: {},
       response: { headers: new Headers() }
     }
@@ -97,7 +104,7 @@ describe('export padrão do middleware', () => {
 
   // Response.redirect() chega com headers imutáveis e sem corpo.
   it('grava os headers da cadeia num redirect sem trocar por 500', async () => {
-    const event = pageEvent('/pagina')
+    const event = pageEvent('/pt/pagina')
     const next = vi
       .fn<() => Promise<Response>>()
       .mockResolvedValue(
@@ -124,7 +131,7 @@ describe('export padrão do middleware', () => {
   // não o repassa.
   it('troca a resposta crua de fetch() por 500 público', async () => {
     const event: LocalsEvent = {
-      request: new Request(new URL('/pagina', TEST_ORIGIN)),
+      request: new Request(new URL('/pt/pagina', TEST_ORIGIN)),
       locals: {},
       response: { headers: new Headers() }
     }
@@ -182,7 +189,7 @@ describe('cadeia de produção', () => {
   // O despacho das rotas de API é do filesystem-routing e a suíte E2E cobre
   // sitemap.xml e robots.txt; aqui só o encadeamento importa.
   it('entrega ao próximo handler as requisições sem rota de API', async () => {
-    const event = pageEvent('/pagina')
+    const event = pageEvent('/pt/pagina')
     const response = new Response('página')
     const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
       expect(event.locals.requestId).toBeDefined()

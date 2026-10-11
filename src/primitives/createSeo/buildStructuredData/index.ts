@@ -4,12 +4,11 @@ import type { SeoMetadata } from '@/@types/seo.ts'
 import { SITE } from '@/constants/site.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { serializeJsonLd } from '@/helpers/serializeJsonLd/index.ts'
+import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
 
 type BuildStructuredDataOptions = {
   seo: SeoMetadata
-  // URL canônica absoluta da página.
   url: string
-  // URL absoluta da imagem social.
   image: string
 }
 
@@ -20,9 +19,6 @@ type StructuredDataGraph = Omit<Graph, '@graph'> & {
   '@graph': readonly [SiteNode, PageNode, OrganizationNode]
 }
 
-// JSON-LD (schema.org) com o site, a página atual e a organização que os
-// publica, serializado para o `<script>` do `createSeo`. Nós próprios de uma
-// página usam `createSeo`, em um script separado.
 export function buildStructuredData({
   seo,
   url,
@@ -66,7 +62,7 @@ export function buildStructuredData({
         url: resolveSiteUrl('/'),
         name: SITE.title,
         description: SITE.description,
-        inLanguage: SITE.locale,
+        inLanguage: Object.values(LOCALE_TAGS),
         publisher: { '@id': organizationId }
       },
       page,

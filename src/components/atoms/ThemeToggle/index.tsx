@@ -1,3 +1,4 @@
+import { m } from '@paraglide/messages.js'
 import { Show, useContext } from 'solid-js'
 import IconComputer from '~icons/hugeicons/computer'
 import IconLoader from '~icons/hugeicons/loader-circle'
@@ -15,23 +16,23 @@ export function ThemeToggle() {
 
   return (
     <DropdownMenu<Theme>
-      label="Tema"
+      label={m.themeToggle_label()}
       value={state.theme()}
       onChange={state.setTheme}
       items={[
         {
           value: 'light',
-          label: 'Claro',
+          label: m.themeToggle_light(),
           icon: <IconSun />
         },
         {
           value: 'dark',
-          label: 'Escuro',
+          label: m.themeToggle_dark(),
           icon: <IconMoon />
         },
         {
           value: 'system',
-          label: 'Sistema',
+          label: m.themeToggle_system(),
           icon: <IconComputer />
         }
       ]}
@@ -40,7 +41,7 @@ export function ThemeToggle() {
           {...props}
           variant="ghost"
           size="icon"
-          aria-label="Selecionar tema"
+          aria-label={m.themeToggle_select()}
           aria-busy={state.ready() ? 'false' : 'true'}
           disabled={!state.ready()}
         >

@@ -24,8 +24,6 @@ export type SeoMetadata = {
   article?: SeoArticle
 }
 
-// Formato aceito em `route.info.seo`: cada campo é opcional e a imagem pode
-// sobrescrever só parte dos atributos herdados.
 export type SeoRouteInfo = Partial<Omit<SeoMetadata, 'image'>> & {
   image?: Partial<SeoImage>
 }

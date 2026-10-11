@@ -3,6 +3,8 @@ import { expect, test, type APIRequestContext } from '@playwright/test'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 
+test.use({ locale: 'pt-BR' })
+
 const HTTP_OK = 200
 // Script inline do tema, HydrationScript e entrada do cliente; os scripts de
 // dados do runtime vêm além deles.

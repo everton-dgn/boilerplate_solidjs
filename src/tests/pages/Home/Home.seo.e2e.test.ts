@@ -6,6 +6,8 @@ import {
 } from '@/tests/helpers/parseStructuredData/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
+test.use({ locale: 'pt-BR' })
+
 const HTTP_OK = 200
 const SITE_TITLE = 'SolidJS Boilerplate'
 const SITE_DESCRIPTION =
@@ -54,12 +56,12 @@ test.describe('metadados de SEO', () => {
     ).toHaveAttribute('content', SITE_TITLE)
 
     const canonical = page.locator('head link[rel="canonical"]')
-    await expect(canonical).toHaveAttribute('href', `${siteUrl}/`)
+    await expect(canonical).toHaveAttribute('href', `${siteUrl}/pt`)
     const describedBy = page.locator('head link[rel="describedby"]')
     await expect(describedBy).toHaveAttribute('href', '/llms.txt')
     await expect(page.locator('head meta[property="og:url"]')).toHaveAttribute(
       'content',
-      `${siteUrl}/`
+      `${siteUrl}/pt`
     )
     await expect(
       page.locator('head meta[property="og:image"]')
@@ -84,7 +86,7 @@ test.describe('metadados de SEO', () => {
     })
     const baseNodes = [
       { '@type': 'WebSite', url: `${siteUrl}/`, name: SITE_TITLE },
-      { '@type': 'WebPage', url: `${siteUrl}/`, name: SITE_TITLE },
+      { '@type': 'WebPage', url: `${siteUrl}/pt`, name: SITE_TITLE },
       {
         '@type': 'Organization',
         url: `${siteUrl}/`,
@@ -125,7 +127,7 @@ test.describe('metadados de SEO', () => {
     ).toHaveCount(0)
 
     await page.getByRole('link', { name: 'Início', exact: true }).click()
-    await expect(canonical).toHaveAttribute('href', `${siteUrl}/`)
+    await expect(canonical).toHaveAttribute('href', `${siteUrl}/pt`)
     await expect(page).toHaveTitle(SITE_TITLE)
     await expect(page.locator('head meta[name="description"]')).toHaveAttribute(
       'content',
@@ -145,7 +147,7 @@ test.describe('metadados de SEO', () => {
       page.locator('head script[type="application/ld+json"]')
     ).toHaveCount(1)
     expect(await readStructuredData(page)).toContainEqual(
-      expect.objectContaining({ '@type': 'WebPage', url: `${siteUrl}/` })
+      expect.objectContaining({ '@type': 'WebPage', url: `${siteUrl}/pt` })
     )
   })
 
@@ -202,7 +204,7 @@ test.describe('metadados de SEO', () => {
     expect(await readStructuredData(page)).toContainEqual(
       expect.objectContaining({
         '@type': 'Article',
-        url: `${siteUrl}/seo-article`,
+        url: `${siteUrl}/pt/seo-article`,
         name: 'Artigo de exemplo',
         datePublished: '2026-09-01',
         dateModified: '2026-09-21',

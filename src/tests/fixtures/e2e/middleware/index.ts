@@ -1,6 +1,7 @@
 import { getRequestEvent } from '@solidjs/web'
 import * as v from 'valibot'
 
+import { delocalizePathname } from '@/i18n/urls/index.ts'
 import { requestJson } from '@/infra/server/requestJson/index.ts'
 import { createMiddleware } from '@/middleware/index.ts'
 
@@ -18,13 +19,14 @@ const PREFIX = '/outside-error'
 // O header informa ao teste, sem o marcador, se a fixture recebeu o dado.
 async function fixtureMarker(request: Request, next: Next) {
   const url = new URL(request.url)
+  const pathname = delocalizePathname(url.pathname)
   const id = url.searchParams.get('id')
   const event = getRequestEvent()
   // Falhas de middleware podem ser pedidas em qualquer caminho, inclusive
   // rotas de API e o endpoint de server functions.
   const middlewareCase =
     url.searchParams.get('case')?.startsWith('middleware-') === true
-  if (event && id && (url.pathname === PREFIX || middlewareCase)) {
+  if (event && id && (pathname === PREFIX || middlewareCase)) {
     const data = await requestJson({
       url: `http://127.0.0.1:4318/data?id=${encodeURIComponent(id)}`,
       schema: v.object({ message: v.string() })
@@ -32,7 +34,7 @@ async function fixtureMarker(request: Request, next: Next) {
     event.locals.fixtureMarker = data.message
   }
   const response = await next()
-  if (url.pathname === PREFIX) {
+  if (pathname === PREFIX) {
     const loaded = typeof event?.locals.fixtureMarker === 'string'
     const thrown: unknown = event?.locals.fixtureThrown
     response.headers.set('x-fixture-marker', loaded ? 'loaded' : 'missing')

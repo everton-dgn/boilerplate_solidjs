@@ -92,8 +92,8 @@ já chega em `locals` pela `src/entry-handler.ts`, antes de qualquer middleware.
 Sem ele, uma falha anterior ao `securityHeaders` deixaria a requisição sem
 nonce; a contenção o cria antes de renderizar a página de erro, para que os
 scripts dela e a CSP usem o mesmo valor. Sem evento de requisição, o 500 em
-texto sai com `script-src 'none'`. O desenho da CSP está no README, em
-"Cabeçalhos de segurança e CSP".
+texto sai com `script-src 'none'`. O desenho da CSP está no guia de
+[cabeçalhos de segurança](security.md).
 
 Numa navegação (`GET` ou `HEAD` com `accept` de HTML, `*/*` ou sem `accept`, o
 mesmo critério do plugin para servir uma página), o 500 mostra a página de erro
@@ -301,6 +301,24 @@ conteúdo dos argumentos de log em `logServerFailure`. Não use essas lacunas ne
 um disable para contornar o contrato. O padrão de imports relativos é
 compartilhado com `tooling/lint.ts` pela constante
 `RELATIVE_IMPORT_RESTRICTION`, em `tooling/backendPolicy/constants.ts`.
+
+## Consumo em páginas
+
+Depois de proteger a server function, use `query` para o cache de dados e leia
+seu resultado no componente. Com a função `readBackend` do exemplo acima:
+
+```tsx
+const getBackend = query(readBackend, 'backend')
+
+export default function Page() {
+  const data = createMemo(() => getBackend('example'))
+  return <h1>{data().message}</h1>
+}
+```
+
+Importe `query` de `@solidjs/router` e `createMemo` de `solid-js`. O `Errored`
+global do `App` substitui a aplicação e o cabeçalho pelo fallback quando essa
+leitura falha. A recuperação por recarga está descrita abaixo.
 
 ## Validação e recuperação
 

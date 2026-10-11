@@ -1,3 +1,4 @@
+import { m } from '@paraglide/messages.js'
 import type { RouteDefinition } from '@solidjs/router'
 import { httpStatus } from '@solidjs/web'
 
@@ -9,8 +10,12 @@ export const route = {
   preload: () => httpStatus(HTTP_NOT_FOUND),
   info: {
     seo: {
-      title: 'Página não encontrada',
-      description: 'A página solicitada não foi encontrada.',
+      get title() {
+        return m.notFound_title()
+      },
+      get description() {
+        return m.notFound_description()
+      },
       noindex: true
     }
   }

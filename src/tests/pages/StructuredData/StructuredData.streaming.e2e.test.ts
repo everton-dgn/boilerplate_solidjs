@@ -1,5 +1,7 @@
 import { expect, test, type TestInfo } from '@playwright/test'
 
+test.use({ locale: 'pt-BR' })
+
 const HTTP_OK = 200
 const PAGE_URL = '/structured-data-stream'
 const PRODUCT_NAME = 'Produto em streaming'

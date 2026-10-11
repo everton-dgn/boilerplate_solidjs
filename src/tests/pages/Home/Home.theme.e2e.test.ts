@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+test.use({ locale: 'pt-BR' })
+
 const THEME_KEY = 'app-theme'
 
 test.describe('tema da aplicação', () => {

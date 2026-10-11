@@ -1,0 +1,114 @@
+import { createRouter, memoryHistory, useLocation } from '@solidjs/router'
+
+import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
+
+import { createLocalizedNavigate } from '../index.ts'
+
+describe('createLocalizedNavigate contracts', () => {
+  it('resolves fragments and empty hrefs against the nested current page and query', async () => {
+    let navigate: ReturnType<typeof createLocalizedNavigate> | undefined
+    function Page() {
+      navigate = createLocalizedNavigate()
+      const location = useLocation()
+      return (
+        <output>
+          {location.pathname}
+          {location.search}
+          {location.hash}
+        </output>
+      )
+    }
+    const Router = createRouter({
+      history: memoryHistory('/en/docs/chapter?filter=active#old'),
+      routes: [{ path: '*all', component: Page }]
+    })
+    const host = renderComponent(
+      () => <Router>{props => props.children}</Router>,
+      { providers: false }
+    )
+    await expect
+      .poll(() => host.textContent)
+      .toBe('/en/docs/chapter?filter=active#old')
+    assert(navigate)
+    navigate({ href: '#section' })
+    await expect
+      .poll(() => host.textContent)
+      .toBe('/en/docs/chapter?filter=active#section')
+    navigate({ href: '' })
+    await expect
+      .poll(() => host.textContent)
+      .toBe('/en/docs/chapter?filter=active')
+  })
+
+  it('navigates in the Router with query/hash, relative URLs, and state', async () => {
+    let navigate: ReturnType<typeof createLocalizedNavigate> | undefined
+    function Page() {
+      navigate = createLocalizedNavigate()
+      const location = useLocation()
+      return (
+        <output>
+          {location.pathname}
+          {location.search}
+          {location.hash}
+        </output>
+      )
+    }
+    const Router = createRouter({
+      history: memoryHistory('/en/docs/start'),
+      routes: [{ path: '*all', component: Page }]
+    })
+    const host = renderComponent(
+      () => <Router>{props => props.children}</Router>,
+      { providers: false }
+    )
+    await expect.poll(() => host.textContent).toBe('/en/docs/start')
+    assert(navigate)
+    navigate({
+      href: '../next?q=1#part',
+      locale: 'en',
+      state: { source: 'test' },
+      replace: true
+    })
+    await expect.poll(() => host.textContent).toBe('/en/next?q=1#part')
+    navigate({ href: '/es/final', locale: 'en' })
+    await expect.poll(() => host.textContent).toBe('/en/final')
+  })
+
+  it('uses document navigation for a different locale, external URLs, and endpoints', async () => {
+    const assign = vi
+      .spyOn(globalThis.location, 'assign')
+      .mockImplementation(() => {
+        /* Mantém este teste no próprio documento. */
+      })
+    const replace = vi
+      .spyOn(globalThis.location, 'replace')
+      .mockImplementation(() => {
+        /* Mantém este teste no próprio documento. */
+      })
+    let navigate: ReturnType<typeof createLocalizedNavigate> | undefined
+    function Page() {
+      navigate = createLocalizedNavigate()
+      return <p>Ready</p>
+    }
+    const Router = createRouter({
+      history: memoryHistory('/en/docs'),
+      routes: [{ path: '*all', component: Page }]
+    })
+    const host = renderComponent(
+      () => <Router>{props => props.children}</Router>,
+      { providers: false }
+    )
+    await expect.poll(() => host.textContent).toBe('Ready')
+    assert(navigate)
+    navigate({ href: '/docs?q=1#part', locale: 'pt' })
+    expect(assign).toHaveBeenLastCalledWith('/pt/docs?q=1#part')
+    navigate({ href: '/api/report', shouldLocalize: false, replace: true })
+    expect(replace).toHaveBeenCalledWith('/api/report')
+    navigate({ href: 'https://example.com' })
+    expect(assign).toHaveBeenLastCalledWith('https://example.com')
+    navigate({ href: '//example.com/docs' })
+    expect(assign).toHaveBeenLastCalledWith('//example.com/docs')
+    navigate({ href: 'mailto:a@example.com' })
+    expect(assign).toHaveBeenLastCalledWith('mailto:a@example.com')
+  })
+})

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+test.use({ locale: 'pt-BR' })
+
 test.describe('cores CSS sem JavaScript', () => {
   for (const colorScheme of ['light', 'dark'] as const) {
     test(`CSS segue o sistema ${colorScheme} sem JavaScript`, async ({

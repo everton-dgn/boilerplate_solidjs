@@ -29,8 +29,8 @@ describe('navegação após falha', () => {
     })
     const home = host.querySelector<HTMLAnchorElement>('a')
     assert(home)
-    expect(home.textContent).toBe('Voltar ao início')
-    expect(new URL(home.href).pathname).toBe('/')
+    expect(home.textContent).toBe('Back to home')
+    expect(new URL(home.href).pathname).toBe('/en')
   })
 
   it('troca o ícone quando a variante muda e restaura o ícone anterior', async () => {
@@ -44,7 +44,7 @@ describe('navegação após falha', () => {
     setKind('runtime')
     await expect
       .poll(() => host.querySelector('a')?.textContent)
-      .toBe('Recarregar página')
+      .toBe('Reload page')
     const runtimeIcon = host.querySelector('a svg')?.outerHTML
     expect(runtimeIcon).toBeDefined()
     expect(runtimeIcon).not.toBe(firstIcon)

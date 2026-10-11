@@ -5,8 +5,6 @@ type BuildRobotsTextOptions = {
   sitemaps: readonly string[]
 }
 
-// Cada grupo lista seus user-agents e depois as regras. `Allow` vem antes de
-// `Disallow` só por leitura: o robô aplica a regra de caminho mais longo.
 function renderGroup({
   userAgents,
   allow = [],
@@ -19,8 +17,6 @@ function renderGroup({
   ].join('\n')
 }
 
-// Grupos separados por uma linha vazia; os sitemaps fecham o arquivo, fora de
-// qualquer grupo, porque valem para todos os robôs.
 export function buildRobotsText({
   groups,
   sitemaps

@@ -17,8 +17,6 @@ function normalizePath(path: string): string {
   return collapsed.length > 1 ? collapsed.replace(/\/$/u, '') : collapsed
 }
 
-// Uma data fora do formato ou impossível invalidaria o sitemap inteiro para o
-// parser; a URL sai sem `lastmod`.
 function normalizeLastmod(lastmod: string | undefined): string | undefined {
   if (lastmod === undefined || !W3C_DATETIME.test(lastmod)) return undefined
   if (Number.isNaN(Date.parse(lastmod))) return undefined
@@ -31,8 +29,7 @@ function normalizeLastmod(lastmod: string | undefined): string | undefined {
     : undefined
 }
 
-// Valida e normaliza as entradas estáticas e dinâmicas juntas. Em caminho
-// repetido, a primeira ocorrência vence: a página estática antes da fonte.
+// Em URLs repetidas, a página estática prevalece sobre a fonte dinâmica.
 export function normalizeSitemapEntries(
   entries: readonly SitemapEntry[]
 ): SitemapEntry[] {

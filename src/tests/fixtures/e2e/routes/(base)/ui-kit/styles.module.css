@@ -1,0 +1,17 @@
+.page {
+  width: min(100%, 640px);
+  padding: 24px;
+  margin-inline: auto;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+  margin-block: 24px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}

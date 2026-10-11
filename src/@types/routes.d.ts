@@ -47,10 +47,10 @@ declare module "virtual:file-routes" {
       $$route: FileRouteEagerRef<typeof import("../routes/(base)/(home)/index")>;
     },
     {
-      path: "/(base)/*404";
+      path: "/(base)/*404/";
       page: true;
-      $component: FileRouteLazyRef<typeof import("../routes/(base)/[...404]")>;
-      $$route: FileRouteEagerRef<typeof import("../routes/(base)/[...404]")>;
+      $component: FileRouteLazyRef<typeof import("../routes/(base)/[...404]/index")>;
+      $$route: FileRouteEagerRef<typeof import("../routes/(base)/[...404]/index")>;
     },
     {
       path: "/(seo)/llms.txt/";
@@ -86,11 +86,11 @@ declare module "virtual:file-routes" {
       $$route?: undefined;
       children: readonly [
         {
-          path: "/*404";
-          id: "/*404";
+          path: "/*404/";
+          id: "/*404/";
           page: true;
-          $component: FileRouteLazyRef<typeof import("../routes/(base)/[...404]")>;
-          $$route: FileRouteEagerRef<typeof import("../routes/(base)/[...404]")>;
+          $component: FileRouteLazyRef<typeof import("../routes/(base)/[...404]/index")>;
+          $$route: FileRouteEagerRef<typeof import("../routes/(base)/[...404]/index")>;
           children?: undefined;
         },
         {

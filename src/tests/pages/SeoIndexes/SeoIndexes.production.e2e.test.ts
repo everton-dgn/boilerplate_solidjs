@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
+const LOCALE_COUNT = 3
 const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
 const CACHE_CONTROL = 'public, max-age=0, s-maxage=3600'
@@ -24,10 +25,10 @@ test.describe('índices na árvore real de produção', () => {
     const xml = await response.text()
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
     expect(xml).toContain(
-      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">'
     )
-    expect(xml.match(/<loc>/gu)).toHaveLength(1)
-    expect(xml).toContain(`<loc>${readSiteOrigin()}/</loc>`)
+    expect(xml.match(/<loc>/gu)).toHaveLength(LOCALE_COUNT)
+    expect(xml).toContain(`<loc>${readSiteOrigin()}/pt</loc>`)
     expect(xml).toContain('</urlset>')
     expect(xml).not.toContain('/helpers/')
     expect(xml).not.toContain('(seo)')
@@ -64,8 +65,9 @@ test.describe('índices na árvore real de produção', () => {
     )
     const markdown = await response.text()
     expect(markdown).toMatch(/^# .+\n/u)
-    expect(markdown).toContain('## Páginas\n')
-    expect(markdown).toContain(`](${readSiteOrigin()}/)`)
+    expect(markdown).toContain('## Pages\n')
+    expect(markdown).toContain(`](${readSiteOrigin()}/en)`)
+    expect(markdown).toContain('This index uses English.')
     expect(markdown).not.toContain('/helpers/')
     expect(markdown).not.toContain('(seo)')
   })
@@ -82,13 +84,13 @@ test.describe('índices na árvore real de produção', () => {
     '/sitemap.xml/helpers/normalizeSitemapEntries'
   ]) {
     test(`não publica o helper ${path}`, async ({ request }) => {
-      const response = await request.get(path, { maxRedirects: 0 })
+      const response = await request.get(`/pt${path}`, { maxRedirects: 0 })
       expect(response.status()).toBe(HTTP_NOT_FOUND)
     })
   }
 
   test('não inclui a árvore de fixtures E2E', async ({ request }) => {
-    const response = await request.get('/seo-public', { maxRedirects: 0 })
+    const response = await request.get('/pt/seo-public', { maxRedirects: 0 })
     expect(response.status()).toBe(HTTP_NOT_FOUND)
   })
 })

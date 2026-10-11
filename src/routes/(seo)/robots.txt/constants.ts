@@ -16,13 +16,7 @@ const AI_TRAINING_BOTS: readonly string[] = [
   'Bytespider'
 ]
 
-// Grupos publicados nesta ordem. O robots.txt é um pedido: robôs mal
-// comportados o ignoram, e `Disallow` não tira uma URL do índice nem deixa o
-// robô ler a meta `noindex`; para não indexar uma página, use `noindex` em
-// `route.info.seo`. O endpoint das server functions vem do módulo virtual do
-// @solidjs/vite-plugin, com `serverFunctions.endpoint` e o `base` do Vite já
-// aplicados: não é página e não deve gastar rastreio. O módulo só resolve no
-// servidor, e esta rota de API não entra no bundle do cliente.
+// O endpoint das server functions não é uma página para rastrear.
 export const ROBOTS_GROUPS: readonly RobotsGroup[] = [
   { userAgents: ['*'], allow: ['/'], disallow: [endpoint] },
   { userAgents: AI_TRAINING_BOTS, disallow: ['/'] }

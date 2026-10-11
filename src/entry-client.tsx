@@ -2,8 +2,11 @@ import { hydrate } from '@solidjs/web'
 
 import App from './App.tsx'
 import Document from './Document.tsx'
+import { configureLocaleClient } from './entry-client/configureLocaleClient/index.ts'
 
-// Hidrata a mesma árvore que src/entry-server.tsx renderiza.
+const disposeLocaleClient = configureLocaleClient()
+if (import.meta.hot) import.meta.hot.dispose(disposeLocaleClient)
+
 hydrate(
   () => (
     <Document>
