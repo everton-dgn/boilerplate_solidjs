@@ -378,6 +378,7 @@ export default defineConfig(({ mode }) => {
           test: {
             css: true,
             name: { label: 'browser', color: 'yellow' },
+            setupFiles: ['./src/tests/setup/browser/index.ts'],
             include: ['src/**/*.browser.test.{ts,tsx}'],
             browser: {
               enabled: true,
