@@ -32,9 +32,7 @@ export function LocaleSwitcher() {
       <DropdownMenu<Locale>
         label={m.localeSwitcher_label()}
         value={getLocale()}
-        onChange={locale => {
-          void setLocale(locale)
-        }}
+        onChange={locale => setLocale(locale)}
         items={languages}
         trigger={props => (
           <Button
