@@ -1,6 +1,8 @@
 /* oxlint-disable unicorn/no-document-cookie -- Os testes exercitam a persistência e o bloqueio de cookie diretamente. */
 import { expect, test } from '@playwright/test'
 
+test.use({ locale: 'pt-BR' })
+
 test('propaga a escolha temporária quando a escrita no cookie é ignorada', async ({
   context,
   page,

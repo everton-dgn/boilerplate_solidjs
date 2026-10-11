@@ -64,7 +64,7 @@ export function i18nPlugin(): Plugin {
         }
         running = false
       }
-      // Agregados em .paraglide/ e a saída em src/paraglide/ são escritos pela
+      // Agregados em .paraglide/ e a saída em paraglide/ são escritos pela
       // própria geração e não a disparam de novo. As configurações definem os
       // idiomas e passam pela mesma fila que os catálogos.
       const update = (file: string) => {

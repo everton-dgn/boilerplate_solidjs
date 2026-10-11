@@ -3,6 +3,7 @@ import type { ParaglideConfig } from '@inlang/paraglide-js'
 import settings from './settings.json'
 
 export default {
+  outdir: './paraglide',
   emitTsDeclarations: true,
   outputStructure: 'message-modules',
   strategy: ['url', 'cookie', 'preferredLanguage', 'baseLocale'],

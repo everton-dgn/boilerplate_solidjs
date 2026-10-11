@@ -50,7 +50,7 @@ release. Add a tool name to select part of the graph. For example, run
 ## Arquivos gerados do i18n
 
 - O CLI oficial do Paraglide pode substituir e remover módulos em
-  `src/paraglide/`. Temporários produzidos pelo gerador em `.paraglide/`
+  `paraglide/`. Temporários produzidos pelo gerador em `.paraglide/`
   também podem ser removidos diretamente, assim como as raízes temporárias
   criadas pelos testes de `tooling/i18n/`. A dispensa de lixeira vale somente
   para esses artefatos; catálogos autorais em `src/**/i18n/` continuam
@@ -87,8 +87,8 @@ release. Add a tool name to select part of the graph. For example, run
   mantém `i18n/{pt,en,es}.json` colocalizados. Compartilhe em
   `src/i18n/` somente a partir do segundo consumidor de produção.
 - Use IDs globais com prefixo do dono e os mesmos parâmetros nos três idiomas.
-  Importe `m` de `@/paraglide/messages.js` e `Locale` de
-  `@/paraglide/runtime.js`; não edite `src/paraglide/` nem `.paraglide/`.
+  Importe `m` de `@paraglide/messages.js` e `Locale` de
+  `@paraglide/runtime.js`; não edite `paraglide/` nem `.paraglide/`.
 - Chame mensagens no componente ou em getters. Não capture idioma nem texto
   traduzido no topo de módulo compartilhado entre requisições SSR.
 - Links e redirects de páginas usam `localizeHref({ href })`. `paths` mantém

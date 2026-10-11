@@ -1,3 +1,4 @@
+import { baseLocale, getLocale, locales } from '@paraglide/runtime.js'
 import { useLocation, useRouteMatches } from '@solidjs/router'
 import { type HeadTag, useHead } from '@solidjs/web'
 import type { Thing } from 'schema-dts'
@@ -9,7 +10,6 @@ import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { serializeJsonLd } from '@/helpers/serializeJsonLd/index.ts'
 import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
 import { localizeHref } from '@/i18n/urls/index.ts'
-import { baseLocale, getLocale, locales } from '@/paraglide/runtime.js'
 
 import { buildStructuredData } from './buildStructuredData/index.ts'
 

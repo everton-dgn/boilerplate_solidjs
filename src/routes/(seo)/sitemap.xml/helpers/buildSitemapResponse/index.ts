@@ -1,8 +1,8 @@
+import { locales } from '@paraglide/runtime.js'
 import * as v from 'valibot'
 
 import type { SitemapEntry, SitemapRouteInfo } from '@/@types/sitemap.ts'
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
-import { locales } from '@/paraglide/runtime.js'
 
 import {
   SITEMAP_SOURCES_TIMEOUT_MS,

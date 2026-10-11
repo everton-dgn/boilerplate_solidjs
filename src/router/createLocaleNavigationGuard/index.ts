@@ -1,7 +1,6 @@
+import { extractLocaleFromUrl, getLocale } from '@paraglide/runtime.js'
 import { useBeforeLeave } from '@solidjs/router'
 import { isServer } from '@solidjs/web'
-
-import { extractLocaleFromUrl, getLocale } from '@/paraglide/runtime.js'
 
 /** Mantém o idioma do documento montado alinhado ao da requisição nos redirecionamentos do Router. */
 export function createLocaleNavigationGuard(): void {

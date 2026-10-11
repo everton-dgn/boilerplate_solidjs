@@ -3,7 +3,7 @@ import {
   getLocale,
   type Locale,
   localizeUrl
-} from '@/paraglide/runtime.js'
+} from '@paraglide/runtime.js'
 
 type LocalizeHrefOptions = { href: string; locale?: Locale }
 

@@ -1,6 +1,6 @@
+import { m } from '@paraglide/messages.js'
 import { page, userEvent } from 'vite-plus/test/browser/context'
 
-import { m } from '@/paraglide/messages.js'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { ToastProvider } from '../index.tsx'

@@ -1,3 +1,4 @@
+import { m } from '@paraglide/messages.js'
 import type { JSX } from '@solidjs/web'
 import {
   createEffect,
@@ -8,7 +9,6 @@ import {
 } from 'solid-js'
 
 import { Button } from '@/components/atoms/Button/index.tsx'
-import { m } from '@/paraglide/messages.js'
 
 import S from './styles.module.css'
 

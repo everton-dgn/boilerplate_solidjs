@@ -1,10 +1,10 @@
+import { m } from '@paraglide/messages.js'
 import type { JSX } from '@solidjs/web'
 import { For } from 'solid-js'
 
 import { LocaleSwitcher } from '@/components/atoms/LocaleSwitcher/index.tsx'
 import { LocalizedLink } from '@/components/atoms/LocalizedLink/index.tsx'
 import { ThemeToggle } from '@/components/atoms/ThemeToggle/index.tsx'
-import { m } from '@/paraglide/messages.js'
 
 import { BRAND_NAME, NAV_LINKS } from './constants.ts'
 import { NavItem } from './NavItem/index.tsx'

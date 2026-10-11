@@ -1,3 +1,5 @@
+import { m } from '@paraglide/messages.js'
+import { getLocale } from '@paraglide/runtime.js'
 import {
   action,
   query,
@@ -8,8 +10,6 @@ import {
 } from '@solidjs/router'
 import { createMemo, createSignal, Loading } from 'solid-js'
 
-import { m } from '@/paraglide/messages.js'
-import { getLocale } from '@/paraglide/runtime.js'
 import { createLocalizedNavigate } from '@/primitives/createLocalizedNavigate/index.ts'
 
 import { redirectLocale } from '../../i18n/redirectLocale/index.ts'

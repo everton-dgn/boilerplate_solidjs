@@ -1,3 +1,4 @@
+import { getLocale, type Locale } from '@paraglide/runtime.js'
 import {
   useLocation,
   useNavigate,
@@ -7,7 +8,6 @@ import {
 import { isServer } from '@solidjs/web'
 
 import { resolveLocalizedHref } from '@/i18n/urls/index.ts'
-import { getLocale, type Locale } from '@/paraglide/runtime.js'
 
 type LocalizedNavigateOptions = Omit<Partial<NavigateOptions>, 'resolve'> & {
   href: string | TypedPath

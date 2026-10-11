@@ -32,7 +32,7 @@ export const fmt: NonNullable<UserConfig['fmt']> = {
     'public/**',
     'src/assets/**',
     'src/@types/routes.d.ts',
-    'src/paraglide/**',
+    'paraglide/**',
     'project.inlang/cache/**',
     '.paraglide/**',
     '**/*.svg',

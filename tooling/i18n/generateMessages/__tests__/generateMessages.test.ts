@@ -82,9 +82,9 @@ async function project({ parent, messages }: ProjectOptions): Promise<string> {
   return root
 }
 
-// Conteúdo de src/paraglide por caminho relativo.
+// Conteúdo de paraglide por caminho relativo.
 async function output(root: string): Promise<Map<string, string>> {
-  const directory = path.join(root, 'src/paraglide')
+  const directory = path.join(root, 'paraglide')
   const files = new Map<string, string>()
   const entries = await readdir(directory, { recursive: true })
   for (const relative of entries.toSorted()) {
@@ -96,7 +96,7 @@ async function output(root: string): Promise<Map<string, string>> {
 }
 
 async function modifiedTimes(root: string): Promise<number[]> {
-  const directory = path.join(root, 'src/paraglide')
+  const directory = path.join(root, 'paraglide')
   const files = await output(root)
   const times: number[] = []
   for (const relative of files.keys()) {
@@ -107,8 +107,12 @@ async function modifiedTimes(root: string): Promise<number[]> {
 }
 
 async function temporaryFiles(root: string): Promise<string[]> {
-  const files = await readdir(root, { recursive: true })
-  return files.filter(file => file.endsWith('.tmp'))
+  const files = await Promise.all(
+    ['.paraglide', 'paraglide'].map(directory =>
+      readdir(path.join(root, directory), { recursive: true })
+    )
+  )
+  return files.flat().filter(file => file.endsWith('.tmp'))
 }
 
 describe('generated messages', () => {
@@ -128,7 +132,7 @@ describe('generated messages', () => {
     await execute(process.execPath, [GENERATE], { cwd: root })
     assert.deepEqual(await modifiedTimes(root), times)
 
-    await writeFile(path.join(root, 'src/paraglide/runtime.js'), 'broken')
+    await writeFile(path.join(root, 'paraglide/runtime.js'), 'broken')
     assert.deepEqual(await generateMessages(root), { changed: true })
     assert.deepEqual(await output(root), reference)
   })
@@ -144,7 +148,7 @@ describe('generated messages', () => {
     await writeFile(catalog, JSON.stringify({ home_title: 'Title {name}' }))
     await assert.rejects(
       generateMessages(root),
-      /es\.json: missing keys \[home_body\]/u
+      /es\.json: missing-translation.*home_body/u
     )
     assert.deepEqual(await output(root), reference)
 
@@ -181,7 +185,7 @@ describe('generated messages', () => {
     const parent = await sandbox(context)
     const root = await project({ parent, messages: MESSAGES })
     await generateMessages(root)
-    const obsolete = path.join(root, 'src/paraglide/messages/home_body.js')
+    const obsolete = path.join(root, 'paraglide/messages/home_body.js')
     await stat(obsolete)
 
     await writeMessages({ root, messages: { home_title: 'Title {name}' } })

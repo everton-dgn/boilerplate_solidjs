@@ -1,3 +1,4 @@
+import { m } from '@paraglide/messages.js'
 import { Show, useContext } from 'solid-js'
 import IconComputer from '~icons/hugeicons/computer'
 import IconLoader from '~icons/hugeicons/loader-circle'
@@ -5,7 +6,6 @@ import IconMoon from '~icons/hugeicons/moon-02'
 import IconSun from '~icons/hugeicons/sun-01'
 
 import type { Theme } from '@/@types/theme.ts'
-import { m } from '@/paraglide/messages.js'
 
 import { Button } from '../Button/index.tsx'
 import { DropdownMenu } from '../DropdownMenu/index.tsx'

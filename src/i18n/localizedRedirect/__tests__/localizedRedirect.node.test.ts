@@ -1,6 +1,5 @@
+import { paraglideMiddleware } from '@paraglide/server.js'
 import { HREF } from '@solidjs/web'
-
-import { paraglideMiddleware } from '@/paraglide/server.js'
 
 import { localizedRedirect } from '../index.ts'
 

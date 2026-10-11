@@ -1,6 +1,7 @@
+import { m } from '@paraglide/messages.js'
+import { getLocale } from '@paraglide/runtime.js'
+
 import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
-import { m } from '@/paraglide/messages.js'
-import { getLocale } from '@/paraglide/runtime.js'
 
 export const SITE = {
   title: 'SolidJS Boilerplate',

@@ -1,15 +1,15 @@
-import { useLocation } from '@solidjs/router'
-import { For, NoHydration } from 'solid-js'
-import IconLanguage from '~icons/hugeicons/language-circle'
-
-import { localizeHref } from '@/i18n/urls/index.ts'
-import { m } from '@/paraglide/messages.js'
+import { m } from '@paraglide/messages.js'
 import {
   getLocale,
   type Locale,
   locales,
   setLocale
-} from '@/paraglide/runtime.js'
+} from '@paraglide/runtime.js'
+import { useLocation } from '@solidjs/router'
+import { For, NoHydration } from 'solid-js'
+import IconLanguage from '~icons/hugeicons/language-circle'
+
+import { localizeHref } from '@/i18n/urls/index.ts'
 
 import { Button } from '../Button/index.tsx'
 import { DropdownMenu } from '../DropdownMenu/index.tsx'

@@ -55,7 +55,7 @@ const config = {
     'src/entry-server.tsx!',
     'src/entry-client.tsx!',
     // O runtime gerado importa o polyfill de URLPattern do pacote Paraglide.
-    'src/paraglide/runtime.js!',
+    'paraglide/runtime.js!',
     // Entrada SSR do build, ligada pelo plugin local do vite.config.ts.
     'src/entry-handler.ts!',
     'src/middleware/index.ts!',

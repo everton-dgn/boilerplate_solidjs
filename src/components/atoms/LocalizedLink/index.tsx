@@ -1,9 +1,9 @@
+import { getLocale, type Locale } from '@paraglide/runtime.js'
 import { useLocation, type TypedPath } from '@solidjs/router'
 import type { JSX } from '@solidjs/web'
 import { omit } from 'solid-js'
 
 import { resolveLocalizedHref } from '@/i18n/urls/index.ts'
-import { getLocale, type Locale } from '@/paraglide/runtime.js'
 
 type LocalizedLinkProps = Omit<
   JSX.AnchorHTMLAttributes<HTMLAnchorElement>,

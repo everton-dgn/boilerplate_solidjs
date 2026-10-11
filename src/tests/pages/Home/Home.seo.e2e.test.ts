@@ -6,6 +6,8 @@ import {
 } from '@/tests/helpers/parseStructuredData/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
+test.use({ locale: 'pt-BR' })
+
 const HTTP_OK = 200
 const SITE_TITLE = 'SolidJS Boilerplate'
 const SITE_DESCRIPTION =

@@ -1,3 +1,4 @@
+import { m } from '@paraglide/messages.js'
 import { dynamicComponent } from '@solidjs/web'
 import { For, type ParentProps, untrack } from 'solid-js'
 import IconWarning from '~icons/hugeicons/alert-02'
@@ -6,8 +7,6 @@ import IconClose from '~icons/hugeicons/cancel-01'
 import IconSuccess from '~icons/hugeicons/checkmark-circle-02'
 import IconInfo from '~icons/hugeicons/information-circle'
 import IconLoading from '~icons/hugeicons/loader-circle'
-
-import { m } from '@/paraglide/messages.js'
 
 import { ToastContext } from './context.ts'
 import { createToastState } from './createToastState/index.ts'

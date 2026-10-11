@@ -1,8 +1,8 @@
+import { m } from '@paraglide/messages.js'
 import type { RouteDefinition } from '@solidjs/router'
 import { httpStatus } from '@solidjs/web'
 
 import { ErrorFallback } from '@/components/organisms/ErrorFallback/index.tsx'
-import { m } from '@/paraglide/messages.js'
 
 const HTTP_NOT_FOUND = 404
 

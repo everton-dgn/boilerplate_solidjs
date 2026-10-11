@@ -41,7 +41,7 @@ const NODE_MODULES = path.resolve(
   import.meta.dirname,
   '../../../../node_modules'
 )
-const RUNTIME_FILE = 'src/paraglide/runtime.js'
+const RUNTIME_FILE = 'paraglide/runtime.js'
 const PLUGIN = path.resolve(
   import.meta.dirname,
   '../../../../node_modules/@inlang/plugin-message-format/dist/index.js'
@@ -169,7 +169,10 @@ describe('i18n dev watcher', () => {
     )
     await waitFor(() => server.payloads().includes('error'))
     assert.equal(await server.status(), HTTP_ERROR)
-    assert.match(await server.body(), /es\.json: missing keys \[home_body\]/u)
+    assert.match(
+      await server.body(),
+      /es\.json: missing-translation.*home_body/u
+    )
 
     await writeMessages({ root: server.root, messages: MESSAGES })
     await waitFor(() => server.payloads().includes('full-reload'))

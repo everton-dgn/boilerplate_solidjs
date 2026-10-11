@@ -27,7 +27,8 @@
     "allowArbitraryExtensions": true,
     "erasableSyntaxOnly": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@paraglide/*": ["./paraglide/*"]
     },
     "jsx": "preserve",
     "jsxImportSource": "@solidjs/web",

@@ -6,6 +6,8 @@ import * as v from 'valibot'
 
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 
+test.use({ locale: 'pt-BR' })
+
 const BACKEND = 'http://127.0.0.1:4318'
 const HTTP_OK = 200
 const HTTP_INTERNAL_SERVER_ERROR = 500

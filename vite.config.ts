@@ -167,7 +167,7 @@ export default defineConfig(({ mode }) => {
               'package.json',
               'bun.lock'
             ],
-            output: ['src/paraglide/**', '.paraglide/messages/**']
+            output: ['paraglide/**', '.paraglide/messages/**']
           }
         },
         'lint-css': {
@@ -185,6 +185,7 @@ export default defineConfig(({ mode }) => {
             input: [
               { auto: true },
               'src/**',
+              'paraglide/**',
               'tooling/**',
               'package.json',
               'bun.lock'
@@ -200,6 +201,7 @@ export default defineConfig(({ mode }) => {
               { auto: true },
               ...CSS_CACHE_INPUTS,
               'src/**',
+              'paraglide/**',
               'tooling/**',
               '*.ts',
               'tsconfig*.json'
@@ -216,6 +218,7 @@ export default defineConfig(({ mode }) => {
               { auto: true },
               ...CSS_CACHE_INPUTS,
               'src/**',
+              'paraglide/**',
               'tooling/**',
               '*.ts',
               'tsconfig*.json'
@@ -230,6 +233,7 @@ export default defineConfig(({ mode }) => {
           cache: {
             input: [
               'src/**',
+              'paraglide/**',
               'env.ts',
               'solid-env.d.ts',
               'tsconfig.json',
@@ -309,7 +313,7 @@ export default defineConfig(({ mode }) => {
         include: ['src/**/*.{ts,tsx}'],
         exclude: [
           'src/**/*.d.ts',
-          'src/paraglide/**',
+          'paraglide/**',
           'src/**/{constants,types,@types}/**',
           'src/**/{constants,types}.{ts,tsx}',
           'src/**/*.test.{ts,tsx}',

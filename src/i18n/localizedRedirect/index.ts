@@ -1,3 +1,4 @@
+import type { Locale } from '@paraglide/runtime.js'
 import {
   getRequestEvent,
   HREF,
@@ -7,7 +8,6 @@ import {
 } from '@solidjs/web'
 
 import { resolveLocalizedHref } from '@/i18n/urls/index.ts'
-import type { Locale } from '@/paraglide/runtime.js'
 
 type LocalizedRedirectOptions = ResponseHelperInit & {
   href: Parameters<typeof redirect>[0]

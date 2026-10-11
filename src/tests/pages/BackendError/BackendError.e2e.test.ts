@@ -3,6 +3,8 @@ import { readdir, readFile } from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
 import * as v from 'valibot'
 
+test.use({ locale: 'pt-BR' })
+
 const BACKEND = 'http://127.0.0.1:4318'
 const HTTP_OK = 200
 const HTTP_FOUND = 302

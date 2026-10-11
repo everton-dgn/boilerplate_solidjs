@@ -1,8 +1,7 @@
+import { cookieMaxAge, getLocale } from '@paraglide/runtime.js'
 import { createRequestEvent } from '@solidjs/web'
 import { provideRequestEvent } from '@solidjs/web/storage'
 import { endpoint } from 'virtual:solid-server-function-handler'
-
-import { cookieMaxAge, getLocale } from '@/paraglide/runtime.js'
 
 import { localizeRequest } from '../index.ts'
 

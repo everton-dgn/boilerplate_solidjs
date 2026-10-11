@@ -1,7 +1,6 @@
+import { m } from '@paraglide/messages.js'
 import { render } from '@solidjs/web'
 import { flush } from 'solid-js'
-
-import { m } from '@/paraglide/messages.js'
 
 import { ToastProvider } from '../index.tsx'
 import type { ToastApi } from '../types.ts'

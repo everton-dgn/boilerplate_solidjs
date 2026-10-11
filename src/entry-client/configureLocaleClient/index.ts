@@ -1,5 +1,3 @@
-import { serializeCookie } from '@solidjs/web'
-
 import {
   assertIsLocale,
   cookieDomain,
@@ -7,7 +5,8 @@ import {
   cookieName,
   localizeUrl,
   overwriteSetLocale
-} from '@/paraglide/runtime.js'
+} from '@paraglide/runtime.js'
+import { serializeCookie } from '@solidjs/web'
 
 import { installLocaleHistoryGuard } from './installLocaleHistoryGuard/index.ts'
 

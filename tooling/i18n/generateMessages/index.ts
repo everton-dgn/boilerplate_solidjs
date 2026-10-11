@@ -28,7 +28,7 @@ type WriteOptions = { file: string; content: string | Uint8Array }
 const SETTINGS_FILE = 'project.inlang/settings.json'
 const COMPILER_CONFIG = 'project.inlang/paraglide.config.ts'
 const AGGREGATE_DIRECTORY = '.paraglide/messages'
-const OUTPUT_DIRECTORY = 'src/paraglide'
+const OUTPUT_DIRECTORY = 'paraglide'
 const JSON_INDENT = 2
 const GENERATED_SOURCE = /\.(?:js|d\.ts)$/u
 const resolvePackage = createRequire(import.meta.url)
@@ -194,7 +194,7 @@ async function generate(root: string): Promise<GenerationResult> {
   }
 }
 
-// Valida os catálogos e atualiza src/paraglide. `changed` indica se algum
+// Valida os catálogos e atualiza paraglide. `changed` indica se algum
 // arquivo da saída mudou. Arquivos gerados ficam sob a gestão do Paraglide.
 export function generateMessages(
   root = process.cwd()

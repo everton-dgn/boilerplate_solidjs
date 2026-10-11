@@ -1,3 +1,4 @@
+import { baseLocale } from '@paraglide/runtime.js'
 import { pageRoutes } from 'virtual:file-routes'
 
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
@@ -5,7 +6,6 @@ import { SITE } from '@/constants/site.ts'
 import { memoizeOnce } from '@/helpers/memoizeOnce/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { localizeHref } from '@/i18n/urls/index.ts'
-import { baseLocale } from '@/paraglide/runtime.js'
 
 import { LLMS_NOTES } from './constants.ts'
 import { buildLlmsText } from './helpers/buildLlmsText/index.ts'

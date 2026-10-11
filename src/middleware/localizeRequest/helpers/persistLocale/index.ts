@@ -1,11 +1,10 @@
-import { parseCookieHeader, serializeCookie } from '@solidjs/web'
-
 import {
   cookieDomain,
   cookieMaxAge,
   cookieName,
   type Locale
-} from '@/paraglide/runtime.js'
+} from '@paraglide/runtime.js'
+import { parseCookieHeader, serializeCookie } from '@solidjs/web'
 
 type PersistLocaleOptions = {
   request: Request

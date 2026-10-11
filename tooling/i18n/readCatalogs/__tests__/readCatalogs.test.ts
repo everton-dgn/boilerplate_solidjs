@@ -85,34 +85,47 @@ describe('colocated translations', () => {
 
   it('fails on missing, extra and mismatched parameters', async context => {
     const parent = await sandbox(context)
-    for (const value of [
-      { home_other: 'Hello' },
-      { home_hello: 'Hello', home_extra: 'Extra' },
-      { home_hello: 'Hello {username}' }
+    for (const { value, error } of [
+      {
+        value: { home_other: 'Hello' },
+        error: /es\.json: missing-translation.*home_hello/u
+      },
+      {
+        value: { home_hello: 'Hello {name}', home_extra: 'Extra' },
+        error: /pt\.json: missing-translation.*home_extra/u
+      },
+      {
+        value: { home_hello: 'Hello' },
+        error: /es\.json: missing-variable.*name/u
+      },
+      {
+        value: { home_hello: 'Hello {username}' },
+        error: /es\.json: unknown-variable.*username/u
+      }
     ]) {
       const options = await fixture({ parent })
       await writeCatalog({ root: options.root, locale: 'es', value })
-      await assert.rejects(
-        readCatalogs(options),
-        /es\.json: missing keys.*different parameters/u
-      )
+      await assert.rejects(readCatalogs(options), error)
     }
   })
 
   it('rejects blank messages, malformed JSON and repeated JSON properties', async context => {
     const parent = await sandbox(context)
-    for (const source of [
-      '{"home_hello":"   "}',
-      '{bad}',
-      '{"home_hello":"a","home_hello":"b"}',
-      '{}'
+    for (const { source, error } of [
+      { source: '{"home_hello":"   "}', error: /es\.json: empty-translation/u },
+      { source: '{bad}', error: /Invalid catalog.*es\.json/u },
+      {
+        source: '{"home_hello":"a","home_hello":"b"}',
+        error: /duplicate key "home_hello"/u
+      },
+      { source: '{}', error: /Empty catalog/u }
     ]) {
       const options = await fixture({ parent })
       await writeFile(
         path.join(options.root, 'src/routes/Home/i18n/es.json'),
         source
       )
-      await assert.rejects(readCatalogs(options), /Invalid catalog.*es\.json/u)
+      await assert.rejects(readCatalogs(options), error)
     }
   })
 
@@ -160,7 +173,43 @@ describe('colocated translations', () => {
     })
     await assert.rejects(
       readCatalogs(options),
-      /different parameters \[home_count\]/u
+      /es\.json: missing-variable.*home_count/u
+    )
+  })
+
+  it('checks variables in every plural form with the native SDK', async context => {
+    const parent = await sandbox(context)
+    const plural = {
+      declarations: [
+        'input count',
+        'input name',
+        'local countPlural = count: plural'
+      ],
+      selectors: ['countPlural'],
+      match: {
+        'countPlural=one': '{name}: {count} item',
+        'countPlural=*': '{name}: {count} items'
+      }
+    }
+    const options = await fixture({
+      parent,
+      messages: { home_count: [plural] }
+    })
+    await writeCatalog({
+      root: options.root,
+      locale: 'es',
+      value: {
+        home_count: [
+          {
+            ...plural,
+            match: { ...plural.match, 'countPlural=*': '{count} items' }
+          }
+        ]
+      }
+    })
+    await assert.rejects(
+      readCatalogs(options),
+      /es\.json: missing-variable.*name/u
     )
   })
 })
@@ -175,9 +224,9 @@ describe('catalog file filter', () => {
     ]
     const ignored = [
       '.paraglide/messages/pt.json',
-      'src/paraglide/messages/home_title.js',
-      'src/paraglide/messages/pt.json',
-      'src/paraglide/i18n/pt.json',
+      'paraglide/messages/home_title.js',
+      'paraglide/messages/pt.json',
+      'paraglide/i18n/pt.json',
       'src/routes/Home/messages/pt.json',
       'src/i18n/messages/pt.json',
       'src/tests/fixtures/i18n/pt.json',

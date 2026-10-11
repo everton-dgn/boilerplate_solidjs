@@ -34,6 +34,7 @@ const FORBIDDEN: Partial<Record<Layer, Layer[]>> = {
 
 function layer(file: string): Layer | undefined {
   if (file === 'tooling' || file.startsWith('tooling/')) return 'tooling'
+  if (file.startsWith('paraglide/')) return 'base'
   if (!file.startsWith('src/')) return undefined
   if (
     /^src\/tests(?:\/|$)|\/__tests__(?:\/|$)|\.(?:test|spec)(?:\.[cm]?[jt]sx?)?$/u.test(
@@ -43,7 +44,7 @@ function layer(file: string): Layer | undefined {
     return 'test'
   }
   if (
-    /^src\/(?:@types|constants|helpers|data|infra|theme|i18n|paraglide)(?:\/|$)/u.test(
+    /^src\/(?:@types|constants|helpers|data|infra|theme|i18n)(?:\/|$)/u.test(
       file
     )
   ) {
@@ -75,7 +76,13 @@ function layer(file: string): Layer | undefined {
 function resolveImport({ specifier, filename, root }: ImportLocation): string {
   const [clean = ''] = specifier.replaceAll('\\', '/').split(/[?#]/u)
   let absolute
-  if (clean.startsWith('@/')) {
+  if (clean.startsWith('@paraglide/')) {
+    absolute = path.resolve(
+      root,
+      'paraglide',
+      clean.slice('@paraglide/'.length)
+    )
+  } else if (clean.startsWith('@/')) {
     absolute = path.resolve(root, 'src', clean.slice('@/'.length))
   } else if (clean.startsWith('/src/')) {
     absolute = path.resolve(root, clean.slice(1))

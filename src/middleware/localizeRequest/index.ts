@@ -1,10 +1,9 @@
+import { shouldRedirect } from '@paraglide/runtime.js'
+import { paraglideMiddleware } from '@paraglide/server.js'
 import { getRequestEvent } from '@solidjs/web'
 import { createAPIMatcher } from 'filesystem-routing/api'
 import routes from 'virtual:file-routes'
 import { endpoint } from 'virtual:solid-server-function-handler'
-
-import { shouldRedirect } from '@/paraglide/runtime.js'
-import { paraglideMiddleware } from '@/paraglide/server.js'
 
 import { applySecurityHeaders, requestNonce } from '../securityHeaders/index.ts'
 import type { Next } from '../types.ts'

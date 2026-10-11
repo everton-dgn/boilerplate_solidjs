@@ -10,10 +10,10 @@ test.describe('página inexistente', () => {
   }) => {
     await page.goto('/pagina-inexistente')
 
-    await expect(page).toHaveTitle('Página não encontrada')
+    await expect(page).toHaveTitle('Page not found')
     await expect(page.locator('head meta[name="description"]')).toHaveAttribute(
       'content',
-      'A página solicitada não foi encontrada.'
+      'The requested page was not found.'
     )
     await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
       'content',
@@ -36,7 +36,7 @@ test.describe('página inexistente hidratada', () => {
     await page.goto('/pagina-inexistente')
 
     // O menu de tema só abre com o JavaScript hidratado.
-    await page.getByRole('button', { name: 'Selecionar tema' }).click()
+    await page.getByRole('button', { name: 'Select theme' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
 
     await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(

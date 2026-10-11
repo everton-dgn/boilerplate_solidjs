@@ -2,6 +2,7 @@ import { glob, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import messageFormat from '@inlang/plugin-message-format'
+import { checkBundle } from '@inlang/sdk'
 import * as v from 'valibot'
 
 type CatalogOptions = {
@@ -11,7 +12,11 @@ type CatalogOptions = {
 }
 
 type ParseOptions = { file: string; source: string }
-type SignatureOptions = { file: string; locale: string; catalog: Catalog }
+type ValidationOptions = {
+  directory: string
+  catalogs: Record<string, Catalog>
+  baseLocale: string
+}
 type ImportResult = Awaited<
   ReturnType<NonNullable<typeof messageFormat.importFiles>>
 >
@@ -24,15 +29,11 @@ type ClaimOptions = {
 type CatalogFileOptions = { root: string; file: string }
 
 // O glob da leitura e o filtro do watcher descrevem o mesmo conjunto: os
-// agregados em .paraglide/ e a saída em src/paraglide/ nunca são catálogos.
+// agregados em .paraglide/ e a saída em paraglide/ nunca são catálogos.
 const CATALOG_GLOB = 'src/**/i18n/*.json'
-const CATALOG_EXCLUDES = [
-  'src/tests/**',
-  'src/**/__tests__/**',
-  'src/paraglide/**'
-]
+const CATALOG_EXCLUDES = ['src/tests/**', 'src/**/__tests__/**']
 const CATALOG_PATH = /^src\/(?:[^/]+\/)*i18n\/[^/]+\.json$/u
-const EXCLUDED_PATH = /^src\/(?:tests|paraglide)\/|\/__tests__\//u
+const EXCLUDED_PATH = /^src\/tests\/|\/__tests__\//u
 
 function claimMessages({ keys, directory, owners }: ClaimOptions): void {
   for (const key of keys) {
@@ -46,10 +47,7 @@ function claimMessages({ keys, directory, owners }: ClaimOptions): void {
   }
 }
 
-const TextSchema = v.pipe(
-  v.string(),
-  v.check(text => text.trim().length > 0)
-)
+const TextSchema = v.string()
 const LAST_ITEM = -1
 const StringsSchema = v.array(v.string())
 const VariantsSchema = v.pipe(v.record(v.string(), TextSchema), v.minEntries(1))
@@ -101,39 +99,72 @@ function parseCatalog({ file, source }: ParseOptions): Catalog {
   }
 }
 
-// O parser do formato, também usado pelo compilador, entende parâmetros,
-// declarações e seletores. Regex de placeholders não valida plurais.
-async function signatures({ file, locale, catalog }: SignatureOptions) {
+async function validateMessages({
+  directory,
+  catalogs,
+  baseLocale
+}: ValidationOptions): Promise<void> {
   if (!messageFormat.importFiles) {
     throw new Error('Message format parser unavailable')
   }
   let parsed: ImportResult
   try {
     parsed = await messageFormat.importFiles({
-      files: [
-        { locale, content: new TextEncoder().encode(JSON.stringify(catalog)) }
-      ],
-      settings: { baseLocale: locale, locales: [locale], modules: [] }
+      files: Object.entries(catalogs).map(([locale, catalog]) => ({
+        locale,
+        content: new TextEncoder().encode(JSON.stringify(catalog))
+      })),
+      settings: { baseLocale, locales: Object.keys(catalogs), modules: [] }
     })
   } catch (error) {
-    throw new Error(`[i18n] Invalid message syntax in ${file}`, {
+    throw new Error(`[i18n] Invalid message syntax in ${directory}`, {
       cause: error
     })
   }
-  const result = new Map<string, string>()
+  const messagesByBundle = Map.groupBy(
+    parsed.messages,
+    message => message.bundleId
+  )
+  const variantsByBundle = Map.groupBy(
+    parsed.variants,
+    variant => variant.messageBundleId
+  )
+  const locales = Object.keys(catalogs)
   for (const bundle of parsed.bundles) {
-    if (!bundle.id) throw new Error(`[i18n] Message without ID in ${file}`)
-    result.set(
-      bundle.id,
-      JSON.stringify(
-        (bundle.declarations ?? [])
-          .filter(declaration => declaration.type === 'input-variable')
-          .map(declaration => declaration.name)
-          .toSorted()
+    if (!bundle.id) throw new Error(`[i18n] Message without ID in ${directory}`)
+    // O parser retorna tabelas separadas; o SDK recebe cada mensagem com suas variantes.
+    const messages = (messagesByBundle.get(bundle.id) ?? []).map(message => ({
+      locale: message.locale,
+      id: message.locale,
+      selectors: message.selectors ?? [],
+      variants: (variantsByBundle.get(bundle.id) ?? [])
+        .filter(variant => variant.messageLocale === message.locale)
+        .map((variant, index) => ({
+          id: String(index),
+          matches: variant.matches ?? [],
+          pattern: variant.pattern ?? []
+        }))
+    }))
+    const diagnostics = checkBundle({
+      bundle: {
+        id: bundle.id,
+        declarations: bundle.declarations ?? [],
+        messages
+      },
+      locales,
+      referenceLocale: baseLocale
+    })
+    if (diagnostics.length > 0) {
+      throw new Error(
+        diagnostics
+          .map(
+            diagnostic =>
+              `[i18n] ${directory}/${diagnostic.locale}.json: ${diagnostic.checkId}: ${diagnostic.message}`
+          )
+          .join('\n')
       )
-    )
+    }
   }
-  return result
 }
 
 export async function readCatalogs({
@@ -173,7 +204,7 @@ export async function readCatalogs({
         `[i18n] ${directory}: missing locales [${missing.join(', ')}], unexpected [${extra.join(', ')}]`
       )
     }
-    let reference: Map<string, string> | undefined
+    const current: Record<string, Catalog> = {}
     for (const locale of [
       baseLocale,
       ...locales.filter(item => item !== baseLocale)
@@ -183,29 +214,15 @@ export async function readCatalogs({
         file,
         source: await readFile(path.join(root, file), 'utf8')
       })
-      const current = await signatures({ file, locale, catalog })
-      if (reference) {
-        const expected = reference
-        const absent = [...expected.keys()].filter(key => !current.has(key))
-        const unexpected = [...current.keys()].filter(key => !expected.has(key))
-        const parameters = [...expected.keys()].filter(
-          key => current.has(key) && expected.get(key) !== current.get(key)
-        )
-        if (
-          absent.length > 0 ||
-          unexpected.length > 0 ||
-          parameters.length > 0
-        ) {
-          throw new Error(
-            `[i18n] ${file}: missing keys [${absent.join(', ')}], unexpected [${unexpected.join(', ')}], different parameters [${parameters.join(', ')}]`
-          )
-        }
-      } else {
-        reference = current
-        claimMessages({ keys: current.keys(), directory, owners })
-      }
+      current[locale] = catalog
       Object.assign(catalogs[locale] ?? {}, catalog)
     }
+    await validateMessages({ directory, catalogs: current, baseLocale })
+    claimMessages({
+      keys: Object.keys(current[baseLocale] ?? {}),
+      directory,
+      owners
+    })
   }
   return catalogs
 }

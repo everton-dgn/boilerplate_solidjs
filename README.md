@@ -137,10 +137,10 @@ src/routes/(base)/(home)/
 
 Use o mesmo conjunto de chaves e parâmetros nos três arquivos. Por exemplo,
 `"home_welcome": "Olá, {name}!"`, `"Hello, {name}!"` e `"¡Hola, {name}!"`. O
-compilador gera funções e declarações TypeScript em `src/paraglide/`:
+compilador gera funções e declarações TypeScript em `paraglide/`:
 
 ```tsx
-import { m } from '@/paraglide/messages.js'
+import { m } from '@paraglide/messages.js'
 
 export default function Home() {
   return <h1>{m.home_title()}</h1>
@@ -149,7 +149,7 @@ export default function Home() {
 
 As funções validam nomes de mensagens, nomes e presença dos parâmetros e o
 idioma opcional, por exemplo `m.home_title({}, { locale: 'es' })`. O tipo
-`Locale` vem de `@/paraglide/runtime.js`. Interpolações simples aceitam valores
+`Locale` vem de `@paraglide/runtime.js`. Interpolações simples aceitam valores
 não nulos; valide dados de domínio antes de traduzi-los. Não invoque mensagens
 no topo de um módulo: SSR compartilha módulos entre requisições. Use chamadas no
 componente ou getters nas constantes e em `route.info.seo`, como na 404.
@@ -170,11 +170,15 @@ Plurais usam o formato de mensagens do Inlang, com declarações e seletores:
 ```
 
 Cada idioma pode ter variantes próprias, preservando os parâmetros de entrada.
-`tooling/i18n/` lê os catálogos, valida o formato com o parser oficial e gera os
-agregados intermediários em `.paraglide/messages/`. Falta de idioma, chave ou
-parâmetro, chave extra ou duplicada, mensagem vazia e JSON inválido interrompem
-a geração. Nenhum fallback silencioso cobre traduções esquecidas. Os diretórios
-gerados são ignorados pelo Git; edite somente os catálogos colocalizados.
+`tooling/i18n/` encontra os catálogos e gera os agregados intermediários em
+`.paraglide/messages/`. O parser oficial interpreta as mensagens, e
+`checkBundle` do SDK do Inlang valida traduções, variáveis e formas plurais em
+memória, sem abrir um banco ou executar outro CLI. A integração local verifica
+as pastas, os nomes dos idiomas e as duplicatas antes de juntar os arquivos.
+Falta de idioma, chave ou parâmetro, chave extra ou duplicada, mensagem vazia e
+JSON inválido interrompem a geração. Nenhum fallback silencioso cobre traduções
+esquecidas. Os diretórios gerados são ignorados pelo Git; edite somente os
+catálogos colocalizados.
 
 `vp run i18n:generate` executa essa verificação isoladamente. Desenvolvimento e
 build chamam o mesmo gerador antes de continuar; o watcher bloqueia respostas
@@ -187,7 +191,7 @@ da dependência local, sem baixar código de CDN durante a geração.
 As opções do compilador ficam em `project.inlang/paraglide.config.ts`. O gerador
 valida e agrega os catálogos, então executa o CLI oficial do Paraglide em Node.
 O próprio compilador reaproveita os hashes da saída, escreve as mudanças e
-remove módulos obsoletos de `src/paraglide/`. Esses arquivos gerados dispensam
+remove módulos obsoletos de `paraglide/`. Esses arquivos gerados dispensam
 lixeira. A fila e a comparação de conteúdo evitam gerações e reloads repetidos
 no mesmo processo; a tarefa do Vite+ acrescenta cache entre execuções. O custo
 fica na preparação do desenvolvimento/build e nas verificações, sem executar o
@@ -222,7 +226,7 @@ da raiz funcionam também nesse caso.
 ```tsx
 import { LocalizedLink } from '@/components/atoms/LocalizedLink/index.tsx'
 import { localizedRedirect } from '@/i18n/localizedRedirect/index.ts'
-import { m } from '@/paraglide/messages.js'
+import { m } from '@paraglide/messages.js'
 import { createLocalizedNavigate } from '@/primitives/createLocalizedNavigate/index.ts'
 import { paths } from '@/router.ts'
 

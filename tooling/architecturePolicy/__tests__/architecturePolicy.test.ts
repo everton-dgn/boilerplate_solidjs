@@ -217,7 +217,7 @@ test('i18n e módulos gerados pertencem à camada base', () => {
     valid: [
       {
         filename: 'src/i18n/urls/index.ts',
-        code: 'import { localizeUrl } from "@/paraglide/runtime.js"'
+        code: 'import { localizeUrl } from "@paraglide/runtime.js"'
       }
     ],
     invalid: [
@@ -226,7 +226,7 @@ test('i18n e módulos gerados pertencem à camada base', () => {
         code: 'import { paths } from "@/router.ts"'
       },
       {
-        filename: 'src/paraglide/example.ts',
+        filename: 'paraglide/example.ts',
         code: 'import { Button } from "@/components/atoms/Button/index.tsx"'
       }
     ].map(({ filename, code }) => ({

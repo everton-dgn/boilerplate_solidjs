@@ -1,7 +1,7 @@
+import { m } from '@paraglide/messages.js'
 import { createSignal, Show } from 'solid-js'
 import { page, userEvent } from 'vite-plus/test/browser/context'
 
-import { m } from '@/paraglide/messages.js'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import '@/theme/globalStyles.css'

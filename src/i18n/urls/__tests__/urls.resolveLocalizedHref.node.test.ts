@@ -1,4 +1,4 @@
-import { paraglideMiddleware } from '@/paraglide/server.js'
+import { paraglideMiddleware } from '@paraglide/server.js'
 
 import { resolveLocalizedHref } from '../index.ts'
 

@@ -1,5 +1,5 @@
-import { m } from '@/paraglide/messages.js'
-import type { Locale } from '@/paraglide/runtime.js'
+import { m } from '@paraglide/messages.js'
+import type { Locale } from '@paraglide/runtime.js'
 
 describe('generated message types', () => {
   it('checks message IDs, parameters and locales at compile time', () => {

@@ -1,6 +1,7 @@
+import { baseLocale, locales } from '@paraglide/runtime.js'
+
 import type { SitemapEntry } from '@/@types/sitemap.ts'
 import { localizeHref } from '@/i18n/urls/index.ts'
-import { baseLocale, locales } from '@/paraglide/runtime.js'
 
 type BuildSitemapOptions = {
   entries: readonly SitemapEntry[]
