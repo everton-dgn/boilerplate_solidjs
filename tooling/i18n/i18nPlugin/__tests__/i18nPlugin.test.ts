@@ -1,15 +1,7 @@
 /* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
-import {
-  copyFile,
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  symlink,
-  writeFile
-} from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer as createHttpServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -18,11 +10,14 @@ import { setTimeout as delay } from 'node:timers/promises'
 
 import { createServer } from 'vite-plus'
 
+import {
+  LOCALES,
+  writeMessages,
+  writeProject,
+  writeSettings
+} from '../../testProject/index.ts'
 import { i18nPlugin } from '../index.ts'
 
-type Messages = Record<string, string>
-type MessagesOptions = { root: string; messages: Messages }
-type SettingsOptions = { root: string; baseLocale: string; locales: string[] }
 type Close = () => Promise<unknown>
 type DevServer = {
   root: string
@@ -31,62 +26,12 @@ type DevServer = {
   body: () => Promise<string>
 }
 
-const LOCALES = ['pt', 'en', 'es']
-const SETTINGS_FILE = 'project.inlang/settings.json'
-const COMPILER_CONFIG = path.resolve(
-  import.meta.dirname,
-  '../../../../project.inlang/paraglide.config.ts'
-)
-const NODE_MODULES = path.resolve(
-  import.meta.dirname,
-  '../../../../node_modules'
-)
 const RUNTIME_FILE = 'paraglide/runtime.js'
-const PLUGIN = path.resolve(
-  import.meta.dirname,
-  '../../../../node_modules/@inlang/plugin-message-format/dist/index.js'
-)
 const MESSAGES = { home_title: 'Title', home_body: 'Body' }
 const POLL_MS = 50
 const TIMEOUT_MS = 20_000
 const SETTLE_MS = 1500
 const HTTP_ERROR = 500
-
-async function writeMessages({ root, messages }: MessagesOptions) {
-  const directory = path.join(root, 'src/routes/Home/i18n')
-  await mkdir(directory, { recursive: true })
-  for (const locale of LOCALES) {
-    await writeFile(
-      path.join(directory, `${locale}.json`),
-      JSON.stringify(messages)
-    )
-  }
-}
-
-async function writeSettings({ root, baseLocale, locales }: SettingsOptions) {
-  await writeFile(
-    path.join(root, SETTINGS_FILE),
-    JSON.stringify({
-      baseLocale,
-      locales,
-      modules: [PLUGIN],
-      'plugin.inlang.messageFormat': {
-        pathPattern: './.paraglide/messages/{locale}.json'
-      }
-    })
-  )
-}
-
-async function writeProject(root: string): Promise<void> {
-  await mkdir(path.join(root, 'project.inlang'))
-  await copyFile(
-    COMPILER_CONFIG,
-    path.join(root, 'project.inlang/paraglide.config.ts')
-  )
-  await symlink(NODE_MODULES, path.join(root, 'node_modules'))
-  await writeSettings({ root, baseLocale: 'pt', locales: LOCALES })
-  await writeMessages({ root, messages: MESSAGES })
-}
 
 function readRuntime(root: string): Promise<string> {
   return readFile(path.join(root, RUNTIME_FILE), 'utf8')
@@ -118,7 +63,7 @@ async function startServer(context: TestContext): Promise<DevServer> {
     for (const close of closers.toReversed()) await close()
     await rm(root, { recursive: true, force: true })
   })
-  await writeProject(root)
+  await writeProject({ root, messages: MESSAGES })
   const server = await createServer({
     root,
     configFile: false,

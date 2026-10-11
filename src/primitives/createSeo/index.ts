@@ -1,4 +1,4 @@
-import { baseLocale, getLocale, locales } from '@paraglide/runtime.js'
+import { getLocale, locales } from '@paraglide/runtime.js'
 import { useLocation, useRouteMatches } from '@solidjs/router'
 import { type HeadTag, useHead } from '@solidjs/web'
 import type { Thing } from 'schema-dts'
@@ -8,6 +8,7 @@ import { SITE } from '@/constants/site.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { serializeJsonLd } from '@/helpers/serializeJsonLd/index.ts'
+import { buildLocaleAlternates } from '@/i18n/buildLocaleAlternates/index.ts'
 import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
 import { localizeHref } from '@/i18n/urls/index.ts'
 
@@ -124,18 +125,12 @@ function publishRouteSeo(): void {
       props: { name: 'twitter:description', content: seo().description }
     },
     { tag: 'link', props: { rel: 'canonical', href: canonical() } },
-    ...[...locales, 'x-default' as const].map(hreflang => ({
+    ...buildLocaleAlternates({
+      href: location.pathname,
+      siteUrl: SITE.url
+    }).map(({ hreflang, href }) => ({
       tag: 'link' as const,
-      props: {
-        rel: 'alternate',
-        hreflang,
-        href: resolveSiteUrl(
-          localizeHref({
-            href: location.pathname,
-            locale: hreflang === 'x-default' ? baseLocale : hreflang
-          })
-        )
-      }
+      props: { rel: 'alternate', hreflang, href }
     })),
     { tag: 'meta', props: { property: 'og:url', content: canonical() } },
     { tag: 'meta', props: { property: 'og:image', content: image() } },

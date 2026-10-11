@@ -2,14 +2,11 @@
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import {
-  copyFile,
-  mkdir,
   mkdtemp,
   readdir,
   readFile,
   rm,
   stat,
-  symlink,
   writeFile
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -17,27 +14,14 @@ import path from 'node:path'
 import { describe, it, type TestContext } from 'node:test'
 import { promisify } from 'node:util'
 
+import { writeMessages, writeProject } from '../../testProject/index.ts'
 import { generateMessages } from '../index.ts'
 
 type Messages = Record<string, string>
 type ProjectOptions = { parent: string; messages: Messages }
-type MessagesOptions = { root: string; messages: Messages }
 
 const execute = promisify(execFile)
-const LOCALES = ['pt', 'en', 'es']
-const PLUGIN = path.resolve(
-  import.meta.dirname,
-  '../../../../node_modules/@inlang/plugin-message-format/dist/index.js'
-)
 const GENERATE = path.resolve(import.meta.dirname, '../../generate.ts')
-const COMPILER_CONFIG = path.resolve(
-  import.meta.dirname,
-  '../../../../project.inlang/paraglide.config.ts'
-)
-const NODE_MODULES = path.resolve(
-  import.meta.dirname,
-  '../../../../node_modules'
-)
 const MESSAGES = { home_title: 'Title {name}', home_body: 'Body' }
 
 async function sandbox(context: TestContext): Promise<string> {
@@ -48,37 +32,9 @@ async function sandbox(context: TestContext): Promise<string> {
   return directory
 }
 
-async function writeMessages({ root, messages }: MessagesOptions) {
-  const directory = path.join(root, 'src/routes/Home/i18n')
-  await mkdir(directory, { recursive: true })
-  for (const locale of LOCALES) {
-    await writeFile(
-      path.join(directory, `${locale}.json`),
-      JSON.stringify(messages)
-    )
-  }
-}
-
 async function project({ parent, messages }: ProjectOptions): Promise<string> {
   const root = await mkdtemp(path.join(parent, 'project-'))
-  await mkdir(path.join(root, 'project.inlang'))
-  await copyFile(
-    COMPILER_CONFIG,
-    path.join(root, 'project.inlang/paraglide.config.ts')
-  )
-  await symlink(NODE_MODULES, path.join(root, 'node_modules'))
-  await writeFile(
-    path.join(root, 'project.inlang/settings.json'),
-    JSON.stringify({
-      baseLocale: 'pt',
-      locales: LOCALES,
-      modules: [PLUGIN],
-      'plugin.inlang.messageFormat': {
-        pathPattern: './.paraglide/messages/{locale}.json'
-      }
-    })
-  )
-  await writeMessages({ root, messages })
+  await writeProject({ root, messages })
   return root
 }
 
@@ -125,11 +81,12 @@ describe('generated messages', () => {
     const reference = await output(root)
     const times = await modifiedTimes(root)
     assert.ok(reference.has('messages/home_title.js'))
+    assert.ok(reference.has('messages/home_title.d.ts'))
 
     assert.deepEqual(await generateMessages(root), { changed: false })
     assert.deepEqual(await modifiedTimes(root), times)
 
-    await execute(process.execPath, [GENERATE], { cwd: root })
+    await execute('bun', [GENERATE], { cwd: root })
     assert.deepEqual(await modifiedTimes(root), times)
 
     await writeFile(path.join(root, 'paraglide/runtime.js'), 'broken')
@@ -172,9 +129,7 @@ describe('generated messages', () => {
 
     const processes = await project({ parent, messages: MESSAGES })
     await Promise.all(
-      [0, 1].map(() =>
-        execute(process.execPath, [GENERATE], { cwd: processes })
-      )
+      [0, 1].map(() => execute('bun', [GENERATE], { cwd: processes }))
     )
     assert.deepEqual(await output(processes), expected)
     assert.deepEqual(await temporaryFiles(inProcess), [])
@@ -189,7 +144,7 @@ describe('generated messages', () => {
     await stat(obsolete)
 
     await writeMessages({ root, messages: { home_title: 'Title {name}' } })
-    await execute(process.execPath, [GENERATE], { cwd: root })
+    await execute('bun', [GENERATE], { cwd: root })
     const files = await output(root)
     assert.ok(files.has('messages/home_title.js'))
 

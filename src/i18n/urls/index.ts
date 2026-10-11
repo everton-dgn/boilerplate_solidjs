@@ -14,6 +14,10 @@ type ResolveLocalizedHrefOptions = LocalizeHrefOptions & {
 
 const LOCAL_ORIGIN = 'https://local.invalid'
 
+export function isAbsoluteHref(href: string): boolean {
+  return /^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(href)
+}
+
 export function localizeHref({
   href,
   locale = getLocale()
@@ -33,7 +37,7 @@ export function resolveLocalizedHref({
   base,
   shouldLocalize = true
 }: ResolveLocalizedHrefOptions): string {
-  if (!shouldLocalize || /^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(href)) return href
+  if (!shouldLocalize || isAbsoluteHref(href)) return href
   const currentLocale = getLocale()
   if (
     (href === '' || href.startsWith('#')) &&

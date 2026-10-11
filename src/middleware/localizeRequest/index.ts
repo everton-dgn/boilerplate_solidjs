@@ -1,10 +1,12 @@
 import { shouldRedirect } from '@paraglide/runtime.js'
 import { paraglideMiddleware } from '@paraglide/server.js'
 import { getRequestEvent } from '@solidjs/web'
-import { createAPIMatcher } from 'filesystem-routing/api'
-import routes from 'virtual:file-routes'
-import { endpoint } from 'virtual:solid-server-function-handler'
 
+import {
+  isPagePath,
+  isPageRequest,
+  isServerFunctionPath
+} from '../requestClassification/index.ts'
 import { applySecurityHeaders, requestNonce } from '../securityHeaders/index.ts'
 import type { Next } from '../types.ts'
 import { normalizeLanguageRequest } from './helpers/normalizeLanguageRequest/index.ts'
@@ -14,21 +16,6 @@ type LocalizeRequestOptions = { request: Request; next: Next }
 type LocaleRequest = { request: Request; pageBase?: string }
 
 const HTTP_TEMPORARY_REDIRECT = 307
-const matchAPI = createAPIMatcher(routes)
-
-function isServerFunctionPath(pathname: string): boolean {
-  return pathname === endpoint || pathname.startsWith(`${endpoint}/`)
-}
-
-function isPage(request: Request): boolean {
-  const { pathname } = new URL(request.url)
-  const accept = request.headers.get('accept')
-  return (
-    (request.method === 'GET' || request.method === 'HEAD') &&
-    (!accept || accept.includes('text/html') || accept.includes('*/*')) &&
-    matchAPI(pathname, request.method)?.isPage !== false
-  )
-}
 
 function serverFunctionLocale(request: Request): LocaleRequest {
   let url = new URL(request.url)
@@ -43,10 +30,7 @@ function serverFunctionLocale(request: Request): LocaleRequest {
         !source.password
       ) {
         url = source
-        if (
-          !isServerFunctionPath(source.pathname) &&
-          matchAPI(source.pathname, 'GET')?.isPage !== false
-        ) {
+        if (isPagePath({ pathname: source.pathname, method: 'GET' })) {
           pageBase = source.href
         }
       }
@@ -69,7 +53,7 @@ export async function localizeRequest({
   const isServerFunction = isServerFunctionPath(pathname)
   const event = getRequestEvent()
   if (event) event.locals.localizedPageBase = undefined
-  if (!isServerFunction && !isPage(request)) return next()
+  if (!isServerFunction && !isPageRequest(request)) return next()
   const localized = isServerFunction
     ? serverFunctionLocale(request)
     : { request, pageBase: request.url }

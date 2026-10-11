@@ -157,7 +157,7 @@ export default defineConfig(({ mode }) => {
     run: {
       tasks: {
         'i18n-generate': {
-          command: 'node tooling/i18n/generate.ts',
+          command: 'bun tooling/i18n/generate.ts',
           cache: {
             input: [
               'src/**/i18n/*.json',
@@ -363,7 +363,7 @@ export default defineConfig(({ mode }) => {
           test: {
             name: { label: 'dom', color: 'magenta' },
             environment: 'happy-dom',
-            environmentOptions: { happyDOM: { url: 'http://localhost/pt' } },
+            environmentOptions: { happyDOM: { url: 'http://localhost/en' } },
             setupFiles: ['./tooling/vitest.setup.ts'],
             include: ['src/**/*.dom.test.{ts,tsx}']
           }
@@ -388,7 +388,7 @@ export default defineConfig(({ mode }) => {
               },
               // Os runners do GitHub têm Chrome; execuções locais usam o Chromium do Playwright.
               provider: playwright({
-                contextOptions: { locale: 'pt-BR' },
+                contextOptions: { locale: 'en-US' },
                 launchOptions: env.CI ? { channel: 'chrome' } : {}
               }),
               instances: [{ browser: 'chromium' }]

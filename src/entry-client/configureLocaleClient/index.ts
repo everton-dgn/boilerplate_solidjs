@@ -1,12 +1,10 @@
 import {
   assertIsLocale,
-  cookieDomain,
-  cookieMaxAge,
-  cookieName,
   localizeUrl,
   overwriteSetLocale
 } from '@paraglide/runtime.js'
-import { serializeCookie } from '@solidjs/web'
+
+import { serializeLocaleCookie } from '@/i18n/serializeLocaleCookie/index.ts'
 
 import { installLocaleHistoryGuard } from './installLocaleHistoryGuard/index.ts'
 
@@ -15,12 +13,9 @@ export function configureLocaleClient(): () => void {
     const locale = assertIsLocale(newLocale)
     try {
       // oxlint-disable-next-line unicorn/no-document-cookie -- A persistência é opcional; o idioma da URL funciona mesmo com cookies bloqueados.
-      document.cookie = serializeCookie(cookieName, locale, {
-        path: '/',
-        maxAge: cookieMaxAge,
-        domain: cookieDomain || undefined,
-        sameSite: 'lax',
-        secure: location.protocol === 'https:'
+      document.cookie = serializeLocaleCookie({
+        locale,
+        protocol: location.protocol
       })
     } catch {
       // O navegador pode bloquear cookies. Preserva hidratação e navegação.

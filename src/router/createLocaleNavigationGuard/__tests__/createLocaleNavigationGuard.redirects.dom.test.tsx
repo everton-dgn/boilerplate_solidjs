@@ -35,7 +35,7 @@ describe('locale guard with Router response processing', () => {
       return <p>Ready</p>
     }
     const Router = createRouter({
-      history: memoryHistory('/pt/start'),
+      history: memoryHistory('/en/start'),
       routes: [{ path: '*all', component: Page }]
     })
     const host = renderComponent(
@@ -66,7 +66,7 @@ describe('locale guard with Router response processing', () => {
     const read = query(
       () =>
         Promise.resolve(
-          localizedRedirect({ href: '/destination?q=query#part', locale: 'en' })
+          localizedRedirect({ href: '/destination?q=query#part', locale: 'pt' })
         ),
       'locale-guard-query-test'
     )
@@ -87,7 +87,7 @@ describe('locale guard with Router response processing', () => {
       )
     }
     const Router = createRouter({
-      history: memoryHistory('/pt/start'),
+      history: memoryHistory('/en/start'),
       routes: [{ path: '*all', component: Page }]
     })
     const host = renderComponent(
@@ -106,6 +106,6 @@ describe('locale guard with Router response processing', () => {
     request()
     await expect
       .poll(() => replace.mock.lastCall?.[0])
-      .toBe(`${globalThis.location.origin}/en/destination?q=query#part`)
+      .toBe(`${globalThis.location.origin}/pt/destination?q=query#part`)
   })
 })

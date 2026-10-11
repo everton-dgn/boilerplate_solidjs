@@ -171,9 +171,9 @@ async function generate(root: string): Promise<GenerationResult> {
   const outdir = path.join(root, OUTPUT_DIRECTORY)
   const before = await readOutputs(outdir)
   // O CLI oficial reaproveita os hashes em disco, escreve apenas mudanças e
-  // remove módulos obsoletos. Node também mantém o compilador fora do Bun do Vite.
+  // remove módulos obsoletos.
   await execute(
-    'node',
+    'bun',
     [
       COMPILER_CLI,
       'compile',

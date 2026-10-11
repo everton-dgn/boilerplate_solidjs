@@ -7,7 +7,7 @@ import {
 } from '@solidjs/router'
 import { isServer } from '@solidjs/web'
 
-import { resolveLocalizedHref } from '@/i18n/urls/index.ts'
+import { isAbsoluteHref, resolveLocalizedHref } from '@/i18n/urls/index.ts'
 
 type LocalizedNavigateOptions = Omit<Partial<NavigateOptions>, 'resolve'> & {
   href: string | TypedPath
@@ -42,7 +42,7 @@ export function createLocalizedNavigate() {
     const shouldUseDocumentNavigation =
       shouldLocalize === false ||
       (locale !== undefined && locale !== getLocale()) ||
-      /^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(target)
+      isAbsoluteHref(target)
     if (shouldUseDocumentNavigation && !isServer) {
       if (options.replace) globalThis.location.replace(target)
       else globalThis.location.assign(target)

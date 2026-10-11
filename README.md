@@ -189,13 +189,14 @@ mensagens antes da validação, inclusive num clone novo. O plugin de formato ve
 da dependência local, sem baixar código de CDN durante a geração.
 
 As opções do compilador ficam em `project.inlang/paraglide.config.ts`. O gerador
-valida e agrega os catálogos, então executa o CLI oficial do Paraglide em Node.
-O próprio compilador reaproveita os hashes da saída, escreve as mudanças e
-remove módulos obsoletos de `paraglide/`. Esses arquivos gerados dispensam
-lixeira. A fila e a comparação de conteúdo evitam gerações e reloads repetidos
-no mesmo processo; a tarefa do Vite+ acrescenta cache entre execuções. O custo
-fica na preparação do desenvolvimento/build e nas verificações, sem executar o
-gerador nas requisições de produção.
+valida e agrega os catálogos, então executa o CLI oficial do Paraglide. As duas
+etapas usam Bun, inclusive a emissão das declarações de tipos. O próprio
+compilador reaproveita os hashes da saída, escreve as mudanças e remove módulos
+obsoletos de `paraglide/`. Esses arquivos gerados dispensam lixeira. A fila e a
+comparação de conteúdo evitam gerações e reloads repetidos no mesmo processo; a
+tarefa do Vite+ acrescenta cache entre execuções. O custo fica na preparação do
+desenvolvimento/build e nas verificações, sem executar o gerador nas requisições
+de produção.
 
 O bundler elimina mensagens não usadas e mantém as mensagens exclusivas da
 página no seu módulo lazy. Cada módulo contém os três idiomas das mensagens que
@@ -213,6 +214,11 @@ SEO e hidratação consistentes. Server functions usam a página de origem do me
 domínio, com fallback para cookie e cabeçalho de idioma, preservando o corpo da
 requisição e os sinais de controle do Solid. APIs, índices e arquivos estáticos
 continuam sem prefixo.
+
+`src/middleware/requestClassification/` reúne os critérios de página usados pela
+localização e pela contenção de falhas. A serialização do cookie em
+`src/i18n/serializeLocaleCookie/` é compartilhada com o cliente; cada consumidor
+mantém seus efeitos de persistência, cache e navegação.
 
 Para navegar entre páginas, use `LocalizedLink`, `createLocalizedNavigate()` e
 `localizedRedirect()`. Os três preservam query e fragmento e aceitam os caminhos
@@ -943,9 +949,9 @@ instala com Bun sem permitir mudanças no lockfile. Os scripts `dev` e `build`
 chamam o CLI local do Vite+ explicitamente com Bun, porque o `vp` global e os
 filhos de `vp run` podem selecionar Node novamente. Use `vp run dev` e
 `vp run build` para executar esses scripts. Node continua nos testes da
-aplicação, no tooling e no SSR de produção: o `RuleTester` do Oxlint recusa Bun,
-e a suíte Vitest apresentou incompatibilidades no carregamento de módulos do
-Solid. Depois da instalação, o workflow restaura
+aplicação, nos testes de tooling e no SSR de produção: o `RuleTester` do Oxlint
+recusa Bun, e a suíte Vitest apresentou incompatibilidades no carregamento de
+módulos do Solid. Depois da instalação, o workflow restaura
 `node_modules/.vite/task-cache`, `node_modules/.vitest-cache` e `.tsbuild`, com
 uma chave por execução e um prefixo de restauração restrito ao sistema
 operacional, arquitetura, Node, Bun e lockfile. Vite Task, Vitest e TypeScript

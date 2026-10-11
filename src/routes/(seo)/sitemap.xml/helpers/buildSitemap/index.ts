@@ -1,7 +1,5 @@
-import { baseLocale, locales } from '@paraglide/runtime.js'
-
 import type { SitemapEntry } from '@/@types/sitemap.ts'
-import { localizeHref } from '@/i18n/urls/index.ts'
+import { buildLocaleAlternates } from '@/i18n/buildLocaleAlternates/index.ts'
 
 type BuildSitemapOptions = {
   entries: readonly SitemapEntry[]
@@ -24,22 +22,21 @@ export function buildSitemap({
   siteUrl
 }: BuildSitemapOptions): string {
   const urls = entries.flatMap(({ path, lastmod }) => {
-    const alternatives = [...locales, 'x-default' as const]
-      .map(hreflang => {
-        const locale = hreflang === 'x-default' ? baseLocale : hreflang
-        const href = escapeXml(
-          new URL(localizeHref({ href: path, locale }), siteUrl).href
-        )
-        return `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${href}"/>`
-      })
+    const alternates = buildLocaleAlternates({ href: path, siteUrl })
+    const links = alternates
+      .map(
+        ({ hreflang, href }) =>
+          `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${escapeXml(href)}"/>`
+      )
       .join('')
     const modified =
       lastmod === undefined ? '' : `<lastmod>${escapeXml(lastmod)}</lastmod>`
-    return locales.map(locale => {
-      const href = localizeHref({ href: path, locale })
-      const loc = `<loc>${escapeXml(new URL(href, siteUrl).href)}</loc>`
-      return `  <url>${loc}${modified}${alternatives}</url>`
-    })
+    return alternates
+      .filter(({ hreflang }) => hreflang !== 'x-default')
+      .map(
+        ({ href }) =>
+          `  <url><loc>${escapeXml(href)}</loc>${modified}${links}</url>`
+      )
   })
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',

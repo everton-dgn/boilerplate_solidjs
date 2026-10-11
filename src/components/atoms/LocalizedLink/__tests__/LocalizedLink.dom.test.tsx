@@ -10,17 +10,17 @@ describe('localizedLink contracts', () => {
     const [href, setHref] = createSignal('/docs?q=1#section')
     const host = renderComponent(
       () => (
-        <LocalizedLink href={href()} locale="en">
+        <LocalizedLink href={href()} locale="pt">
           Docs
         </LocalizedLink>
       ),
       { providers: false }
     )
     const anchor = host.querySelector('a')
-    expect(anchor?.getAttribute('href')).toBe('/en/docs?q=1#section')
+    expect(anchor?.getAttribute('href')).toBe('/pt/docs?q=1#section')
     expect(anchor?.target).toBe('_self')
     setHref('/es/next')
-    await expect.poll(() => anchor?.getAttribute('href')).toBe('/en/next')
+    await expect.poll(() => anchor?.getAttribute('href')).toBe('/pt/next')
   })
 
   it('leaves same-locale links available for SPA navigation and preserves native attributes', () => {
@@ -32,7 +32,7 @@ describe('localizedLink contracts', () => {
       () => (
         <LocalizedLink
           href="/docs"
-          locale="pt"
+          locale="en"
           onClick={click}
           download="manual"
           target="_blank"
@@ -71,17 +71,17 @@ describe('localizedLink contracts', () => {
     const anchors = host.querySelectorAll('a')
     expect(anchors[0]?.getAttribute('href')).toBe('/api/report')
     expect(anchors[0]?.target).toBe('_self')
-    expect(anchors[1]?.getAttribute('href')).toBe('/pt/guide.pdf')
+    expect(anchors[1]?.getAttribute('href')).toBe('/en/guide.pdf')
     expect(anchors[1]?.target).toBe('')
     expect(anchors[2]?.getAttribute('href')).toBe('#section')
   })
 
   it('resolves relative hrefs with Router location and accepts typed paths', async () => {
     const Router = createRouter({
-      history: memoryHistory('/pt/docs/start'),
+      history: memoryHistory('/en/docs/start'),
       routes: [
         {
-          path: '/pt/docs/start',
+          path: '/en/docs/start',
           component: () => (
             <>
               <LocalizedLink href="../next?q=1#part" locale="es">
@@ -100,6 +100,6 @@ describe('localizedLink contracts', () => {
     await expect
       .poll(() => host.querySelector('a')?.getAttribute('href'))
       .toBe('/es/next?q=1#part')
-    expect(host.querySelectorAll('a')[1]?.getAttribute('href')).toBe('/pt')
+    expect(host.querySelectorAll('a')[1]?.getAttribute('href')).toBe('/en')
   })
 })

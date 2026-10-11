@@ -1,7 +1,4 @@
 import { composeMiddleware, getRequestEvent } from '@solidjs/web'
-import { createAPIMatcher } from 'filesystem-routing/api'
-import routes from 'virtual:file-routes'
-import { endpoint } from 'virtual:solid-server-function-handler'
 
 import { isControlResponse } from '@/infra/server/isControlResponse/index.ts'
 import { logServerFailure } from '@/infra/server/logServerFailure/index.ts'
@@ -10,11 +7,11 @@ import {
   PUBLIC_ERROR_MESSAGE
 } from '@/infra/server/publicErrors/index.ts'
 
+import { isPageRequest } from '../requestClassification/index.ts'
 import { applySecurityHeaders, requestNonce } from '../securityHeaders/index.ts'
 import type { ChainEntry, Middleware, Render } from '../types.ts'
 
 type RenderState = { rendered: boolean }
-type RouteRequest = { request: Request; pathname: string }
 type Containment = {
   error: unknown
   request: Request
@@ -23,36 +20,6 @@ type Containment = {
 }
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
-const matchAPIRoute = createAPIMatcher(routes)
-
-function isServerFunctionPath(pathname: string): boolean {
-  return pathname === endpoint || pathname.startsWith(`${endpoint}/`)
-}
-
-function isAPIRoute({ request, pathname }: RouteRequest): boolean {
-  const route = matchAPIRoute(pathname, request.method)
-  return route !== undefined && !route.isPage
-}
-
-// Mesmo critério de HTML do plugin: text/html pelo nome, */* ou nenhum Accept
-// (curl, monitores). São os pedidos que recebem a página quando nada falha.
-function acceptsHtml(request: Request): boolean {
-  const accept = request.headers.get('accept')
-  return !accept || accept.includes('text/html') || accept.includes('*/*')
-}
-
-// Só uma navegação de página recebe a página de erro do app. Chamar o render
-// de novo no endpoint de server functions executaria a função sem os
-// middlewares que falharam; rotas de API esperam outro formato.
-function isPageRequest(request: Request): boolean {
-  const { pathname } = new URL(request.url)
-  return (
-    (request.method === 'GET' || request.method === 'HEAD') &&
-    acceptsHtml(request) &&
-    !isServerFunctionPath(pathname) &&
-    !isAPIRoute({ request, pathname })
-  )
-}
 
 function publicTextFailure(): Response {
   return applySecurityHeaders({

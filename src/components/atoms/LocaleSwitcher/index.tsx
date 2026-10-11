@@ -13,19 +13,15 @@ import { localizeHref } from '@/i18n/urls/index.ts'
 
 import { Button } from '../Button/index.tsx'
 import { DropdownMenu } from '../DropdownMenu/index.tsx'
+import { LOCALE_NAMES } from './constants.ts'
 
 import S from './styles.module.css'
 
 export function LocaleSwitcher() {
   const location = useLocation()
-  const labels = {
-    pt: m.localeSwitcher_pt(),
-    en: m.localeSwitcher_en(),
-    es: m.localeSwitcher_es()
-  } satisfies Record<Locale, string>
   const languages = locales.map(locale => ({
     value: locale,
-    label: labels[locale]
+    label: LOCALE_NAMES[locale]
   }))
   return (
     <>

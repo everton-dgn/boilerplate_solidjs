@@ -28,7 +28,7 @@ describe('locale navigation guard', () => {
       return <output>{location.pathname}</output>
     }
     const Router = createRouter({
-      history: memoryHistory('/pt/start'),
+      history: memoryHistory('/en/start'),
       routes: [{ path: '*all', component: Page }]
     })
     const host = renderComponent(
@@ -42,21 +42,21 @@ describe('locale navigation guard', () => {
       ),
       { providers: false }
     )
-    await expect.poll(() => host.textContent).toBe('/pt/start')
+    await expect.poll(() => host.textContent).toBe('/en/start')
     assert(navigate)
     navigate('/es/destination?q=1#part', { replace: true })
     expect(replace).toHaveBeenCalledWith(
       `${globalThis.location.origin}/es/destination?q=1#part`
     )
-    navigate('/en/destination?q=2#part')
+    navigate('/pt/destination?q=2#part')
     expect(assign).toHaveBeenCalledWith(
-      `${globalThis.location.origin}/en/destination?q=2#part`
+      `${globalThis.location.origin}/pt/destination?q=2#part`
     )
-    expect(host.textContent).toBe('/pt/start')
+    expect(host.textContent).toBe('/en/start')
   })
 
   it('keeps same-locale navigation, state and back/forward in the Router', async () => {
-    const history = memoryHistory('/pt/start')
+    const history = memoryHistory('/en/start')
     let navigate: ReturnType<typeof useNavigate> | undefined
     function Page() {
       navigate = useNavigate()
@@ -84,16 +84,16 @@ describe('locale navigation guard', () => {
       ),
       { providers: false }
     )
-    await expect.poll(() => host.textContent).toBe('/pt/start')
+    await expect.poll(() => host.textContent).toBe('/en/start')
     assert(navigate)
-    navigate('/pt/next?q=1#part', { state: { marker: 'kept' } })
-    await expect.poll(() => host.textContent).toBe('/pt/next?q=1#part')
+    navigate('/en/next?q=1#part', { state: { marker: 'kept' } })
+    await expect.poll(() => host.textContent).toBe('/en/next?q=1#part')
     expect(host.querySelector('output')?.dataset.state).toBe(
       '{"marker":"kept"}'
     )
     history.back()
-    await expect.poll(() => host.textContent).toBe('/pt/start')
+    await expect.poll(() => host.textContent).toBe('/en/start')
     history.forward()
-    await expect.poll(() => host.textContent).toBe('/pt/next?q=1#part')
+    await expect.poll(() => host.textContent).toBe('/en/next?q=1#part')
   })
 })
