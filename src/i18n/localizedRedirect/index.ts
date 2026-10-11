@@ -15,8 +15,8 @@ type LocalizedRedirectOptions = ResponseHelperInit & {
   localize?: boolean
 }
 
-/** Returns Solid's Response unchanged; callers may return or throw it as usual.
- * The default locale comes from Paraglide's request scope (including Accept-Language).
+/** Retorna a Response do Solid sem alterações; quem chama pode retorná-la ou lançá-la como de costume.
+ * O idioma padrão vem do contexto da requisição do Paraglide (incluindo Accept-Language).
  */
 export function localizedRedirect({
   href,

@@ -5,7 +5,7 @@ import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 const REDIRECT = 302
 const OK = 200
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
+// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const [kind, destination] of [
   ['query', '/pt/i18n-redirect?saved=1'],
   ['parent', '/pt/next'],
@@ -29,7 +29,7 @@ for (const [kind, destination] of [
 const STREAM_REDIRECT =
   /<script nonce="(?<nonce>[^"]+)">window\.location="\/es\/i18n-redirect\?from=query#target"<\/script>/u
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
+// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const source of ['action', 'query']) {
   test(`${source} redirects across locales load a new document with matching messages`, async ({
     page
@@ -96,7 +96,7 @@ test('back and forward across locale history entries reload the selected documen
   await expect(
     page.getByRole('button', { name: 'Selecionar tema' })
   ).toBeEnabled()
-  // Simulate existing same-document entries from a previous integration.
+  // Simula entradas de uma integração anterior no histórico do mesmo documento.
   await page.evaluate(() => {
     globalThis.history.pushState(
       { marker: 'es' },

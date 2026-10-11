@@ -27,7 +27,7 @@ export function delocalizePathname(pathname: string): string {
   return deLocalizeUrl(new URL(pathname, LOCAL_ORIGIN)).pathname
 }
 
-/** Relative page URLs require a current location; endpoints opt out explicitly. */
+/** URLs relativas de página precisam da localização atual; endpoints desativam a localização explicitamente. */
 export function resolveLocalizedHref({
   href,
   locale,

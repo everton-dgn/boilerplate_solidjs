@@ -14,12 +14,12 @@ describe('locale navigation guard', () => {
     const replace = vi
       .spyOn(globalThis.location, 'replace')
       .mockImplementation(() => {
-        /* Stay in the test document. */
+        /* Permanece no documento do teste. */
       })
     const assign = vi
       .spyOn(globalThis.location, 'assign')
       .mockImplementation(() => {
-        /* Stay in the test document. */
+        /* Permanece no documento do teste. */
       })
     let navigate: ReturnType<typeof useNavigate> | undefined
     function Page() {

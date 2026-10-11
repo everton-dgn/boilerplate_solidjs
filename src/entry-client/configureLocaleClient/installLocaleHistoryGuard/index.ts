@@ -1,6 +1,6 @@
 import { extractLocaleFromUrl, getLocale } from '@/paraglide/runtime.js'
 
-/** Install before mounting the Router: Window target listeners run in registration order. */
+/** Instale antes de montar o Router: os ouvintes no alvo Window executam na ordem de registro. */
 export function installLocaleHistoryGuard(
   reload: () => void = () => globalThis.location.reload()
 ): () => void {
@@ -8,7 +8,7 @@ export function installLocaleHistoryGuard(
   function onPopState(event: PopStateEvent): void {
     const locale = extractLocaleFromUrl(globalThis.location.href)
     if (locale === undefined || locale === documentLocale) return
-    // Keep the entry already selected by the browser, including its state/index.
+    // Preserva a entrada já selecionada pelo navegador, incluindo seu estado e índice.
     event.stopImmediatePropagation()
     reload()
   }

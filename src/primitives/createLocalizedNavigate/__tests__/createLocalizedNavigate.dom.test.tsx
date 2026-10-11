@@ -78,12 +78,12 @@ describe('createLocalizedNavigate contracts', () => {
     const assign = vi
       .spyOn(globalThis.location, 'assign')
       .mockImplementation(() => {
-        /* Keep this test in its document. */
+        /* Mantém este teste no próprio documento. */
       })
     const replace = vi
       .spyOn(globalThis.location, 'replace')
       .mockImplementation(() => {
-        /* Keep this test in its document. */
+        /* Mantém este teste no próprio documento. */
       })
     let navigate: ReturnType<typeof createLocalizedNavigate> | undefined
     function Page() {

@@ -11,7 +11,7 @@ type LocalizedLinkProps = Omit<
 > & {
   href: string | TypedPath
   locale?: Locale
-  /** Disable localization and SPA interception for endpoints and assets. */
+  /** Desativa a localização e a interceptação da SPA para endpoints e arquivos estáticos. */
   localize?: boolean
 }
 
@@ -19,12 +19,12 @@ function optionalLocation() {
   try {
     return useLocation()
   } catch {
-    // Like the Router's optional context lookup, absence is valid here.
+    // Como na consulta opcional de contexto do Router, a ausência é válida aqui.
     return null
   }
 }
 
-/** Root-relative links work without a Router, including the root error fallback. */
+/** Links relativos à raiz funcionam sem Router, inclusive na tela de erro da raiz. */
 export function LocalizedLink(props: LocalizedLinkProps) {
   const location = optionalLocation()
   const nativeProps = omit(

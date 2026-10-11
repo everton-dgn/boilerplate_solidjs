@@ -19,7 +19,7 @@ describe('document locale history guard in a real browser', () => {
     const stopGuard = installLocaleHistoryGuard(() => {
       order.push('reload')
     })
-    // Default history installs the real Router popstate listener after ours.
+    // O histórico padrão instala o ouvinte real de popstate do Router depois do nosso.
     const Router = createRouter({ routes: [{ path: '*all', component: Page }] })
     const host = document.createElement('div')
     document.body.append(host)
@@ -69,8 +69,8 @@ describe('document locale history guard in a real browser', () => {
       length,
       rendered: '/pt/start'
     })
-    // A rollback would have moved away from the Spanish entry; forward must
-    // select precisely the Portuguese entry without creating another entry.
+    // Uma reversão teria saído da entrada em espanhol; avançar deve selecionar
+    // exatamente a entrada em português sem criar outra entrada.
     globalThis.history.forward()
     await expect.poll(() => host.textContent).toBe('/pt/end')
     expect({

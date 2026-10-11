@@ -17,7 +17,7 @@ describe('locale guard with Router response processing', () => {
     const replace = vi
       .spyOn(globalThis.location, 'replace')
       .mockImplementation(() => {
-        /* Observe without leaving the test. */
+        /* Observa a chamada sem sair do teste. */
       })
     const submit = action(
       () =>
@@ -61,7 +61,7 @@ describe('locale guard with Router response processing', () => {
     const replace = vi
       .spyOn(globalThis.location, 'replace')
       .mockImplementation(() => {
-        /* Observe without leaving the test. */
+        /* Observa a chamada sem sair do teste. */
       })
     const read = query(
       () =>

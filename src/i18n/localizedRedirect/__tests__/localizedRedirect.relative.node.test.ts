@@ -16,7 +16,7 @@ type RedirectRequest = {
 const ORIGIN = 'https://example.com'
 const TEMPORARY_REDIRECT = 307
 
-// Exercise the configured virtual endpoint instead of assuming /_server.
+// Exercita o endpoint virtual configurado em vez de presumir /_server.
 vi.mock(import('virtual:solid-server-function-handler'), () => ({
   endpoint: '/rpc/execute'
 }))
