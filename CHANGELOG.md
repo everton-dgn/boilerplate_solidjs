@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.9.1 - 2026-10-11
+
+### Fixed
+
+- await pending generation when closing dev server (d09afee)
+- run end-to-end suites on isolated runners (2dda458)
+
 ## 1.9.0 - 2026-10-11
 
 ### Added
