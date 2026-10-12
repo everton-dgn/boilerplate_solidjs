@@ -46,6 +46,9 @@
   "trustedDependencies": [
     "lefthook",
   ],
+  "patchedDependencies": {
+    "@voidzero-dev/vite-plus-core@1.1.0": "patches/@voidzero-dev%2Fvite-plus-core@1.1.0.patch",
+  },
   "overrides": {
     "@solidjs/babel-plugin": "2.0.0-rc.14",
     "@solidjs/compiler": "2.0.0-rc.14",
