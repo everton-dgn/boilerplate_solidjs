@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.9.3 - 2026-10-11
+
+### Fixed
+
+- reuse validated source CI for metadata releases (ebfefbe)
+
 ## 1.9.2 - 2026-10-11
 
 ### Fixed
