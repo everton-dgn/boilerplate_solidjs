@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.9.4 - 2026-10-11
+
+### Fixed
+
+- run release tests only for relevant changes (4b34554)
+
 ## 1.9.3 - 2026-10-11
 
 ### Fixed
