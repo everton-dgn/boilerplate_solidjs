@@ -7,7 +7,6 @@ import {
 } from '@paraglide/runtime.js'
 import { useLocation } from '@solidjs/router'
 import { For, NoHydration } from 'solid-js'
-import IconLanguage from '~icons/hugeicons/languages'
 
 import { localizeHref } from '@/i18n/urls/index.ts'
 
@@ -21,7 +20,12 @@ export function LocaleSwitcher() {
   const location = useLocation()
   const languages = locales.map(locale => ({
     value: locale,
-    label: LOCALE_NAMES[locale]
+    label: LOCALE_NAMES[locale],
+    icon: (
+      <span class={S.code} aria-hidden="true">
+        {locale.toUpperCase()}
+      </span>
+    )
   }))
   return (
     <>
@@ -37,7 +41,7 @@ export function LocaleSwitcher() {
             size="icon"
             aria-label={m.localeSwitcher_select()}
           >
-            <IconLanguage />
+            {getLocale().toUpperCase()}
           </Button>
         )}
       />
