@@ -1,19 +1,6 @@
 import path from 'node:path'
 
-type Diagnostic = {
-  node: object
-  message: string
-}
-
-type Context = {
-  cwd: string
-  filename: string
-  report: (diagnostic: Diagnostic) => void
-}
-
-type RuleListeners = {
-  Program: (node: object) => void
-}
+import { defineRule } from 'vite-plus/lint/plugins'
 
 // Suites sem módulo colocalizado declaram os próprios alvos explicitamente.
 const subjects: Record<string, readonly string[]> = {
@@ -75,15 +62,15 @@ export function testFilenameError(file: string): string | undefined {
   return undefined
 }
 
-export const testFilename = {
+export const testFilename = defineRule({
   meta: { type: 'problem', schema: [] },
-  create(context: Context): RuleListeners {
+  create(context) {
     return {
-      Program(node: object): void {
+      Program(node): void {
         const relative = path.relative(context.cwd, context.filename)
         const message = testFilenameError(relative)
         if (message) context.report({ node, message })
       }
     }
   }
-}
+})

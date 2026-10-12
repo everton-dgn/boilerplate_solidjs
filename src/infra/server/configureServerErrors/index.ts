@@ -31,26 +31,12 @@ function isControlSignal(value: unknown): boolean {
 // síncrona, seu retorno vai ao cliente sem nova sanitização e um lançamento
 // aqui faria o runtime registrar o erro do hook.
 function mapServerError(error: unknown): Error | undefined {
-  try {
-    // Sinais de controle seguem a política padrão do runtime.
-    if (isControlSignal(error)) return undefined
-    if (!isPublicError(error)) {
-      logServerFailure({ source: 'server-error', error })
-    }
-    // Sempre um erro novo, mesmo para um público, para descartar campos
-    // adicionados depois da criação.
-    return createPublicError()
-  } catch {
-    // O log é uma tentativa: se o destino continuar falhando, o hook ainda
-    // devolve o erro público em vez de lançar. A segunda tentativa grava só a
-    // linha fixa, sem inspecionar o erro de novo.
-    try {
-      logServerFailure({ source: 'server-error' })
-    } catch {
-      // Sem destino de log disponível.
-    }
-    return createPublicError()
+  if (isControlSignal(error)) return undefined
+  if (!isPublicError(error)) {
+    logServerFailure({ source: 'server-error', error })
   }
+  // Descarta também campos adicionados a um erro público depois da criação.
+  return createPublicError()
 }
 
 // Em desenvolvimento o runtime envia o erro original, e o hook esconderia o

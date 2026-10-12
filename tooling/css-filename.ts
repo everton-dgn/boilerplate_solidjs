@@ -1,18 +1,12 @@
 import path from 'node:path'
 
-type SourceNode = {
-  source?: { value?: unknown }
-}
-type FilenameDiagnostic = {
-  node: SourceNode
-  message: string
-}
-type FilenameContext = {
-  cwd: string
-  filename: string
-  report: (diagnostic: FilenameDiagnostic) => void
-}
-type FilenameListeners = Record<string, (node: SourceNode) => void>
+import { defineRule, type ESTree } from 'vite-plus/lint/plugins'
+
+type CssImportNode =
+  | ESTree.ImportDeclaration
+  | ESTree.ExportNamedDeclaration
+  | ESTree.ExportAllDeclaration
+  | ESTree.ImportExpression
 
 export function cssFilenameError(file: string): string | undefined {
   const normalized = file.split('\\').join('/')
@@ -29,13 +23,13 @@ export function cssFilenameError(file: string): string | undefined {
     : 'Use styles.module.css fora de src/theme/, inclusive nas rotas.'
 }
 
-export const cssFilename = {
+export const cssFilename = defineRule({
   meta: { type: 'problem', schema: [] },
-  create(context: FilenameContext): FilenameListeners {
-    function check(node: SourceNode): void {
-      const value = node.source?.value
-      if (typeof value !== 'string') return
-      const [specifier = ''] = value.split(/[?#]/u)
+  create(context) {
+    function check(node: CssImportNode): void {
+      const { source } = node
+      if (source?.type !== 'Literal' || typeof source.value !== 'string') return
+      const [specifier = ''] = source.value.split(/[?#]/u)
       if (!specifier.endsWith('.css')) return
       const root = context.cwd
       let absolute
@@ -58,4 +52,4 @@ export const cssFilename = {
       ImportExpression: check
     }
   }
-}
+})

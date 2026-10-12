@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import stylelint from 'stylelint'
+import { RuleTester } from 'vite-plus/lint/plugins-dev'
 
 import { cssFilenameError } from '../../css-filename.ts'
 import plugin from '../../css-modules-plugin.ts'
@@ -25,19 +26,37 @@ describe('css filenames', () => {
     }
   })
   it('checks imports, reexports and dynamic imports through the Oxlint rule', () => {
-    const reports: unknown[] = []
-    const listeners = plugin.rules['css-filename'].create({
-      cwd: '/repo',
-      filename: '/repo/src/App.tsx',
-      report: item => reports.push(item)
+    const rule = plugin.rules['css-filename']
+    assert.ok(rule)
+    new RuleTester({
+      cwd: fileURLToPath(new URL('../../../', import.meta.url))
+    }).run('css-filename', rule, {
+      valid: [
+        'import S from "@/routes/styles.module.css"',
+        'import "/src/theme/tokens/zIndex.css"',
+        'import "./routes/styles.module.css"',
+        'import "external/styles.css"',
+        'export { default } from "@/routes/styles.module.css"',
+        'export * from "/src/theme/tokens/zIndex.css"',
+        'void import("@/routes/styles.module.css?inline")',
+        'void import(source)'
+      ].map(code => ({ filename: 'src/App.tsx', code })),
+      invalid: [
+        'import S from "@/routes/home.module.css?inline"',
+        'export { default } from "@/routes/home.module.css"',
+        'export * from "@/routes/home.module.css"',
+        'void import("@/routes/home.module.css")'
+      ].map(code => ({
+        filename: 'src/App.tsx',
+        code,
+        errors: [
+          {
+            message:
+              'Use styles.module.css fora de src/theme/, inclusive nas rotas.'
+          }
+        ]
+      }))
     })
-    for (const listener of Object.values(listeners)) {
-      listener({ source: { value: '@/routes/home.module.css?inline' } })
-      listener({ source: { value: '/src/theme/tokens/zIndex.css' } })
-      listener({ source: { value: './routes/styles.module.css' } })
-      listener({ source: { value: 'external/styles.css' } })
-    }
-    assert.equal(reports.length, Object.keys(listeners).length)
   })
 })
 

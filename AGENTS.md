@@ -303,7 +303,7 @@ release. Add a tool name to select part of the graph. For example, run
 - Preserve `architecture/layer-imports` em `tooling/architecturePolicy/index.ts`.
   `helpers`, `constants`, `@types`, `data` e `infra` não dependem de UI,
   primitives, rotas ou entradas (`App`, `Document`, `entry-server`,
-  `entry-client`, `entry-handler`, `router`, `middleware`).
+  `entry-client`, `router`, `middleware`).
   Primitives globais não dependem de UI, rotas ou entradas; atoms não dependem
   de molecules/organisms, e molecules não dependem de organisms.
 - Produção em `src` não importa testes, fixtures de `src/tests` ou `tooling`.
