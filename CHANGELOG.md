@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.9.6 - 2026-10-12
+
+### Fixed
+
+- use a language icon without a circle (25b1dc5)
+- keep inline CSS module class names consistent (5e28a7f)
+
 ## 1.9.5 - 2026-10-12
 
 ### Fixed
