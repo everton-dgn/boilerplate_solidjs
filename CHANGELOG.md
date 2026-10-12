@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.10.0 - 2026-10-12
+
+### Added
+
+- show the language code in the locale switcher (1dc6a7d)
+
 ## 1.9.6 - 2026-10-12
 
 ### Fixed
