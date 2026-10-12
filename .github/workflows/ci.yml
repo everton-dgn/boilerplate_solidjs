@@ -27,6 +27,7 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.sha }}
+          fetch-depth: 0
 
       - name: Set up project
         id: toolchain
@@ -56,6 +57,17 @@ jobs:
 
       - name: Check formatting and lint
         run: vp run check:ci
+
+      - name: Detect release tooling changes
+        id: release-tests
+        env:
+          RELEASE_TEST_BASE:
+            ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: bun tooling/release/check-changes.ts
+
+      - name: Test release automation on Bun
+        if: steps.release-tests.outputs.should_run == 'true'
+        run: vp run test:release
 
       - name: Run tests with coverage
         run: vp run test:ci
