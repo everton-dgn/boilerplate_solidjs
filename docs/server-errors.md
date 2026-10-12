@@ -128,16 +128,17 @@ foi medido localmente.
 
 ## Log de falhas
 
-`logServerFailure({ source, error })` faz um único `console.error` com uma
-string de várias linhas:
+`logServerFailure({ source, error })` tenta registrar uma string de várias
+linhas em um único argumento de `console.error`:
 
 1. A mensagem fixa da origem, como
    `[middleware] Unexpected failure; private details omitted`. O texto segue
    igual byte a byte, porque o E2E conta as linhas que o contêm.
-2. Só quando `error instanceof Error`, o nome da classe, lido de
-   `Object.getPrototypeOf(error).constructor.name` e gravado apenas se for um
-   identificador simples de até 64 caracteres. Nem `error.name` nem uma
-   propriedade própria `constructor` são usados.
+2. Só quando `error instanceof Error`, o nome da classe, lido uma única vez de
+   `Object.getPrototypeOf(error).constructor.name` e gravado apenas se for uma
+   string com um identificador simples de até 64 caracteres. Outros valores não
+   são convertidos para texto. Nem `error.name` nem uma propriedade própria
+   `constructor` são usados.
 3. Até 10 frames do stack, um por linha.
 
 Os frames só são lidos quando `error.stack` começa pelo cabeçalho que o V8 monta
@@ -169,8 +170,12 @@ repetições aninhadas.
 
 Ficam fora do log a mensagem, o `cause`, as propriedades próprias, `error.name`
 e qualquer dado de um valor que não seja `Error`. Uma falha na inspeção, como um
-getter que lança ou um Proxy hostil, deixa só a linha fixa. A função não lança
-por causa do valor recebido; o próprio `console.error` ainda pode lançar.
+getter que lança ou um Proxy hostil, deixa só a linha fixa. Se montar ou gravar
+a linha falhar, o logger tenta uma única vez registrar apenas a mensagem fixa,
+sem inspecionar o erro novamente. A falha dessa segunda tentativa é descartada.
+O logger é síncrono e não propaga falhas de inspeção, montagem ou acesso ao
+destino. Os consumidores mantêm a resposta pública mesmo sem log disponível. Se
+o destino escrever e depois lançar, a mensagem fixa pode aparecer duas vezes.
 
 Limites conhecidos:
 

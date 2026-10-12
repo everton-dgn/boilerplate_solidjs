@@ -108,11 +108,7 @@ export function protectServerOperation({
     // oxlint-disable-next-line typescript/only-throw-error -- O Solid usa Response/ResponseEnvelope como sinais de controle.
     if (control) throw control
     if (!isPublicError(error)) {
-      try {
-        logServerFailure({ source: 'server-operation', error })
-      } catch {
-        // O log é uma tentativa; o erro público sai mesmo sem destino.
-      }
+      logServerFailure({ source: 'server-operation', error })
     }
     throw createPublicError()
   }

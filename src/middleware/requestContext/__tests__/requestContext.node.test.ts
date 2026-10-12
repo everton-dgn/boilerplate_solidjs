@@ -1,3 +1,4 @@
+import { createRequestEvent } from '@solidjs/web'
 import { provideRequestEvent } from '@solidjs/web/storage'
 
 import { requestContext } from '../index.ts'
@@ -8,11 +9,7 @@ describe('contexto da requisição', () => {
   it('disponibiliza um identificador no contexto antes do próximo handler', async () => {
     const requestId = '12345678-1234-4234-8234-123456789abc'
     vi.spyOn(crypto, 'randomUUID').mockReturnValue(requestId)
-    const event = {
-      request: new Request(TEST_ORIGIN),
-      locals: {} as { requestId?: string },
-      response: { headers: new Headers() }
-    }
+    const event = createRequestEvent(new Request(TEST_ORIGIN))
     const response = new Response()
     const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
       expect(event.locals.requestId).toBe(requestId)
@@ -29,14 +26,7 @@ describe('contexto da requisição', () => {
     // Em produção o servidor instala o armazenamento do contexto antes da
     // primeira requisição. Um escopo vazio faz o mesmo aqui, sem depender da
     // ordem em que os testes rodam.
-    provideRequestEvent(
-      {
-        request: new Request(TEST_ORIGIN),
-        locals: {},
-        response: { headers: new Headers() }
-      },
-      vi.fn()
-    )
+    provideRequestEvent(createRequestEvent(new Request(TEST_ORIGIN)), vi.fn())
     const warn = vi.spyOn(console, 'warn').mockImplementation(vi.fn())
     const response = new Response()
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
