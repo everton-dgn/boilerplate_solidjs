@@ -1,3 +1,4 @@
+import { createRequestEvent, type RequestEvent } from '@solidjs/web'
 import { provideRequestEvent } from '@solidjs/web/storage'
 
 import { isPublicError } from '@/infra/server/publicErrors/index.ts'
@@ -15,12 +16,6 @@ const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
 const ERROR_PAGE_LOG =
   '[error-page] Unexpected failure; private details omitted'
 
-type LocalsEvent = {
-  request: Request
-  locals: { serverFailure?: Error; nonce?: string }
-  response: { headers: Headers }
-}
-
 // Uma cadeia cujo único middleware rejeita com o valor recebido.
 function failingWith(value: unknown) {
   const fail = vi.fn<() => Promise<Response>>().mockRejectedValue(value)
@@ -35,11 +30,11 @@ function renderPage() {
   )
 }
 
-function pageEvent(path = '/'): LocalsEvent {
+function pageEvent(path = '/'): RequestEvent {
   const request = new Request(new URL(path, TEST_ORIGIN), {
     headers: { accept: 'text/html,application/xhtml+xml' }
   })
-  return { request, locals: {}, response: { headers: new Headers() } }
+  return createRequestEvent(request)
 }
 
 // Um redirect que passa na classificação de controle, mas cujos headers falham
@@ -54,12 +49,18 @@ function hostileControl(): Response {
   })
 }
 
+function failLog(): never {
+  throw new Error('PRIVATE_DESTINATION')
+}
+
+function mockProductionLog(): void {
+  // A contenção só vale nos builds de produção; o Vitest roda com DEV.
+  vi.stubEnv('DEV', false)
+  vi.spyOn(console, 'error').mockImplementation(vi.fn())
+}
+
 describe('contenção de falhas do middleware', () => {
-  beforeEach(() => {
-    // A contenção só vale nos builds de produção; o Vitest roda com DEV.
-    vi.stubEnv('DEV', false)
-    vi.spyOn(console, 'error').mockImplementation(vi.fn())
-  })
+  beforeEach(mockProductionLog)
 
   it('preserva a resposta do próximo handler sem registrar log', async () => {
     const response = new Response('conteúdo')
@@ -117,6 +118,10 @@ describe('contenção de falhas do middleware', () => {
 
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
     await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error'], [LOG_MESSAGE]],
+      leaks: []
+    })
   })
 
   it('deixa passar uma Response de controle sem corpo, com os headers de segurança', async () => {
@@ -148,6 +153,10 @@ describe('contenção de falhas do middleware', () => {
     ).rejects.toBe(failure)
     expect(console.error).not.toHaveBeenCalled()
   })
+})
+
+describe('página de erro do middleware', () => {
+  beforeEach(mockProductionLog)
 
   it('renderiza a página de erro do app numa navegação', async () => {
     const event = pageEvent()
@@ -271,6 +280,35 @@ describe('contenção de falhas do middleware', () => {
     })
   })
 
+  it('mantém o 500 público quando o render de erro e os dois logs falham', async () => {
+    const event = pageEvent()
+    const render = vi
+      .fn<() => Promise<Response>>()
+      .mockRejectedValue(new TypeError('PRIVATE_RENDER'))
+    vi.mocked(console.error)
+      .mockImplementationOnce(failLog)
+      .mockImplementationOnce(failLog)
+      .mockImplementationOnce(failLog)
+      .mockImplementationOnce(failLog)
+
+    const response = await provideRequestEvent(event, () =>
+      failingWith(new Error('PRIVATE'))(event.request, render)
+    )
+
+    expect(render).toHaveBeenCalledOnce()
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [
+        [LOG_MESSAGE, 'Error'],
+        [LOG_MESSAGE],
+        [ERROR_PAGE_LOG, 'TypeError'],
+        [ERROR_PAGE_LOG]
+      ],
+      leaks: []
+    })
+  })
+
   it('não renderiza páginas para métodos que não são de navegação', async () => {
     const event = pageEvent()
     const request = new Request(TEST_ORIGIN, {
@@ -346,9 +384,9 @@ describe('cSP nas respostas da contenção', () => {
   // de erro precisa dele no render para que os scripts batam com a CSP.
   it('cria o nonce antes de renderizar a página de erro', async () => {
     const event = pageEvent()
-    let seen: string | undefined
+    let seen: unknown
     const render = vi.fn<() => Promise<Response>>().mockImplementation(() => {
-      seen = event.locals.nonce
+      seen = event.nonce
       return Promise.resolve(
         new Response('<main>Algo deu errado!</main>', {
           headers: { 'content-type': 'text/html; charset=utf-8' }
@@ -360,6 +398,7 @@ describe('cSP nas respostas da contenção', () => {
       failingWith(new Error('PRIVATE'))(event.request, render)
     )
 
+    assert(typeof seen === 'string')
     expect(seen).toMatch(/^[A-Za-z0-9+/]{22}==$/u)
     expect(response.headers.get('content-security-policy')).toContain(
       `script-src 'nonce-${seen}' 'strict-dynamic'`
@@ -368,7 +407,7 @@ describe('cSP nas respostas da contenção', () => {
 
   it('mantém na página de erro o nonce já criado na requisição', async () => {
     const event = pageEvent()
-    event.locals.nonce = 'bm9uY2UtYW50ZXJpb3I='
+    event.nonce = 'bm9uY2UtYW50ZXJpb3I='
 
     const response = await provideRequestEvent(event, () =>
       failingWith(new Error('PRIVATE'))(event.request, renderPage())

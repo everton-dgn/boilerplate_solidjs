@@ -56,8 +56,6 @@ const config = {
     'src/entry-client.tsx!',
     // O runtime gerado importa o polyfill de URLPattern do pacote Paraglide.
     'paraglide/runtime.js!',
-    // Entrada SSR do build, ligada pelo plugin local do vite.config.ts.
-    'src/entry-handler.ts!',
     'src/middleware/index.ts!',
     'src/infra/server/configureServerErrors/index.ts!',
     // API de transporte do boilerplate; o consumidor atual está na fixture E2E.
@@ -83,9 +81,6 @@ const config = {
     '!src/tests/**!',
     '!src/**/*.test.{ts,tsx}!'
   ],
-  vitest: {
-    config: ['vite.config.ts']
-  },
   playwright: {
     config: ['tooling/playwright.ts']
   },

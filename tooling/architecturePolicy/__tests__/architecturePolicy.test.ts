@@ -85,8 +85,8 @@ test('a política distingue dependências permitidas e inversões de camada', ()
         code: 'import App from "./App.tsx"; import Document from "./Document.tsx"; import manifest from "virtual:solid-manifest"'
       },
       {
-        filename: 'src/entry-handler.ts',
-        code: 'import { handleRequest } from "virtual:solid-ssr-handler"; import { createNonce } from "./helpers/createNonce/index.ts"; import middleware from "./middleware/index.ts"'
+        filename: 'src/middleware/index.ts',
+        code: 'import { createAPIHandler } from "filesystem-routing/api"; import { securityHeaders } from "./securityHeaders/index.ts"'
       },
       {
         filename: 'src/helpers/example.ts',
@@ -156,7 +156,7 @@ test('a política distingue dependências permitidas e inversões de camada', ()
       },
       {
         filename: 'src/helpers/example.ts',
-        code: 'import handler from "@/entry-handler.ts"'
+        code: 'import middleware from "@/middleware/index.ts"'
       },
       {
         filename: 'src/components/atoms/Button/index.tsx',

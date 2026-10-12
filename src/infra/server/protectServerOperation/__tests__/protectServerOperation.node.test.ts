@@ -251,6 +251,8 @@ describe('log da proteção de operações', () => {
     vi.mocked(console.error)
       .mockImplementationOnce(logUnavailable)
       .mockImplementationOnce(logUnavailable)
+      .mockImplementationOnce(logUnavailable)
+      .mockImplementationOnce(logUnavailable)
 
     expectPublicFailure(
       thrownValue({ run: () => throwValue(new Error('PRIVATE_SYNC')) })
@@ -263,7 +265,9 @@ describe('log da proteção de operações', () => {
     expect(readLog(console.error)).toStrictEqual({
       heads: [
         [LOG_MESSAGE, 'Error'],
-        [LOG_MESSAGE, 'Error']
+        [LOG_MESSAGE],
+        [LOG_MESSAGE, 'Error'],
+        [LOG_MESSAGE]
       ],
       leaks: []
     })

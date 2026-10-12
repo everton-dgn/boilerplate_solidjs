@@ -1,20 +1,10 @@
+import { definePlugin, defineRule } from 'vite-plus/lint/plugins'
+
 import { cssFilename } from './css-filename.ts'
 import { noExportList } from './noExportList/index.ts'
 import { testFilename } from './test-filename.ts'
 
-type ImportNode = {
-  source: { value: string }
-  specifiers: { type: string; local: { name: string } }[]
-}
-type ImportDiagnostic = {
-  node: ImportNode
-  messageId: string
-}
-type ImportContext = {
-  report: (diagnostic: ImportDiagnostic) => void
-}
-
-const cssModulesImport = {
+const cssModulesImport = defineRule({
   meta: {
     type: 'suggestion',
     schema: [],
@@ -22,9 +12,9 @@ const cssModulesImport = {
       useS: 'Importe CSS Modules como S: import S from "./styles.module.css".'
     }
   },
-  create(context: ImportContext) {
+  create(context) {
     return {
-      ImportDeclaration(node: ImportNode) {
+      ImportDeclaration(node) {
         if (!/\.module\.css(?:[?#].*)?$/u.test(node.source.value)) return
 
         const [specifier] = node.specifiers
@@ -38,9 +28,9 @@ const cssModulesImport = {
       }
     }
   }
-}
+})
 
-const plugin = {
+const plugin = definePlugin({
   meta: { name: 'project' },
   rules: {
     'css-modules-import': cssModulesImport,
@@ -48,6 +38,6 @@ const plugin = {
     'test-filename': testFilename,
     'no-export-list': noExportList
   }
-}
+})
 
 export default plugin

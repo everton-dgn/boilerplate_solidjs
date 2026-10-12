@@ -62,11 +62,13 @@ Limites do hook:
 - Valores primitivos lançados não têm veredito por objeto; o hook roda e
   registra o log a cada vez que o runtime os encontra.
 
-Exceções de middleware não passam pelo hook nem pelo wrapper. Sem tratamento, o
-host responde com um corpo genérico, mas registra a mensagem, o `cause`, as
-propriedades e a stack do erro original. Por isso o export padrão de
+O handler nativo do plugin contém exceções que escapam dos middlewares, chama o
+hook e responde com 500 sem corpo. Ele também aceita uma `Response` ou um
+envelope lançado com corpo, portanto essa contenção não substitui a política de
+dados públicos nem a página de erro do app. O export padrão de
 [`src/middleware/index.ts`](../src/middleware/index.ts) é `createMiddleware()`,
-que entrega a cadeia de produção a `containFailures`. A contenção, em
+que adapta o evento do plugin à cadeia de `Request` do `filesystem-routing` e de
+`composeMiddleware`, entregando essa cadeia a `containFailures`. A contenção, em
 [`src/middleware/containFailures/index.ts`](../src/middleware/containFailures/index.ts),
 compõe a cadeia inteira dentro de si, e uma exceção nos middlewares, nas rotas
 de API ou no handler de páginas vira 500 com os headers de segurança e o log
@@ -87,13 +89,12 @@ middleware na entrada real.
 As respostas da contenção não voltam pelo `securityHeaders`, então a própria
 contenção grava os cabeçalhos de segurança e a Content-Security-Policy com o
 nonce da requisição, lido por
-[`requestNonce`](../src/middleware/securityHeaders/index.ts). No build, o nonce
-já chega em `locals` pela `src/entry-handler.ts`, antes de qualquer middleware.
-Sem ele, uma falha anterior ao `securityHeaders` deixaria a requisição sem
-nonce; a contenção o cria antes de renderizar a página de erro, para que os
-scripts dela e a CSP usem o mesmo valor. Sem evento de requisição, o 500 em
-texto sai com `script-src 'none'`. O desenho da CSP está no guia de
-[cabeçalhos de segurança](security.md).
+[`requestNonce`](../src/middleware/securityHeaders/index.ts), que usa o campo
+nativo `event.nonce`. Uma falha anterior ao `securityHeaders` pode encontrar a
+requisição sem nonce; a contenção o cria antes de renderizar a página de erro,
+para que os scripts dela, o handler do plugin e a CSP usem o mesmo valor. Sem
+evento de requisição, o 500 em texto sai com `script-src 'none'`. O desenho da
+CSP está no guia de [cabeçalhos de segurança](security.md).
 
 Numa navegação (`GET` ou `HEAD` com `accept` de HTML, `*/*` ou sem `accept`, o
 mesmo critério do plugin para servir uma página), o 500 mostra a página de erro
@@ -127,16 +128,17 @@ foi medido localmente.
 
 ## Log de falhas
 
-`logServerFailure({ source, error })` faz um único `console.error` com uma
-string de várias linhas:
+`logServerFailure({ source, error })` tenta registrar uma string de várias
+linhas em um único argumento de `console.error`:
 
 1. A mensagem fixa da origem, como
    `[middleware] Unexpected failure; private details omitted`. O texto segue
    igual byte a byte, porque o E2E conta as linhas que o contêm.
-2. Só quando `error instanceof Error`, o nome da classe, lido de
-   `Object.getPrototypeOf(error).constructor.name` e gravado apenas se for um
-   identificador simples de até 64 caracteres. Nem `error.name` nem uma
-   propriedade própria `constructor` são usados.
+2. Só quando `error instanceof Error`, o nome da classe, lido uma única vez de
+   `Object.getPrototypeOf(error).constructor.name` e gravado apenas se for uma
+   string com um identificador simples de até 64 caracteres. Outros valores não
+   são convertidos para texto. Nem `error.name` nem uma propriedade própria
+   `constructor` são usados.
 3. Até 10 frames do stack, um por linha.
 
 Os frames só são lidos quando `error.stack` começa pelo cabeçalho que o V8 monta
@@ -168,8 +170,12 @@ repetições aninhadas.
 
 Ficam fora do log a mensagem, o `cause`, as propriedades próprias, `error.name`
 e qualquer dado de um valor que não seja `Error`. Uma falha na inspeção, como um
-getter que lança ou um Proxy hostil, deixa só a linha fixa. A função não lança
-por causa do valor recebido; o próprio `console.error` ainda pode lançar.
+getter que lança ou um Proxy hostil, deixa só a linha fixa. Se montar ou gravar
+a linha falhar, o logger tenta uma única vez registrar apenas a mensagem fixa,
+sem inspecionar o erro novamente. A falha dessa segunda tentativa é descartada.
+O logger é síncrono e não propaga falhas de inspeção, montagem ou acesso ao
+destino. Os consumidores mantêm a resposta pública mesmo sem log disponível. Se
+o destino escrever e depois lançar, a mensagem fixa pode aparecer duas vezes.
 
 Limites conhecidos:
 

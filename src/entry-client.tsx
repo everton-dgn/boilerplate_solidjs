@@ -1,17 +1,33 @@
+import { extractLocaleFromUrl } from '@paraglide/runtime.js'
 import { hydrate } from '@solidjs/web'
 
 import App from './App.tsx'
 import Document from './Document.tsx'
 import { configureLocaleClient } from './entry-client/configureLocaleClient/index.ts'
 
-const disposeLocaleClient = configureLocaleClient()
-if (import.meta.hot) import.meta.hot.dispose(disposeLocaleClient)
+const [navigation] = performance.getEntriesByType('navigation')
+const loadedLocale = navigation
+  ? extractLocaleFromUrl(navigation.name)
+  : undefined
+const locale = extractLocaleFromUrl(location.href)
 
-hydrate(
-  () => (
-    <Document>
-      <App />
-    </Document>
-  ),
-  document
-)
+// O histórico pode mudar de idioma enquanto o bundle carrega, antes do guard.
+if (
+  loadedLocale !== undefined &&
+  locale !== undefined &&
+  loadedLocale !== locale
+) {
+  location.reload()
+} else {
+  const disposeLocaleClient = configureLocaleClient()
+  if (import.meta.hot) import.meta.hot.dispose(disposeLocaleClient)
+
+  hydrate(
+    () => (
+      <Document>
+        <App />
+      </Document>
+    ),
+    document
+  )
+}

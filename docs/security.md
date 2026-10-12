@@ -35,15 +35,16 @@ direto em `element.style`, pelo CSSOM, que a CSP não bloqueia.
 ## Nonce e entradas de renderização
 
 O nonce tem 16 bytes de `crypto.getRandomValues` em base64 e é criado a cada
-requisição. No build, [`src/entry-handler.ts`](../src/entry-handler.ts) o cria
-antes da cadeia de middleware e o grava em `locals.nonce`; fora dela,
-[`requestNonce`](../src/middleware/securityHeaders/index.ts) o cria no primeiro
-acesso. O `securityHeaders` lê esse valor antes do render, e a contenção usa o
-mesmo, para que a página de erro e a CSP coincidam. O caminho até os scripts é:
+requisição por [`requestNonce`](../src/middleware/securityHeaders/index.ts), no
+primeiro acesso a `event.nonce`. Esse campo pertence ao contrato nativo do
+plugin do Solid. O `securityHeaders` o preenche antes do render, e a contenção
+também o cria quando uma falha ocorre antes desse middleware, para que a página
+de erro e a CSP coincidam. Um nonce fornecido pelo host é preservado; quando ele
+separa scripts e estilos, a CSP e o `Document` usam o campo `script`. O caminho
+até os scripts é:
 
-- [`src/entry-handler.ts`](../src/entry-handler.ts) passa o nonce ao
-  `handleRequest` do plugin, que o grava no script de um redirect decidido
-  depois do shell.
+- O handler nativo do plugin lê `event.nonce` e o grava no script de um redirect
+  decidido depois do shell.
 - [`src/entry-server.tsx`](../src/entry-server.tsx) passa o nonce ao
   `renderToStream`, que o grava no `HydrationScript`, nos scripts de dados e de
   streaming, no script de título e nos `modulepreload`. Ele também o grava nos
@@ -53,25 +54,21 @@ mesmo, para que a página de erro e a CSP coincidam. O caminho até os scripts �
   `/src/entry-client.tsx`. No build, o handler do plugin troca esse caminho pelo
   asset com hash.
 
-As entradas autorais existem porque as geradas pelo `@solidjs/vite-plugin`
-chamam `renderToStream` só com o manifesto, e o `fetch` que o Nitro usa chama
-`handleRequest(request)` sem opções. O plugin local `project:entry-handler`, no
-`vite.config.ts`, troca no build a entrada SSR do plugin pela
-`src/entry-handler.ts`; o Nitro a lê da config. O tipo publicado de
-`handleRequest` não declara `nonce`, e
-[`src/@types/solid-ssr-handler.d.ts`](../src/@types/solid-ssr-handler.d.ts)
-acrescenta o overload. Com as entradas autorais, o plugin deixa de gerar o
+O Nitro usa a entrada SSR nativa do `@solidjs/vite-plugin`, sem substituição
+local. As entradas autorais de renderização permanecem porque `entry-client.tsx`
+configura o idioma antes de hidratar, e o plugin exige o par cliente/servidor
+quando uma dessas entradas existe. Ambas usam a mesma árvore de `Document` e
+`App`. Com as entradas autorais, o plugin deixa de gerar o
 `DefaultErrorBoundary` de produção e a opção `start.errorBoundary` não tem
 efeito; o `Errored` raiz do `App` continua responsável pela página de erro. Uma
 exceção no próprio `Document` sai síncrona do `renderToStream` e a contenção de
-falhas responde o 500 em texto, com o log fixo. A árvore de `entry-client.tsx`
-precisa ser a mesma de `entry-server.tsx`.
+falhas responde o 500 em texto, com o log fixo.
 
 ## Validação e CSS em streaming
 
-Em desenvolvimento a CSP não é enviada, porque o Vite injeta no `<head>` o
-cliente de HMR e o patch de estilos sem nonce; os demais cabeçalhos valem. A CSP
-só pode ser conferida no build, com `vp run start` ou
+Em desenvolvimento a CSP não é enviada: o HMR usa estilos inline, enquanto a
+política de produção permite apenas folhas externas. Os demais cabeçalhos valem.
+A CSP deve ser conferida no build, com `vp run start` ou
 `vp run test:e2e:production`. Todo script novo no `Document` precisa de
 `nonce={nonce}`.
 

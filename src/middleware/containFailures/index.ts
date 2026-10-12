@@ -47,11 +47,7 @@ async function renderErrorPage(render: Render): Promise<Response> {
       nonce
     })
   } catch (error) {
-    try {
-      logServerFailure({ source: 'error-page', error })
-    } catch {
-      // Sem destino de log disponível.
-    }
+    logServerFailure({ source: 'error-page', error })
     return publicTextFailure()
   }
 }
@@ -70,11 +66,7 @@ async function containedResponse({
       // ou objeto hostil) tornam o controle uma falha.
     }
   }
-  try {
-    logServerFailure({ source: 'middleware', error })
-  } catch {
-    // O log é uma tentativa; a resposta pública sai mesmo sem destino.
-  }
+  logServerFailure({ source: 'middleware', error })
   return isPageRequest(request) && !rendered
     ? renderErrorPage(next)
     : publicTextFailure()

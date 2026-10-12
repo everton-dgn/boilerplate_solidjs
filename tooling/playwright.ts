@@ -62,30 +62,12 @@ const config = defineConfig({
   use: {
     // Não ative bypassCSP: ele desliga a CSP e anula as suítes que conferem
     // violações (Home.csp e FragmentCss).
-    // headless: false,
-    // launchOptions: {
-    //   slowMo: 600,
-    // },
-    // video: 'on',
-    // screenshot: 'only-on-failure',
     baseURL: BASE_URL,
     locale: 'en-US',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure'
   },
   projects: [
-    // {
-    //   name: 'chromium',
-    //   use: { ...devices['Desktop Chrome'] },
-    // },
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
     {
       name: 'chromium',
       use: {
@@ -93,18 +75,6 @@ const config = defineConfig({
         channel: env.CI ? 'chrome' : undefined
       }
     }
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 10'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 17'] },
-    // },
-    // {
-    //   name: 'Mobile Firefox',
-    //   use: { ...devices['Pixel 10'], browserName: 'firefox' },
-    // }
   ],
   webServer: [
     ...(PRODUCTION_ROUTES

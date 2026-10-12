@@ -1,3 +1,4 @@
+import { createRequestEvent, type RequestEvent } from '@solidjs/web'
 import { provideRequestEvent } from '@solidjs/web/storage'
 
 import { readLog } from '@/tests/helpers/readLog/index.ts'
@@ -11,12 +12,6 @@ const HTTP_FOUND = 302
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
-
-type LocalsEvent = {
-  request: Request
-  locals: { serverFailure?: Error; requestId?: string; nonce?: string }
-  response: { headers: Headers }
-}
 
 // O projeto node usa um manifesto vazio. O handler de API real recebe aqui uma
 // rota sintética que responde sem chamar next, como sitemap.xml e robots.txt.
@@ -48,11 +43,11 @@ vi.mock(import('filesystem-routing/api'), async importOriginal => {
   }
 })
 
-function pageEvent(path = '/pt'): LocalsEvent {
+function pageEvent(path = '/pt'): RequestEvent {
   const request = new Request(new URL(path, TEST_ORIGIN), {
     headers: { accept: 'text/html,application/xhtml+xml' }
   })
-  return { request, locals: {}, response: { headers: new Headers() } }
+  return createRequestEvent(request)
 }
 
 describe('export padrão do middleware', () => {
@@ -65,29 +60,25 @@ describe('export padrão do middleware', () => {
   it('compõe a cadeia de produção dentro da contenção', async () => {
     const response = new Response('página')
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
-    provideRequestEvent(pageEvent(), vi.fn())
+    const event = pageEvent('/pt/pagina')
 
-    const request = new Request(new URL('/pt/pagina', TEST_ORIGIN))
-
-    await expect(middleware(request, next)).resolves.toBe(response)
-    expect(next).toHaveBeenCalledOnce()
+    await expect(
+      provideRequestEvent(event, () => middleware(event, next))
+    ).resolves.toBe(response)
+    expect(next).toHaveBeenCalledExactlyOnceWith()
     expect(response.headers.get('x-content-type-options')).toBe('nosniff')
   })
 
   // O E2E injeta falhas pela fábrica; só este teste prova que o export padrão
   // mantém a contenção.
   it('troca uma falha da cadeia por 500 público', async () => {
-    const event: LocalsEvent = {
-      request: new Request(`${TEST_ORIGIN}/pt`),
-      locals: {},
-      response: { headers: new Headers() }
-    }
+    const event = pageEvent()
     const next = vi
       .fn<() => Promise<Response>>()
       .mockRejectedValue(new Error('PRIVATE'))
 
     const response = await provideRequestEvent(event, () =>
-      middleware(event.request, next)
+      middleware(event, next)
     )
 
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
@@ -112,7 +103,7 @@ describe('export padrão do middleware', () => {
       )
 
     const response = await provideRequestEvent(event, () =>
-      middleware(event.request, next)
+      middleware(event, next)
     )
 
     expect(console.error).not.toHaveBeenCalled()
@@ -130,17 +121,13 @@ describe('export padrão do middleware', () => {
   // O retorno cru de fetch() tem headers imutáveis e corpo upstream; a cadeia
   // não o repassa.
   it('troca a resposta crua de fetch() por 500 público', async () => {
-    const event: LocalsEvent = {
-      request: new Request(new URL('/pt/pagina', TEST_ORIGIN)),
-      locals: {},
-      response: { headers: new Headers() }
-    }
+    const event = pageEvent('/pt/pagina')
     const next = vi
       .fn<() => Promise<Response>>()
       .mockReturnValue(fetch('data:text/plain,PRIVATE_UPSTREAM'))
 
     const response = await provideRequestEvent(event, () =>
-      middleware(event.request, next)
+      middleware(event, next)
     )
 
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
@@ -167,14 +154,14 @@ describe('cadeia de produção', () => {
     const next = vi.fn<() => Promise<Response>>()
 
     const response = await provideRequestEvent(event, () =>
-      middleware(event.request, next)
+      middleware(event, next)
     )
 
     expect(next).not.toHaveBeenCalled()
     await expect(response.text()).resolves.toBe('api')
     expect({
       requestId: typeof event.locals.requestId,
-      nonce: typeof event.locals.nonce,
+      nonce: typeof event.nonce,
       nosniff: response.headers.get('x-content-type-options')
     }).toStrictEqual({
       requestId: 'string',
@@ -193,12 +180,12 @@ describe('cadeia de produção', () => {
     const response = new Response('página')
     const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
       expect(event.locals.requestId).toBeDefined()
-      expect(event.locals.nonce).toBeDefined()
+      expect(event.nonce).toBeDefined()
       return Promise.resolve(response)
     })
 
     await expect(
-      provideRequestEvent(event, () => middleware(event.request, next))
+      provideRequestEvent(event, () => middleware(event, next))
     ).resolves.toBe(response)
     expect(next).toHaveBeenCalledOnce()
   })

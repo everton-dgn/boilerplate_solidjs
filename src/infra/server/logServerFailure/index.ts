@@ -40,7 +40,8 @@ function className(error: Error): string | undefined {
   if (typeof prototype !== 'object' || prototype === null) return undefined
   const owner = 'constructor' in prototype ? prototype.constructor : undefined
   if (typeof owner !== 'function') return undefined
-  return CLASS_NAME.test(owner.name) ? owner.name : undefined
+  const name: unknown = Reflect.get(owner, 'name')
+  return typeof name === 'string' && CLASS_NAME.test(name) ? name : undefined
 }
 
 function isFrame(line: string): boolean {
@@ -98,5 +99,14 @@ function errorDetails(error: unknown): string[] {
 }
 
 export function logServerFailure({ source, error }: FailureLog): void {
-  console.error([MESSAGES[source], ...errorDetails(error)].join('\n'))
+  try {
+    console.error([MESSAGES[source], ...errorDetails(error)].join('\n'))
+  } catch {
+    // A segunda tentativa não inspeciona o erro nem usa a falha do destino.
+    try {
+      console.error(MESSAGES[source])
+    } catch {
+      // Sem destino de log disponível.
+    }
+  }
 }

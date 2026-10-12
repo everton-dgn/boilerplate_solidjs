@@ -2,10 +2,12 @@ import {
   hostileValue,
   throwValue
 } from '@/tests/helpers/failureValues/index.ts'
+import { readLog } from '@/tests/helpers/readLog/index.ts'
 
 import { logServerFailure } from '../index.ts'
 
 const MESSAGE = '[middleware] Unexpected failure; private details omitted'
+const LOG_ATTEMPTS = 2
 // Limites do módulo: frames gravados, linhas lidas depois do cabeçalho e
 // tamanho da linha examinada.
 const FRAME_LIMIT = 10
@@ -146,6 +148,75 @@ describe('linha fixa do log de falhas', () => {
   })
 })
 
+describe('falhas do destino de log', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+
+  it('tenta só a linha fixa após uma falha, sem inspecionar o erro novamente', () => {
+    const readStack = vi.fn<() => string>(
+      () => `Error: PRIVATE_MESSAGE\n${PLAIN_FRAME}`
+    )
+    const error = Object.defineProperty(
+      new Error('PRIVATE_MESSAGE', { cause: 'PRIVATE_CAUSE' }),
+      'stack',
+      { get: readStack }
+    )
+    vi.mocked(console.error).mockImplementationOnce(() => {
+      throw new Error('PRIVATE_DESTINATION')
+    })
+
+    expect(() =>
+      logServerFailure({ source: 'middleware', error })
+    ).not.toThrow()
+
+    expect(readStack).toHaveBeenCalledOnce()
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[MESSAGE, 'Error'], [MESSAGE]],
+      leaks: []
+    })
+  })
+
+  it('encerra após duas falhas do destino sem propagá-las', () => {
+    vi.mocked(console.error)
+      .mockImplementationOnce(() => {
+        throw new Error('PRIVATE_FIRST_DESTINATION')
+      })
+      .mockImplementationOnce(() => {
+        throw new Error('PRIVATE_SECOND_DESTINATION')
+      })
+
+    try {
+      expect(() =>
+        logServerFailure({ source: 'middleware', error: new Error('PRIVATE') })
+      ).not.toThrow()
+
+      expect(readLog(console.error)).toStrictEqual({
+        heads: [[MESSAGE, 'Error'], [MESSAGE]],
+        leaks: []
+      })
+    } finally {
+      vi.mocked(console.error).mockReset()
+    }
+  })
+
+  it('contém falhas no próprio acesso ao destino', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(console, 'error')
+    assert(descriptor)
+    const readError = vi.fn<() => never>(() => {
+      throw new Error('PRIVATE_CONSOLE_ACCESS')
+    })
+    Object.defineProperty(console, 'error', {
+      configurable: true,
+      get: readError
+    })
+    try {
+      expect(() => logServerFailure({ source: 'middleware' })).not.toThrow()
+      expect(readError).toHaveBeenCalledTimes(LOG_ATTEMPTS)
+    } finally {
+      Object.defineProperty(console, 'error', descriptor)
+    }
+  })
+})
+
 describe('classe e frames do log de falhas', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 
@@ -210,6 +281,41 @@ describe('classe e frames do log de falhas', () => {
     expect([first, name]).toStrictEqual([MESSAGE, 'TypeError'])
     expect(frame).toMatch(LOCAL_FRAME)
     expect(loggedText()).not.toMatch(/SEGREDO|PRIVATE/u)
+  })
+
+  it('valida e grava a mesma leitura do nome da classe', () => {
+    const Failure = anonymousErrorClass()
+    const error = new Failure('PRIVATE_MESSAGE')
+    const readName = vi
+      .fn<() => unknown>()
+      .mockReturnValueOnce('Error')
+      .mockReturnValue('PRIVATE_CLASS_NAME')
+    Object.defineProperty(Failure, 'name', { get: readName })
+
+    logServerFailure({ source: 'middleware', error })
+
+    expect(readName).toHaveBeenCalledOnce()
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[MESSAGE, 'Error']],
+      leaks: []
+    })
+  })
+
+  it('recusa nomes de classe que dependem de conversão para string', () => {
+    const Failure = anonymousErrorClass()
+    const error = Object.assign(new Failure('PRIVATE_MESSAGE'), {
+      stack: `Error: PRIVATE_MESSAGE\n${PLAIN_FRAME}`
+    })
+    const convert = vi
+      .fn<() => string>()
+      .mockReturnValueOnce('Error')
+      .mockReturnValue('PRIVATE_COERCION')
+    Object.defineProperty(Failure, 'name', { value: { toString: convert } })
+
+    logServerFailure({ source: 'middleware', error })
+
+    expect(convert).not.toHaveBeenCalled()
+    expect(loggedLines()).toStrictEqual([MESSAGE, PLAIN_FRAME])
   })
 
   it.each([

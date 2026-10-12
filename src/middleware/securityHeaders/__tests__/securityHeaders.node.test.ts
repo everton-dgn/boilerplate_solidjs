@@ -1,3 +1,4 @@
+import { createRequestEvent, type RequestEvent } from '@solidjs/web'
 import { provideRequestEvent } from '@solidjs/web/storage'
 
 import { applySecurityHeaders, securityHeaders } from '../index.ts'
@@ -6,12 +7,6 @@ const TEST_ORIGIN = 'http://localhost'
 const HTTP_FOUND = 302
 const NONCE = 'bm9uY2UtZGUtdGVzdGU='
 const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8' }
-
-type NonceEvent = {
-  request: Request
-  locals: { nonce?: string }
-  response: { headers: Headers }
-}
 
 const EXPECTED_HEADERS = {
   'strict-transport-security': 'max-age=63072000; includeSubDomains; preload',
@@ -165,16 +160,12 @@ describe('cabeçalhos de segurança', () => {
     expect(next).toHaveBeenCalledExactlyOnceWith()
   })
 
-  // O render lê o nonce de locals; ele precisa existir quando next() roda.
+  // O render lê o nonce do evento; ele precisa existir quando next() roda.
   it('cria o nonce antes do render e o usa na CSP', async () => {
-    const event: NonceEvent = {
-      request: new Request(TEST_ORIGIN),
-      locals: {},
-      response: { headers: new Headers() }
-    }
-    let seen: string | undefined
+    const event: RequestEvent = createRequestEvent(new Request(TEST_ORIGIN))
+    let seen: unknown
     const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
-      seen = event.locals.nonce
+      seen = event.nonce
       return Promise.resolve(
         new Response('<main>página</main>', {
           headers: { 'content-type': 'text/html; charset=utf-8' }
@@ -186,7 +177,7 @@ describe('cabeçalhos de segurança', () => {
       securityHeaders(event.request, next)
     )
 
-    expect(seen).toBeDefined()
+    assert(typeof seen === 'string')
     expect(response.headers.get('content-security-policy')).toContain(
       `script-src 'nonce-${seen}' 'strict-dynamic'`
     )
