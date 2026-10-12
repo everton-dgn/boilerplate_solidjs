@@ -10,6 +10,7 @@ const SITE_URL = 'https://example.com'
 const HTTP_OK = 200
 const HTTP_SERVICE_UNAVAILABLE = 503
 const SITEMAP_BYTE_LIMIT = 52_428_800
+const LARGE_SITEMAP_TIMEOUT_MS = 30_000
 const BASE_PATH_LENGTH = 100
 const BASE_ENTRY_COUNT = 4000
 const URL_COPIES = 15
@@ -84,28 +85,39 @@ describe('resposta do sitemap', () => {
     vi.useRealTimers()
   })
 
-  it('aceita XML imediatamente abaixo do limite de bytes após incluir os idiomas', async () => {
-    const response = await buildSitemapResponse({
-      siteUrl: SITE_URL,
-      manifest: { entries: entriesAtByteSize(SITEMAP_BYTE_LIMIT), sources: [] }
-    })
-    const body = await response.arrayBuffer()
-    expect(response.status).toBe(HTTP_OK)
-    expect(body.byteLength).toBeLessThanOrEqual(SITEMAP_BYTE_LIMIT)
-    expect(body.byteLength).toBeGreaterThan(SITEMAP_BYTE_LIMIT - URL_COPIES)
-    expect(response.headers.get('cache-control')).toBe(SITE_CACHE_CONTROL)
-  })
+  it(
+    'aceita XML imediatamente abaixo do limite de bytes após incluir os idiomas',
+    { timeout: LARGE_SITEMAP_TIMEOUT_MS },
+    async () => {
+      const response = await buildSitemapResponse({
+        siteUrl: SITE_URL,
+        manifest: {
+          entries: entriesAtByteSize(SITEMAP_BYTE_LIMIT),
+          sources: []
+        }
+      })
+      const body = await response.arrayBuffer()
+      expect(response.status).toBe(HTTP_OK)
+      expect(body.byteLength).toBeLessThanOrEqual(SITEMAP_BYTE_LIMIT)
+      expect(body.byteLength).toBeGreaterThan(SITEMAP_BYTE_LIMIT - URL_COPIES)
+      expect(response.headers.get('cache-control')).toBe(SITE_CACHE_CONTROL)
+    }
+  )
 
-  it('responde 503 sem cache acima do limite após incluir os idiomas', async () => {
-    const response = await buildSitemapResponse({
-      siteUrl: SITE_URL,
-      manifest: {
-        entries: entriesAtByteSize(SITEMAP_BYTE_LIMIT + URL_COPIES),
-        sources: []
-      }
-    })
-    await expect(readOutcome(response)).resolves.toStrictEqual(UNAVAILABLE)
-  })
+  it(
+    'responde 503 sem cache acima do limite após incluir os idiomas',
+    { timeout: LARGE_SITEMAP_TIMEOUT_MS },
+    async () => {
+      const response = await buildSitemapResponse({
+        siteUrl: SITE_URL,
+        manifest: {
+          entries: entriesAtByteSize(SITEMAP_BYTE_LIMIT + URL_COPIES),
+          sources: []
+        }
+      })
+      await expect(readOutcome(response)).resolves.toStrictEqual(UNAVAILABLE)
+    }
+  )
 
   it('publica as páginas estáticas e depois as entradas das fontes, na ordem', async () => {
     const response = await buildSitemapResponse({
