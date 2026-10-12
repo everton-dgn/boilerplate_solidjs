@@ -9,7 +9,8 @@ const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8' }
 
 type NonceEvent = {
   request: Request
-  locals: { nonce?: string }
+  nonce?: string
+  locals: Record<string, never>
   response: { headers: Headers }
 }
 
@@ -165,7 +166,7 @@ describe('cabeçalhos de segurança', () => {
     expect(next).toHaveBeenCalledExactlyOnceWith()
   })
 
-  // O render lê o nonce de locals; ele precisa existir quando next() roda.
+  // O render lê o nonce do evento; ele precisa existir quando next() roda.
   it('cria o nonce antes do render e o usa na CSP', async () => {
     const event: NonceEvent = {
       request: new Request(TEST_ORIGIN),
@@ -174,7 +175,7 @@ describe('cabeçalhos de segurança', () => {
     }
     let seen: string | undefined
     const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
-      seen = event.locals.nonce
+      seen = event.nonce
       return Promise.resolve(
         new Response('<main>página</main>', {
           headers: { 'content-type': 'text/html; charset=utf-8' }

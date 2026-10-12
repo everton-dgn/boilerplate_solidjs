@@ -330,14 +330,13 @@ release. Add a tool name to select part of the graph. For example, run
   atributo `style` no HTML do servidor é bloqueado. Não use a prop `style` em
   JSX renderizado no SSR, pois com valor nulo ela sai como `style=""`; use
   classes. O tema do SSR vai só pela classe `light` ou `dark` do `<html>`.
-- O nonce fica em `locals.nonce`: no build nasce em `src/entry-handler.ts`,
-  que também o passa ao `handleRequest` para o script de um redirect depois do
-  shell; fora dele, `requestNonce` o cria. Todo `<script>` do `Document` recebe
-  `nonce={nonce}`; o `src/entry-server.tsx` repassa o valor ao
-  `renderToStream`, que o grava nos scripts do runtime. Não troque as entradas
-  autorais pelas geradas do plugin: elas renderizam sem nonce. Mantenha o
-  plugin local `project:entry-handler` do `vite.config.ts`, que liga a entrada
-  no build.
+- O nonce fica no campo nativo `event.nonce`, criado por `requestNonce` antes
+  do render e preservado quando o host já o fornece. O handler nativo do plugin
+  o usa nos redirects depois do shell. Todo `<script>` do `Document` recebe
+  `nonce={nonce}` com o valor dos scripts; o `src/entry-server.tsx` repassa
+  `event.nonce` ao `renderToStream`. Preserve o par de entradas autorais:
+  `entry-client.tsx` configura o idioma antes da hidratação, e o plugin exige
+  uma entrada de servidor correspondente.
 - Mantenha a mesma árvore em `src/entry-server.tsx` e `src/entry-client.tsx`.
 - Só respostas `text/html` recebem o nonce na CSP; as demais saem com
   `script-src 'none'`.
@@ -345,8 +344,9 @@ release. Add a tool name to select part of the graph. For example, run
   assíncrono de um `Loading` resolve. Preserve a regressão `FragmentCss`:
   template antes da folha, liberação por script com nonce, renderização
   estilizada e ausência de violações de CSP, inclusive com a CSS em cache.
-- Em desenvolvimento a CSP não é enviada, porque o Vite injeta scripts sem
-  nonce. Confira mudanças de CSP com `vp run test:e2e:production`.
+- Em desenvolvimento a CSP não é enviada: o HMR usa estilos inline, que a
+  política de produção bloqueia. Confira mudanças de CSP com
+  `vp run test:e2e:production`.
 
 ## Erros no servidor e chamadas de backend
 

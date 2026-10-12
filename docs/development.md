@@ -48,11 +48,12 @@ local.
 ## Build e deploy
 
 O Nitro usa `preset: 'vercel'` no `vite.config.ts` e gera a função SSR e os
-estáticos em `.vercel/output/`. A entrada SSR do build é a
-`src/entry-handler.ts`, que chama o handler do plugin do Solid com o nonce da
-requisição; o handler renderiza pelas entradas autorais `src/entry-server.tsx` e
-`src/entry-client.tsx`. As requisições de server functions usam a integração
-nativa entre Solid e Nitro/srvx.
+estáticos em `.vercel/output/`. A entrada SSR do build é o handler nativo do
+plugin do Solid, que lê o nonce de `event.nonce` após a cadeia de middleware.
+Ele renderiza pelas entradas autorais `src/entry-server.tsx` e
+`src/entry-client.tsx`, mantidas em par para configurar o idioma antes da
+hidratação. As requisições de server functions usam a integração nativa entre
+Solid e Nitro/srvx.
 
 Para gerar o artefato da Vercel:
 

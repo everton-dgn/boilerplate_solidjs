@@ -19,8 +19,10 @@ export default function Document(props: ParentProps) {
   const cookieHeader = isServer
     ? (event?.request.headers.get('cookie') ?? null)
     : undefined
-  // O navegador oculta o nonce após validar o script; no cliente ele não está em locals.
-  const nonce = event?.locals.nonce
+  // O navegador oculta o nonce após validar o script; no cliente não há evento de requisição.
+  const scriptNonce =
+    typeof event?.nonce === 'string' ? event.nonce : event?.nonce?.script
+  const nonce = scriptNonce === false ? undefined : scriptNonce
   const theme = readTheme(cookieHeader) ?? DEFAULT_THEME
   const explicitTheme = theme === 'system' ? undefined : theme
 

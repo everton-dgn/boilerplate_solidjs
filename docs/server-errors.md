@@ -62,11 +62,13 @@ Limites do hook:
 - Valores primitivos lançados não têm veredito por objeto; o hook roda e
   registra o log a cada vez que o runtime os encontra.
 
-Exceções de middleware não passam pelo hook nem pelo wrapper. Sem tratamento, o
-host responde com um corpo genérico, mas registra a mensagem, o `cause`, as
-propriedades e a stack do erro original. Por isso o export padrão de
+O handler nativo do plugin contém exceções que escapam dos middlewares, chama o
+hook e responde com 500 sem corpo. Ele também aceita uma `Response` ou um
+envelope lançado com corpo, portanto essa contenção não substitui a política de
+dados públicos nem a página de erro do app. O export padrão de
 [`src/middleware/index.ts`](../src/middleware/index.ts) é `createMiddleware()`,
-que entrega a cadeia de produção a `containFailures`. A contenção, em
+que adapta o evento do plugin à cadeia de `Request` do `filesystem-routing` e de
+`composeMiddleware`, entregando essa cadeia a `containFailures`. A contenção, em
 [`src/middleware/containFailures/index.ts`](../src/middleware/containFailures/index.ts),
 compõe a cadeia inteira dentro de si, e uma exceção nos middlewares, nas rotas
 de API ou no handler de páginas vira 500 com os headers de segurança e o log
@@ -87,13 +89,12 @@ middleware na entrada real.
 As respostas da contenção não voltam pelo `securityHeaders`, então a própria
 contenção grava os cabeçalhos de segurança e a Content-Security-Policy com o
 nonce da requisição, lido por
-[`requestNonce`](../src/middleware/securityHeaders/index.ts). No build, o nonce
-já chega em `locals` pela `src/entry-handler.ts`, antes de qualquer middleware.
-Sem ele, uma falha anterior ao `securityHeaders` deixaria a requisição sem
-nonce; a contenção o cria antes de renderizar a página de erro, para que os
-scripts dela e a CSP usem o mesmo valor. Sem evento de requisição, o 500 em
-texto sai com `script-src 'none'`. O desenho da CSP está no guia de
-[cabeçalhos de segurança](security.md).
+[`requestNonce`](../src/middleware/securityHeaders/index.ts), que usa o campo
+nativo `event.nonce`. Uma falha anterior ao `securityHeaders` pode encontrar a
+requisição sem nonce; a contenção o cria antes de renderizar a página de erro,
+para que os scripts dela, o handler do plugin e a CSP usem o mesmo valor. Sem
+evento de requisição, o 500 em texto sai com `script-src 'none'`. O desenho da
+CSP está no guia de [cabeçalhos de segurança](security.md).
 
 Numa navegação (`GET` ou `HEAD` com `accept` de HTML, `*/*` ou sem `accept`, o
 mesmo critério do plugin para servir uma página), o 500 mostra a página de erro

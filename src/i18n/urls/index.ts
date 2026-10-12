@@ -2,7 +2,7 @@ import {
   deLocalizeUrl,
   getLocale,
   type Locale,
-  localizeUrl
+  localizeHref as localizeParaglideHref
 } from '@paraglide/runtime.js'
 
 type LocalizeHrefOptions = { href: string; locale?: Locale }
@@ -18,13 +18,9 @@ export function isAbsoluteHref(href: string): boolean {
   return /^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(href)
 }
 
-export function localizeHref({
-  href,
-  locale = getLocale()
-}: LocalizeHrefOptions): string {
+export function localizeHref({ href, locale }: LocalizeHrefOptions): string {
   if (!href.startsWith('/') || href.startsWith('//')) return href
-  const url = localizeUrl(new URL(href, LOCAL_ORIGIN), { locale })
-  return `${url.pathname}${url.search}${url.hash}`
+  return localizeParaglideHref(href, { locale })
 }
 
 export function delocalizePathname(pathname: string): string {

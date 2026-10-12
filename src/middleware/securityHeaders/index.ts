@@ -1,12 +1,17 @@
 import { getRequestEvent } from '@solidjs/web'
 
-import { createNonce } from '@/helpers/createNonce/index.ts'
-
 import type { Next } from '../types.ts'
 import { CSP_DIRECTIVES, SECURITY_HEADERS } from './constants.ts'
 
 type SecurityHeadersUpdate = { response: Response; nonce: string | undefined }
 type HeaderUpdate = { response: Response; headers: Record<string, string> }
+
+const NONCE_BYTES = 16
+
+function createNonce(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(NONCE_BYTES))
+  return btoa(String.fromCodePoint(...bytes))
+}
 
 // Com o nonce, só os scripts que o trazem rodam, e 'strict-dynamic' libera os
 // módulos que eles carregam. Sem nonce, nenhum script roda.
@@ -45,11 +50,13 @@ function withHeaders({ response, headers }: HeaderUpdate): Response {
 export function requestNonce(): string | undefined {
   const event = getRequestEvent()
   if (!event) return undefined
-  event.locals.nonce ??= createNonce()
-  return event.locals.nonce
+  event.nonce ??= createNonce()
+  const nonce =
+    typeof event.nonce === 'string' ? event.nonce : event.nonce.script
+  return nonce === false ? undefined : nonce
 }
 
-// O Vite injeta scripts sem nonce; a CSP só é enviada em produção.
+// O desenvolvimento usa estilos inline do HMR; a política de produção só permite folhas externas.
 export function applySecurityHeaders({
   response,
   nonce
@@ -67,7 +74,7 @@ export function applySecurityHeaders({
   })
 }
 
-// O nonce nasce antes de next(): o render o lê de locals, e a CSP da resposta
+// O nonce nasce antes de next(): o render o lê do evento, e a CSP da resposta
 // leva o mesmo valor.
 export async function securityHeaders(
   _request: Request,

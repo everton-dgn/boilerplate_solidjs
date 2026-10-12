@@ -1,7 +1,7 @@
 import { env, loadEnvFile } from 'node:process'
 import { fileURLToPath } from 'node:url'
 
-import { defineConfig, lazyPlugins, loadEnv, type Plugin } from 'vite-plus'
+import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 import packageJson from './package.json'
@@ -71,26 +71,6 @@ const componentPlugins = () =>
     ]
   })
 
-// No build, troca a entrada SSR que o @solidjs/vite-plugin declara (o fetch
-// padrão, sem nonce) pela src/entry-handler.ts. Fica depois do plugin do Solid,
-// para sobrescrever o input dele, e antes do Nitro, que lê a entrada da config.
-// O plugin do Solid declara a entrada em rollupOptions, mas o Vite trata esse
-// campo como alias de rolldownOptions ao mesclar a config: o index daqui
-// sobrescreve o dele e é o que o Nitro encontra ao ler rollupOptions.
-const entryHandler = {
-  name: 'project:entry-handler',
-  apply: 'build',
-  config: () => ({
-    environments: {
-      ssr: {
-        build: {
-          rolldownOptions: { input: { index: './src/entry-handler.ts' } }
-        }
-      }
-    }
-  })
-} satisfies Plugin
-
 const appPlugins = (mode: string) =>
   lazyPlugins(async () => {
     const modules = await loadPluginModules()
@@ -109,7 +89,6 @@ const appPlugins = (mode: string) =>
           configure: './src/infra/server/configureServerErrors/index.ts'
         }
       }),
-      entryHandler,
       modules.fileRoutes(
         mode === 'e2e'
           ? { dir: 'src/tests/fixtures/e2e/routes', httpMethods: true }
@@ -323,7 +302,6 @@ export default defineConfig(({ mode }) => {
           'src/Document.tsx',
           'src/entry-server.tsx',
           'src/entry-client.tsx',
-          'src/entry-handler.ts',
           'src/router.ts'
         ]
       },
@@ -372,9 +350,6 @@ export default defineConfig(({ mode }) => {
           css,
           resolve,
           plugins: componentPlugins(),
-          optimizeDeps: {
-            include: ['@solidjs/web/server-functions']
-          },
           test: {
             css: true,
             name: { label: 'browser', color: 'yellow' },

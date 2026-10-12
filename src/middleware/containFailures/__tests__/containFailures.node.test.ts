@@ -17,7 +17,8 @@ const ERROR_PAGE_LOG =
 
 type LocalsEvent = {
   request: Request
-  locals: { serverFailure?: Error; nonce?: string }
+  nonce?: string
+  locals: { serverFailure?: Error }
   response: { headers: Headers }
 }
 
@@ -348,7 +349,7 @@ describe('cSP nas respostas da contenção', () => {
     const event = pageEvent()
     let seen: string | undefined
     const render = vi.fn<() => Promise<Response>>().mockImplementation(() => {
-      seen = event.locals.nonce
+      seen = event.nonce
       return Promise.resolve(
         new Response('<main>Algo deu errado!</main>', {
           headers: { 'content-type': 'text/html; charset=utf-8' }
@@ -368,7 +369,7 @@ describe('cSP nas respostas da contenção', () => {
 
   it('mantém na página de erro o nonce já criado na requisição', async () => {
     const event = pageEvent()
-    event.locals.nonce = 'bm9uY2UtYW50ZXJpb3I='
+    event.nonce = 'bm9uY2UtYW50ZXJpb3I='
 
     const response = await provideRequestEvent(event, () =>
       failingWith(new Error('PRIVATE'))(event.request, renderPage())

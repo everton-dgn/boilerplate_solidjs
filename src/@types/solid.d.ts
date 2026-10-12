@@ -5,7 +5,6 @@ declare module '@solidjs/web' {
     requestId?: string
     // Base de página validada pelo middleware; ausente em RPC sem Referer seguro.
     localizedPageBase?: string
-    nonce?: string
     serverFailure?: Error
   }
 }
