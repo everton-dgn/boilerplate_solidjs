@@ -238,24 +238,36 @@ for (const { header, locale } of [
   })
 }
 
-test('isolates concurrent SSR requests across all locales', async ({
+test('isolates concurrent HTML and Markdown requests across all locales', async ({
   request
 }) => {
+  const formats = ['text/html', 'text/markdown']
   const results = await Promise.all(
     Array.from({ length: REQUESTS }, async (_, index) => {
       const language = LANGUAGES[index % LANGUAGES.length]
-      if (!language) throw new Error('Missing test language')
-      const response = await request.get(`/${language.locale}`)
-      return { language, html: await response.text() }
+      const format =
+        formats[Math.floor(index / LANGUAGES.length) % formats.length]
+      if (!language || !format) throw new Error('Missing test request')
+      const response = await request.get(`/${language.locale}`, {
+        headers: { accept: format }
+      })
+      expect(response.status()).toBe(HTTP_OK)
+      expect(response.headers()['content-type']).toContain(format)
+      expect(response.headers()['content-language']).toBe(language.locale)
+      return { language, format, body: await response.text() }
     })
   )
-  for (const { language, html } of results) {
-    expect(html).toContain(`lang="${language.tag}"`)
-    expect(html).toContain(language.title)
+  for (const { language, format, body } of results) {
+    if (format === 'text/html') {
+      expect(body).toContain(`lang="${language.tag}"`)
+    } else {
+      expect(body.split('\n')[0]).toBe(`# ${language.title}`)
+    }
+    expect(body).toContain(language.title)
     for (const other of LANGUAGES.filter(
       item => item.locale !== language.locale
     )) {
-      expect(html).not.toContain(other.title)
+      expect(body).not.toContain(other.title)
     }
   }
 })

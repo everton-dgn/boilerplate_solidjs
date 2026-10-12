@@ -1,5 +1,5 @@
+import type { SitePage } from '@/@types/site-page.ts'
 import { SiteContent } from '@/components/molecules/SiteContent/index.tsx'
-import type { SitePage } from '@/data/readSitePage/types.ts'
 
 import S from './styles.module.css'
 

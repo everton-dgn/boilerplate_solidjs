@@ -2,15 +2,41 @@ import { m } from '@paraglide/messages.js'
 import type { RouteDefinition } from '@solidjs/router'
 import SolidLogo from '~icons/my-images/solid'
 
+import type { SitePage } from '@/@types/site-page.ts'
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
 import { SiteContent } from '@/components/molecules/SiteContent/index.tsx'
-import { readSitePage } from '@/data/readSitePage/index.ts'
+import { SITE } from '@/constants/site.ts'
+import { readPageLinks, readSourceLinks } from '@/helpers/siteLinks/index.ts'
 
 import S from './styles.module.css'
+
+function readContent(): SitePage {
+  return {
+    title: m.home_title(),
+    description: SITE.description,
+    intro: m.home_description({
+      framework: 'SolidJS 2',
+      toolchain: 'Vite+',
+      language: 'TypeScript'
+    }),
+    sections: [
+      {
+        title: m.home_featuresTitle(),
+        paragraphs: [m.home_features()]
+      },
+      {
+        title: m.home_usageTitle(),
+        paragraphs: [m.home_usage()]
+      }
+    ],
+    links: [...readPageLinks(), ...readSourceLinks()]
+  }
+}
 
 export const route = {
   info: {
     llms: true,
+    content: readContent,
     seo: {
       get title() {
         return m.home_seoTitle()
@@ -28,9 +54,9 @@ export default function Home() {
         <section class={S.hero}>
           <PageBadge>SolidJS Boilerplate</PageBadge>
 
-          <h1 class={S.title}>{readSitePage('/').title}</h1>
+          <h1 class={S.title}>{readContent().title}</h1>
 
-          <p class={S.description}>{readSitePage('/').intro}</p>
+          <p class={S.description}>{readContent().intro}</p>
 
           <div class={S.logos}>
             <SolidLogo class={S.logo} />
@@ -39,7 +65,7 @@ export default function Home() {
           <p class={S.subtitle}>SolidJS 2 · Vite+ · TypeScript 7</p>
         </section>
       </div>
-      <SiteContent page={readSitePage('/')} />
+      <SiteContent page={readContent()} />
     </main>
   )
 }

@@ -3,6 +3,8 @@ import { getLocale } from '@paraglide/runtime.js'
 
 import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
 
+const REPOSITORY_URL = 'https://github.com/everton-dgn/boilerplate_solidjs'
+
 export const SITE = {
   title: 'SolidJS Boilerplate',
   get description(): string {
@@ -25,8 +27,9 @@ export const SITE = {
     return LOCALE_TAGS[getLocale()]
   },
   url: import.meta.env.VITE_SITE_URL,
+  repositoryUrl: REPOSITORY_URL,
   socialLinks: [
-    'https://github.com/everton-dgn/boilerplate_solidjs',
+    REPOSITORY_URL,
     'https://x.com/toffanettodev',
     'https://www.linkedin.com/in/everton-toffanetto/',
     'https://www.youtube.com/@toffanettodev'

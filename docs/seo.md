@@ -227,15 +227,22 @@ do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
 
 ## Leitura por agentes
 
-A home e as páginas `/about`, `/contact` e `/privacy` têm conteúdo autoral em
-`src/data/readSitePage/`, consumido pelas rotas HTML e pelo middleware
-`markdownContent`. Cada página mantém seus catálogos `i18n/{pt,en,es}.json` na
-própria pasta de rota, com IDs prefixados por `home_`, `about_`, `contact_` ou
-`privacy_`. O catálogo de `readSitePage` contém apenas os rótulos de links
-comuns às páginas. As mensagens são lidas dentro do contexto de idioma da
-requisição. O conteúdo principal é visível no HTML inicial, inclusive sem
-JavaScript. A home mantém sua abertura e acrescenta seções de recursos e uso
-abaixo dela.
+A home e as páginas `/about`, `/contact` e `/privacy` definem seu conteúdo em
+uma função privada `readContent()` no próprio `index.tsx`. A página usa essa
+função no HTML e a disponibiliza como `route.info.content: readContent` para o
+middleware `markdownContent`. O contrato compartilhado `SitePage` fica em
+`src/@types/site-page.ts`. O middleware encontra a rota com `Router.match()` e
+lê apenas o conteúdo da última correspondência, sem manter outra lista de
+caminhos. Uma nova página estática adere ao formato declarando esse metadado na
+própria rota. O contrato atual não recebe parâmetros de rotas dinâmicas.
+
+Cada página mantém seus catálogos `i18n/{pt,en,es}.json` na própria pasta de
+rota, com IDs prefixados por `home_`, `about_`, `contact_` ou `privacy_`.
+`src/helpers/siteLinks/` reúne somente os links comuns e seus rótulos, com
+prefixo `siteLinks_`. As mensagens são lidas quando a função é chamada, dentro
+do contexto de idioma da requisição. O conteúdo principal é visível no HTML
+inicial, inclusive sem JavaScript. A home mantém sua abertura e acrescenta
+seções de recursos e uso abaixo dela.
 
 Um GET com `Accept: text/markdown` recebe a representação Markdown dessas
 páginas, com `Content-Type: text/markdown; charset=utf-8`. A negociação compara

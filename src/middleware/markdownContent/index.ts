@@ -1,8 +1,7 @@
 import { m } from '@paraglide/messages.js'
 
-import { readSitePage } from '@/data/readSitePage/index.ts'
-import type { SitePage } from '@/data/readSitePage/types.ts'
-import { delocalizePathname } from '@/i18n/urls/index.ts'
+import type { SitePage } from '@/@types/site-page.ts'
+import { Router } from '@/router.ts'
 
 import { negotiatePageFormat } from '../negotiatePageFormat/index.ts'
 import { isPagePath } from '../requestClassification/index.ts'
@@ -92,9 +91,10 @@ export async function markdownContent(
       }
     )
   }
-  const pathname = delocalizePathname(requestedPath).replace(/\/$/u, '') || '/'
   const shouldUseMarkdown = format === 'markdown'
-  const page = shouldUseMarkdown ? readSitePage(pathname) : undefined
+  const page = shouldUseMarkdown
+    ? Router.match(request.url).pop()?.info?.content?.()
+    : undefined
   if (page) return markdownResponse({ request, body: renderPage(page) })
   const response = await render()
   const isHtml =

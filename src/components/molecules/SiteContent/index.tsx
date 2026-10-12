@@ -1,7 +1,7 @@
 import { m } from '@paraglide/messages.js'
 import { For } from 'solid-js'
 
-import type { SitePage } from '@/data/readSitePage/types.ts'
+import type { SitePage } from '@/@types/site-page.ts'
 
 import S from './styles.module.css'
 

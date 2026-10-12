@@ -1,8 +1,14 @@
-import { readSitePage } from '@/data/readSitePage/index.ts'
+import type { FileRouteEntry, FileRouteTreeEntry } from 'virtual:file-routes'
+
+import type { SitePage } from '@/@types/site-page.ts'
 
 import { markdownContent } from '../index.ts'
 
 type RequestOptions = { path?: string; accept?: string; method?: string }
+type TestManifest = {
+  default: readonly FileRouteEntry[]
+  pageRoutes: readonly FileRouteTreeEntry[]
+}
 
 const ORIGIN = 'https://example.com'
 const HTTP_OK = 200
@@ -11,7 +17,65 @@ const HTTP_NOT_ACCEPTABLE = 406
 const HTTP_FAILURE = 500
 const MINIMUM_ERROR_LENGTH = 20
 
-vi.mock(import('@/data/readSitePage/index.ts'))
+const { readPageContent, readParentContent, readNewPageContent } = vi.hoisted(
+  () => ({
+    readPageContent: vi.fn<() => SitePage>(),
+    readParentContent: vi.fn<() => SitePage>(),
+    readNewPageContent: vi.fn<() => SitePage>()
+  })
+)
+
+vi.mock(import('virtual:file-routes') as Promise<TestManifest>, () => ({
+  default: [],
+  pageRoutes: [
+    {
+      id: 'home',
+      path: '/',
+      $$route: {
+        require: () => ({ route: { info: { content: readPageContent } } })
+      }
+    },
+    {
+      id: 'about',
+      path: '/about',
+      $$route: {
+        require: () => ({ route: { info: { content: readPageContent } } })
+      }
+    },
+    {
+      id: 'guides',
+      path: '/guides',
+      $$route: {
+        require: () => ({ route: { info: { content: readParentContent } } })
+      },
+      children: [
+        {
+          id: 'new-page',
+          path: '/new-page',
+          $$route: {
+            require: () => ({
+              route: { info: { content: readNewPageContent } }
+            })
+          }
+        },
+        { id: 'html-only', path: '/html-only' }
+      ]
+    }
+  ]
+}))
+
+function mockPageContent(): void {
+  const page: SitePage = {
+    title: 'Example [site]',
+    description: 'A useful description.',
+    intro: 'Details about the project.',
+    sections: [{ title: 'Use cases', paragraphs: ['Read public docs.'] }],
+    links: [{ label: 'Public source', href: 'https://example.com/source' }]
+  }
+  readPageContent.mockReturnValue(page)
+  readParentContent.mockReturnValue({ ...page, title: 'Parent page' })
+  readNewPageContent.mockReturnValue({ ...page, title: 'New route guide' })
+}
 
 function pageRequest({
   path = '/pt',
@@ -22,23 +86,7 @@ function pageRequest({
 }
 
 describe('markdown content', () => {
-  beforeEach(() => {
-    vi.mocked(readSitePage).mockImplementation(pathname =>
-      pathname === '/' || pathname === '/about'
-        ? {
-            title: 'Example [site]',
-            description: 'A useful description.',
-            intro: 'Details about the project.',
-            sections: [
-              { title: 'Use cases', paragraphs: ['Read public docs.'] }
-            ],
-            links: [
-              { label: 'Public source', href: 'https://example.com/source' }
-            ]
-          }
-        : undefined
-    )
-  })
+  beforeEach(mockPageContent)
 
   it.each([
     'application/json',
@@ -136,12 +184,13 @@ describe('markdown content', () => {
       })
     )
     const response = await markdownContent(
-      pageRequest({ path: '/pt/missing', method: 'HEAD' }),
+      pageRequest({ path: '/pt/guides/html-only', method: 'HEAD' }),
       next
     )
     expect(response.status).toBe(HTTP_NOT_FOUND)
     expect(response.body).toBeNull()
     expect(response.headers.get('content-type')).toContain('text/markdown')
+    expect(readParentContent).not.toHaveBeenCalled()
   })
 
   it.each([HTTP_OK, HTTP_FAILURE])(
@@ -154,13 +203,14 @@ describe('markdown content', () => {
       })
       const next = vi.fn<() => Promise<Response>>().mockResolvedValue(original)
       const response = await markdownContent(
-        pageRequest({ path: '/pt/custom' }),
+        pageRequest({ path: '/pt/guides/html-only' }),
         next
       )
       expect(response).toBe(original)
       expect(response.bodyUsed).toBe(false)
       expect(cancel).not.toHaveBeenCalled()
       expect(response.headers.get('vary')).toBe('Cookie, Accept')
+      expect(readParentContent).not.toHaveBeenCalled()
     }
   )
 
@@ -176,8 +226,13 @@ describe('markdown content', () => {
     )
     expect(response).toBe(original)
     expect(response.bodyUsed).toBe(false)
-    expect(cancel).not.toHaveBeenCalled()
     expect(response.headers.get('vary')).toBe('Accept-Language, Accept')
+    expect([
+      cancel.mock.calls,
+      readPageContent.mock.calls,
+      readParentContent.mock.calls,
+      readNewPageContent.mock.calls
+    ]).toStrictEqual([[], [], [], []])
   })
 
   it.each([
@@ -206,5 +261,26 @@ describe('markdown content', () => {
     ).resolves.toBe(original)
     expect(original.headers.get('content-type')).toContain('application/json')
     expect(original.bodyUsed).toBe(false)
+  })
+})
+
+describe('route content metadata', () => {
+  beforeEach(mockPageContent)
+
+  it.each([
+    '/pt/guides/new-page',
+    '/en/guides/new-page/',
+    '/es/guides/new-page'
+  ])('serves an opted-in leaf from the route manifest at %s', async path => {
+    const next = vi.fn<() => Promise<Response>>()
+    const response = await markdownContent(pageRequest({ path }), next)
+    expect(response.status).toBe(HTTP_OK)
+    await expect(response.text()).resolves.toContain('# New route guide\n')
+    expect(readNewPageContent).toHaveBeenCalledExactlyOnceWith()
+    expect([
+      readParentContent.mock.calls,
+      readPageContent.mock.calls
+    ]).toStrictEqual([[], []])
+    expect(next).not.toHaveBeenCalled()
   })
 })
