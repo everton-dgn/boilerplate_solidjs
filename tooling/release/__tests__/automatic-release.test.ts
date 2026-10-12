@@ -37,7 +37,7 @@ if (process.argv[1].endsWith('/git')) {
   else if (command === 'rev-parse') out(source);
   else if (command === 'tag') out('');
   else if (command === 'log') out(source + '\0feat: initial application\0');
-  else if (command === 'diff') out('CHANGELOG.md\npackage.json');
+  else if (command === 'diff') out(args.includes('--summary') ? s.hasFileModeChange ? 'mode change 100644 => 120000 package.json' : '' : (s.changedFiles ?? ['CHANGELOG.md', 'package.json']).join('\n'));
   else if (command === 'show' && rest.includes('--format=%cI')) out('2026-09-12T00:00:00Z');
   else if (command === 'show' && rest[0] === source + ':package.json') out('{"name":"fixture","version":"0.0.0"}\n');
   else if (command === 'show' && rest[0] === source + ':CHANGELOG.md') out('# Changelog\n\n## Unreleased\n');
@@ -54,11 +54,11 @@ if (process.argv[1].endsWith('/git')) {
   else if (endpoint === root + '/rules/branches/main?per_page=100') value = s.unprotected ? [] : [{type:'pull_request'}, {type:'required_status_checks', parameters:{strict_required_status_checks_policy: !s.loose, required_status_checks:[{context:'CI required',integration_id:15368}]}}];
   else if (endpoint === root + '/check-runs') {
     if (body.name !== 'CI required' || body.head_sha !== head || body.conclusion !== 'success') throw Error('Wrong validated commit');
-    s.checked = true; value = {id:1};
+    s.check = body; s.checked = true; value = {id:1};
   }
   else if (endpoint.startsWith(root + '/git/ref/heads/release/')) value = s.ref === null ? undefined : s.release && s.cleanupAdvanced ? {object:{sha:source}} : s.ref;
   else if (endpoint === root + '/git/commits/' + source) value = { sha: source, tree: { sha: 'base-tree' }, parents: [] };
-  else if (endpoint === root + '/git/commits/' + head) value = { sha: head, tree: { sha: 'release-tree' }, parents: [{sha: source}] };
+  else if (endpoint === root + '/git/commits/' + head) value = { sha: head, tree: { sha: 'release-tree' }, parents: [{sha: s.hasUnexpectedParent ? 'e'.repeat(40) : source}] };
   else if (endpoint === root + '/git/commits/' + merge) value = { sha: merge, tree: { sha: s.race ? 'wrong-tree' : 'release-tree' }, parents: [{sha: s.hasDifferentMergeBase ? 'e'.repeat(40) : source}, {sha: head}] };
   else if (endpoint === root + '/git/trees') { s.files = Object.fromEntries(body.tree.map(f => [f.path, f.content])); value = {sha: 'release-tree'}; }
   else if (endpoint === root + '/git/commits') value = {sha: head};
@@ -90,8 +90,19 @@ if (process.argv[1].endsWith('/git')) {
 }
 `
 
+type ReleaseCheck = {
+  head_sha: string
+  details_url: string
+  output: { title: string; summary: string }
+}
+
 type State = {
   calls: string[]
+  files?: Record<string, string>
+  changedFiles?: string[]
+  check?: ReleaseCheck
+  hasFileModeChange?: boolean
+  hasUnexpectedParent?: boolean
   hasTagRefFailure?: boolean
   hasDifferentMergeBase?: boolean
   failRelease?: boolean
@@ -153,6 +164,134 @@ async function fixture(context: TestContext) {
     }
   }
 }
+
+describe(
+  'release metadata validation with isolated Git and GitHub',
+  { timeout: 30_000, concurrency: true },
+  () => {
+    it('attests release metadata against the successful source CI before merging', async context => {
+      const f = await fixture(context)
+      await f.run('prepare')
+      await f.run('publish')
+      const state = await f.state()
+
+      assert.equal(state.check?.head_sha, HEAD)
+      assert.equal(
+        state.check.details_url,
+        'https://github.com/owner/repo/actions/runs/1'
+      )
+      assert.equal(
+        state.check.output.title,
+        'Release metadata validated against successful source CI'
+      )
+      assert.match(
+        state.check.output.summary,
+        /Source CI passed for a{40}.*changes only the package version and generated changelog/u
+      )
+      assert.ok(
+        state.check.output.summary.includes(
+          '[View source CI](https://github.com/owner/repo/actions/runs/1)'
+        )
+      )
+      assert.ok(
+        state.calls.indexOf('POST repos/owner/repo/check-runs') <
+          state.calls.indexOf('PUT repos/owner/repo/pulls/1/merge')
+      )
+      assert.equal(state.release?.tag_name, 'v1.0.0')
+    })
+
+    it('rejects a release whose source CI no longer passes', async context => {
+      const f = await fixture(context)
+      await f.run('prepare')
+      await f.patch({ badRun: true })
+      const before = await f.state()
+
+      await assert.rejects(f.run('publish'), /successful push CI/u)
+
+      const after = await f.state()
+      assert.deepEqual(
+        after.calls.filter(call => !call.startsWith('GET ')),
+        before.calls.filter(call => !call.startsWith('GET '))
+      )
+    })
+
+    it('rejects release changes outside the validated metadata', async context => {
+      const f = await fixture(context)
+      await f.run('prepare')
+      const scenarios = [
+        { patch: { hasUnexpectedParent: true }, error: /direct child/u },
+        {
+          patch: {
+            changedFiles: ['CHANGELOG.md', 'package.json', 'src/App.tsx']
+          },
+          error: /must change only/u
+        },
+        {
+          patch: { hasFileModeChange: true },
+          error: /preserve file modes and types/u
+        }
+      ]
+      for (const { patch, error } of scenarios) {
+        await f.patch({
+          hasUnexpectedParent: false,
+          hasFileModeChange: false,
+          changedFiles: ['CHANGELOG.md', 'package.json'],
+          ...patch
+        })
+        const before = await f.state()
+
+        await assert.rejects(f.run('publish'), error)
+
+        const after = await f.state()
+        assert.deepEqual(
+          after.calls.filter(call => !call.startsWith('GET ')),
+          before.calls.filter(call => !call.startsWith('GET '))
+        )
+      }
+    })
+
+    it('rejects modified dependencies, versions and changelog content before attesting', async context => {
+      const f = await fixture(context)
+      await f.run('prepare')
+      const { files } = await f.state()
+      assert.ok(files)
+      const changes = [
+        {
+          path: 'package.json',
+          from: '"name": "fixture"',
+          to: '"name": "fixture", "dependencies": { "unexpected": "1.0.0" }'
+        },
+        {
+          path: 'package.json',
+          from: '"version": "1.0.0"',
+          to: '"version": "9.0.0"'
+        },
+        {
+          path: 'CHANGELOG.md',
+          from: 'initial application',
+          to: 'unexpected change'
+        }
+      ]
+      for (const { path: file, from, to } of changes) {
+        const before = await f.state()
+        const original = files[file]
+        assert.ok(original)
+        assert.ok(original.includes(from))
+        await f.patch({
+          files: { ...files, [file]: original.replace(from, to) }
+        })
+
+        await assert.rejects(f.run('publish'), /Unexpected release content/u)
+
+        const after = await f.state()
+        assert.deepEqual(
+          after.calls.filter(call => !call.startsWith('GET ')),
+          before.calls.filter(call => !call.startsWith('GET '))
+        )
+      }
+    })
+  }
+)
 
 describe(
   'release orchestration with isolated Git and GitHub',
