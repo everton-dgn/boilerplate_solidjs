@@ -14,11 +14,13 @@ precisam de suíte própria para conferir montagem, textos estáticos, classes o
 funcionamento nativo de botões. Escolha o ambiente que cobre o comportamento e
 evite repetir o mesmo cenário em outro nível.
 
-Os testes em `tooling/**/__tests__/` usam o executor nativo `node:test`, sem
-configuração adicional, e rodam com `vp run test:tooling`. Um único glob cobre
-todos os módulos, então um módulo novo não exige script próprio. Essa suíte roda
-em `validate`, no `pre-push` e no CI, mas fica fora dos comandos do Vitest:
-teste, cobertura, UI e watch.
+Os testes em `tooling/**/__tests__/` usam a API `node:test`. O comando
+`vp run test:tooling` executa os módulos em Node, exceto `tooling/release/`, que
+roda em Bun com `vp run test:release`, o mesmo runtime da publicação. Ambos os
+comandos rodam em `validate` e no `pre-push`, fora dos comandos do Vitest:
+teste, cobertura, UI e watch. No CI, a suíte Node roda sempre; os testes de
+release rodam somente quando a automação ou suas dependências mudam, conforme o
+[guia de release](../tooling/release/README.md#validação-local-e-no-ci).
 
 ## Ambientes
 

@@ -111,7 +111,7 @@ build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
 | `vp run check:ci`             | Formatação, lint e tipos da aplicação                       |
 | `vp run check:fix`            | Formatação + lint corrigindo o que for possível             |
 | `vp run test`                 | Todos os projetos de teste da aplicação                     |
-| `vp run test:tooling`         | Testes de `tooling/` com `node:test`                        |
+| `vp run test:tooling`         | Testes de tooling em Node, exceto release                   |
 | `vp run test:release`         | Testar a automação de release com Bun                       |
 | `vp run test:ui`              | Vitest UI com cobertura; use a URL impressa (traz o token)  |
 | `vp run test:ci`              | Rodar Vitest com cobertura e parar na primeira falha        |
@@ -206,21 +206,23 @@ antecipe a leitura do `.env` antes de iniciar essas ferramentas.
 
 O CI distribui as verificações entre quatro runners independentes: `Quality`,
 `Tooling`, E2E com fixtures e E2E de produção. `Quality` executa formatação,
-lint, tipos e cobertura. `Tooling` executa os testes de tooling após a
-instalação, sem aguardar os checks de `Quality` nem compartilhar CPU com a
+lint, tipos e cobertura, além dos testes de release em Bun quando houver
+mudanças relevantes. `Tooling` executa os demais testes de tooling em Node após
+a instalação, sem aguardar os checks de `Quality` nem compartilhar CPU com a
 cobertura. Os quatro jobs começam juntos, cada um com seu checkout, portas e
 artefatos de build isolados. A ação local `setup-project` compartilha a
 instalação entre os jobs e o deploy. Esse paralelismo reduz a espera, mas repete
 a preparação nos runners e pode aumentar o consumo de minutos do GitHub Actions.
 
 `CI required` aguarda todos os jobs e só passa se todos tiverem sucesso; falhas,
-cancelamentos e verificações puladas impedem sua aprovação. O deploy depende
-desse resultado. A release reaproveita o CI aprovado da `main` e confere apenas
-o commit de versão e changelog, conforme o
-[guia de release](../tooling/release/README.md). Os testes rodam em toda
-execução do CI; o cache do Vitest guarda transformações de módulos. Em
-`CI=true`, Vitest e o runner Node dos testes de tooling usam no máximo dois
-workers cada.
+cancelamentos e jobs pulados impedem sua aprovação. O deploy depende desse
+resultado. A release reaproveita o CI aprovado da `main` e confere apenas o
+commit de versão e changelog, conforme o
+[guia de release](../tooling/release/README.md). O filtro de release condiciona
+somente um passo de `Quality`, mantendo o job e o agregador obrigatórios. Os
+testes da aplicação e os demais testes de tooling rodam em toda execução do CI;
+o cache do Vitest guarda transformações de módulos. Em `CI=true`, Vitest e o
+runner Node dos testes de tooling usam no máximo dois workers cada.
 
 ## Hooks de Git
 
@@ -231,7 +233,7 @@ Instalados pelo Lefthook no `vp install`, autorizado em `trustedDependencies` do
 | ------------ | ---------------------------------------------------------------------------------------------------------- |
 | `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `scan:secrets --staged` quando Kingfisher está disponível |
 | `commit-msg` | `commitlint` (header até 100 caracteres; aviso para linhas do corpo e rodapé acima de 100)                 |
-| `pre-push`   | `check:ci` e `typecheck:node` em sequência; depois, `test:ci` e `test:tooling` em paralelo                 |
+| `pre-push`   | `check:ci` e `typecheck:node` em sequência; depois, `test:ci`, `test:tooling` e `test:release` em paralelo |
 
 O `pre-commit` é pulado durante `merge` e `rebase`. Em CI o Lefthook não instala
 os hooks.

@@ -75,9 +75,6 @@ jobs:
       - name: Install dependencies
         run: vp install --frozen-lockfile
 
-      - name: Test release automation on Bun
-        run: vp run test:release
-
       - name: Prepare release pull request
         id: release
         env:

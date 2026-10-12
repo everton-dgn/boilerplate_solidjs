@@ -44,3 +44,6 @@ pre-push:
 
           - name: tooling
             run: vp run test:tooling
+
+          - name: release
+            run: vp run test:release

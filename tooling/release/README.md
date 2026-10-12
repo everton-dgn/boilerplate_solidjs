@@ -57,8 +57,8 @@ outros arquivos ou no conteúdo esperado impedem a publicação.
 Depois dessas verificações, `publish`, com `checks: write`, registra
 `CI required` no SHA exato da release. O resultado identifica a validação de
 metadados e aponta para o CI aprovado da origem. A release não repete cobertura,
-tooling nem E2E. Os testes específicos da automação em Bun continuam na
-preparação, pois esse é o runtime usado para publicar.
+tooling nem E2E. Os testes específicos da automação executam em Bun no pre-push
+e no CI quando houver mudanças relevantes; a publicação não os repete.
 
 O script confere as regras ativas da `main` antes de criar qualquer artefato de
 release e repete a conferência imediatamente antes do merge. Se faltar a
@@ -163,7 +163,7 @@ Se alguém fechar o PR de release sem integrá-lo, reabra o mesmo PR antes de
 reexecutar com o mesmo `source_run_id`. A automação respeita o fechamento
 manual.
 
-## Validação local
+## Validação local e no CI
 
 ```sh
 vp run test
@@ -172,13 +172,29 @@ vp run typecheck
 actionlint .github/workflows/auto-release.yml
 ```
 
-Os testes de release pertencem à suíte de tooling e executam com Node em
-`vp run test:tooling`. A automação executa em Bun; antes de preparar a release,
-o workflow também roda `vp run test:release` no mesmo runtime. Esse comando
-executa apenas `tooling/release`, com isolamento entre arquivos e timeout de 60
-segundos. A suíte com subprocessos mantém o limite de 30 segundos por teste.
+`vp run test:release` executa apenas `tooling/release` em Bun, com isolamento
+entre arquivos e timeout de 60 segundos. A suíte com subprocessos mantém o
+limite de 30 segundos por teste. O comando roda em todo pre-push e faz parte de
+`vp run validate`. `vp run test:tooling` mantém os demais módulos em Node.
+
+No CI, um passo do job `Quality` compara os commits e decide se roda essa suíte.
+PRs usam o ancestral comum da base com o SHA testado; pushes comparam `before`
+com esse SHA. Histórico indisponível, SHA inválido ou erro de comparação fazem
+os testes rodar. Renomeações são tratadas como exclusão e adição para preservar
+os caminhos de origem e destino na seleção.
+
+O filtro em `shouldTestRelease/index.ts` cobre `tooling/release/`,
+`tooling/fmt.ts`, `package.json`, `bun.lock`, `bunfig.toml`, `vite.config.ts`,
+`tsconfig.json`, `tsconfig.node.json`, os workflows de CI e release e as ações
+locais em `.github/actions/`. Ao acrescentar uma dependência local da automação,
+atualize essa lista e os testes do filtro. Mudanças somente na aplicação ou em
+guias fora da pasta de release não executam a suíte no CI.
+
+A seleção não pula o workflow nem o job `Quality`. `CI required` continua
+exigindo sucesso de todos os jobs. A recuperação manual também mantém as
+verificações reais de origem, commit e publicação; ela não repete os testes.
 
 Os testes de integração substituem `git` e `gh` por executáveis sintéticos e
 isolam o `PATH` dos subprocessos. Não usam credenciais reais nem criam releases
-remotas. As fixtures ficam no diretório temporário do sistema para inspeção;
-quando necessário, remova-as com `trash`.
+remotas. As fixtures ficam no diretório temporário do sistema e a suíte as
+descarta ao terminar. Se uma execução interrompida deixar resíduos, use `trash`.
