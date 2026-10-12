@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.9.5 - 2026-10-12
+
+### Fixed
+
+- recover locale changes before hydration (9bd64a6)
+- update packages and simplify framework integration (5241bed)
+
 ## 1.9.4 - 2026-10-11
 
 ### Fixed
