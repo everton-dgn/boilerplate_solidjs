@@ -1,0 +1,9 @@
+{
+  "about_title": "About SolidJS Boilerplate",
+  "about_description": "Learn about the open source project maintained by Éverton Toffanetto and its web application features.",
+  "about_intro": "SolidJS Boilerplate is an open source project maintained by Éverton Toffanetto. It provides a foundation for building web applications with SolidJS, TypeScript and Vite+, with source code available on GitHub under the MIT license.",
+  "about_purposeTitle": "Purpose and features",
+  "about_purpose": "The project brings together the initial integrations for an application: server-side rendering, route organization, translated content, themes and automated tests. This website demonstrates the foundation in use. Its examples and documentation help explain the project choices before you adapt it for another product.",
+  "about_sourceTitle": "Source code and documentation",
+  "about_source": "The repository is the reference for installation, development commands and implementation details. Its guides cover architecture, testing, SEO and server error handling. The license permits using and modifying the code under the terms published in the repository. Review those terms and the configuration before deploying a product built from this project."
+}

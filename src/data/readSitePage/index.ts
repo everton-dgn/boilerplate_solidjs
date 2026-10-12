@@ -11,17 +11,17 @@ const REPOSITORY_URL = 'https://github.com/everton-dgn/boilerplate_solidjs'
 
 function pageLinks(): SiteLink[] {
   return [
-    { label: m.siteContent_homeLabel(), href: localizeHref({ href: '/' }) },
+    { label: m.readSitePage_homeLabel(), href: localizeHref({ href: '/' }) },
     {
-      label: m.siteContent_aboutLabel(),
+      label: m.readSitePage_aboutLabel(),
       href: localizeHref({ href: '/about' })
     },
     {
-      label: m.siteContent_contactLabel(),
+      label: m.readSitePage_contactLabel(),
       href: localizeHref({ href: '/contact' })
     },
     {
-      label: m.siteContent_privacyLabel(),
+      label: m.readSitePage_privacyLabel(),
       href: localizeHref({ href: '/privacy' })
     }
   ]
@@ -29,9 +29,9 @@ function pageLinks(): SiteLink[] {
 
 function sourceLinks(): SiteLink[] {
   return [
-    { label: m.siteContent_repositoryLabel(), href: REPOSITORY_URL },
+    { label: m.readSitePage_repositoryLabel(), href: REPOSITORY_URL },
     {
-      label: m.siteContent_documentationLabel(),
+      label: m.readSitePage_documentationLabel(),
       href: `${REPOSITORY_URL}#readme`
     }
   ]
@@ -48,12 +48,12 @@ function readHome(): SitePage {
     }),
     sections: [
       {
-        title: m.siteContent_homeFeaturesTitle(),
-        paragraphs: [m.siteContent_homeFeatures()]
+        title: m.home_featuresTitle(),
+        paragraphs: [m.home_features()]
       },
       {
-        title: m.siteContent_homeUsageTitle(),
-        paragraphs: [m.siteContent_homeUsage()]
+        title: m.home_usageTitle(),
+        paragraphs: [m.home_usage()]
       }
     ],
     links: [...pageLinks(), ...sourceLinks()]
@@ -62,17 +62,17 @@ function readHome(): SitePage {
 
 function readAbout(): SitePage {
   return {
-    title: m.siteContent_aboutTitle(),
-    description: m.siteContent_aboutDescription(),
-    intro: m.siteContent_aboutIntro(),
+    title: m.about_title(),
+    description: m.about_description(),
+    intro: m.about_intro(),
     sections: [
       {
-        title: m.siteContent_aboutPurposeTitle(),
-        paragraphs: [m.siteContent_aboutPurpose()]
+        title: m.about_purposeTitle(),
+        paragraphs: [m.about_purpose()]
       },
       {
-        title: m.siteContent_aboutSourceTitle(),
-        paragraphs: [m.siteContent_aboutSource()]
+        title: m.about_sourceTitle(),
+        paragraphs: [m.about_source()]
       }
     ],
     links: [...pageLinks(), ...sourceLinks()]
@@ -81,44 +81,44 @@ function readAbout(): SitePage {
 
 function readContact(): SitePage {
   return {
-    title: m.siteContent_contactTitle(),
-    description: m.siteContent_contactDescription(),
-    intro: m.siteContent_contactIntro(),
+    title: m.contact_title(),
+    description: m.contact_description(),
+    intro: m.contact_intro(),
     sections: [
       {
-        title: m.siteContent_contactIssuesTitle(),
-        paragraphs: [m.siteContent_contactIssues()]
+        title: m.contact_issuesTitle(),
+        paragraphs: [m.contact_issues()]
       },
       {
-        title: m.siteContent_contactMaintainerTitle(),
-        paragraphs: [m.siteContent_contactMaintainer()]
+        title: m.contact_maintainerTitle(),
+        paragraphs: [m.contact_maintainer()]
       }
     ],
     links: [
       ...pageLinks(),
-      { label: m.siteContent_issuesLabel(), href: `${REPOSITORY_URL}/issues` },
-      { label: m.siteContent_maintainerLabel(), href: SITE.author.url }
+      { label: m.contact_issuesLabel(), href: `${REPOSITORY_URL}/issues` },
+      { label: m.contact_maintainerLabel(), href: SITE.author.url }
     ]
   }
 }
 
 function readPrivacy(): SitePage {
   return {
-    title: m.siteContent_privacyTitle(),
-    description: m.siteContent_privacyDescription(),
-    intro: m.siteContent_privacyIntro(),
+    title: m.privacy_title(),
+    description: m.privacy_description(),
+    intro: m.privacy_intro(),
     sections: [
       {
-        title: m.siteContent_privacyPreferencesTitle(),
-        paragraphs: [m.siteContent_privacyPreferences()]
+        title: m.privacy_preferencesTitle(),
+        paragraphs: [m.privacy_preferences()]
       },
       {
-        title: m.siteContent_privacyHostingTitle(),
-        paragraphs: [m.siteContent_privacyHosting()]
+        title: m.privacy_hostingTitle(),
+        paragraphs: [m.privacy_hosting()]
       },
       {
-        title: m.siteContent_privacyQuestionsTitle(),
-        paragraphs: [m.siteContent_privacyQuestions()]
+        title: m.privacy_questionsTitle(),
+        paragraphs: [m.privacy_questions()]
       }
     ],
     links: pageLinks()

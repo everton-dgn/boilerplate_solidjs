@@ -84,6 +84,13 @@ for (const language of LANGUAGES) {
       expect(response.status()).toBe(HTTP_OK)
       expect(response.headers()['content-type']).toContain('text/html')
       const html = await response.text()
+      const markdown = await request.get(pathname, {
+        headers: { accept: 'text/markdown' },
+        maxRedirects: 0
+      })
+      expect(markdown.status()).toBe(HTTP_OK)
+      const markdownBody = await markdown.text()
+      expect(markdownBody.split('\n')[0]).toBe(`# ${language.headings[index]}`)
       const context = await browser.newContext({
         baseURL,
         javaScriptEnabled: false

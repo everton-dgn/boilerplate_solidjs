@@ -229,10 +229,13 @@ do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
 
 A home e as páginas `/about`, `/contact` e `/privacy` têm conteúdo autoral em
 `src/data/readSitePage/`, consumido pelas rotas HTML e pelo middleware
-`markdownContent`. Os catálogos ficam junto dessa fonte compartilhada; as
-mensagens são lidas dentro do contexto de idioma da requisição. O conteúdo
-principal é visível no HTML inicial, inclusive sem JavaScript. A home mantém sua
-abertura e acrescenta seções de recursos e uso abaixo dela.
+`markdownContent`. Cada página mantém seus catálogos `i18n/{pt,en,es}.json` na
+própria pasta de rota, com IDs prefixados por `home_`, `about_`, `contact_` ou
+`privacy_`. O catálogo de `readSitePage` contém apenas os rótulos de links
+comuns às páginas. As mensagens são lidas dentro do contexto de idioma da
+requisição. O conteúdo principal é visível no HTML inicial, inclusive sem
+JavaScript. A home mantém sua abertura e acrescenta seções de recursos e uso
+abaixo dela.
 
 Um GET com `Accept: text/markdown` recebe a representação Markdown dessas
 páginas, com `Content-Type: text/markdown; charset=utf-8`. A negociação compara
