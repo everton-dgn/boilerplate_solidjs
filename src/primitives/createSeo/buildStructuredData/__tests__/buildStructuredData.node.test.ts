@@ -16,6 +16,15 @@ const organization = {
   '@type': 'Organization',
   '@id': `${SITE.url}/#organization`,
   name: SITE.title,
+  description: SITE.description,
+  contactPoint: {
+    '@type': 'ContactPoint',
+    contactType: 'demo',
+    email: 'contato@email.com',
+    telephone: '0000000000',
+    description:
+      'Placeholder values for this boilerplate demonstration. Do not use them to contact the maintainer.'
+  },
   url: `${SITE.url}/`,
   logo: { '@type': 'ImageObject', url: `${SITE.url}${SITE.logo}` },
   sameAs: SITE.socialLinks

@@ -2,7 +2,11 @@ import { expect, test } from '@playwright/test'
 
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
-const LOCALE_COUNT = 3
+const LOCALES = ['pt', 'en', 'es']
+const PAGE_PATHS = ['', '/about', '/contact', '/privacy']
+const EXPECTED_SITEMAP_URLS = LOCALES.flatMap(locale =>
+  PAGE_PATHS.map(path => `${readSiteOrigin()}/${locale}${path}`)
+)
 const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
 const CACHE_CONTROL = 'public, max-age=0, s-maxage=3600'
@@ -27,8 +31,11 @@ test.describe('índices na árvore real de produção', () => {
     expect(xml).toContain(
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">'
     )
-    expect(xml.match(/<loc>/gu)).toHaveLength(LOCALE_COUNT)
-    expect(xml).toContain(`<loc>${readSiteOrigin()}/pt</loc>`)
+    const urls = [...xml.matchAll(/<loc>(?<url>[^<]+)<\/loc>/gu)].map(
+      match => match.groups?.url
+    )
+    expect(new Set(urls)).toStrictEqual(new Set(EXPECTED_SITEMAP_URLS))
+    expect(urls).toHaveLength(EXPECTED_SITEMAP_URLS.length)
     expect(xml).toContain('</urlset>')
     expect(xml).not.toContain('/helpers/')
     expect(xml).not.toContain('(seo)')
@@ -65,8 +72,21 @@ test.describe('índices na árvore real de produção', () => {
     )
     const markdown = await response.text()
     expect(markdown).toMatch(/^# .+\n/u)
+    const useCases = markdown.split('## When to use\n\n')[1]?.split('\n## ')[0]
+    expect(useCases).toBeDefined()
+    expect(useCases).toContain(`](${readSiteOrigin()}/en): `)
+    expect(useCases).toContain(`](${readSiteOrigin()}/en/about): `)
+    expect(useCases?.trim().split('\n')).toEqual([
+      expect.stringMatching(/^- \[[^\]]+\]\([^)]+\): .{20,}$/u),
+      expect.stringMatching(/^- \[[^\]]+\]\([^)]+\): .{20,}$/u)
+    ])
+    expect(markdown.indexOf('## When to use\n')).toBeLessThan(
+      markdown.indexOf('## Pages\n')
+    )
     expect(markdown).toContain('## Pages\n')
-    expect(markdown).toContain(`](${readSiteOrigin()}/en)`)
+    for (const path of PAGE_PATHS) {
+      expect(markdown).toContain(`](${readSiteOrigin()}/en${path})`)
+    }
     expect(markdown).toContain('This index uses English.')
     expect(markdown).not.toContain('/helpers/')
     expect(markdown).not.toContain('(seo)')

@@ -55,7 +55,7 @@ for (const source of ['action', 'query']) {
     await expect(page.locator('html')).toHaveAttribute('lang', 'es-ES')
     await expect(page.getByTestId('locale')).toHaveText('es')
     await expect(page.getByTestId('message')).toHaveText(
-      'Una base limpia para productos modernos'
+      'SolidJS Boilerplate para aplicaciones web'
     )
     await expect(page.locator('html')).not.toHaveAttribute(
       'data-previous-document'

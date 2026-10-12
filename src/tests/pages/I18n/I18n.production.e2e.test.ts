@@ -2,6 +2,7 @@ import { readdir, readFile } from 'node:fs/promises'
 
 import { expect, test } from '@playwright/test'
 
+import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 const HTTP_OK = 200
@@ -13,21 +14,21 @@ const LANGUAGES = [
   {
     locale: 'pt',
     tag: 'pt-BR',
-    title: 'Uma base limpa para produtos modernos',
+    title: 'SolidJS Boilerplate para aplicações web',
     selector: 'Selecionar idioma',
     missing: 'Página não encontrada'
   },
   {
     locale: 'en',
     tag: 'en-US',
-    title: 'A clean foundation for modern products',
+    title: 'SolidJS Boilerplate for web applications',
     selector: 'Select language',
     missing: 'Page not found'
   },
   {
     locale: 'es',
     tag: 'es-ES',
-    title: 'Una base limpia para productos modernos',
+    title: 'SolidJS Boilerplate para aplicaciones web',
     selector: 'Seleccionar idioma',
     missing: 'Página no encontrada'
   }
@@ -57,14 +58,14 @@ test('switches language and hydrates when cookie access is blocked', async ({
     .click()
   await expect(page).toHaveURL('/es')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Una base limpia para productos modernos'
+    'SolidJS Boilerplate para aplicaciones web'
   )
   await page.getByRole('button', { name: 'Seleccionar tema' }).click()
   await expect(page.getByRole('menu')).toBeVisible()
   expect(errors).toEqual([])
 })
 
-test('loads the home message module only when visiting the home page', async ({
+test('loads the home route implementation only when visiting the home page', async ({
   page
 }) => {
   const directory = new URL(
@@ -80,7 +81,7 @@ test('loads the home message module only when visiting the home page', async ({
     }))
   )
   const homeModules = sources.filter(({ source }) =>
-    source.includes('A clean foundation for modern products')
+    source.includes('SolidJS 2 · Vite+ · TypeScript 7')
   )
   expect(homeModules).toHaveLength(1)
   const homeModule = homeModules[0]?.file
@@ -93,10 +94,11 @@ test('loads the home message module only when visiting the home page', async ({
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Página não encontrada!'
   )
+  await expect.poll(() => hydrationFinished(page)).toBe(true)
   expect(requested.has(String(homeModule))).toBe(false)
   await page.getByRole('link', { name: 'Voltar ao início' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Uma base limpa para produtos modernos'
+    'SolidJS Boilerplate para aplicações web'
   )
   expect(requested.has(String(homeModule))).toBe(true)
 })
@@ -163,7 +165,7 @@ test('switches language by keyboard, persists the choice and preserves query and
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL('/en?campaign=example#section')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'A clean foundation for modern products'
+    'SolidJS Boilerplate for web applications'
   )
   await page.goto('/')
   await expect(page).toHaveURL('/en')
@@ -173,7 +175,7 @@ test('switches language by keyboard, persists the choice and preserves query and
     .click()
   await expect(page).toHaveURL('/es')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Una base limpia para productos modernos'
+    'SolidJS Boilerplate para aplicaciones web'
   )
 })
 

@@ -1,15 +1,23 @@
 import { baseLocale } from '@paraglide/runtime.js'
 import { pageRoutes } from 'virtual:file-routes'
 
+import type { LlmsPage } from '@/@types/llms.ts'
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
 import { SITE } from '@/constants/site.ts'
 import { memoizeOnce } from '@/helpers/memoizeOnce/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { localizeHref } from '@/i18n/urls/index.ts'
 
-import { LLMS_NOTES } from './constants.ts'
+import { LLMS_NOTES, LLMS_USE_CASES } from './constants.ts'
 import { buildLlmsText } from './helpers/buildLlmsText/index.ts'
 import { collectLlmsPages } from './helpers/collectLlmsPages/index.ts'
+
+function localizePage(page: LlmsPage): LlmsPage {
+  return {
+    ...page,
+    path: localizeHref({ href: page.path, locale: baseLocale })
+  }
+}
 
 const renderLlmsText = memoizeOnce({
   enabled: import.meta.env.PROD,
@@ -18,10 +26,9 @@ const renderLlmsText = memoizeOnce({
       title: SITE.title,
       description: SITE.description,
       notes: LLMS_NOTES,
-      pages: collectLlmsPages(pageRoutes).map(page => {
-        page.path = localizeHref({ href: page.path, locale: baseLocale })
-        return page
-      }),
+      pages: [...LLMS_USE_CASES, ...collectLlmsPages(pageRoutes)].map(page =>
+        localizePage(page)
+      ),
       siteUrl: resolveSiteUrl('/')
     })
 })

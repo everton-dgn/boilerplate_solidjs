@@ -25,11 +25,11 @@ descrição, no Open Graph, no Twitter e no JSON-LD usando `useHead`. A rota fil
 sobrescreve os campos que declara e herda os demais do layout; `image` é
 mesclada atributo a atributo (`path`, `width`, `height`, `alt`). Sem definição
 na cadeia, título, descrição e imagem vêm de `SITE`, `type` é `website` e
-`noindex` é `false`. Por isso a home não declara `seo`: ela usa exatamente esses
-padrões. Página indexável publica `robots` com
-`index, follow, max-image-preview:large`: os dois primeiros já são o padrão do
-crawler e o terceiro libera a prévia grande da imagem no Google Discover.
-Escolha do projeto: com `noindex: true`, a chamada de rota publica só
+`noindex` é `false`. A home declara um título próprio que identifica o
+boilerplate e seu uso para aplicações web com SSR. Página indexável publica
+`robots` com `index, follow, max-image-preview:large`: os dois primeiros já são
+o padrão do crawler e o terceiro libera a prévia grande da imagem no Google
+Discover. Escolha do projeto: com `noindex: true`, a chamada de rota publica só
 `robots: noindex`, título e descrição. Canonical, Open Graph, Twitter (inclusive
 `og:locale`, `og:site_name` e `twitter:card`) e JSON-LD ficam de fora, inclusive
 na página 404. Neste boilerplate esses metadados só têm consumidor em páginas
@@ -49,9 +49,9 @@ em ISO 8601, essas datas no nó e nas metas `article:published_time` e
 `article:modified_time`. Fora de `article`, as datas são ignoradas. O JSON-LD,
 montado pelo helper local `buildStructuredData` de `createSeo`, publica sempre
 um nó `WebSite`, o nó da página com URL canônica, descrição, idioma e imagem, e
-um nó `Organization` com nome, URL, logo (`SITE.logo`, ao menos 112x112 pixels)
-e perfis oficiais (`SITE.socialLinks`, em `sameAs`). `WebSite.publisher` e
-`Article.publisher` apontam para esse nó pelo `@id`
+um nó `Organization` com nome, descrição, URL, logo (`SITE.logo`, ao menos
+112x112 pixels) e perfis oficiais (`SITE.socialLinks`, em `sameAs`).
+`WebSite.publisher` e `Article.publisher` apontam para esse nó pelo `@id`
 `<VITE_SITE_URL>/#organization`. O grafo é tipado com `schema-dts`, então
 propriedade inválida falha no typecheck; as dimensões da imagem ficam só no Open
 Graph. O idioma da página vem de `SITE.locale`, que também alimenta o `lang` do
@@ -201,11 +201,14 @@ sem `noindex`, com `<lastmod>` nas páginas `article` (a mesma data do JSON-LD,
 `llms.txt/constants.ts` (fatos que o agente precisa saber antes de abrir os
 links: idioma, o que o site oferece, o que não existe) e, em seguida, título e
 descrição das páginas selecionadas por `route.info.llms`, agrupadas por seção.
-Reescreva as notas em cada projeto derivado. O `Document.tsx` anuncia esse
-arquivo em todas as páginas com `<link rel="describedby" href="/llms.txt">`, a
-descoberta recomendada pela spec do llms.txt; agentes não são redirecionados. O
-robots publica os grupos de `robots.txt/constants.ts`: `*` com `Allow: /` e
-`Disallow` do endpoint das server functions (`/_server` por padrão, lido do
+Os casos de uso de `LLMS_USE_CASES` abrem a seção `When to use`, com links e
+descrições que orientam a leitura da home e da página sobre o projeto. Reescreva
+as notas e os casos de uso em cada projeto derivado. O `Document.tsx` anuncia
+esse arquivo em todas as páginas com
+`<link rel="describedby" href="/llms.txt">`, a descoberta recomendada pela spec
+do llms.txt; agentes não são redirecionados. O robots publica os grupos de
+`robots.txt/constants.ts`: `*` com `Allow: /` e `Disallow` do endpoint das
+server functions (`/_server` por padrão, lido do
 `virtual:solid-server-function-handler` do plugin), robôs de treinamento de IA
 com `Disallow: /`, e o link do sitemap. Buscadores e agentes que leem páginas a
 pedido do usuário continuam liberados, porque são o público do llms.txt.
@@ -221,3 +224,65 @@ desenvolvimento. As URLs absolutas dos três arquivos partem da origem de
 geração. A página 404 declara `robots: noindex`. A imagem social fica em
 `public/images/og.png`, com cache imutável configurado em `vercel.json`; o logo
 do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
+
+## Leitura por agentes
+
+A home e as páginas `/about`, `/contact` e `/privacy` têm conteúdo autoral em
+`src/data/readSitePage/`, consumido pelas rotas HTML e pelo middleware
+`markdownContent`. Os catálogos ficam junto dessa fonte compartilhada; as
+mensagens são lidas dentro do contexto de idioma da requisição. O conteúdo
+principal é visível no HTML inicial, inclusive sem JavaScript. A home mantém sua
+abertura e acrescenta seções de recursos e uso abaixo dela.
+
+Um GET com `Accept: text/markdown` recebe a representação Markdown dessas
+páginas, com `Content-Type: text/markdown; charset=utf-8`. A negociação compara
+pesos `q` e especificidade; HTML é a preferência quando há empate. Ausência de
+`Accept` e `*/*` usam HTML. Um tipo com `q=0` não pode ser selecionado. Se
+nenhuma representação for aceitável, a resposta é 406. As respostas negociadas
+preservam os campos existentes de `Vary` e incluem `Accept`. HEAD mantém status
+e cabeçalhos, sem corpo.
+
+As URLs sem idioma seguem a resolução existente de idioma e redirecionam para o
+caminho localizado. Endpoints de API, server functions e assets não entram nessa
+negociação. Uma rota sem representação Markdown própria continua no fluxo
+normal; quando o resultado real é HTML com status 404, o middleware o substitui
+por uma explicação Markdown com link para `/llms.txt`, preservando o status 404.
+Respostas de erro 500 não viram 404.
+
+O Markdown usa `private, no-store` e continua sob os cabeçalhos de segurança:
+como não é HTML, recebe `script-src 'none'`. O contexto de idioma, os cookies de
+preferências e a proteção dos erros do servidor permanecem na cadeia existente.
+Os três índices de descoberta conservam seu contrato de cache e seus tipos de
+conteúdo.
+
+As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
+aviso de privacidade descreve as preferências e os limites observáveis na
+demonstração. O `contactPoint` usa `contato@email.com` e `0000000000` como
+placeholders, com `contactType: demo` e uma descrição que informa que esses
+valores não são canais de contato do mantenedor. A demonstração omite `address`.
+Substitua os contatos de exemplo por dados reais ao adaptar o boilerplate para
+outro produto. Revise o aviso quando adicionar serviços ou coleta de dados.
+
+Valide com `vp run check:ci`, `vp run typecheck:node`, `vp run test:tooling` e
+os testes Node de `src/middleware/` e de SEO. Execute
+`vp run test:e2e:production` para conferir a árvore real e `vp run test:e2e`
+para exercitar também as fixtures e falhas do servidor. As suítes
+`AgentReadiness` cobrem conteúdo sem JavaScript, idiomas, negociação, HEAD, 404
+e navegação em larguras de celular e desktop.
+
+Após publicar, confira status final, cabeçalhos e corpo, seguindo redirects:
+
+```sh
+curl -sS -L -i -H 'Accept: text/markdown' https://seu-dominio.example/
+curl -sS -L -i -H 'Accept: text/html' https://seu-dominio.example/
+curl -sS -L -i -H 'Accept: text/markdown' https://seu-dominio.example/pagina-inexistente
+```
+
+Repita a leitura para os caminhos localizados, páginas de apoio, `llms.txt`,
+`robots.txt` e `sitemap.xml`. Uma validação local não comprova a resposta do CDN
+após o deploy. A posição da marca nas buscas depende também de indexação e
+referências externas.
+
+Referências: [negociação Markdown](https://acceptmarkdown.com/guides),
+[formato llms.txt](https://llmstxt.org/) e
+[negociação HTTP no RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#section-12.5.1).

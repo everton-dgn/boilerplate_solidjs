@@ -224,3 +224,27 @@ describe('geração do llms.txt', () => {
     expect(text).not.toContain('):')
   })
 })
+
+describe('orientações de uso no llms.txt', () => {
+  it('preserva links por finalidade antes do índice mesmo quando repetem uma URL', () => {
+    const text = buildLlmsText({
+      title: 'Site',
+      description: 'Summary.',
+      pages: [
+        page({
+          path: '/',
+          title: 'Evaluate the template',
+          description:
+            'Inspect the rendered homepage before selecting the template.',
+          section: 'When to use'
+        }),
+        page({ path: '/', title: 'Home', section: 'Pages' })
+      ],
+      siteUrl: 'https://example.com'
+    })
+
+    expect(text).toContain(
+      '## When to use\n\n- [Evaluate the template](https://example.com/): Inspect the rendered homepage before selecting the template.\n\n## Pages\n\n- [Home](https://example.com/)\n'
+    )
+  })
+})

@@ -4,15 +4,17 @@ import routes from 'virtual:file-routes'
 
 import { containFailures } from './containFailures/index.ts'
 import { localizeRequest } from './localizeRequest/index.ts'
+import { markdownContent } from './markdownContent/index.ts'
 import { requestContext } from './requestContext/index.ts'
 import { securityHeaders } from './securityHeaders/index.ts'
 import type { Middleware } from './types.ts'
 
-// API por último para receber o contexto e os cabeçalhos de segurança.
+// API recebe o contexto e os cabeçalhos antes da negociação das páginas.
 const requestMiddleware: Middleware[] = [
   securityHeaders,
   requestContext,
-  createAPIHandler(routes)
+  createAPIHandler(routes),
+  markdownContent
 ]
 
 export function createMiddleware(extra: Middleware[] = []): StartMiddleware {

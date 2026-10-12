@@ -19,7 +19,7 @@ test.describe('layout na árvore de produção', () => {
       await expect(page.getByRole('banner')).toHaveCount(1)
       await expect(
         page.getByRole('heading', {
-          name: 'Uma base limpa para produtos modernos'
+          name: 'SolidJS Boilerplate para aplicações web'
         })
       ).toBeVisible()
       await expect(page.locator('head link[rel="canonical"]')).toHaveCount(1)
@@ -61,7 +61,7 @@ test.describe('layout na árvore de produção', () => {
     await expect(page).toHaveURL('/pt')
     await expect(
       page.getByRole('heading', {
-        name: 'Uma base limpa para produtos modernos'
+        name: 'SolidJS Boilerplate para aplicações web'
       })
     ).toBeVisible()
     expect(

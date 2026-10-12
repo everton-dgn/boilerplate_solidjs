@@ -8,6 +8,7 @@ import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
+const PAGE_PATHS = ['', '/about', '/contact', '/privacy']
 const LANGUAGES = [
   { locale: 'pt', tag: 'pt-BR', messages: portuguese },
   { locale: 'en', tag: 'en-US', messages: english },
@@ -125,6 +126,22 @@ for (const { locale, tag, messages } of LANGUAGES) {
           inLanguage: LANGUAGES.map(language => language.tag)
         })
       )
+      expect(graph).toContainEqual(
+        expect.objectContaining({
+          '@type': 'Organization',
+          contactPoint: {
+            '@type': 'ContactPoint',
+            contactType: 'demo',
+            email: 'contato@email.com',
+            telephone: '0000000000',
+            description:
+              'Placeholder values for this boilerplate demonstration. Do not use them to contact the maintainer.'
+          }
+        })
+      )
+      expect(
+        graph.find(node => node['@type'] === 'Organization')
+      ).not.toHaveProperty('address')
       const missing = await page.goto(`/${locale}/missing`)
       expect(missing?.status()).toBe(HTTP_NOT_FOUND)
       await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
@@ -196,17 +213,31 @@ test('sitemap alternates are reciprocal and every localized URL resolves without
   const response = await request.get('/sitemap.xml')
   expect(response.status()).toBe(HTTP_OK)
   const entries = await page.evaluate(readSitemap, await response.text())
-  expect(entries.map(entry => entry.loc).toSorted()).toEqual(
-    LANGUAGES.map(({ locale }) => `${readSiteOrigin()}/${locale}`).toSorted()
+  const expectedEntries = PAGE_PATHS.flatMap(path => {
+    const alternates = Object.fromEntries<string>([
+      ...LANGUAGES.map(
+        ({ locale }) =>
+          [locale, `${readSiteOrigin()}/${locale}${path}`] as const
+      ),
+      ['x-default', `${readSiteOrigin()}/en${path}`]
+    ])
+    return LANGUAGES.map(({ locale }) => ({
+      loc: `${readSiteOrigin()}/${locale}${path}`,
+      alternates
+    }))
+  })
+  expect(
+    entries.toSorted((left, right) => left.loc.localeCompare(right.loc))
+  ).toEqual(
+    expectedEntries.toSorted((left, right) => left.loc.localeCompare(right.loc))
   )
   for (const entry of entries) {
-    expect(entry.alternates).toEqual(ALTERNATES)
     const result = await request.get(new URL(entry.loc).pathname, {
       maxRedirects: 0
     })
     expect(result.status()).toBe(HTTP_OK)
     expect(result.headers()['content-language']).toBe(
-      new URL(entry.loc).pathname.slice(1)
+      new URL(entry.loc).pathname.split('/')[1]
     )
   }
 })

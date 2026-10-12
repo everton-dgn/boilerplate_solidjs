@@ -13,6 +13,7 @@ const subjects: Record<string, readonly string[]> = {
   'src/tests/pages/LateRedirect': ['LateRedirect'],
   'src/tests/pages/OutsideError': ['OutsideError'],
   'src/tests/pages/SeoIndexes': ['SeoIndexes'],
+  'src/tests/pages/AgentReadiness': ['AgentReadiness'],
   'src/tests/pages/I18n': ['I18n'],
   'src/tests/pages/UiKit': ['UiKit'],
   'src/tests/pages/StructuredData': ['StructuredData'],
