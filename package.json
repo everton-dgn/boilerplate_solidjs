@@ -112,5 +112,8 @@
     "@solidjs/compiler": "2.0.0-rc.14",
     "vite@*": "catalog:",
     "vitest@*": "catalog:"
+  },
+  "patchedDependencies": {
+    "@voidzero-dev/vite-plus-core@1.1.0": "patches/@voidzero-dev%2Fvite-plus-core@1.1.0.patch"
   }
 }
