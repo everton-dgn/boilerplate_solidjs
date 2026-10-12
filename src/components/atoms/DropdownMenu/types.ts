@@ -31,19 +31,6 @@ export type DropdownMenuProps<Value extends string = string> = {
   onChange?: (value: Value) => void
 }
 
-export type DropdownMenuRadioGroupProps = {
-  value?: string
-  onChange?: (value: string) => void
-  children?: JSX.Element
-}
-
-export type DropdownMenuRadioItemProps = {
-  value: string
-  disabled?: boolean
-  class?: string
-  children?: JSX.Element
-}
-
 export type DropdownMenuRefs = {
   trigger?: HTMLButtonElement
   content?: HTMLElement
@@ -58,14 +45,4 @@ export type DropdownMenuState = {
   focusAt: (index: number) => void
   openAt: (index: number) => void
   setPointer: (value: boolean) => void
-}
-
-export type DropdownMenuContextValue = {
-  close: (restoreFocus: boolean) => void
-  closeAfterSelect: () => void
-}
-
-export type DropdownMenuRadioContextValue = {
-  selected: () => string | undefined
-  select: (value: string) => void
 }

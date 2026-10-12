@@ -4,13 +4,10 @@ import assert from 'node:assert/strict'
 import path from 'node:path'
 import { describe, it } from 'node:test'
 
+import { RuleTester } from 'vite-plus/lint/plugins-dev'
+
 import plugin from '../../css-modules-plugin.ts'
 import { testFilenameError } from '../../test-filename.ts'
-
-type Report = {
-  node: object
-  message: string
-}
 
 describe('test filename policy', () => {
   const validTestPaths = [
@@ -95,29 +92,31 @@ describe('test filename policy', () => {
   })
 
   it('reports on Program, including an empty test, with the configured plugin', () => {
-    const reports: Report[] = []
-    const programNode = {}
-    const cwd = path.resolve('/project')
     const rule = plugin.rules['test-filename']
-
-    for (const subjectName of ['Button', 'button']) {
-      const filename = path.join(
-        cwd,
-        `src/components/Button/__tests__/${subjectName}.dom.test.tsx`
-      )
-      const listeners = rule.create({
-        cwd,
-        filename,
-        report: diagnostic => reports.push(diagnostic)
-      })
-
-      listeners.Program(programNode)
-    }
-
-    assert.equal(reports.length, 1)
-
-    const [report] = reports
-    assert.equal(report?.node, programNode)
-    assert.match(report.message, /Button/u)
+    assert.ok(rule)
+    new RuleTester({ cwd: path.resolve(import.meta.dirname, '../../..') }).run(
+      'test-filename',
+      rule,
+      {
+        valid: [
+          {
+            filename: 'src/components/Button/__tests__/Button.dom.test.tsx',
+            code: ''
+          }
+        ],
+        invalid: [
+          {
+            filename: 'src/components/Button/__tests__/button.dom.test.tsx',
+            code: '',
+            errors: [
+              {
+                message:
+                  'Use o nome exato do assunto testado: Button. Qualificadores usam ponto e camelCase.'
+              }
+            ]
+          }
+        ]
+      }
+    )
   })
 })
