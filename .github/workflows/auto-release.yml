@@ -87,17 +87,8 @@ jobs:
             ${{ github.event.workflow_run.id || inputs.source_run_id }}
         run: bun tooling/release/automatic-release.ts
 
-  validate:
-    needs: prepare
-    if: needs.prepare.outputs.publish == 'true'
-    permissions:
-      contents: read
-    uses: ./.github/workflows/ci.yml
-    with:
-      ref: ${{ needs.prepare.outputs.head }}
-
   publish:
-    needs: [prepare, validate]
+    needs: prepare
     if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -132,7 +123,7 @@ jobs:
 
       - name: Install dependencies
         run: vp install --frozen-lockfile
-      - name: Merge release and publish tag and notes
+      - name: Validate release metadata, merge and publish
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_MODE: publish

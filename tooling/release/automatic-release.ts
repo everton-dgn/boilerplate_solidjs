@@ -213,6 +213,9 @@ async function validateHead(
   const changed = await git('diff', '--name-only', ctx.source, head)
   const files = changed.split('\n')
   assertReleaseFiles(files)
+  if (await git('diff', '--summary', ctx.source, head)) {
+    throw new Error('Release commit must preserve file modes and types.')
+  }
   for (const expected of await expectedFiles(ctx, plan)) {
     // A saída do git show já vem aparada pelo comando; normalize só a quebra de linha final.
     if (
@@ -337,16 +340,16 @@ async function publish(ctx: Context, prepared: Prepared): Promise<void> {
         'Main advanced during release validation; refusing merge.'
       )
     }
-    // A CI reutilizável pertence à execução chamadora; vincule o sucesso dela ao SHA testado.
-    // Este modo é invocado só depois que o job validate passa.
+    const sourceCiUrl = `https://github.com/${ctx.repository}/actions/runs/${required('RELEASE_SOURCE_RUN_ID')}`
     await api(`${ctx.root}/check-runs`, 'POST', {
       name: REQUIRED_CHECK,
       head_sha: prepared.head,
+      details_url: sourceCiUrl,
       status: 'completed',
       conclusion: 'success',
       output: {
-        title: 'Release commit validated',
-        summary: `Reusable CI passed for ${prepared.head}, based on ${ctx.source}.`
+        title: 'Release metadata validated against successful source CI',
+        summary: `Source CI passed for ${ctx.source}. Release ${prepared.head} preserves the validated application and changes only the package version and generated changelog. [View source CI](${sourceCiUrl}).`
       }
     })
     const result = await api<{ merged: boolean; sha: string }>(

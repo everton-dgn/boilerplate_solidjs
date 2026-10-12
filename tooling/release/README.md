@@ -5,9 +5,10 @@ termina com sucesso. Ele confere o repositório, o workflow e o SHA aprovado
 antes de preparar qualquer alteração.
 
 O processo cria uma branch `release/vX.Y.Z-<sha>` com mudanças somente em
-`package.json` e `CHANGELOG.md`, abre um PR e executa o CI reutilizável nesse
-commit. Após a validação, integra com merge normal, cria uma tag anotada e
-publica as notas na GitHub Release. Não publica no npm nem faz deploy.
+`package.json` e `CHANGELOG.md` e abre um PR. A publicação reaproveita o CI
+aprovado da origem e verifica o conteúdo exato do commit de release antes do
+merge normal. Depois cria uma tag anotada e publica as notas na GitHub Release.
+Não publica no npm nem faz deploy.
 
 ## Versionamento
 
@@ -46,20 +47,30 @@ atualiza o GitHub automaticamente; mudanças precisam ser aplicadas ao ruleset
 pela API ou pela interface do repositório.
 
 PRs criados pelo `GITHUB_TOKEN` não dependem de um novo evento de PR para
-validação: a automação chama `ci.yml` diretamente com o SHA preparado. Esse job
-tem apenas `contents: read`. Após seu sucesso, o job `publish`, com
-`checks: write`, associa o resultado ao SHA exato preparado usando a API de
-check runs. O script confere as regras ativas da `main` antes de criar qualquer
-artefato de release e repete a conferência imediatamente antes do merge. Se
-faltar a exigência de CI estrito, a preparação para sem criar commit, branch ou
-PR. As versões de Node e Vite+ vêm do `package.json`; as dependências são
-instaladas com lockfile congelado.
+validação. O job `publish` consulta novamente o CI de origem e exige que o
+commit de release seja seu filho direto. Aceita somente os dois arquivos
+previstos, com tipos e permissões preservados. O `package.json` deve manter
+todos os campos da origem, exceto a versão calculada; o changelog deve
+corresponder ao conteúdo gerado pelo plano. Mudanças em dependências, scripts,
+outros arquivos ou no conteúdo esperado impedem a publicação.
+
+Depois dessas verificações, `publish`, com `checks: write`, registra
+`CI required` no SHA exato da release. O resultado identifica a validação de
+metadados e aponta para o CI aprovado da origem. A release não repete cobertura,
+tooling nem E2E. Os testes específicos da automação em Bun continuam na
+preparação, pois esse é o runtime usado para publicar.
+
+O script confere as regras ativas da `main` antes de criar qualquer artefato de
+release e repete a conferência imediatamente antes do merge. Se faltar a
+exigência de CI estrito, a preparação para sem criar commit, branch ou PR. As
+versões de Node e Vite+ vêm do `package.json`; as dependências são instaladas
+com lockfile congelado.
 
 Os testes mantêm os projetos node, dom e browser. No CI, o provider usa o canal
 `chrome` disponível no runner definido no
 [workflow do CI](../../.github/workflows/ci.yml), sem baixar Chromium.
 Localmente, continua usando o Chromium gerenciado pelo Playwright. O checkout
-usa o SHA do evento ou o SHA explícito da chamada reutilizável.
+usa o SHA do evento.
 
 Novos PRs podem cancelar seu CI anterior. Pushes não cancelam o workflow em
 andamento, preservando o deploy. A release aceita somente a branch `main` no
@@ -72,8 +83,7 @@ substitui a pendente anterior, preservando a execução já em andamento.
 
 O projeto `boilerplate-solidjs`, no escopo `verton-toffanettos-projects`, recebe
 deploys de produção pelo job `deploy` do CI. Ele depende de `check` e executa
-somente em push na `main`. PRs e chamadas reutilizáveis usadas pela release
-validam o código sem publicar na Vercel.
+somente em push na `main`. O CI de PRs valida o código sem publicar na Vercel.
 
 O job faz checkout do SHA validado, prepara Node e Vite+ com as versões do
 `package.json` e instala com `vp install --frozen-lockfile`. A CLI Vercel,
@@ -161,10 +171,6 @@ vp run test:release
 vp run typecheck
 actionlint .github/workflows/auto-release.yml
 ```
-
-O `ci.yml` usa etapas `parallel`. Valide esse arquivo com uma versão do
-validador que reconheça essas etapas; a execução nativa fica comprovada pelo
-GitHub Actions.
 
 Os testes de release pertencem à suíte de tooling e executam com Node em
 `vp run test:tooling`. A automação executa em Bun; antes de preparar a release,

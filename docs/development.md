@@ -215,9 +215,12 @@ a preparação nos runners e pode aumentar o consumo de minutos do GitHub Action
 
 `CI required` aguarda todos os jobs e só passa se todos tiverem sucesso; falhas,
 cancelamentos e verificações puladas impedem sua aprovação. O deploy depende
-desse resultado, e a release reutiliza o mesmo workflow. Os testes rodam em toda
-execução; o cache do Vitest guarda transformações de módulos. Em `CI=true`,
-Vitest e o runner Node dos testes de tooling usam no máximo dois workers cada.
+desse resultado. A release reaproveita o CI aprovado da `main` e confere apenas
+o commit de versão e changelog, conforme o
+[guia de release](../tooling/release/README.md). Os testes rodam em toda
+execução do CI; o cache do Vitest guarda transformações de módulos. Em
+`CI=true`, Vitest e o runner Node dos testes de tooling usam no máximo dois
+workers cada.
 
 ## Hooks de Git
 
