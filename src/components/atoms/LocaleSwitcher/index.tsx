@@ -7,7 +7,7 @@ import {
 } from '@paraglide/runtime.js'
 import { useLocation } from '@solidjs/router'
 import { For, NoHydration } from 'solid-js'
-import IconLanguage from '~icons/hugeicons/language-circle'
+import IconLanguage from '~icons/hugeicons/languages'
 
 import { localizeHref } from '@/i18n/urls/index.ts'
 
