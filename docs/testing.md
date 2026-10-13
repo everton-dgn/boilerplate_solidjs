@@ -107,6 +107,13 @@ redirecionamento, com conteúdo e headers esperados, e que os helpers locais nã
 viram endpoints públicos. Também verifica a ausência de uma rota das fixtures e
 que a Home recebe os cabeçalhos de segurança do middleware real, já que o build
 E2E monta a cadeia pela fábrica `createMiddleware`.
+`AgentReadiness.build.production.e2e.test.ts` confere os 12 arquivos Markdown na
+saída final `.vercel/output/static`, o idioma e o título de cada página, os
+bytes servidos por HTTP e os manifestos de publicação. O teste lê os catálogos
+autorais como referência, sem importar produtores ou o serializador. As regras
+de headers precisam aparecer antes da resolução de arquivos no `config.json`
+gerado pelo Nitro. Isso cobre a integração do build e do preview; o
+comportamento do CDN da Vercel exige verificação após o deploy.
 `Home.csp.production.e2e.test.ts` confere que a CSP traz um nonce que muda a
 cada requisição, que todos os `<script>` e `modulepreload` do HTML bruto trazem
 esse nonce e que a Home hidrata sem violação de CSP no console, também com o
