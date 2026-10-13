@@ -106,17 +106,23 @@ for (const language of LANGUAGES) {
         await expect(heading).toBeVisible()
         // oxlint-disable-next-line unicorn/prefer-dom-node-text-content -- A contagem precisa excluir texto oculto por CSS.
         const visibleText = await main.innerText()
-        expect(
-          visibleText.replaceAll(/\s+/gu, ' ').trim().length
-        ).toBeGreaterThanOrEqual(MIN_CONTENT_CHARACTERS)
-
         const content = await page.evaluate(readMainContent, html)
-        expect(content.text.length).toBeGreaterThanOrEqual(
-          MIN_CONTENT_CHARACTERS
-        )
+        if (path === '') {
+          await expect(main.locator('footer')).toHaveCount(0)
+          await expect(main.getByRole('heading', { level: 2 })).toHaveCount(0)
+          await expect(main.locator('h1 + p')).toHaveText(/SolidJS 2/u)
+          expect(markdownBody).toContain('## ')
+        } else {
+          expect(
+            visibleText.replaceAll(/\s+/gu, ' ').trim().length
+          ).toBeGreaterThanOrEqual(MIN_CONTENT_CHARACTERS)
+          expect(content.text.length).toBeGreaterThanOrEqual(
+            MIN_CONTENT_CHARACTERS
+          )
+          expect(content.headings).toContain(SUBHEADING_LEVEL)
+        }
         expect(content.headings[0]).toBe(1)
         expect(content.headings.filter(level => level === 1)).toHaveLength(1)
-        expect(content.headings).toContain(SUBHEADING_LEVEL)
         for (const [position, level] of content.headings.entries()) {
           expect(level).toBeLessThanOrEqual(
             (content.headings[position - 1] ?? 0) + 1
@@ -139,7 +145,7 @@ for (const language of LANGUAGES) {
         ).toHaveAttribute('href', `${readSiteOrigin()}/en${path}`)
         for (const destination of PATHS) {
           const link = page
-            .locator('main footer')
+            .locator('header > nav')
             .locator(`a[href="/${language.locale}${destination}"]`)
           await expect(link).toBeVisible()
           await expect(link).toHaveAccessibleName(/\S/u)
@@ -185,7 +191,7 @@ for (const language of LANGUAGES) {
 
         for (const [index, path] of PATHS.entries()) {
           await page
-            .locator('main footer')
+            .locator('header > nav')
             .locator(`a[href="/${language.locale}${path}"]`)
             .click()
           await expect(page).toHaveURL(`/${language.locale}${path}`)

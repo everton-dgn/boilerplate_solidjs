@@ -123,6 +123,14 @@ inclusive criando `seo.ts` depois da primeira ativação sem fonte ou após remo
 a única fonte disponível, fora da pasta de rotas reexportadas. A suíte E2E de
 fixtures também passa pelo build com as páginas reais reexportadas.
 
+`AgentReadiness.content.production.e2e.test.ts` verifica a apresentação compacta
+da home, sem artigo ou rodapé, e preserva a exigência de conteúdo detalhado nas
+páginas internas. A navegação usa os links da topbar nos três idiomas, em telas
+estreitas e largas, inclusive sem JavaScript. Em telas estreitas, os links da
+barra rolam horizontalmente sem alargar o documento; tema e idioma permanecem
+acessíveis fora da área rolável. O Markdown da home mantém as seções
+descritivas.
+
 `Home.csp.production.e2e.test.ts` confere que a CSP traz um nonce que muda a
 cada requisição, que todos os `<script>` e `modulepreload` do HTML bruto trazem
 esse nonce e que a Home hidrata sem violação de CSP no console, também com o

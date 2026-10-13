@@ -297,10 +297,13 @@ ser nomeadas, como `export { route } from './page/index.tsx'`; namespace e
 O contrato `MarkdownSource`, em `src/@types/markdown.ts`, define o produtor
 exclusivo do build. Esse módulo exporta `markdown`, com uma função
 `render({ path, locale, signal })` que devolve `SitePage`, inclusive por
-Promise. A home mantém o exemplo abaixo de produtor explícito, compartilhando o
-objeto `content` de `seo.ts` com o HTML. Textos e links localizados usam getters
-nas duas formas de publicação. `seo.ts` e o `markdown.ts` opcional ficam ao lado
-de `index.tsx`. Seus catálogos permanecem em `i18n/{pt,en,es}.json` na pasta da
+Promise. A home exibe apenas a apresentação inicial; os links públicos ficam na
+topbar e usam os mesmos rótulos traduzidos do conteúdo. Seu Markdown inclui
+também as seções descritivas de `seo.ts`, sem exigir que elas apareçam no HTML.
+A home mantém o exemplo abaixo de produtor explícito, compartilhando o objeto
+`content` de `seo.ts` com o HTML. Textos e links localizados usam getters nas
+duas formas de publicação. `seo.ts` e o `markdown.ts` opcional ficam ao lado de
+`index.tsx`. Seus catálogos permanecem em `i18n/{pt,en,es}.json` na pasta da
 rota; os links comuns continuam em `src/constants/siteLinks/`.
 
 ```ts
