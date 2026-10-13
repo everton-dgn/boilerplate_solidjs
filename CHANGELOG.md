@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.10.1 - 2026-10-13
+
+### Fixed
+
+- add Markdown responses and public site content (71a8bcc)
+
 ## 1.10.0 - 2026-10-12
 
 ### Added
