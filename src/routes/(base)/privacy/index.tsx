@@ -3,7 +3,7 @@ import type { RouteDefinition } from '@solidjs/router'
 
 import type { SitePage } from '@/@types/site-page.ts'
 import { SiteArticle } from '@/components/organisms/SiteArticle/index.tsx'
-import { readPageLinks } from '@/helpers/siteLinks/index.ts'
+import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 
 function readContent(): SitePage {
   return {
@@ -24,7 +24,7 @@ function readContent(): SitePage {
         paragraphs: [m.privacy_questions()]
       }
     ],
-    links: readPageLinks()
+    links: SITE_LINKS.pages
   }
 }
 

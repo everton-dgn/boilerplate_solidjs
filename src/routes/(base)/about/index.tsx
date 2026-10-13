@@ -3,7 +3,7 @@ import type { RouteDefinition } from '@solidjs/router'
 
 import type { SitePage } from '@/@types/site-page.ts'
 import { SiteArticle } from '@/components/organisms/SiteArticle/index.tsx'
-import { readPageLinks, readSourceLinks } from '@/helpers/siteLinks/index.ts'
+import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 
 function readContent(): SitePage {
   return {
@@ -20,7 +20,7 @@ function readContent(): SitePage {
         paragraphs: [m.about_source()]
       }
     ],
-    links: [...readPageLinks(), ...readSourceLinks()]
+    links: [...SITE_LINKS.pages, ...SITE_LINKS.sources]
   }
 }
 

@@ -238,11 +238,11 @@ própria rota. O contrato atual não recebe parâmetros de rotas dinâmicas.
 
 Cada página mantém seus catálogos `i18n/{pt,en,es}.json` na própria pasta de
 rota, com IDs prefixados por `home_`, `about_`, `contact_` ou `privacy_`.
-`src/helpers/siteLinks/` reúne somente os links comuns e seus rótulos, com
-prefixo `siteLinks_`. As mensagens são lidas quando a função é chamada, dentro
-do contexto de idioma da requisição. O conteúdo principal é visível no HTML
-inicial, inclusive sem JavaScript. A home mantém sua abertura e acrescenta
-seções de recursos e uso abaixo dela.
+`src/constants/siteLinks/` reúne os links comuns em `SITE_LINKS` e seus
+catálogos, com prefixo `siteLinks_`. Os getters `pages` e `sources` leem as
+mensagens no acesso, dentro do contexto de idioma da requisição. O conteúdo
+principal é visível no HTML inicial, inclusive sem JavaScript. A home mantém sua
+abertura e acrescenta seções de recursos e uso abaixo dela.
 
 Um GET com `Accept: text/markdown` recebe a representação Markdown dessas
 páginas, com `Content-Type: text/markdown; charset=utf-8`. A negociação compara

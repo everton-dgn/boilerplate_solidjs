@@ -4,7 +4,7 @@ import type { RouteDefinition } from '@solidjs/router'
 import type { SitePage } from '@/@types/site-page.ts'
 import { SiteArticle } from '@/components/organisms/SiteArticle/index.tsx'
 import { SITE } from '@/constants/site.ts'
-import { readPageLinks } from '@/helpers/siteLinks/index.ts'
+import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 
 function readContent(): SitePage {
   return {
@@ -22,7 +22,7 @@ function readContent(): SitePage {
       }
     ],
     links: [
-      ...readPageLinks(),
+      ...SITE_LINKS.pages,
       { label: m.contact_issuesLabel(), href: `${SITE.repositoryUrl}/issues` },
       { label: m.contact_maintainerLabel(), href: SITE.author.url }
     ]

@@ -6,7 +6,7 @@ import type { SitePage } from '@/@types/site-page.ts'
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
 import { SiteContent } from '@/components/molecules/SiteContent/index.tsx'
 import { SITE } from '@/constants/site.ts'
-import { readPageLinks, readSourceLinks } from '@/helpers/siteLinks/index.ts'
+import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 
 import S from './styles.module.css'
 
@@ -29,7 +29,7 @@ function readContent(): SitePage {
         paragraphs: [m.home_usage()]
       }
     ],
-    links: [...readPageLinks(), ...readSourceLinks()]
+    links: [...SITE_LINKS.pages, ...SITE_LINKS.sources]
   }
 }
 
