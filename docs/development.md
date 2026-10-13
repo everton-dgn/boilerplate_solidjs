@@ -95,6 +95,22 @@ O Nitro é definido no [package.json](../package.json). Ao atualizá-lo, valide 
 build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
 `.nitro/` e `.vercel/` são ignorados pelo Git.
 
+## Estilos no primeiro carregamento em desenvolvimento
+
+`tooling/devAssetManifest` espera o servidor HTTP começar a escutar antes de
+carregar `virtual:solid-manifest`. Ele precisa aparecer antes do plugin do Solid
+em `appPlugins`. O Nitro pode importar esse módulo durante a inicialização; sem
+a espera, o Solid grava uma URL de ponte nula e o worker SSR deixa de enviar a
+CSS das rotas lazy. Isso causa texto sem estilo até o JavaScript carregar.
+
+A espera ocorre só em `serve`, uma vez por inicialização, sem atraso por página
+nem alteração no build. Em modo middleware, sem servidor HTTP próprio, o plugin
+não espera um evento `listening`; o encerramento antes do bind também libera
+qualquer importação pendente. O teste em `tooling/devAssetManifest` antecipa a
+importação ao bind, ocupa a porta inicial e confere a URL efetiva e a CSS
+devolvida pela ponte após a troca automática de porta. Ao atualizar Solid ou
+Nitro, revalide essa ordem antes de retirar a integração.
+
 ## Scripts
 
 | Script                        | Descrição                                                   |
