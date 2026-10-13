@@ -23,10 +23,6 @@ export const content = {
       {
         title: m.privacy_hostingTitle(),
         paragraphs: [m.privacy_hosting()]
-      },
-      {
-        title: m.privacy_questionsTitle(),
-        paragraphs: [m.privacy_questions()]
       }
     ]
   },
