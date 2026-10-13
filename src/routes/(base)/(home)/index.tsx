@@ -1,23 +1,19 @@
-import { m } from '@paraglide/messages.js'
 import type { RouteDefinition } from '@solidjs/router'
 import SolidLogo from '~icons/my-images/solid'
 
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
 import { SiteContent } from '@/components/molecules/SiteContent/index.tsx'
 
-import { readContent } from './helpers/readContent/index.ts'
+import { content } from './content.ts'
+import { seo } from './seo.ts'
 
 import S from './styles.module.css'
 
 export const route = {
   info: {
     llms: true,
-    markdown: { source: '@/routes/(base)/(home)/helpers/markdown.ts' },
-    seo: {
-      get title() {
-        return m.home_seoTitle()
-      }
-    }
+    markdown: { source: '@/routes/(base)/(home)/markdown.ts' },
+    seo
   }
 } satisfies RouteDefinition
 
@@ -30,9 +26,9 @@ export default function Home() {
         <section class={S.hero}>
           <PageBadge>SolidJS Boilerplate</PageBadge>
 
-          <h1 class={S.title}>{readContent().title}</h1>
+          <h1 class={S.title}>{content.title}</h1>
 
-          <p class={S.description}>{readContent().intro}</p>
+          <p class={S.description}>{content.intro}</p>
 
           <div class={S.logos}>
             <SolidLogo class={S.logo} />
@@ -41,7 +37,7 @@ export default function Home() {
           <p class={S.subtitle}>SolidJS 2 · Vite+ · TypeScript 7</p>
         </section>
       </div>
-      <SiteContent page={readContent()} />
+      <SiteContent page={content} />
     </main>
   )
 }

@@ -16,7 +16,8 @@ do `createSeo`, para acompanhar a regra de `noindex` abaixo; em `Document.tsx`
 fica só `author`. Não repita no `Document.tsx` uma tag que o `createSeo`
 publica, porque o crawler lê a primeira ocorrência.
 
-Cada página pode exportar `route.info.seo` com `title`, `description`,
+Cada página mantém seus metadados em `seo.ts`, ao lado de `index.tsx`, e importa
+o objeto `seo` para `route.info.seo`. O contrato aceita `title`, `description`,
 `noindex`, `type`, `image` e `article`. Isso não muda sua estratégia de
 renderização nem torna a página estática: são metadados, disponíveis também em
 rotas com parâmetros. Na chamada com `route: true`, `createSeo` lê a cadeia de
@@ -40,6 +41,29 @@ compartilhamento (convite, resultado, campanha) ainda não tem suporte e deixa d
 fornecer metadados explícitos para a prévia social. Quando esse caso surgir,
 acrescente um campo em `route.info.seo` que devolva Open Graph e Twitter sem
 canonical nem JSON-LD.
+
+Por exemplo, `about/seo.ts` reutiliza o conteúdo público da página:
+
+```ts
+import type { SeoRouteInfo } from '@/@types/seo.ts'
+
+import { content } from './content.ts'
+
+export const seo = {
+  get title() {
+    return content.title
+  },
+  get description() {
+    return content.description
+  }
+} satisfies SeoRouteInfo
+```
+
+Em `index.tsx`, importe `seo` e use `info: { seo }` na definição da rota, junto
+dos demais controles que a página declarar. Getters preservam o idioma da
+requisição; não copie os textos traduzidos para valores no topo do módulo. Os
+catálogos ficam em `i18n/{pt,en,es}.json` ao lado desses arquivos. Páginas sem
+conteúdo compartilhado com outro consumidor dispensam `content.ts`.
 
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
 JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (nó
@@ -236,7 +260,7 @@ essa representação declara `route.info.markdown` na própria folha da árvore:
 ```tsx
 export const route = {
   info: {
-    markdown: { source: '@/routes/(base)/about/helpers/markdown.ts' },
+    markdown: { source: '@/routes/(base)/about/markdown.ts' },
     llms: true
   }
 } satisfies RouteDefinition
@@ -252,16 +276,18 @@ Login, área privada e conteúdo por visitante devem ficar sem `markdown`.
 O contrato `MarkdownSource`, em `src/@types/markdown.ts`, aponta para um módulo
 `markdown.ts` exclusivo do build. Esse módulo exporta `markdown`, com uma função
 `render({ path, locale, signal })` que devolve `SitePage`, inclusive por
-Promise. As páginas atuais compartilham `helpers/readContent/index.ts` entre o
-HTML e esse produtor. Seus catálogos permanecem em `i18n/{pt,en,es}.json` na
-pasta da rota; os links comuns continuam em `src/constants/siteLinks/`.
+Promise. As páginas atuais compartilham o objeto de `content.ts` entre o HTML e
+esse produtor, com getters para os textos e links localizados. `seo.ts`,
+`content.ts` e `markdown.ts` ficam ao lado de `index.tsx`. Seus catálogos
+permanecem em `i18n/{pt,en,es}.json` na pasta da rota; os links comuns continuam
+em `src/constants/siteLinks/`.
 
 ```ts
 import type { MarkdownSource } from '@/@types/markdown.ts'
 
-import { readContent } from './readContent/index.ts'
+import { content } from './content.ts'
 
-export const markdown = { render: readContent } satisfies MarkdownSource
+export const markdown = { render: () => content } satisfies MarkdownSource
 ```
 
 O build avalia os produtores num runner isolado, seleciona os metadados das

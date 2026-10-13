@@ -3,12 +3,18 @@ import { m } from '@paraglide/messages.js'
 import type { SitePage } from '@/@types/site-page.ts'
 import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 
-export function readContent(): SitePage {
-  return {
-    title: m.privacy_title(),
-    description: m.privacy_description(),
-    intro: m.privacy_intro(),
-    sections: [
+export const content = {
+  get title() {
+    return m.privacy_title()
+  },
+  get description() {
+    return m.privacy_description()
+  },
+  get intro() {
+    return m.privacy_intro()
+  },
+  get sections() {
+    return [
       {
         title: m.privacy_preferencesTitle(),
         paragraphs: [m.privacy_preferences()]
@@ -21,7 +27,9 @@ export function readContent(): SitePage {
         title: m.privacy_questionsTitle(),
         paragraphs: [m.privacy_questions()]
       }
-    ],
-    links: SITE_LINKS.pages
+    ]
+  },
+  get links() {
+    return SITE_LINKS.pages
   }
-}
+} satisfies SitePage

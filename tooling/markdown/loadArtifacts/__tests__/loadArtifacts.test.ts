@@ -24,7 +24,7 @@ describe('isolated Markdown build runner', () => {
       import './styles-must-not-load.css';
       export const route = {
         preload() { throw new Error('preload must not execute'); },
-        info: { markdown: { source: '@/routes/(base)/about/helpers/markdown.ts' }, llms: false }
+        info: { markdown: { source: '@/routes/(base)/about/markdown.ts' }, llms: false }
       };
       export default function Page() { return <MissingComponent />; }
     `
@@ -75,7 +75,7 @@ describe('isolated Markdown build runner', () => {
       `export const route = {
         info: {
           markdown: import.meta.env.MODE === 'staging' && import.meta.env.PROD && import.meta.env.VITE_MARKDOWN_ENABLED === 'yes'
-            ? { source: '@/routes/(base)/about/helpers/markdown.ts' } : undefined
+            ? { source: '@/routes/(base)/about/markdown.ts' } : undefined
         }
       }; export default function Page() { return null; }`
     )

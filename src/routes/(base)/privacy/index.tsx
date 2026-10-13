@@ -2,23 +2,17 @@ import type { RouteDefinition } from '@solidjs/router'
 
 import { SiteArticle } from '@/components/organisms/SiteArticle/index.tsx'
 
-import { readContent } from './helpers/readContent/index.ts'
+import { content } from './content.ts'
+import { seo } from './seo.ts'
 
 export const route = {
   info: {
     llms: true,
-    markdown: { source: '@/routes/(base)/privacy/helpers/markdown.ts' },
-    seo: {
-      get title() {
-        return readContent().title
-      },
-      get description() {
-        return readContent().description
-      }
-    }
+    markdown: { source: '@/routes/(base)/privacy/markdown.ts' },
+    seo
   }
 } satisfies RouteDefinition
 
 export default function Privacy() {
-  return <SiteArticle page={readContent()} />
+  return <SiteArticle page={content} />
 }

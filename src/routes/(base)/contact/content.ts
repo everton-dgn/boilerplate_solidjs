@@ -4,12 +4,18 @@ import type { SitePage } from '@/@types/site-page.ts'
 import { SITE } from '@/constants/site.ts'
 import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 
-export function readContent(): SitePage {
-  return {
-    title: m.contact_title(),
-    description: m.contact_description(),
-    intro: m.contact_intro(),
-    sections: [
+export const content = {
+  get title() {
+    return m.contact_title()
+  },
+  get description() {
+    return m.contact_description()
+  },
+  get intro() {
+    return m.contact_intro()
+  },
+  get sections() {
+    return [
       {
         title: m.contact_issuesTitle(),
         paragraphs: [m.contact_issues()]
@@ -18,11 +24,13 @@ export function readContent(): SitePage {
         title: m.contact_maintainerTitle(),
         paragraphs: [m.contact_maintainer()]
       }
-    ],
-    links: [
+    ]
+  },
+  get links() {
+    return [
       ...SITE_LINKS.pages,
       { label: m.contact_issuesLabel(), href: `${SITE.repositoryUrl}/issues` },
       { label: m.contact_maintainerLabel(), href: SITE.author.url }
     ]
   }
-}
+} satisfies SitePage
