@@ -1,5 +1,6 @@
 import { composeMiddleware, getRequestEvent } from '@solidjs/web'
 
+import { HTTP_INTERNAL_SERVER_ERROR } from '@/constants/http.ts'
 import { isControlResponse } from '@/infra/server/isControlResponse/index.ts'
 import { logServerFailure } from '@/infra/server/logServerFailure/index.ts'
 import {
@@ -18,8 +19,6 @@ type Containment = {
   next: Render
   rendered: boolean
 }
-
-const HTTP_INTERNAL_SERVER_ERROR = 500
 
 function publicTextFailure(): Response {
   return applySecurityHeaders({

@@ -3,8 +3,7 @@ import type { RouteDefinition } from '@solidjs/router'
 import { httpStatus } from '@solidjs/web'
 
 import { ErrorFallback } from '@/components/organisms/ErrorFallback/index.tsx'
-
-const HTTP_NOT_FOUND = 404
+import { HTTP_NOT_FOUND } from '@/constants/http.ts'
 
 export const route = {
   preload: () => httpStatus(HTTP_NOT_FOUND),

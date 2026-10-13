@@ -158,6 +158,10 @@ release. Add a tool name to select part of the graph. For example, run
   consumidor, como `DropdownMenu/constants.ts` e
   `(seo)/robots.txt/constants.ts`. Nunca em `src/constants/` antes do segundo
   consumidor.
+- Códigos HTTP usados pela aplicação ficam em `src/constants/http.ts`, mesmo
+  quando um código ainda tiver um único consumidor. O arquivo reúne os status
+  do protocolo; acrescente apenas códigos efetivamente usados. Testes podem
+  manter valores esperados literais para validar o contrato de forma independente.
 - Rota que passa a precisar de módulos locais vira pasta com `index.ts`:
   `robots.txt.ts` passa a `robots.txt/index.ts`, e o que a rota consome fica
   dentro dessa pasta. `sitemap.xml/`, `llms.txt/` e `robots.txt/` seguem esse

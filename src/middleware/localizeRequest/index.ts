@@ -2,6 +2,8 @@ import { shouldRedirect } from '@paraglide/runtime.js'
 import { paraglideMiddleware } from '@paraglide/server.js'
 import { getRequestEvent } from '@solidjs/web'
 
+import { HTTP_TEMPORARY_REDIRECT } from '@/constants/http.ts'
+
 import {
   isPagePath,
   isServerFunctionPath
@@ -13,8 +15,6 @@ import { persistLocale } from './helpers/persistLocale/index.ts'
 
 type LocalizeRequestOptions = { request: Request; next: Next }
 type LocaleRequest = { request: Request; pageBase?: string }
-
-const HTTP_TEMPORARY_REDIRECT = 307
 
 function serverFunctionLocale(request: Request): LocaleRequest {
   let url = new URL(request.url)

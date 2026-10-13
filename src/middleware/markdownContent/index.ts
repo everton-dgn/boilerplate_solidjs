@@ -1,11 +1,13 @@
 import { markdownPaths } from 'virtual:markdown-manifest'
 
+import {
+  HTTP_NOT_ACCEPTABLE,
+  HTTP_NOT_FOUND,
+  HTTP_TEMPORARY_REDIRECT
+} from '@/constants/http.ts'
+
 import { negotiatePageFormat } from '../negotiatePageFormat/index.ts'
 import type { Next } from '../types.ts'
-
-const HTTP_TEMPORARY_REDIRECT = 307
-const HTTP_NOT_ACCEPTABLE = 406
-const HTTP_NOT_FOUND = 404
 
 function varyAccept(response: Response): Response {
   const vary = response.headers.get('vary')

@@ -3,6 +3,7 @@ import * as v from 'valibot'
 
 import type { SitemapEntry, SitemapRouteInfo } from '@/@types/sitemap.ts'
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
+import { HTTP_SERVICE_UNAVAILABLE } from '@/constants/http.ts'
 
 import {
   SITEMAP_SOURCES_TIMEOUT_MS,
@@ -17,7 +18,6 @@ type BuildSitemapResponseOptions = {
   siteUrl: string
 }
 
-const HTTP_SERVICE_UNAVAILABLE = 503
 const SITEMAP_BYTE_LIMIT = 52_428_800
 
 const EntrySchema = v.object({

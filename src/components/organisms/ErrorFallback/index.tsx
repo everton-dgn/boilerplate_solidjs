@@ -3,14 +3,13 @@ import { createUniqueId, untrack } from 'solid-js'
 
 import { LocalizedLink } from '@/components/atoms/LocalizedLink/index.tsx'
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
+import { HTTP_INTERNAL_SERVER_ERROR } from '@/constants/http.ts'
 import { paths } from '@/router.ts'
 
 import { ERROR_FALLBACK_CONTENT } from './constants.ts'
 import type { ErrorFallbackKind } from './types.ts'
 
 import S from './styles.module.css'
-
-const HTTP_INTERNAL_SERVER_ERROR = 500
 
 type ErrorFallbackProps = {
   kind: ErrorFallbackKind
