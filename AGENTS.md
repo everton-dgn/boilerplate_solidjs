@@ -187,14 +187,17 @@ release. Add a tool name to select part of the graph. For example, run
   Exporte o objeto `seo` com `satisfies SeoRouteInfo` e importe-o para
   `route.info.seo`. A página continua declarando `llms`, `markdown` e os demais
   controles da rota explicitamente.
-- Quando HTML e Markdown compartilham conteúdo público, use `content.ts` na
-  mesma pasta, com o objeto `content` tipado por `satisfies SitePage`.
+- Quando HTML e Markdown compartilham conteúdo público, exporte também de
+  `seo.ts` o objeto `content`, tipado por `satisfies SitePage`.
   `markdown.ts` importa esse objeto e exporta o produtor exclusivo do build.
   Conteúdo usado apenas pela página pode permanecer em `index.tsx`.
+- Declare `route.info.markdown: true` para publicar. O build encontra
+  `markdown.ts` ao lado do módulo que declara `route`, seguindo reexportações.
+  Produtor ausente faz o build falhar; `false` ou ausência da chave não publica.
 - Textos e links localizados são getters: não avalie traduções nem capture o
   idioma no topo desses módulos. Os catálogos permanecem em `i18n/` junto da
   página, e `seo.ts` pode ler `content` para evitar duplicação.
-- `seo.ts`, `content.ts` e `markdown.ts` são módulos de suporte à página e
+- `seo.ts` e `markdown.ts` são módulos de suporte à página e
   ficam ao lado de `index.tsx`, sem entrar na contagem que exige `helpers/`.
   Não exporte componente padrão nem handlers HTTP nesses módulos.
 

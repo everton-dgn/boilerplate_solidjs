@@ -66,7 +66,7 @@ it('serves generated snapshots, refreshes changed sources and recovers from gene
   await writeFile(source, producer('First snapshot'))
   await writeFile(
     path.join(root, 'src/routes/Home/index.tsx'),
-    `export const route = { info: { markdown: { source: '@/routes/Home/markdown.ts' } } }; export default function Home() { return null; }`
+    `export const route = { info: { markdown: true } }; export default function Home() { return null; }`
   )
   const server = await createServer({
     root,

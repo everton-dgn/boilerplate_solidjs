@@ -4,10 +4,6 @@ import type { SitePage } from './site-page.ts'
 
 type MarkdownPageContext = MarkdownBuildContext & { path: string }
 
-export type MarkdownRouteInfo = {
-  source: `@/${string}/markdown.ts`
-}
-
 export type MarkdownBuildContext = {
   locale: Locale
   signal: AbortSignal

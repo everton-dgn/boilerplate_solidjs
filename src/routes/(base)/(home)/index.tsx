@@ -4,15 +4,14 @@ import SolidLogo from '~icons/my-images/solid'
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
 import { SiteContent } from '@/components/molecules/SiteContent/index.tsx'
 
-import { content } from './content.ts'
-import { seo } from './seo.ts'
+import { content, seo } from './seo.ts'
 
 import S from './styles.module.css'
 
 export const route = {
   info: {
     llms: true,
-    markdown: { source: '@/routes/(base)/(home)/markdown.ts' },
+    markdown: true,
     seo
   }
 } satisfies RouteDefinition

@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { access, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import {
@@ -12,8 +12,10 @@ import { toPickId, treeShake } from 'filesystem-routing/vite'
 import { runnerImport, type Plugin } from 'vite-plus'
 
 import type { ArtifactBuild, LoadArtifactsOptions } from '../types.ts'
+import { resolveMarkdownSource } from './resolveMarkdownSource/index.ts'
 
 const ENTRY = 'virtual:markdown-build'
+const SOURCE_QUERY = '?markdown-source'
 
 export async function loadArtifacts({
   root,
@@ -34,12 +36,15 @@ export async function loadArtifacts({
     .map(route => stripRouteGroups(route.path).replace(/\/$/u, '') || '/')
   const imports: string[] = []
   const definitions = routes.map((route, index) => {
+    let source: string | undefined
     if (route.$$route) {
       imports.push(
         `import { route as route${index} } from ${JSON.stringify(toPickId(route.$$route.src, ['route']))};`
       )
+      // O runner resolve imports dinâmicos sem caminho absoluto pelo Node.
+      source = `${route.$$route.src}${SOURCE_QUERY}`
     }
-    return `{ path: ${JSON.stringify(route.path)}, page: true, info: ${route.$$route ? `route${index}.info` : 'undefined'}, matchFilters: ${route.$$route ? `route${index}.matchFilters` : 'undefined'} }`
+    return `{ path: ${JSON.stringify(route.path)}, page: true, markdownSource: ${JSON.stringify(source)}, info: ${route.$$route ? `route${index}.info` : 'undefined'}, matchFilters: ${route.$$route ? `route${index}.matchFilters` : 'undefined'} }`
   })
   const entryPlugin: Plugin = {
     name: 'project:markdown-build-entry',
@@ -47,6 +52,24 @@ export async function loadArtifacts({
       return id === ENTRY ? `\0${ENTRY}` : undefined
     },
     async load(id) {
+      if (id.endsWith(SOURCE_QUERY)) {
+        const source = await resolveMarkdownSource({
+          file: id.slice(0, -SOURCE_QUERY.length),
+          resolve: async ({ source: specifier, importer }) => {
+            const resolved = await this.resolve(specifier, importer)
+            return resolved?.external === true ||
+              resolved?.external === 'absolute'
+              ? undefined
+              : resolved?.id
+          }
+        })
+        try {
+          await access(source)
+        } catch {
+          throw new Error(`Missing colocated Markdown producer: ${source}`)
+        }
+        return `export { markdown } from ${JSON.stringify(source)};`
+      }
       if (id.includes('?pick=')) {
         const [file, query] = id.split('?')
         if (!file) return null
@@ -82,13 +105,7 @@ export async function loadArtifacts({
           routes: identify(tree), locales, reservedPaths: ${JSON.stringify(reservedPaths)},
           setLocale: locale => overwriteGetLocale(() => locale),
           localize: path => localizeHref({ href: path }),
-          load: async source => {
-            if (typeof source !== 'string' || !/^@\\/[^?#]+\\/markdown\\.ts$/.test(source) || source.includes(String.fromCharCode(92)) || source.split('/').some(part => part === '..' || part === '.')) {
-              throw new Error('Markdown sources must be explicit @/ paths to a markdown.ts module');
-            }
-            const file = ${JSON.stringify(path.join(root, 'src/'))} + source.slice(2);
-            return import(file);
-          }
+          load: source => import(source)
         });
       `
     }

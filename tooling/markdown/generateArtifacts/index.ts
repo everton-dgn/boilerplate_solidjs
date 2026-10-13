@@ -55,17 +55,24 @@ function collect({
       parent: parent.llms,
       info: route.info?.llms
     })
-    if (route.info?.markdown) {
+    const publication = route.info?.markdown
+    if (publication !== undefined && typeof publication !== 'boolean') {
+      throw new Error(`Markdown publication must be a boolean: ${path}`)
+    }
+    if (publication === true) {
       if (isNoindex) {
         throw new Error(`Markdown publication conflicts with noindex: ${path}`)
       }
       if (route.children?.length) {
         throw new Error(`Declare Markdown on a leaf page: ${path}`)
       }
+      if (!route.markdownSource) {
+        throw new Error(`Missing colocated Markdown source: ${path}`)
+      }
       selected.push({
         id: route.id,
         path,
-        source: route.info.markdown.source,
+        source: route.markdownSource,
         llms,
         isDynamic: /[:*]/u.test(path)
       })

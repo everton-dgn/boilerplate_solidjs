@@ -2,13 +2,12 @@ import type { RouteDefinition } from '@solidjs/router'
 
 import { SiteArticle } from '@/components/organisms/SiteArticle/index.tsx'
 
-import { content } from './content.ts'
-import { seo } from './seo.ts'
+import { content, seo } from './seo.ts'
 
 export const route = {
   info: {
     llms: true,
-    markdown: { source: '@/routes/(base)/privacy/markdown.ts' },
+    markdown: true,
     seo
   }
 } satisfies RouteDefinition

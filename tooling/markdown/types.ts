@@ -2,17 +2,15 @@ import type { RouteDefinition } from '@solidjs/router'
 
 import type { Locale } from '../../paraglide/runtime.js'
 import type { LlmsRouteInfo, LlmsSelection } from '../../src/@types/llms.ts'
-import type {
-  MarkdownRouteInfo,
-  MarkdownSource
-} from '../../src/@types/markdown.ts'
+import type { MarkdownSource } from '../../src/@types/markdown.ts'
 
 export type MarkdownRoute = {
   id: string
   path: string
+  markdownSource?: string
   matchFilters?: RouteDefinition['matchFilters']
   info?: {
-    markdown?: MarkdownRouteInfo
+    markdown?: boolean
     seo?: { noindex?: boolean }
     llms?: LlmsRouteInfo
   }

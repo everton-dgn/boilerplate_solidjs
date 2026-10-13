@@ -27,7 +27,8 @@ const PAGE: SitePage = {
 const ARTICLE: MarkdownRoute = {
   id: 'article',
   path: '/article',
-  info: { markdown: { source: SOURCE } }
+  markdownSource: SOURCE,
+  info: { markdown: true }
 }
 const DYNAMIC: MarkdownRoute = { ...ARTICLE, path: '/articles/:slug' }
 
@@ -52,7 +53,7 @@ describe('Markdown build policy', () => {
     const artifacts = await generateArtifacts(
       fixture({
         routes: [
-          { ...ARTICLE, info: { markdown: { source: SOURCE }, llms: false } },
+          { ...ARTICLE, info: { markdown: true, llms: false } },
           { id: 'login', path: '/login', info: { llms: true } },
           { id: 'private', path: '/account', info: { seo: { noindex: true } } }
         ]
