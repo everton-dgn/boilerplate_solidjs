@@ -114,10 +114,15 @@ autorais como referência, sem importar produtores ou o serializador. As regras
 de headers precisam aparecer antes da resolução de arquivos no `config.json`
 gerado pelo Nitro. Isso cobre a integração do build e do preview; o
 comportamento do CDN da Vercel exige verificação após o deploy. Os testes de
-`tooling/markdown/loadArtifacts` cobrem a descoberta do produtor colocalizado,
-reexportações por alias e caminho relativo, mudança de pasta de rota dinâmica,
-flags desativadas e erros de produtor ausente ou ciclo. A suíte E2E de fixtures
-também passa pelo build com as páginas reais reexportadas.
+`tooling/markdown/loadArtifacts` cobrem o uso de `seo.ts` sem produtor, a
+prioridade de `markdown.ts`, reexportações por alias e caminho relativo, mudança
+de pasta de rota dinâmica, flags desativadas e falhas de conteúdo, fonte ausente
+ou ciclo. Os testes do plugin verificam a criação e remoção de um produtor
+durante o desenvolvimento, a atualização do conteúdo e a recuperação de erros,
+inclusive criando `seo.ts` depois da primeira ativação sem fonte ou após remover
+a única fonte disponível, fora da pasta de rotas reexportadas. A suíte E2E de
+fixtures também passa pelo build com as páginas reais reexportadas.
+
 `Home.csp.production.e2e.test.ts` confere que a CSP traz um nonce que muda a
 cada requisição, que todos os `<script>` e `modulepreload` do HTML bruto trazem
 esse nonce e que a Home hidrata sem violação de CSP no console, também com o

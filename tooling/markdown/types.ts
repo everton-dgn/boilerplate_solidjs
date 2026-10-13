@@ -43,6 +43,7 @@ export type LoadArtifactsOptions = {
   directory: string
   mode?: string
   environment?: Record<string, string | boolean>
+  onSource?: (source: string) => void
 }
 
 export type ArtifactBuild = {

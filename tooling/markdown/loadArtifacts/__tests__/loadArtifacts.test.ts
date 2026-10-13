@@ -14,7 +14,7 @@ const ROOT = path.resolve(import.meta.dirname, '../../../..')
 beforeAll(() => generateMessages(ROOT))
 
 describe('isolated Markdown build runner', () => {
-  it('loads colocated producers with locale isolation without rendering or importing UI', async context => {
+  it('loads public content with locale isolation without rendering or importing UI', async context => {
     const directory = await mkdtemp(path.join(tmpdir(), 'markdown-routes-'))
     context.after(() => rm(directory, { recursive: true, force: true }))
     await writeFile(
@@ -30,8 +30,8 @@ describe('isolated Markdown build runner', () => {
     `
     )
     await writeFile(
-      path.join(directory, 'markdown.ts'),
-      `export { markdown } from '@/routes/(base)/about/markdown.ts';`
+      path.join(directory, 'seo.ts'),
+      `export { content } from '@/routes/(base)/about/seo.ts';`
     )
     const result = await loadArtifacts({ root: ROOT, directory })
     assert.deepEqual(
@@ -84,8 +84,8 @@ describe('isolated Markdown build runner', () => {
       }; export default function Page() { return null; }`
     )
     await writeFile(
-      path.join(directory, 'markdown.ts'),
-      `export { markdown } from '@/routes/(base)/about/markdown.ts';`
+      path.join(directory, 'seo.ts'),
+      `export { content } from '@/routes/(base)/about/seo.ts';`
     )
     const result = await loadArtifacts({
       root: ROOT,
@@ -160,6 +160,10 @@ describe('Markdown source selection', () => {
       path.join(directory, 'markdown.ts'),
       `throw new Error('disabled producer must not load');`
     )
+    await writeFile(
+      path.join(directory, 'seo.ts'),
+      `throw new Error('disabled content must not load');`
+    )
     for (const flag of ['false', 'undefined']) {
       await writeFile(
         path.join(directory, 'index.tsx'),
@@ -170,7 +174,7 @@ describe('Markdown source selection', () => {
     }
   })
 
-  it('fails with the expected producer path when an enabled page has no markdown.ts', async context => {
+  it('fails with both expected paths when an enabled page has no source', async context => {
     const directory = await mkdtemp(path.join(tmpdir(), 'markdown-missing-'))
     context.after(() => rm(directory, { recursive: true, force: true }))
     await writeFile(
@@ -180,6 +184,7 @@ describe('Markdown source selection', () => {
     await assert.rejects(loadArtifacts({ root: ROOT, directory }), error => {
       assert.ok(error instanceof Error)
       assert.ok(error.message.includes(path.join(directory, 'markdown.ts')))
+      assert.ok(error.message.includes(path.join(directory, 'seo.ts')))
       return true
     })
   })
@@ -238,5 +243,102 @@ describe('Markdown source selection', () => {
         assert.deepEqual(artifacts, [])
       }
     }
+  })
+})
+
+describe('optional Markdown producers', () => {
+  it('prefers an explicit producer without loading the fallback module', async context => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'markdown-priority-'))
+    context.after(() => rm(directory, { recursive: true, force: true }))
+    await writeFile(
+      path.join(directory, 'index.tsx'),
+      `export const route = { info: { markdown: true } }; export default function Page() { return null; }`
+    )
+    await writeFile(
+      path.join(directory, 'seo.ts'),
+      `throw new Error('unused fallback must not load');`
+    )
+    await writeFile(
+      path.join(directory, 'markdown.ts'),
+      `export const markdown = { render: () => ({ title: 'Custom snapshot', description: 'Description', intro: 'Public text', sections: [], links: [] }) };`
+    )
+    const { artifacts } = await loadArtifacts({ root: ROOT, directory })
+    assert.deepEqual(
+      artifacts.map(artifact => [artifact.locale, artifact.title]),
+      ['pt', 'en', 'es'].map(locale => [locale, 'Custom snapshot'])
+    )
+  })
+
+  it('does not hide a broken explicit producer behind valid public content', async context => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'markdown-broken-'))
+    context.after(() => rm(directory, { recursive: true, force: true }))
+    await writeFile(
+      path.join(directory, 'index.tsx'),
+      `export const route = { info: { markdown: true } }; export default function Page() { return null; }`
+    )
+    await writeFile(
+      path.join(directory, 'seo.ts'),
+      `export { content } from '@/routes/(base)/about/seo.ts';`
+    )
+    await writeFile(
+      path.join(directory, 'markdown.ts'),
+      `throw new Error('broken custom producer');`
+    )
+    await assert.rejects(
+      loadArtifacts({ root: ROOT, directory }),
+      /broken custom producer/u
+    )
+    await writeFile(
+      path.join(directory, 'markdown.ts'),
+      `export const markdown = {};`
+    )
+    await assert.rejects(
+      loadArtifacts({ root: ROOT, directory }),
+      /Missing Markdown producer/u
+    )
+  })
+
+  it('requires a public content export instead of serializing SEO metadata', async context => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'markdown-content-'))
+    context.after(() => rm(directory, { recursive: true, force: true }))
+    await writeFile(
+      path.join(directory, 'index.tsx'),
+      `export const route = { info: { markdown: true } }; export default function Page() { return null; }`
+    )
+    await writeFile(
+      path.join(directory, 'seo.ts'),
+      `export const seo = { title: 'Metadata only', description: 'Description' };`
+    )
+    await assert.rejects(loadArtifacts({ root: ROOT, directory }), error => {
+      assert.ok(error instanceof Error)
+      assert.match(error.message, /Missing public content export for Markdown/u)
+      assert.ok(error.message.includes(path.join(directory, 'seo.ts')))
+      return true
+    })
+    await writeFile(
+      path.join(directory, 'seo.ts'),
+      `export const content = { title: 'Incomplete content', description: 'Description' };`
+    )
+    await assert.rejects(
+      loadArtifacts({ root: ROOT, directory }),
+      /Invalid key: Expected "intro"/u
+    )
+  })
+
+  it('still requires path enumeration for parameterized pages using public content', async context => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'markdown-paths-'))
+    context.after(() => rm(directory, { recursive: true, force: true }))
+    await writeFile(
+      path.join(directory, '[slug].tsx'),
+      `export const route = { info: { markdown: true } }; export default function Page() { return null; }`
+    )
+    await writeFile(
+      path.join(directory, 'seo.ts'),
+      `export { content } from '@/routes/(base)/about/seo.ts';`
+    )
+    await assert.rejects(
+      loadArtifacts({ root: ROOT, directory }),
+      /Parameterized Markdown pages require getPaths/u
+    )
   })
 })

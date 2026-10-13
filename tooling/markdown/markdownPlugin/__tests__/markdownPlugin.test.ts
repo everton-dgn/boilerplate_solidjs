@@ -48,7 +48,11 @@ function producer(title: string): string {
   return `export const markdown = { render: () => ({ title: ${JSON.stringify(title)}, description: 'Description', intro: 'Public text', sections: [], links: [] }) };`
 }
 
-it('serves generated snapshots, refreshes changed sources and recovers from generation errors', async context => {
+function publicContent(title: string): string {
+  return `export const content = { title: ${JSON.stringify(title)}, description: 'Description', intro: 'Public text', sections: [], links: [] };`
+}
+
+it('refreshes re-exported public content, switches optional producers and recovers from errors', async context => {
   const root = await mkdtemp(path.join(tmpdir(), 'markdown-dev-'))
   const closers: Close[] = []
   context.after(async () => {
@@ -63,10 +67,16 @@ it('serves generated snapshots, refreshes changed sources and recovers from gene
     path.join(root, 'src/i18n/urls/index.ts')
   )
   const source = path.join(root, 'src/routes/Home/markdown.ts')
-  await writeFile(source, producer('First snapshot'))
+  const contentSource = path.join(root, 'src/routes/Home/seo.ts')
+  const page = path.join(root, 'src/routes/Home/index.tsx')
   await writeFile(
-    path.join(root, 'src/routes/Home/index.tsx'),
-    `export const route = { info: { markdown: true } }; export default function Home() { return null; }`
+    page,
+    `export const route = { info: { markdown: false } }; export default function Home() { return null; }`
+  )
+  await mkdir(path.join(root, 'fixtures'))
+  await writeFile(
+    path.join(root, 'fixtures/Home.tsx'),
+    `export { default, route } from '../src/routes/Home/index.tsx';`
   )
   const server = await createServer({
     root,
@@ -75,7 +85,7 @@ it('serves generated snapshots, refreshes changed sources and recovers from gene
     appType: 'custom',
     server: { middlewareMode: true },
     optimizeDeps: { noDiscovery: true, include: [] },
-    plugins: [markdownPlugin({ directory: 'src/routes' })]
+    plugins: [markdownPlugin({ directory: 'fixtures' })]
   })
   closers.push(() => server.close())
   const http = createHttpServer(server.middlewares).listen(0, '127.0.0.1')
@@ -89,6 +99,18 @@ it('serves generated snapshots, refreshes changed sources and recovers from gene
   const address = http.address()
   assert.ok(address !== null && typeof address === 'object')
   const url = `http://127.0.0.1:${address.port}/en/Home.md`
+  await writeFile(
+    page,
+    `export const route = { info: { markdown: true } }; export default function Home() { return null; }`
+  )
+  await waitFor(async () => {
+    const response = await fetch(url)
+    await response.body?.cancel()
+    return response.status === HTTP_ERROR
+  })
+  await delay(SETTLE_MS)
+  await writeFile(contentSource, publicContent('First snapshot'))
+  await waitFor(() => bodyIncludes({ url, text: 'First snapshot' }))
   const initial = await fetch(url)
   assert.equal(initial.status, HTTP_OK)
   assert.equal(initial.headers.get('content-language'), 'en')
@@ -102,8 +124,10 @@ it('serves generated snapshots, refreshes changed sources and recovers from gene
   )
   await delay(SETTLE_MS)
   assert.equal(send.mock.callCount(), 0)
-  await writeFile(source, producer('Updated snapshot'))
+  await writeFile(contentSource, publicContent('Updated snapshot'))
   await waitFor(() => bodyIncludes({ url, text: 'Updated snapshot' }))
+  await writeFile(source, producer('Custom snapshot'))
+  await waitFor(() => bodyIncludes({ url, text: 'Custom snapshot' }))
   await writeFile(
     source,
     'export const markdown = { render: () => { throw new Error("invalid source"); } };'
@@ -115,6 +139,22 @@ it('serves generated snapshots, refreshes changed sources and recovers from gene
   })
   await writeFile(source, producer('Recovered snapshot'))
   await waitFor(() => bodyIncludes({ url, text: 'Recovered snapshot' }))
+  await rm(source)
+  await waitFor(() => bodyIncludes({ url, text: 'Updated snapshot' }))
+  await writeFile(contentSource, publicContent('Latest public content'))
+  await waitFor(() => bodyIncludes({ url, text: 'Latest public content' }))
+  await writeFile(source, producer('Independent producer'))
+  await waitFor(() => bodyIncludes({ url, text: 'Independent producer' }))
+  await rm(contentSource)
+  await rm(source)
+  await waitFor(async () => {
+    const response = await fetch(url)
+    await response.body?.cancel()
+    return response.status === HTTP_ERROR
+  })
+  await delay(SETTLE_MS)
+  await writeFile(contentSource, publicContent('New fallback source'))
+  await waitFor(() => bodyIncludes({ url, text: 'New fallback source' }))
   const head = await fetch(url, { method: 'HEAD' })
   assert.equal(head.status, HTTP_OK)
   assert.equal(await head.text(), '')

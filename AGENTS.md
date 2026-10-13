@@ -189,11 +189,15 @@ release. Add a tool name to select part of the graph. For example, run
   controles da rota explicitamente.
 - Quando HTML e Markdown compartilham conteúdo público, exporte também de
   `seo.ts` o objeto `content`, tipado por `satisfies SitePage`.
-  `markdown.ts` importa esse objeto e exporta o produtor exclusivo do build.
+  O build usa esse objeto quando não existe um produtor `markdown.ts`.
   Conteúdo usado apenas pela página pode permanecer em `index.tsx`.
 - Declare `route.info.markdown: true` para publicar. O build encontra
   `markdown.ts` ao lado do módulo que declara `route`, seguindo reexportações.
-  Produtor ausente faz o build falhar; `false` ou ausência da chave não publica.
+  Esse produtor é opcional e tem prioridade sobre `content` de `seo.ts`.
+  Falhas no produtor não acionam a alternativa. Sem produtor nem conteúdo
+  público válido, o build falha; `false` ou ausência da chave não publica.
+  A home mantém `markdown.ts` como exemplo. Rotas parametrizadas precisam dele
+  para enumerar os caminhos públicos por `getPaths`.
 - Textos e links localizados são getters: não avalie traduções nem capture o
   idioma no topo desses módulos. Os catálogos permanecem em `i18n/` junto da
   página, e `seo.ts` pode ler `content` para evitar duplicação.

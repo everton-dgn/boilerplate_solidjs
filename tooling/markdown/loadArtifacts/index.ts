@@ -17,11 +17,24 @@ import { resolveMarkdownSource } from './resolveMarkdownSource/index.ts'
 const ENTRY = 'virtual:markdown-build'
 const SOURCE_QUERY = '?markdown-source'
 
+async function hasSource(file: string): Promise<boolean> {
+  try {
+    await access(file)
+    return true
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return false
+    }
+    throw error
+  }
+}
+
 export async function loadArtifacts({
   root,
   directory,
   mode,
-  environment
+  environment,
+  onSource
 }: LoadArtifactsOptions): Promise<ArtifactBuild> {
   const scanner = new PageFileSystemRouter({
     dir: path.resolve(root, directory),
@@ -35,6 +48,7 @@ export async function loadArtifacts({
     .filter(route => HTTP_METHODS.some(method => `$${method}` in route))
     .map(route => stripRouteGroups(route.path).replace(/\/$/u, '') || '/')
   const imports: string[] = []
+  const sourceDependencies = new Set<string>()
   const definitions = routes.map((route, index) => {
     let source: string | undefined
     if (route.$$route) {
@@ -63,12 +77,26 @@ export async function loadArtifacts({
               : resolved?.id
           }
         })
-        try {
-          await access(source)
-        } catch {
-          throw new Error(`Missing colocated Markdown producer: ${source}`)
+        const contentSource = path.join(path.dirname(source), 'seo.ts')
+        for (const candidate of [source, contentSource]) {
+          sourceDependencies.add(candidate)
+          onSource?.(candidate)
         }
-        return `export { markdown } from ${JSON.stringify(source)};`
+        if (await hasSource(source)) {
+          return `export { markdown } from ${JSON.stringify(source)};`
+        }
+        if (!(await hasSource(contentSource))) {
+          throw new Error(
+            `Missing Markdown source: provide ${source} or public content in ${contentSource}`
+          )
+        }
+        return `
+          import * as page from ${JSON.stringify(toPickId(contentSource, ['content']))};
+          if (!page.content || typeof page.content !== 'object') {
+            throw new Error(${JSON.stringify(`Missing public content export for Markdown: ${contentSource}`)});
+          }
+          export const markdown = { render: () => page.content };
+        `
       }
       if (id.includes('?pick=')) {
         const [file, query] = id.split('?')
@@ -133,6 +161,7 @@ export async function loadArtifacts({
     ...module,
     dependencies: [
       ...dependencies,
+      ...sourceDependencies,
       ...routes.flatMap(route => (route.$$route ? [route.$$route.src] : []))
     ]
   }

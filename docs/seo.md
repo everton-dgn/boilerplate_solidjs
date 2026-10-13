@@ -276,26 +276,32 @@ faz o build falhar. `noindex` é uma restrição editorial e não autentica
 usuários. Login, área privada e conteúdo por visitante devem ficar sem
 `markdown`.
 
-O build encontra `markdown.ts` ao lado do arquivo que declara `route`. Para uma
-página com módulos locais, use uma pasta com `index.tsx`, `seo.ts` e
-`markdown.ts`. Reexportações de `route` são seguidas até a declaração original,
-inclusive nas fixtures; o caminho não depende da URL pública nem dos chunks
-produzidos por Vite e Nitro. Se a publicação estiver habilitada e o produtor não
-existir, o build falha com o caminho esperado. Use uma pasta por página:
-arquivos soltos no mesmo diretório teriam o mesmo produtor colocalizado.
-Reexportações de páginas publicadas precisam ser nomeadas, como
-`export { route } from './page/index.tsx'`; namespace e `export *` intermediário
-não fazem parte desta convenção. Páginas sem `markdown: true` não passam pela
-descoberta de produtores.
+Por padrão, o build usa o objeto público `content` exportado por `seo.ts`, com
+`satisfies SitePage`. Esse mesmo objeto pode alimentar o HTML da página. Os
+metadados `seo` sozinhos não bastam: `content` contém o corpo público completo,
+com introdução, seções e links. Sobre, contato e privacidade usam esse caminho,
+sem um arquivo produtor adicional.
+
+Quando precisar de uma fonte própria, acrescente `markdown.ts` ao lado do
+arquivo que declara `route`. Esse produtor tem prioridade sobre `content`, e uma
+falha nele interrompe o build sem recorrer a `seo.ts`. Reexportações de `route`
+são seguidas até a declaração original, inclusive nas fixtures; o caminho não
+depende da URL pública nem dos chunks produzidos por Vite e Nitro. Se a
+publicação estiver habilitada e não houver produtor nem conteúdo público válido,
+o build falha. Use uma pasta por página: arquivos soltos no mesmo diretório
+teriam a mesma fonte colocalizada. Reexportações de páginas publicadas precisam
+ser nomeadas, como `export { route } from './page/index.tsx'`; namespace e
+`export *` intermediário não fazem parte desta convenção. Páginas sem
+`markdown: true` não passam pela descoberta de produtores.
 
 O contrato `MarkdownSource`, em `src/@types/markdown.ts`, define o produtor
 exclusivo do build. Esse módulo exporta `markdown`, com uma função
 `render({ path, locale, signal })` que devolve `SitePage`, inclusive por
-Promise. As páginas atuais compartilham o objeto `content` de `seo.ts` entre o
-HTML e esse produtor, com getters para os textos e links localizados. `seo.ts` e
-`markdown.ts` ficam ao lado de `index.tsx`. Seus catálogos permanecem em
-`i18n/{pt,en,es}.json` na pasta da rota; os links comuns continuam em
-`src/constants/siteLinks/`.
+Promise. A home mantém o exemplo abaixo de produtor explícito, compartilhando o
+objeto `content` de `seo.ts` com o HTML. Textos e links localizados usam getters
+nas duas formas de publicação. `seo.ts` e o `markdown.ts` opcional ficam ao lado
+de `index.tsx`. Seus catálogos permanecem em `i18n/{pt,en,es}.json` na pasta da
+rota; os links comuns continuam em `src/constants/siteLinks/`.
 
 ```ts
 import type { MarkdownSource } from '@/@types/markdown.ts'
@@ -315,9 +321,9 @@ string válida: o produtor precisa selecionar somente conteúdo publicável. O n
 `/markdown`, use uma pasta com `index.ts`. Importar um produtor no app causa
 erro de build; compartilhe com o HTML a fonte pública, sem importar o produtor.
 
-Para rotas com parâmetros, declare também `getPaths({ locale, signal })`, que
-lista os caminhos públicos sem prefixo de idioma, como `/blog/meu-post`. A fonte
-pode consultar um CMS no build e usar o `signal` em operações canceláveis.
+Para rotas com parâmetros, use `markdown.ts` com `getPaths({ locale, signal })`,
+que lista os caminhos públicos sem prefixo de idioma, como `/blog/meu-post`. A
+fonte pode consultar um CMS no build e usar o `signal` em operações canceláveis.
 `render` recebe o caminho enumerado e o idioma. Cada caminho precisa pertencer à
 mesma folha da árvore, respeitando os filtros do router. O gerador recusa
 caminhos inválidos, duplicatas, colisões com páginas, endpoints e arquivos de
@@ -363,11 +369,15 @@ conteúdo. HEAD mantém os cabeçalhos e não envia corpo. O middleware não apl
 CSP de HTML aos arquivos servidos diretamente pelo host.
 
 Em desenvolvimento, a geração acontece ao iniciar o servidor e após mudanças nas
-fontes. A requisição lê o resultado já gerado; falhas de regeneração são
-mostradas no servidor e na interface. O preview lê os arquivos do último build e
-aplica os cabeçalhos estáticos configurados para a Vercel, incluindo ETag e
-revalidação condicional. Esse adapter local não comprova o comportamento do CDN
-após publicação.
+fontes. Criar `markdown.ts` passa a usar o produtor; removê-lo volta ao
+`content` de `seo.ts`, sem reiniciar o servidor. Essa atualização também
+acompanha a página original quando uma fixture reexporta a rota. Os dois
+caminhos são observados: após um erro de regeneração por falta de fonte, criar
+`seo.ts` com conteúdo válido recupera a geração. A requisição lê o resultado já
+gerado; falhas de regeneração são mostradas no servidor e na interface. O
+preview lê os arquivos do último build e aplica os cabeçalhos estáticos
+configurados para a Vercel, incluindo ETag e revalidação condicional. Esse
+adapter local não comprova o comportamento do CDN após publicação.
 
 As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
 aviso de privacidade descreve as preferências e os limites observáveis na

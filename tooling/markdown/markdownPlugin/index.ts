@@ -55,9 +55,18 @@ export function markdownPlugin({
   let dependencies = new Set<string>()
   let failure: Error | undefined
   let pending = Promise.resolve()
-  const generate = async () => {
+  const generate = async (server?: ViteDevServer) => {
     await generateMessages(root)
-    const result = await loadArtifacts({ root, directory, mode, environment })
+    const result = await loadArtifacts({
+      root,
+      directory,
+      mode,
+      environment,
+      onSource: source => {
+        dependencies.add(source)
+        server?.watcher.add(source)
+      }
+    })
     await publishArtifacts({ root, artifacts: result.artifacts })
     ;({ artifacts } = result)
     dependencies = new Set(
@@ -118,7 +127,7 @@ export function markdownPlugin({
     },
     async configureServer(server) {
       if (!shouldGenerate) return
-      await generate()
+      await generate(server)
       let requested = 0
       let isRunning = false
       const generateRequested = async () => {
@@ -130,7 +139,7 @@ export function markdownPlugin({
             try {
               const previous = serializeManifest(artifacts)
               const shouldRecover = failure !== undefined
-              await generate()
+              await generate(server)
               failure = undefined
               server.watcher.add([...dependencies])
               if (shouldRecover || previous !== serializeManifest(artifacts)) {
