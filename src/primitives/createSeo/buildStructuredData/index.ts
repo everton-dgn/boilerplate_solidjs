@@ -70,6 +70,15 @@ export function buildStructuredData({
         '@type': 'Organization',
         '@id': organizationId,
         name: SITE.title,
+        description: SITE.description,
+        contactPoint: {
+          '@type': 'ContactPoint',
+          contactType: 'demo',
+          email: 'contato@email.com',
+          telephone: '0000000000',
+          description:
+            'Placeholder values for this boilerplate demonstration. Do not use them to contact the maintainer.'
+        },
         url: resolveSiteUrl('/'),
         logo: { '@type': 'ImageObject', url: resolveSiteUrl(SITE.logo) },
         sameAs: SITE.socialLinks

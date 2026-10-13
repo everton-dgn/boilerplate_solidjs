@@ -53,6 +53,24 @@ declare module "virtual:file-routes" {
       $$route: FileRouteEagerRef<typeof import("../routes/(base)/[...404]/index")>;
     },
     {
+      path: "/(base)/about/";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("../routes/(base)/about/index")>;
+      $$route: FileRouteEagerRef<typeof import("../routes/(base)/about/index")>;
+    },
+    {
+      path: "/(base)/contact/";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("../routes/(base)/contact/index")>;
+      $$route: FileRouteEagerRef<typeof import("../routes/(base)/contact/index")>;
+    },
+    {
+      path: "/(base)/privacy/";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("../routes/(base)/privacy/index")>;
+      $$route: FileRouteEagerRef<typeof import("../routes/(base)/privacy/index")>;
+    },
+    {
       path: "/(seo)/llms.txt/";
       page: false;
       $GET: FileRouteLazyRef<typeof import("../routes/(seo)/llms.txt/index")>;
@@ -94,11 +112,35 @@ declare module "virtual:file-routes" {
           children?: undefined;
         },
         {
+          path: "/about/";
+          id: "/about/";
+          page: true;
+          $component: FileRouteLazyRef<typeof import("../routes/(base)/about/index")>;
+          $$route: FileRouteEagerRef<typeof import("../routes/(base)/about/index")>;
+          children?: undefined;
+        },
+        {
           path: "/";
           id: "/(home)/";
           page: true;
           $component: FileRouteLazyRef<typeof import("../routes/(base)/(home)/index")>;
           $$route: FileRouteEagerRef<typeof import("../routes/(base)/(home)/index")>;
+          children?: undefined;
+        },
+        {
+          path: "/contact/";
+          id: "/contact/";
+          page: true;
+          $component: FileRouteLazyRef<typeof import("../routes/(base)/contact/index")>;
+          $$route: FileRouteEagerRef<typeof import("../routes/(base)/contact/index")>;
+          children?: undefined;
+        },
+        {
+          path: "/privacy/";
+          id: "/privacy/";
+          page: true;
+          $component: FileRouteLazyRef<typeof import("../routes/(base)/privacy/index")>;
+          $$route: FileRouteEagerRef<typeof import("../routes/(base)/privacy/index")>;
           children?: undefined;
         }
       ];

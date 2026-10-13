@@ -1,0 +1,11 @@
+{
+  "contact_title": "Contato",
+  "contact_description": "Encontre o repositório e os canais públicos do mantenedor do SolidJS Boilerplate.",
+  "contact_intro": "O contato sobre o SolidJS Boilerplate começa pelo repositório público no GitHub. Ele reúne o código, a documentação e o espaço de issues para relatos de problemas e sugestões relacionadas ao projeto.",
+  "contact_issuesTitle": "Problemas e sugestões",
+  "contact_issues": "Antes de abrir uma issue, consulte o README e as discussões já registradas. Para relatar um problema, descreva o comportamento observado, o resultado esperado e os passos necessários para reproduzi-lo. Informe o ambiente e as dependências relevantes para que outras pessoas consigam investigar o caso. Não publique senhas, tokens, dados pessoais ou arquivos de configuração com segredos.",
+  "contact_maintainerTitle": "Mantenedor",
+  "contact_maintainer": "Éverton Toffanetto mantém este projeto. Seu perfil público no GitHub está disponível nos links desta página. As issues são públicas e podem ser lidas por qualquer pessoa; escolha o conteúdo da mensagem considerando essa visibilidade. O projeto não publica um prazo de resposta nem oferece um canal de suporte contratado nesta demonstração.",
+  "contact_issuesLabel": "Issues do projeto",
+  "contact_maintainerLabel": "Perfil do mantenedor"
+}

@@ -10,6 +10,7 @@ test.use({ locale: 'pt-BR' })
 
 const HTTP_OK = 200
 const SITE_TITLE = 'SolidJS Boilerplate'
+const HOME_TITLE = 'SolidJS Boilerplate | Aplicações web com SSR'
 const SITE_DESCRIPTION =
   'Uma base para aplicações web com SolidJS, TypeScript e Vite+, com renderização no servidor e temas claro e escuro.'
 const SITE_IMAGE_ALT = 'Logo do SolidJS sobre o título SolidJS Boilerplate'
@@ -46,14 +47,14 @@ test.describe('metadados de SEO', () => {
   }) => {
     const siteUrl = readSiteOrigin()
     await page.goto('/')
-    await expect(page).toHaveTitle(SITE_TITLE)
+    await expect(page).toHaveTitle(HOME_TITLE)
     await expect(page.locator('head meta[name="description"]')).toHaveAttribute(
       'content',
       SITE_DESCRIPTION
     )
     await expect(
       page.locator('head meta[property="og:title"]')
-    ).toHaveAttribute('content', SITE_TITLE)
+    ).toHaveAttribute('content', HOME_TITLE)
 
     const canonical = page.locator('head link[rel="canonical"]')
     await expect(canonical).toHaveAttribute('href', `${siteUrl}/pt`)
@@ -86,11 +87,12 @@ test.describe('metadados de SEO', () => {
     })
     const baseNodes = [
       { '@type': 'WebSite', url: `${siteUrl}/`, name: SITE_TITLE },
-      { '@type': 'WebPage', url: `${siteUrl}/pt`, name: SITE_TITLE },
+      { '@type': 'WebPage', url: `${siteUrl}/pt`, name: HOME_TITLE },
       {
         '@type': 'Organization',
         url: `${siteUrl}/`,
         name: SITE_TITLE,
+        description: SITE_DESCRIPTION,
         logo: logoNode
       }
     ].map(node => expect.objectContaining(node))
@@ -128,14 +130,14 @@ test.describe('metadados de SEO', () => {
 
     await page.getByRole('link', { name: 'Início', exact: true }).click()
     await expect(canonical).toHaveAttribute('href', `${siteUrl}/pt`)
-    await expect(page).toHaveTitle(SITE_TITLE)
+    await expect(page).toHaveTitle(HOME_TITLE)
     await expect(page.locator('head meta[name="description"]')).toHaveAttribute(
       'content',
       SITE_DESCRIPTION
     )
     await expect(
       page.locator('head meta[property="og:title"]')
-    ).toHaveAttribute('content', SITE_TITLE)
+    ).toHaveAttribute('content', HOME_TITLE)
     await expect(
       page.locator('head meta[name="twitter:description"]')
     ).toHaveAttribute('content', SITE_DESCRIPTION)
@@ -245,7 +247,7 @@ test.describe('metadados de SEO', () => {
     ).toHaveLength(1)
 
     await page.getByRole('link', { name: 'Início', exact: true }).click()
-    await expect(page).toHaveTitle(SITE_TITLE)
+    await expect(page).toHaveTitle(HOME_TITLE)
     await expect(scripts).toHaveCount(1)
     const remaining = await scripts.allTextContents()
     expect(remaining.filter(text => text.includes('FAQPage'))).toHaveLength(0)

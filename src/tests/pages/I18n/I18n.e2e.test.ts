@@ -60,7 +60,7 @@ test('a server function keeps the page locale when the cookie disagrees', async 
   await page.getByRole('button', { name: 'Read server locale' }).focus()
   await page.keyboard.press('Enter')
   await expect(
-    page.getByText('A clean foundation for modern products', { exact: true })
+    page.getByText('SolidJS Boilerplate for web applications', { exact: true })
   ).toBeVisible()
   const actionResponse = await response
   expect(actionResponse.headers()['content-language']).toBe('en')

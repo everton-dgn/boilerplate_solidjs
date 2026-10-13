@@ -1,6 +1,6 @@
 import { buildRouteTree, PageFileSystemRouter } from 'filesystem-routing'
 
-const BASE_LAYOUT_PAGE_COUNT = 2
+const BASE_LAYOUT_PAGE_COUNT = 5
 
 describe('roteamento por arquivo', () => {
   it('descobre páginas dinâmicas sem registrar componentes colocalizados', async () => {
@@ -26,7 +26,10 @@ describe('roteamento por arquivo', () => {
     expect(routes.map(route => route.path).toSorted()).toStrictEqual([
       '/(base)',
       '/(base)/(home)/',
-      '/(base)/*404/'
+      '/(base)/*404/',
+      '/(base)/about/',
+      '/(base)/contact/',
+      '/(base)/privacy/'
     ])
     expect(
       routes.find(route => route.path === '/(base)/*404/')?.$$route
@@ -46,7 +49,10 @@ describe('roteamento por arquivo', () => {
     expect(pages[0]?.children).toStrictEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: '/(home)/', path: '/' }),
-        expect.objectContaining({ id: '/*404/', path: '/*404/' })
+        expect.objectContaining({ id: '/*404/', path: '/*404/' }),
+        expect.objectContaining({ id: '/about/', path: '/about/' }),
+        expect.objectContaining({ id: '/contact/', path: '/contact/' }),
+        expect.objectContaining({ id: '/privacy/', path: '/privacy/' })
       ])
     )
     expect(pages[0]?.children).toHaveLength(BASE_LAYOUT_PAGE_COUNT)

@@ -111,7 +111,7 @@ test('hidrata sem duplicar o JSON-LD e o remove ao sair da rota', async ({
   })
 
   await page.getByRole('link', { name: 'Início', exact: true }).click()
-  await expect(page).toHaveTitle('SolidJS Boilerplate')
+  await expect(page).toHaveTitle('SolidJS Boilerplate | Aplicações web com SSR')
   await expect(page.locator(`head ${JSON_LD}`)).toHaveCount(1)
   const remaining = await page.locator(JSON_LD).allTextContents()
   expect(remaining.join('')).not.toContain(PRODUCT_NAME)

@@ -18,7 +18,7 @@ test.describe('aplicação', () => {
     await expect(page).toHaveURL('/pt')
     await expect(
       page.getByRole('heading', {
-        name: 'Uma base limpa para produtos modernos'
+        name: 'SolidJS Boilerplate para aplicações web'
       })
     ).toBeVisible()
   })

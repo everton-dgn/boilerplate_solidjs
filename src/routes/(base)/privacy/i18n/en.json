@@ -1,0 +1,11 @@
+{
+  "privacy_title": "Privacy",
+  "privacy_description": "Learn how this demonstration uses language and theme preferences and where to find its public channels.",
+  "privacy_intro": "This page describes the privacy features observable in the source code of this SolidJS Boilerplate demonstration. Its public pages do not provide account registration, checkout or a form for submitting personal data.",
+  "privacy_preferencesTitle": "Browser preferences",
+  "privacy_preferences": "The interface uses cookies to remember the language and theme preference. The language also appears in the page address, such as /pt, /en or /es. These preferences keep the presentation consistent between visits. You can delete or block cookies through your browser settings; a choice may then stop persisting on your next visit.",
+  "privacy_hostingTitle": "Accessing the site and external links",
+  "privacy_hosting": "When you access this site, your browser sends technical information needed for the HTTP connection to the hosting infrastructure. This notice does not establish a retention period for that infrastructure's logs. Links to GitHub and other services lead to websites with their own policies. Information posted in a public issue is available to other people on that service.",
+  "privacy_questionsTitle": "Questions about this demonstration",
+  "privacy_questions": "Use the contact page to find the maintainer and the project's public channels. Before reusing this boilerplate in another product, review this notice against the hosting setup, connected services and data that product will process. The information on this page applies to this demonstration and does not define the practices of applications built from it."
+}

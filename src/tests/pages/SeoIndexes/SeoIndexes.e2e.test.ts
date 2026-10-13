@@ -5,7 +5,7 @@ import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 const HTTP_OK = 200
 // Entradas publicadas pela fonte de `blog/[slug]`.
 const BLOG_ENTRIES = 2
-const SITE_TITLE = 'SolidJS Boilerplate'
+const HOME_TITLE = 'SolidJS Boilerplate | Web applications with SSR'
 const SITE_DESCRIPTION =
   'A foundation for web applications with SolidJS, TypeScript and Vite+, with server-side rendering and light and dark themes.'
 // Grupo dos robôs de treinamento de IA: começa em GPTBot e termina bloqueando tudo.
@@ -69,8 +69,14 @@ test.describe('índices gerados do manifesto de rotas', () => {
     expect(markdown.indexOf('- Content is available')).toBeLessThan(
       markdown.indexOf('## ')
     )
+    const useCases = markdown.split('## When to use\n\n')[1]?.split('\n## ')[0]
+    expect(useCases).toContain(`](${siteUrl}/en): `)
+    expect(useCases).toContain(`](${siteUrl}/en/about): `)
+    expect(markdown.indexOf('## When to use\n')).toBeLessThan(
+      markdown.indexOf('## Pages\n')
+    )
     expect(markdown).toContain(
-      `## Pages\n\n- [${SITE_TITLE}](${siteUrl}/en): ${SITE_DESCRIPTION}\n`
+      `- [${HOME_TITLE}](${siteUrl}/en): ${SITE_DESCRIPTION}\n`
     )
     expect(markdown).toContain(
       `## Guias\n\n- [Guia público](${siteUrl}/en/seo-public): Conteúdo público do guia.\n`
@@ -84,8 +90,9 @@ test.describe('índices gerados do manifesto de rotas', () => {
     const sitemapUrls = [...xml.matchAll(/<loc>(?<url>[^<]+)<\/loc>/gu)].map(
       match => match.groups?.url
     )
+    const indexedPages = markdown.slice(markdown.indexOf('## Pages\n'))
     const llmsUrls = [
-      ...markdown.matchAll(/^- \[[^\]]+\]\((?<url>[^)]+)\)/gmu)
+      ...indexedPages.matchAll(/^- \[[^\]]+\]\((?<url>[^)]+)\)/gmu)
     ].map(match => match.groups?.url)
     // Páginas indexáveis sem `route.info.llms`: só no sitemap.
     const sitemapOnly = new Set([

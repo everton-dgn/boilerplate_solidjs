@@ -72,7 +72,7 @@ export async function localizeRequest({
           headers: {
             location: decision.redirectUrl.href,
             'cache-control': 'private, no-store',
-            vary: 'Cookie, Accept-Language'
+            vary: 'Cookie, Accept-Language, Accept'
           }
         }),
         nonce: requestNonce()
