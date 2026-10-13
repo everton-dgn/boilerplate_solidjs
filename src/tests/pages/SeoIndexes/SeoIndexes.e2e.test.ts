@@ -70,13 +70,13 @@ test.describe('índices gerados do manifesto de rotas', () => {
       markdown.indexOf('## ')
     )
     const useCases = markdown.split('## When to use\n\n')[1]?.split('\n## ')[0]
-    expect(useCases).toContain(`](${siteUrl}/en): `)
-    expect(useCases).toContain(`](${siteUrl}/en/about): `)
+    expect(useCases).toContain(`](${siteUrl}/en/index.md): `)
+    expect(useCases).toContain(`](${siteUrl}/en/about.md): `)
     expect(markdown.indexOf('## When to use\n')).toBeLessThan(
       markdown.indexOf('## Pages\n')
     )
     expect(markdown).toContain(
-      `- [${HOME_TITLE}](${siteUrl}/en): ${SITE_DESCRIPTION}\n`
+      `- [${HOME_TITLE}](${siteUrl}/en/index.md): ${SITE_DESCRIPTION}\n`
     )
     expect(markdown).toContain(
       `## Guias\n\n- [Guia público](${siteUrl}/en/seo-public): Conteúdo público do guia.\n`
@@ -94,6 +94,12 @@ test.describe('índices gerados do manifesto de rotas', () => {
     const llmsUrls = [
       ...indexedPages.matchAll(/^- \[[^\]]+\]\((?<url>[^)]+)\)/gmu)
     ].map(match => match.groups?.url)
+    const markdownUrls = new Map([
+      [`${siteUrl}/en`, `${siteUrl}/en/index.md`],
+      [`${siteUrl}/en/about`, `${siteUrl}/en/about.md`],
+      [`${siteUrl}/en/contact`, `${siteUrl}/en/contact.md`],
+      [`${siteUrl}/en/privacy`, `${siteUrl}/en/privacy.md`]
+    ])
     // Páginas indexáveis sem `route.info.llms`: só no sitemap.
     const sitemapOnly = new Set([
       `${siteUrl}/en/seo-sitemap-only`,
@@ -103,12 +109,14 @@ test.describe('índices gerados do manifesto de rotas', () => {
     ])
     expect(new Set(llmsUrls)).toStrictEqual(
       new Set(
-        sitemapUrls.filter(
-          url =>
-            String(url).startsWith(`${siteUrl}/en`) &&
-            !sitemapOnly.has(String(url)) &&
-            !String(url).startsWith(`${siteUrl}/en/blog/`)
-        )
+        sitemapUrls
+          .filter(
+            url =>
+              String(url).startsWith(`${siteUrl}/en`) &&
+              !sitemapOnly.has(String(url)) &&
+              !String(url).startsWith(`${siteUrl}/en/blog/`)
+          )
+          .map(url => markdownUrls.get(String(url)) ?? url)
       )
     )
     // Uma entrada da fonte com caminho errado só apareceria no Search Console.

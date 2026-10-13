@@ -3,13 +3,17 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { describe, it } from 'node:test'
+import { before as beforeAll, describe, it } from 'node:test'
 
+import { generateMessages } from '../../../i18n/generateMessages/index.ts'
 import { loadArtifacts } from '../index.ts'
 
 const ROOT = path.resolve(import.meta.dirname, '../../../..')
 
 describe('isolated Markdown build runner', () => {
+  // O runner importa @paraglide da raiz, ausente em um checkout limpo.
+  beforeAll(() => generateMessages(ROOT))
+
   it('loads colocated producers with locale isolation without rendering or importing UI', async context => {
     const directory = await mkdtemp(path.join(tmpdir(), 'markdown-routes-'))
     context.after(() => rm(directory, { recursive: true, force: true }))
