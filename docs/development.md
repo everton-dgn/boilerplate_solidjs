@@ -111,6 +111,17 @@ importação ao bind, ocupa a porta inicial e confere a URL efetiva e a CSS
 devolvida pela ponte após a troca automática de porta. Ao atualizar Solid ou
 Nitro, revalide essa ordem antes de retirar a integração.
 
+Após uma edição de módulo carregado no servidor, o plugin também invalida o
+manifest e avisa o runner SSR pelo canal de HMR do servidor. O cache de CSS da
+ponte vive no worker isolado do Nitro e não acompanha sozinho as edições vistas
+pelo Vite. Sem essa invalidação, o HTML pode trazer estilos antigos que só são
+substituídos na hidratação, causando deslocamentos ao recarregar. O cache
+continua disponível entre os passes da mesma renderização e entre requisições
+sem edições; o plugin não envia esse aviso ao navegador nem altera o build de
+produção. A regressão usa um runner com contexto global isolado, edita CSS com o
+servidor ligado e confere o conteúdo atualizado e as respostas síncronas do
+cache.
+
 ## Scripts
 
 | Script                        | Descrição                                                   |

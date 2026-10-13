@@ -1,5 +1,7 @@
 import type { Plugin } from 'vite-plus'
 
+const MANIFEST_ID = '\0virtual:solid-manifest'
+
 export function devAssetManifest(): Plugin {
   let listening: Promise<void> | undefined
 
@@ -31,8 +33,22 @@ export function devAssetManifest(): Plugin {
         }
       })
     },
+    hotUpdate({ modules }) {
+      if (
+        this.environment.config.consumer !== 'server' ||
+        modules.length === 0
+      ) {
+        return
+      }
+      const graph = this.environment.moduleGraph
+      const manifest = graph.getModuleById(MANIFEST_ID)
+      if (!manifest) return
+      // A CSS resolvida pela ponte não é uma dependência do manifest no worker.
+      graph.invalidateModule(manifest)
+      this.environment.hot.send({ type: 'full-reload' })
+    },
     async load(id) {
-      if (id !== '\0virtual:solid-manifest') return
+      if (id !== MANIFEST_ID) return
       // O Nitro importa o manifest antes do listen. O Solid precisa da porta
       // real para gerar a URL da ponte de CSS usada pelo worker isolado.
       await listening
