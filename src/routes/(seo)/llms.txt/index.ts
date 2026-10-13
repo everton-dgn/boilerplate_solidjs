@@ -1,5 +1,6 @@
 import { baseLocale } from '@paraglide/runtime.js'
 import { pageRoutes } from 'virtual:file-routes'
+import { markdownIndex, markdownPaths } from 'virtual:markdown-manifest'
 
 import type { LlmsPage } from '@/@types/llms.ts'
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
@@ -13,10 +14,24 @@ import { buildLlmsText } from './helpers/buildLlmsText/index.ts'
 import { collectLlmsPages } from './helpers/collectLlmsPages/index.ts'
 
 function localizePage(page: LlmsPage): LlmsPage {
+  const path = localizeHref({ href: page.path, locale: baseLocale })
   return {
     ...page,
-    path: localizeHref({ href: page.path, locale: baseLocale })
+    path: markdownPaths[path] ?? path
   }
+}
+
+function collectPages(): LlmsPage[] {
+  const pages = [...LLMS_USE_CASES, ...collectLlmsPages(pageRoutes)].map(page =>
+    localizePage(page)
+  )
+  const known = new Set(pages.map(page => page.path))
+  return [
+    ...pages,
+    ...markdownIndex.filter(
+      page => page.path.startsWith(`/${baseLocale}/`) && !known.has(page.path)
+    )
+  ]
 }
 
 const renderLlmsText = memoizeOnce({
@@ -26,9 +41,7 @@ const renderLlmsText = memoizeOnce({
       title: SITE.title,
       description: SITE.description,
       notes: LLMS_NOTES,
-      pages: [...LLMS_USE_CASES, ...collectLlmsPages(pageRoutes)].map(page =>
-        localizePage(page)
-      ),
+      pages: collectPages(),
       siteUrl: resolveSiteUrl('/')
     })
 })

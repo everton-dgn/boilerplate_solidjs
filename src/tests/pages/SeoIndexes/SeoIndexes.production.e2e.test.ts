@@ -74,8 +74,8 @@ test.describe('índices na árvore real de produção', () => {
     expect(markdown).toMatch(/^# .+\n/u)
     const useCases = markdown.split('## When to use\n\n')[1]?.split('\n## ')[0]
     expect(useCases).toBeDefined()
-    expect(useCases).toContain(`](${readSiteOrigin()}/en): `)
-    expect(useCases).toContain(`](${readSiteOrigin()}/en/about): `)
+    expect(useCases).toContain(`](${readSiteOrigin()}/en/index.md): `)
+    expect(useCases).toContain(`](${readSiteOrigin()}/en/about.md): `)
     expect(useCases?.trim().split('\n')).toEqual([
       expect.stringMatching(/^- \[[^\]]+\]\([^)]+\): .{20,}$/u),
       expect.stringMatching(/^- \[[^\]]+\]\([^)]+\): .{20,}$/u)
@@ -85,7 +85,9 @@ test.describe('índices na árvore real de produção', () => {
     )
     expect(markdown).toContain('## Pages\n')
     for (const path of PAGE_PATHS) {
-      expect(markdown).toContain(`](${readSiteOrigin()}/en${path})`)
+      expect(markdown).toContain(
+        `](${readSiteOrigin()}/en${path ? `${path}.md` : '/index.md'})`
+      )
     }
     expect(markdown).toContain('This index uses English.')
     expect(markdown).not.toContain('/helpers/')

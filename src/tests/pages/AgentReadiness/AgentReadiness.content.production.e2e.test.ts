@@ -85,8 +85,7 @@ for (const language of LANGUAGES) {
       expect(response.headers()['content-type']).toContain('text/html')
       const html = await response.text()
       const markdown = await request.get(pathname, {
-        headers: { accept: 'text/markdown' },
-        maxRedirects: 0
+        headers: { accept: 'text/markdown' }
       })
       expect(markdown.status()).toBe(HTTP_OK)
       const markdownBody = await markdown.text()
@@ -169,6 +168,13 @@ for (const language of LANGUAGES) {
         const violations = await watchCspViolations(page)
         await page.goto(`/${language.locale}`)
         await expect.poll(() => hydrationFinished(page)).toBe(true)
+        const markdownAlternate = page.locator(
+          'head link[rel="alternate"][type="text/markdown"]'
+        )
+        await expect(markdownAlternate).toHaveAttribute(
+          'href',
+          new RegExp(`/${language.locale}/index\\.md$`, 'u')
+        )
         await page.getByRole('button', { name: language.theme }).click()
         await page
           .getByRole('menuitemradio', { name: language.dark, exact: true })
@@ -183,6 +189,7 @@ for (const language of LANGUAGES) {
             .locator(`a[href="/${language.locale}${path}"]`)
             .click()
           await expect(page).toHaveURL(`/${language.locale}${path}`)
+          if (path !== '') await expect(markdownAlternate).toHaveCount(0)
           await expect(page.getByRole('heading', { level: 1 })).toHaveText(
             language.headings[index] ?? ''
           )

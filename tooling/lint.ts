@@ -88,7 +88,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
       rules: { 'eslint/max-params': 'off' }
     },
     {
-      files: ['src/@types/icons.d.ts'],
+      files: ['src/@types/icons.d.ts', 'src/@types/markdown-manifest.d.ts'],
       rules: {
         'import/unambiguous': 'off'
       }

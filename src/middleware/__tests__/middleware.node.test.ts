@@ -13,6 +13,11 @@ const HTTP_INTERNAL_SERVER_ERROR = 500
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
 
+vi.mock(import('virtual:markdown-manifest'), () => ({
+  markdownPaths: {},
+  markdownIndex: []
+}))
+
 // O projeto node usa um manifesto vazio. O handler de API real recebe aqui uma
 // rota sintética que responde sem chamar next, como sitemap.xml e robots.txt.
 vi.mock(import('filesystem-routing/api'), async importOriginal => {

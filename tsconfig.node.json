@@ -2,7 +2,10 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "lib": ["ES2024"],
-    "paths": {},
+    "paths": {
+      "@paraglide/*": ["./paraglide/*"],
+      "@/*": ["./src/*"]
+    },
     "types": ["node"],
     "tsBuildInfoFile": ".tsbuild/node.tsbuildinfo"
   },

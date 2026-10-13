@@ -144,15 +144,18 @@ nessa seção, uma filha pode sair com `llms: false` ou sobrescrever só o campo
 que declara, e `llms: true` numa filha reativa a inclusão preservando seção e
 marcação opcional herdadas. `noindex: true` exclui a página do sitemap e do
 llms.txt, mesmo com a flag. O filtro considera a configuração efetiva da página,
-incluindo herança e a rota de índice filha.
+incluindo herança e a rota de índice filha. O resolvedor fica colocalizado em
+`src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. A publicação de Markdown
+é controlada separadamente por `route.info.markdown`.
 
 ## Sitemap e rotas dinâmicas
 
-O `llms.txt` só lista URLs sem parâmetros. No sitemap, uma rota com parâmetro
-entra pelas entradas de `route.info.sitemap`: uma função, síncrona ou
-assíncrona, que devolve `{ path, lastmod? }` com caminhos absolutos do site,
-enumerados a partir da fonte de dados. O módulo da rota entra no bundle do
-cliente, então banco e SDK ficam numa server function chamada pela fonte,
+O `llms.txt` coleta páginas sem parâmetros e acrescenta os snapshots Markdown de
+caminhos dinâmicos enumerados no build que tenham `llms` habilitado. No sitemap,
+uma rota com parâmetro entra pelas entradas de `route.info.sitemap`: uma função,
+síncrona ou assíncrona, que devolve `{ path, lastmod? }` com caminhos absolutos
+do site, enumerados a partir da fonte de dados. O módulo da rota entra no bundle
+do cliente, então banco e SDK ficam numa server function chamada pela fonte,
 conforme o [contrato de erros no servidor](server-errors.md). A fonte roda a
 cada request do sitemap (o CDN reutiliza a resposta por uma hora) e é ignorada
 sob `noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito.
@@ -227,43 +230,103 @@ do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
 
 ## Leitura por agentes
 
-A home e as páginas `/about`, `/contact` e `/privacy` definem seu conteúdo em
-uma função privada `readContent()` no próprio `index.tsx`. A página usa essa
-função no HTML e a disponibiliza como `route.info.content: readContent` para o
-middleware `markdownContent`. O contrato compartilhado `SitePage` fica em
-`src/@types/site-page.ts`. O middleware encontra a rota com `Router.match()` e
-lê apenas o conteúdo da última correspondência, sem manter outra lista de
-caminhos. Uma nova página estática adere ao formato declarando esse metadado na
-própria rota. O contrato atual não recebe parâmetros de rotas dinâmicas.
+O Markdown é um arquivo público gerado no build. Cada página que deseja publicar
+essa representação declara `route.info.markdown` na própria folha da árvore:
 
-Cada página mantém seus catálogos `i18n/{pt,en,es}.json` na própria pasta de
-rota, com IDs prefixados por `home_`, `about_`, `contact_` ou `privacy_`.
-`src/constants/siteLinks/` reúne os links comuns em `SITE_LINKS` e seus
-catálogos, com prefixo `siteLinks_`. Os getters `pages` e `sources` leem as
-mensagens no acesso, dentro do contexto de idioma da requisição. O conteúdo
-principal é visível no HTML inicial, inclusive sem JavaScript. A home mantém sua
-abertura e acrescenta seções de recursos e uso abaixo dela.
+```tsx
+export const route = {
+  info: {
+    markdown: { source: '@/routes/(base)/about/helpers/markdown.ts' },
+    llms: true
+  }
+} satisfies RouteDefinition
+```
 
-Um GET com `Accept: text/markdown` recebe a representação Markdown dessas
-páginas, com `Content-Type: text/markdown; charset=utf-8`. A negociação compara
-pesos `q` e especificidade; HTML é a preferência quando há empate. Ausência de
-`Accept` e `*/*` usam HTML. Um tipo com `q=0` não pode ser selecionado. Se
-nenhuma representação for aceitável, a resposta é 406. As respostas negociadas
-preservam os campos existentes de `Vary` e incluem `Accept`. HEAD mantém status
-e cabeçalhos, sem corpo.
+As chaves são independentes: `markdown` publica o arquivo e `llms` decide sua
+presença no índice. `llms: false` não impede acesso a um `.md` já publicado. Sem
+`markdown` explícito, a página não gera arquivo. A configuração não é herdada;
+declará-la num layout com filhas ou numa página com `noindex` efetivo faz o
+build falhar. `noindex` é uma restrição editorial e não autentica usuários.
+Login, área privada e conteúdo por visitante devem ficar sem `markdown`.
 
-As URLs sem idioma seguem a resolução existente de idioma e redirecionam para o
-caminho localizado. Endpoints de API, server functions e assets não entram nessa
-negociação. Uma rota sem representação Markdown própria continua no fluxo
-normal; quando o resultado real é HTML com status 404, o middleware o substitui
-por uma explicação Markdown com link para `/llms.txt`, preservando o status 404.
-Respostas de erro 500 não viram 404.
+O contrato `MarkdownSource`, em `src/@types/markdown.ts`, aponta para um módulo
+`markdown.ts` exclusivo do build. Esse módulo exporta `markdown`, com uma função
+`render({ path, locale, signal })` que devolve `SitePage`, inclusive por
+Promise. As páginas atuais compartilham `helpers/readContent/index.ts` entre o
+HTML e esse produtor. Seus catálogos permanecem em `i18n/{pt,en,es}.json` na
+pasta da rota; os links comuns continuam em `src/constants/siteLinks/`.
 
-O Markdown usa `private, no-store` e continua sob os cabeçalhos de segurança:
-como não é HTML, recebe `script-src 'none'`. O contexto de idioma, os cookies de
-preferências e a proteção dos erros do servidor permanecem na cadeia existente.
-Os três índices de descoberta conservam seu contrato de cache e seus tipos de
-conteúdo.
+```ts
+import type { MarkdownSource } from '@/@types/markdown.ts'
+
+import { readContent } from './readContent/index.ts'
+
+export const markdown = { render: readContent } satisfies MarkdownSource
+```
+
+O build avalia os produtores num runner isolado, seleciona os metadados das
+rotas sem renderizar componentes nem executar preloads e gera uma cópia por
+idioma. O serializador recebe texto simples estruturado, escapa a sintaxe de
+Markdown e HTML e valida os destinos dos links. Não converte HTML nem interpreta
+Markdown ou MDX fornecido pelo CMS. Uma string confidencial continua sendo uma
+string válida: o produtor precisa selecionar somente conteúdo publicável. O nome
+`src/**/markdown.ts` fica reservado aos produtores. Para um endpoint chamado
+`/markdown`, use uma pasta com `index.ts`. Importar um produtor no app causa
+erro de build; compartilhe com o HTML a fonte pública, sem importar o produtor.
+
+Para rotas com parâmetros, declare também `getPaths({ locale, signal })`, que
+lista os caminhos públicos sem prefixo de idioma, como `/blog/meu-post`. A fonte
+pode consultar um CMS no build e usar o `signal` em operações canceláveis.
+`render` recebe o caminho enumerado e o idioma. Cada caminho precisa pertencer à
+mesma folha da árvore, respeitando os filtros do router. O gerador recusa
+caminhos inválidos, duplicatas, colisões com páginas, endpoints e arquivos de
+`public/`, conteúdo inválido e limites de quantidade, tempo e tamanho definidos
+em `tooling/markdown/constants.ts`. Falhas interrompem o build inteiro. Os
+cabeçalhos são regras exatas por arquivo somente na configuração do host, sem
+replicar essas regras no runtime do Nitro. O limite local de artefatos não
+substitui os limites da plataforma de publicação, que devem ser conferidos antes
+de aumentar o volume de conteúdo.
+
+Um novo artigo, uma tradução ou uma alteração no CMS exige outro build para
+atualizar os arquivos. Se o HTML consulta dados mais recentes em runtime, ele
+pode divergir do snapshot; use a mesma versão publicada da fonte quando precisar
+de paridade. O timeout cancela o sinal e interrompe a espera, mas não preempta
+código síncrono nem garante o encerramento de um SDK que ignore cancelamento.
+
+A home publica `/pt/index.md`, `/en/index.md` e `/es/index.md`. As outras
+páginas usam caminhos como `/pt/about.md`. O HTML inicial anuncia o arquivo com
+`<link rel="alternate" type="text/markdown">`, e o `llms.txt` prefere o `.md`
+quando a página selecionada possui esse artefato. O build grava os arquivos em
+`.markdown/public/`, e o Nitro os inclui nos estáticos da Vercel. O manifesto do
+servidor contém caminhos e metadados do índice, sem o corpo dos documentos. O
+mapa completo é eliminado do bundle do cliente: a descoberta pelo `alternate`
+acontece no SSR, e o índice público continua disponível em `/llms.txt`. A
+hidratação preserva o link recebido; a navegação dentro do documento o remove
+quando o caminho muda, para não anunciar um arquivo de outra página.
+
+GET e HEAD da página com `Accept: text/markdown` recebem 307 para o `.md`
+localizado. A negociação considera pesos `q` e especificidade, com preferência
+por HTML em empate. Ausência de `Accept` e `*/*` usam HTML; `q=0` exclui o tipo.
+Se nenhum formato for aceitável numa página com artefato, a resposta é 406. A
+negociação preserva `Vary` e acrescenta `Accept`; os redirects e o 406 usam
+`private, no-store`. Query strings não alteram o snapshot nem seguem para o
+arquivo. Páginas sem artefato conservam o fluxo normal, inclusive erros e 404.
+URLs de página sem idioma passam primeiro pela localização existente. Um `.md`
+ausente responde 404 em texto simples, sem cache e sem passar pelo SSR.
+
+O acesso direto ao `.md` é servido como estático, sem renderizar a página ou
+executar o produtor. O arquivo usa `text/markdown; charset=utf-8`, idioma da
+URL, `nosniff`, `Cross-Origin-Resource-Policy: same-origin` e
+`public, max-age=0, must-revalidate`. Cookies e `Accept-Language` não mudam seu
+conteúdo. HEAD mantém os cabeçalhos e não envia corpo. O middleware não aplica
+CSP de HTML aos arquivos servidos diretamente pelo host.
+
+Em desenvolvimento, a geração acontece ao iniciar o servidor e após mudanças nas
+fontes. A requisição lê o resultado já gerado; falhas de regeneração são
+mostradas no servidor e na interface. O preview lê os arquivos do último build e
+aplica os cabeçalhos estáticos configurados para a Vercel, incluindo ETag e
+revalidação condicional. Esse adapter local não comprova o comportamento do CDN
+após publicação.
 
 As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
 aviso de privacidade descreve as preferências e os limites observáveis na
@@ -283,7 +346,8 @@ e navegação em larguras de celular e desktop.
 Após publicar, confira status final, cabeçalhos e corpo, seguindo redirects:
 
 ```sh
-curl -sS -L -i -H 'Accept: text/markdown' https://seu-dominio.example/
+curl -sS -i https://seu-dominio.example/pt/index.md
+curl -sS -L -i -H 'Accept: text/markdown' https://seu-dominio.example/pt/
 curl -sS -L -i -H 'Accept: text/html' https://seu-dominio.example/
 curl -sS -L -i -H 'Accept: text/markdown' https://seu-dominio.example/pagina-inexistente
 ```

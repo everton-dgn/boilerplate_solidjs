@@ -4,7 +4,6 @@ import { getRequestEvent } from '@solidjs/web'
 
 import {
   isPagePath,
-  isPageRequest,
   isServerFunctionPath
 } from '../requestClassification/index.ts'
 import { applySecurityHeaders, requestNonce } from '../securityHeaders/index.ts'
@@ -51,9 +50,12 @@ export async function localizeRequest({
 }: LocalizeRequestOptions): Promise<Response> {
   const { pathname } = new URL(request.url)
   const isServerFunction = isServerFunctionPath(pathname)
+  const isPage =
+    (request.method === 'GET' || request.method === 'HEAD') &&
+    isPagePath({ pathname, method: request.method })
   const event = getRequestEvent()
   if (event) event.locals.localizedPageBase = undefined
-  if (!isServerFunction && !isPageRequest(request)) return next()
+  if (!isServerFunction && !isPage) return next()
   const localized = isServerFunction
     ? serverFunctionLocale(request)
     : { request, pageBase: request.url }
@@ -72,7 +74,7 @@ export async function localizeRequest({
           headers: {
             location: decision.redirectUrl.href,
             'cache-control': 'private, no-store',
-            vary: 'Cookie, Accept-Language, Accept'
+            vary: 'Cookie, Accept-Language'
           }
         }),
         nonce: requestNonce()

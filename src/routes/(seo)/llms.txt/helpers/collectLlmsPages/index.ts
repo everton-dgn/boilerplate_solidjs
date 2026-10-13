@@ -1,19 +1,10 @@
-import type { LlmsPage, LlmsRouteInfo } from '@/@types/llms.ts'
+import type { LlmsPage, LlmsSelection } from '@/@types/llms.ts'
 import type { SeoMetadata } from '@/@types/seo.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { walkStaticRoutes } from '@/helpers/walkStaticRoutes/index.ts'
 import type { StaticRoute } from '@/helpers/walkStaticRoutes/types.ts'
 
-type LlmsSelection = {
-  include: boolean
-  section: string
-  optional: boolean
-}
-
-type ResolveRouteLlmsOptions = {
-  parent: LlmsSelection
-  info: LlmsRouteInfo | undefined
-}
+import { resolveRouteLlms } from '../resolveRouteLlms/index.ts'
 
 type RouteState = {
   seo: SeoMetadata
@@ -22,31 +13,12 @@ type RouteState = {
 
 type StaticPage = RouteState & { path: string }
 
-const DEFAULT_SELECTION: LlmsSelection = {
-  include: false,
-  section: 'Pages',
-  optional: false
-}
-
-function resolveRouteLlms({
-  parent,
-  info
-}: ResolveRouteLlmsOptions): LlmsSelection {
-  if (info === undefined) return { ...parent }
-  if (typeof info === 'boolean') return { ...parent, include: info }
-  return {
-    include: true,
-    section: info.section ?? parent.section,
-    optional: info.optional ?? parent.optional
-  }
-}
-
 // O índice filho pode compartilhar a URL do layout; seus metadados prevalecem.
 export function collectLlmsPages(routes: readonly StaticRoute[]): LlmsPage[] {
   const pages = new Map<string, StaticPage>()
   walkStaticRoutes<RouteState>({
     routes,
-    initialState: { seo: resolveRouteSeo([]), llms: DEFAULT_SELECTION },
+    initialState: { seo: resolveRouteSeo([]), llms: resolveRouteLlms({}) },
     visit: ({ route, path, parentState }) => {
       const info = route.$$route?.require().route?.info
       const state = {
@@ -58,12 +30,12 @@ export function collectLlmsPages(routes: readonly StaticRoute[]): LlmsPage[] {
     }
   })
   return [...pages.values()]
-    .filter(({ seo, llms }) => llms.include && !seo.noindex)
+    .filter(({ seo, llms }) => llms.shouldInclude && !seo.noindex)
     .map(({ path, seo, llms }) => ({
       path,
       title: seo.title,
       description: seo.description,
       section: llms.section,
-      optional: llms.optional
+      optional: llms.isOptional
     }))
 }
