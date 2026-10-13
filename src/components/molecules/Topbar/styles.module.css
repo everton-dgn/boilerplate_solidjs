@@ -46,3 +46,25 @@
   gap: 8px;
   flex-shrink: 0;
 }
+
+.github_link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-8);
+  color: var(--color-foreground);
+  font-size: var(--font-size-14);
+  transition: background-color 0.18s ease;
+
+  &:hover {
+    background: var(--color-accent);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--ring-focus);
+  }
+}
