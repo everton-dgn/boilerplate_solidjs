@@ -2,6 +2,7 @@ import type { RouteDefinition } from '@solidjs/router'
 import { createMemo, createSignal, Loading } from 'solid-js'
 
 import { createSeo } from '@/primitives/createSeo/index.ts'
+import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
 
 const DATA_DELAY_MS = 150
 
@@ -14,7 +15,13 @@ function loadProductName(): Promise<string> {
 
 function ProductDetails() {
   const name = createMemo(loadProductName)
-  createSeo({ structuredData: () => ({ '@type': 'Product', name: name() }) })
+  createSeo({
+    structuredData: () => ({
+      '@type': 'Product',
+      name: name(),
+      description: UNSAFE_JSON_LD_TEXT
+    })
+  })
   const [clicks, setClicks] = createSignal(0)
 
   return (

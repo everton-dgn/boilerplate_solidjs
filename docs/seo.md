@@ -81,9 +81,15 @@ um nó `Organization` com nome, descrição, URL, logo (`SITE.logo`, ao menos
 propriedade inválida falha no typecheck; as dimensões da imagem ficam só no Open
 Graph. O idioma da página vem de `SITE.locale`, que também alimenta o `lang` do
 `Document.tsx` e o `og:locale` (com sublinhado). `og:locale:alternate` lista os
-outros idiomas, e `WebSite.inLanguage` declara os três idiomas disponíveis.
-`helpers/serializeJsonLd/` escapa `<`, `>` e `&` como sequências JSON para não
-encerrar o `<script>`. Os handles do Twitter saem de `SITE.twitter`
+outros idiomas, e `WebSite.inLanguage` declara os três idiomas disponíveis. O
+grafo e os dados próprios da página usam `JSON.stringify` e chegam ao `useHead`
+com `type: 'application/ld+json'`. O Solid escapa `<` no HTML do servidor e nas
+atualizações de head do streaming; no cliente, insere o conteúdo como texto.
+Esse contrato depende do tipo JSON e do uso de `useHead`: não interpole o JSON
+diretamente em HTML. As regressões de `createSeo` e `StructuredData` verificam o
+primeiro chunk antes da resolução dos dados, conteúdo malicioso preservado como
+JSON e ausência de elementos injetados ou execução de código no navegador, antes
+e depois da hidratação. Os handles do Twitter saem de `SITE.twitter`
 (`twitter:site`, a conta do site) e de `SITE.author.twitter` (`twitter:creator`,
 a conta do autor). O LinkedIn não tem meta tag própria: ele lê o Open Graph para
 a prévia, e o perfil entra só no `sameAs`. Páginas indexáveis publicam

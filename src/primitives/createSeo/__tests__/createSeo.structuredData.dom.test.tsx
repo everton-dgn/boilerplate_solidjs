@@ -2,6 +2,7 @@ import type { Product } from 'schema-dts'
 import { createSignal, Show } from 'solid-js'
 import * as v from 'valibot'
 
+import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { createSeo } from '../index.ts'
@@ -148,11 +149,11 @@ describe('dados estruturados publicados pela página', () => {
     )
   })
 
-  it('escapa HTML para não encerrar o script', async () => {
-    mountData([() => ({ '@type': 'Thing', name: '</script><b>&' })])
+  it('insere o JSON como texto sem criar elementos a partir dos dados', async () => {
+    mountData([() => ({ '@type': 'Thing', name: UNSAFE_JSON_LD_TEXT })])
 
     const [json] = await waitForScripts(1)
-    expect(json).not.toMatch(/[<>&]/u)
-    expect(parseNode(json).name).toBe('</script><b>&')
+    expect(parseNode(json).name).toBe(UNSAFE_JSON_LD_TEXT)
+    expect(document.querySelector('[data-json-ld-injected]')).toBeNull()
   })
 })

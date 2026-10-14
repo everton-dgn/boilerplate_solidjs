@@ -8,7 +8,6 @@ import { markdownPaths } from 'virtual:markdown-manifest'
 import { SITE } from '@/constants/site.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
-import { serializeJsonLd } from '@/helpers/serializeJsonLd/index.ts'
 import { buildLocaleAlternates } from '@/i18n/buildLocaleAlternates/index.ts'
 import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
 import { localizeHref } from '@/i18n/urls/index.ts'
@@ -212,7 +211,7 @@ export function createSeo(options: CreateSeoOptions): void {
       key: `structured-data:${id}`,
       props: {
         type: 'application/ld+json',
-        children: serializeJsonLd(withContext(nodes))
+        children: JSON.stringify(withContext(nodes))
       }
     }
   })

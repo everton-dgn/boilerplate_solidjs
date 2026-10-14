@@ -2,13 +2,13 @@ import type { RouteDefinition } from '@solidjs/router'
 import type { Answer, FAQPage, Question } from 'schema-dts'
 
 import { createSeo } from '@/primitives/createSeo/index.ts'
+import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
 
-// Página que publica JSON-LD próprio (FAQPage) ao lado do grafo base do createSeo.
 export const route = {
   info: {
     seo: {
       title: 'Perguntas frequentes',
-      description: 'Dúvidas comuns sobre o boilerplate.'
+      description: UNSAFE_JSON_LD_TEXT
     },
     llms: { section: 'Referência' }
   }
@@ -18,7 +18,7 @@ export default function FaqPage() {
   // Tipos concretos evitam inferir os nós aninhados contra toda a união de Thing.
   const answer: Answer = {
     '@type': 'Answer',
-    text: 'Uma base para aplicações SolidJS com SSR.'
+    text: UNSAFE_JSON_LD_TEXT
   }
   const question: Question = {
     '@type': 'Question',

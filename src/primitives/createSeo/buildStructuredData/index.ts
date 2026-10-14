@@ -3,7 +3,6 @@ import type { Article, Graph, Organization, WebPage, WebSite } from 'schema-dts'
 import type { SeoMetadata } from '@/@types/seo.ts'
 import { SITE } from '@/constants/site.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
-import { serializeJsonLd } from '@/helpers/serializeJsonLd/index.ts'
 import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
 
 type BuildStructuredDataOptions = {
@@ -85,5 +84,5 @@ export function buildStructuredData({
       }
     ]
   }
-  return serializeJsonLd(graph)
+  return JSON.stringify(graph)
 }
