@@ -42,6 +42,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
       name: 'architecture',
       specifier: './tooling/architecturePolicy/index.ts'
     },
+    { name: 'paraglide', specifier: '@inlang/paraglide-js/eslint' },
     { name: 'solid', specifier: 'eslint-plugin-solid' },
     { name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }
   ],
@@ -467,6 +468,15 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'oxc/number-arg-out-of-range': 'error',
     'oxc/only-used-in-recursion': 'error',
     'oxc/uninvoked-array-callback': 'error',
+    'paraglide/no-dynamic-message-access': [
+      'error',
+      {
+        messageModules: [
+          '@paraglide/messages.js',
+          '@paraglide/messages/_index.js'
+        ]
+      }
+    ],
     'promise/always-return': 'error',
     'promise/avoid-new': 'error',
     'promise/catch-or-return': [

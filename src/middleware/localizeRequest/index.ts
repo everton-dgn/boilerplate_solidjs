@@ -10,8 +10,7 @@ import {
 } from '../requestClassification/index.ts'
 import { applySecurityHeaders, requestNonce } from '../securityHeaders/index.ts'
 import type { Next } from '../types.ts'
-import { normalizeLanguageRequest } from './helpers/normalizeLanguageRequest/index.ts'
-import { persistLocale } from './helpers/persistLocale/index.ts'
+import { persistLocale } from './persistLocale/index.ts'
 
 type LocalizeRequestOptions = { request: Request; next: Next }
 type LocaleRequest = { request: Request; pageBase?: string }
@@ -60,7 +59,7 @@ export async function localizeRequest({
     ? serverFunctionLocale(request)
     : { request, pageBase: request.url }
   if (event) event.locals.localizedPageBase = localized.pageBase
-  const localeRequest = normalizeLanguageRequest(localized.request)
+  const localeRequest = localized.request
   const decision = await shouldRedirect({ request: localeRequest })
   // Também atende HEAD, crawlers e clientes HTTP sem Sec-Fetch-Dest. A
   // decisão usa URL > cookie > Accept-Language > idioma base.

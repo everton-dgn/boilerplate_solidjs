@@ -68,12 +68,12 @@ aplicação.
 
 ### Runtime do SSR
 
-O SSR de produção permanece em Node por diferenças observadas no Bun declarado
-no projeto: `Response.redirect()` expõe um corpo não nulo e respostas de
-`fetch()` permitem alterar os headers. A proteção do servidor depende desses
-contratos e seus testes recusaram essa substituição. Não remova o runtime
-explícito do Nitro: a detecção automática escolheria Bun por causa do processo
-que executa o build. Antes de migrar o SSR, preserve os contratos de
+O SSR de produção permanece em Node porque respostas de `fetch()` no Bun
+declarado no projeto permitem alterar os headers. `Response.redirect()` já
+preserva o corpo nulo, mas a proteção do servidor também depende da
+imutabilidade dos headers de respostas de rede. Não remova o runtime explícito
+do Nitro: a detecção automática escolheria Bun por causa do processo que executa
+o build. Antes de migrar o SSR, preserve os contratos de
 [erros de servidor](server-errors.md) e rode os testes da fronteira no runtime
 de destino, além dos E2E completos.
 

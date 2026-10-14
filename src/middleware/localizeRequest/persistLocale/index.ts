@@ -1,7 +1,12 @@
-import { cookieName, type Locale } from '@paraglide/runtime.js'
-import { parseCookieHeader } from '@solidjs/web'
-
-import { serializeLocaleCookie } from '@/i18n/serializeLocaleCookie/index.ts'
+import {
+  cookieDomain,
+  cookieMaxAge,
+  cookieName,
+  cookieSameSite,
+  cookieSecure,
+  type Locale
+} from '@paraglide/runtime.js'
+import { parseCookieHeader, serializeCookie } from '@solidjs/web'
 
 type PersistLocaleOptions = {
   request: Request
@@ -24,7 +29,15 @@ export function persistLocale({
   }
   response.headers.append(
     'set-cookie',
-    serializeLocaleCookie({ locale, protocol: new URL(request.url).protocol })
+    serializeCookie(cookieName, locale, {
+      path: '/',
+      maxAge: cookieMaxAge,
+      domain: cookieDomain || undefined,
+      sameSite: cookieSameSite,
+      secure:
+        cookieSecure === true ||
+        (cookieSecure === 'auto' && new URL(request.url).protocol === 'https:')
+    })
   )
   response.headers.set('cache-control', 'private, no-store')
   return response

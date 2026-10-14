@@ -36,8 +36,27 @@ test.describe('layout responsivo', () => {
         await expect(
           page.getByRole('link', { name: 'Início', exact: true })
         ).not.toHaveAttribute('aria-current')
+        await expect(
+          page.getByRole('link', { name: '404', exact: true }).locator('span')
+        ).toHaveCSS('opacity', '1')
         expect(errors).toEqual([])
       })
     }
   }
+})
+
+test.describe('navegação renderizada no servidor', () => {
+  test.use({ javaScriptEnabled: false })
+
+  test('mostra o indicador da página atual sem hidratação', async ({
+    page
+  }) => {
+    await page.goto('/pt')
+    const home = page.getByRole('link', { name: 'Início', exact: true })
+    const missing = page.getByRole('link', { name: '404', exact: true })
+    await expect(home).toHaveAttribute('aria-current', 'page')
+    await expect(home.locator('span')).toHaveCSS('opacity', '1')
+    await expect(missing).not.toHaveAttribute('aria-current')
+    await expect(missing.locator('span')).toHaveCSS('opacity', '0')
+  })
 })

@@ -288,7 +288,6 @@ export default defineConfig(({ mode }) => {
       restoreMocks: true,
       unstubGlobals: true,
       unstubEnvs: true,
-      fsModuleCache: true,
       expect: { requireAssertions: true, poll: { interval: 10 } },
       exclude: [
         '**/node_modules/**',

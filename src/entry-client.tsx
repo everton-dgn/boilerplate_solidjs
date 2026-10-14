@@ -3,7 +3,7 @@ import { hydrate } from '@solidjs/web'
 
 import App from './App.tsx'
 import Document from './Document.tsx'
-import { configureLocaleClient } from './entry-client/configureLocaleClient/index.ts'
+import { installLocaleHistoryGuard } from './entry-client/installLocaleHistoryGuard/index.ts'
 
 const [navigation] = performance.getEntriesByType('navigation')
 const loadedLocale = navigation
@@ -19,8 +19,8 @@ if (
 ) {
   location.reload()
 } else {
-  const disposeLocaleClient = configureLocaleClient()
-  if (import.meta.hot) import.meta.hot.dispose(disposeLocaleClient)
+  const disposeLocaleHistoryGuard = installLocaleHistoryGuard()
+  if (import.meta.hot) import.meta.hot.dispose(disposeLocaleHistoryGuard)
 
   hydrate(
     () => (

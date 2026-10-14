@@ -55,21 +55,21 @@ restaura spies, globais e variáveis de ambiente substituídos (`restoreMocks`,
 para isso. `expect.requireAssertions` faz falhar o teste que termina sem nenhuma
 asserção. `expect.poll.interval` baixa de 50ms para 10ms o intervalo entre
 checagens de `expect.poll` e `expect.element`; `vi.waitUntil` não lê essa opção
-e recebe o intervalo em cada chamada. `fsModuleCache` guarda as transformações
-em `node_modules/.vitest-cache`, então só a primeira execução após uma mudança
-paga o custo. O isolamento por arquivo (`isolate`, padrão do Vitest) é
-intencional: não use `isolate: false`, mesmo quando o Vitest sugerir o ganho de
-tempo. Sem esse isolamento, arquivos passam a compartilhar `document` e o estado
-dos módulos, e um teste pode passar ou falhar conforme a ordem. No Browser Mode,
-o contexto ainda preserva cookies entre arquivos. O setup
-`src/tests/setup/browser/index.ts` restaura o idioma base antes de cada teste
-com `setLocale(baseLocale, { reload: false })`; cada teste pode escolher outro
-idioma durante sua execução. Os projetos DOM e browser começam em inglês. No
-GitHub Actions, o reporter `github-actions` anota as falhas no PR. A
-configuração também exclui arquivos E2E, `node_modules` e `playwright`.
-`passWithNoTests: false` faz a execução falhar quando nenhum teste é encontrado.
-Essas opções ficam na configuração raiz, e os projetos as herdam pelo `extends`
-padrão do Vitest, declarando só o que muda.
+e recebe o intervalo em cada chamada. `fsModuleCache`, ativo por padrão no
+Vitest, guarda as transformações em `node_modules/.vitest-cache`, então só a
+primeira execução após uma mudança paga o custo. O isolamento por arquivo
+(`isolate`, padrão do Vitest) é intencional: não use `isolate: false`, mesmo
+quando o Vitest sugerir o ganho de tempo. Sem esse isolamento, arquivos passam a
+compartilhar `document` e o estado dos módulos, e um teste pode passar ou falhar
+conforme a ordem. No Browser Mode, o contexto ainda preserva cookies entre
+arquivos. O setup `src/tests/setup/browser/index.ts` restaura o idioma base
+antes de cada teste com `setLocale(baseLocale, { reload: false })`; cada teste
+pode escolher outro idioma durante sua execução. Os projetos DOM e browser
+começam em inglês. No GitHub Actions, o reporter `github-actions` anota as
+falhas no PR. A configuração também exclui arquivos E2E, `node_modules` e
+`playwright`. `passWithNoTests: false` faz a execução falhar quando nenhum teste
+é encontrado. Essas opções ficam na configuração raiz, e os projetos as herdam
+pelo `extends` padrão do Vitest, declarando só o que muda.
 
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
 `vite-plus/prefer-vite-plus-imports` bloqueia o import direto). O contexto de

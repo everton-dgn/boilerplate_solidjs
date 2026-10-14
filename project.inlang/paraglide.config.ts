@@ -8,6 +8,8 @@ export default {
   outputStructure: 'message-modules',
   strategy: ['url', 'cookie', 'preferredLanguage', 'baseLocale'],
   cookieName: 'locale',
+  cookieSameSite: 'lax',
+  cookieSecure: 'auto',
   trailingSlash: 'never',
   urlPatterns: [
     {
