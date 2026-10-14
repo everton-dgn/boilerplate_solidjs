@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 1.11.0 - 2026-10-14
+
+### Added
+
+- generate public markdown snapshots at build time (8d108a8)
+
+### Fixed
+
+- observe completion through the public lifecycle API (8288283)
+- update tooling and adopt native runtime integrations (d065a7e)
+- refresh SSR style cache after hot updates (6ca4541)
+- show GitHub icon beside the locale switcher (1b5e667)
+- wait for HTTP startup before resolving route styles (4289065)
+- prepare markdown tests for clean checkouts (55b02de)
+
 ## 1.10.1 - 2026-10-13
 
 ### Fixed
