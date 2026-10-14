@@ -7,6 +7,7 @@ const subjects: Record<string, readonly string[]> = {
   'src/__tests__': ['App', 'PageFileSystemRouter'],
   'src/constants/__tests__': ['cache'],
   'src/tests/pages/Home': ['Home'],
+  'src/tests/pages/Hydration': ['Hydration'],
   'src/tests/pages/NotFound': ['NotFound'],
   'src/tests/pages/BackendError': ['BackendError'],
   'src/tests/pages/FragmentCss': ['FragmentCss'],

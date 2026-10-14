@@ -1,0 +1,86 @@
+import { readFile } from 'node:fs/promises'
+
+import { expect, test, type APIRequestContext } from '@playwright/test'
+import * as v from 'valibot'
+
+import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
+import { watchEntryLoad } from '@/tests/helpers/watchEntryLoad/index.ts'
+
+const chunkSchema = v.object({
+  file: v.string()
+})
+const manifestSchema = v.record(v.string(), chunkSchema)
+const HOME_TITLE = 'SolidJS Boilerplate for web applications'
+
+async function readHomeModule(request: APIRequestContext): Promise<string> {
+  const json = await readFile(
+    '.vercel/output/static/.vite/manifest.json',
+    'utf8'
+  )
+  const manifest = v.parse(manifestSchema, JSON.parse(json))
+  const entry = Object.entries(manifest).find(([id]) =>
+    id.startsWith('src/tests/fixtures/e2e/routes/(base)/index.tsx?')
+  )
+  if (!entry) throw new Error('Missing home module in build manifest')
+  const path = `/${entry[1].file}`
+  const response = await request.get('/en')
+  expect(await response.text()).toContain(path)
+  return path
+}
+
+test('espera o módulo da rota depois de a entrada executar', async ({
+  page,
+  request
+}) => {
+  const path = await readHomeModule(request)
+  const requested = Promise.withResolvers<null>()
+  const gate = Promise.withResolvers<null>()
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await watchEntryLoad(page)
+  await page.route(`**${path}`, async route => {
+    requested.resolve(null)
+    await gate.promise
+    await route.continue()
+  })
+  try {
+    await page.goto('/en', { waitUntil: 'commit' })
+    await requested.promise
+    await expect(page.locator('html')).toHaveAttribute('data-entry-loaded')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_TITLE)
+    expect(await hydrationFinished(page)).toBeFalsy()
+
+    gate.resolve(null)
+    await expect.poll(() => hydrationFinished(page)).toBeTruthy()
+    await page.getByRole('button', { name: 'Select theme' }).click()
+    await expect(page.getByRole('menu')).toBeVisible()
+    expect(errors).toStrictEqual([])
+  } finally {
+    gate.resolve(null)
+  }
+})
+
+test('mantém o HTML sem marcador quando o preload da raiz falha', async ({
+  page,
+  request
+}) => {
+  const path = await readHomeModule(request)
+  const failed = page.waitForEvent(
+    'requestfailed',
+    resource => new URL(resource.url()).pathname === path
+  )
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await watchEntryLoad(page)
+  await page.route(`**${path}`, route => route.abort('failed'))
+  await page.goto('/en')
+  await failed
+  await expect(page.locator('html')).toHaveAttribute('data-entry-loaded')
+  await expect.poll(() => errors.length).toBeGreaterThan(0)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_TITLE)
+  expect(await hydrationFinished(page)).toBeFalsy()
+  await expect(
+    page.getByRole('button', { name: 'Select theme' })
+  ).toBeDisabled()
+  await expect(page.getByRole('menu')).toHaveCount(0)
+})

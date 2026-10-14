@@ -65,6 +65,8 @@ export const lint: NonNullable<UserConfig['lint']> = {
         'src/tests/pages/AgentReadiness/AgentReadiness.build.production.e2e.test.ts',
         'src/tests/pages/BackendError/BackendError.e2e.test.ts',
         'src/tests/pages/FragmentCss/FragmentCss.e2e.test.ts',
+        'src/tests/pages/Hydration/Hydration.parser.e2e.test.ts',
+        'src/tests/pages/Hydration/Hydration.preload.e2e.test.ts',
         'src/tests/pages/OutsideError/OutsideError.e2e.test.ts',
         'src/tests/pages/I18n/I18n.production.e2e.test.ts',
         'src/tests/helpers/readSiteOrigin/index.ts'

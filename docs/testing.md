@@ -94,6 +94,33 @@ do bundle cliente. O SSR inicial também é verificado com JavaScript desativado
 O detalhe está em [docs/server-errors.md](server-errors.md); o CI executa a
 suíte inteira.
 
+`hydrationFinished()` lê o atributo `data-hydration-ended` do `<html>`,
+publicado pela API pública experimental `onHydrationEnd` do Solid. O registro
+fica dentro do callback de `hydrate()`, após construir a árvore: a entrada
+`async` pode executar antes do fim do shell, e o preload dos módulos pode adiar
+a passagem raiz. Registrar logo depois da chamada a `hydrate()` permite que o
+callback rode cedo demais. O SSR não publica o atributo; uma falha de preload
+que impede a execução da raiz também deixa o documento sem marcador.
+
+O atributo informa que a raiz executou e a fase de hidratação terminou. Isso
+inclui cancelamento e recuperação de erro, sem garantir conteúdo completo ou
+interação correta. Os testes também verificam conteúdo, controles e erros do
+navegador. No truncamento do stream, o runtime pode encerrar a fase e buscar os
+dados novamente no cliente, mantendo `Loading` enquanto essa nova busca espera.
+O marcador permanece em navegações no mesmo documento; um documento novo começa
+sem ele. Não o use para controlar a UI: preserve `isHydrating()` e `onSettled`
+nos componentes que precisam distinguir SSR e estado do cliente. O contrato
+atual considera uma única raiz de hidratação.
+
+`Hydration/` testa HTML bruto, JavaScript desligado, bundle retido ou abortado,
+recarga, replay de clique e navegação. Os cenários de parser e preload usam o
+evento `load` do módulo de entrada como prova de avaliação. Um proxy retém o
+corpo após `</head>`; outro caso encerra o stream antes dos fragmentos. A
+fixture de dois `Loading` usa gates do backend, liberados pelo teste, para
+conferir resolução fora de ordem, erro contido, descarte por navegação e
+recuperação após truncamento. As provas usam o build real, sem mock do Solid, e
+verificam a CSP nos caminhos de streaming.
+
 O build E2E usa `--mode e2e` com otimizações de produção e acrescenta a página
 de teste pelo diretório `src/tests/fixtures/e2e/routes/`. O backend simulado
 escuta somente em `127.0.0.1:4318` e é iniciado e encerrado pelo Playwright. O

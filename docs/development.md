@@ -55,6 +55,12 @@ Ele renderiza pelas entradas autorais `src/entry-server.tsx` e
 hidratação. As requisições de server functions usam a integração nativa entre
 Solid e Nitro/srvx.
 
+A entrada do cliente publica o marcador de testes com `onHydrationEnd`, dentro
+da passagem raiz de `hydrate()`. Ele acompanha o fim da fase, inclusive quando
+há recuperação de erro. O contrato e os cenários de parser, preload e streaming
+estão em
+[testes da aplicação completa](testing.md#testes-da-aplicação-completa).
+
 Para gerar o artefato da Vercel:
 
 ```bash
