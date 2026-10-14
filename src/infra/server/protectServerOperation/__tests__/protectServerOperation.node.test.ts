@@ -1,4 +1,4 @@
-import { redirect, reload, respond } from '@solidjs/web'
+import { isResponseEnvelope, redirect, reload, respond } from '@solidjs/web'
 import { NotReadyError } from 'solid-js'
 
 import { createPublicError } from '@/infra/server/publicErrors/index.ts'
@@ -11,6 +11,9 @@ type Invocation = { run: () => unknown; allowControl?: boolean }
 type CyclicData = { self?: CyclicData }
 
 const HTTP_CREATED = 201
+const HTTP_NO_CONTENT = 204
+const HTTP_RESET_CONTENT = 205
+const HTTP_NOT_MODIFIED = 304
 const DIAMOND_DEPTH = 24
 const REJECTED_SHAPES = 4
 const LOG_MESSAGE =
@@ -194,10 +197,11 @@ describe('proteção de operações no servidor', () => {
         revalidate: 'users'
       }
     )
-    const rebuilt = protectServerOperation({
+    const rebuilt: unknown = protectServerOperation({
       run: () => response,
       allowControl: true
     })
+    if (!isResponseEnvelope(rebuilt)) throw new TypeError('Expected envelope')
     expect(rebuilt.value).toStrictEqual({ ok: true })
     expect(rebuilt.response?.status).toBe(HTTP_CREATED)
     expect(rebuilt.response?.headers.get('x-public')).toBe('yes')
@@ -240,6 +244,27 @@ describe('proteção de operações no servidor', () => {
       if (result.status === 'rejected') expectPublicFailure(result.reason)
     }
   })
+})
+
+describe('envelopes sem corpo', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+
+  it.each([HTTP_NO_CONTENT, HTTP_RESET_CONTENT, HTTP_NOT_MODIFIED])(
+    'valida dados privados no envelope com status %s',
+    status => {
+      const envelope = respond({ error: new Error('PRIVATE') }, { status })
+      expect(envelope).toBeInstanceOf(Response)
+      expectPublicFailure(
+        thrownValue({ run: () => envelope, allowControl: true })
+      )
+      expectPublicFailure(
+        thrownValue({
+          run: () => throwValue(envelope),
+          allowControl: true
+        })
+      )
+    }
+  )
 })
 
 describe('log da proteção de operações', () => {

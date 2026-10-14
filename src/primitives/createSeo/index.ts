@@ -3,11 +3,11 @@ import { useLocation, useRouteMatches } from '@solidjs/router'
 import { type HeadTag, useHead } from '@solidjs/web'
 import type { Thing } from 'schema-dts'
 import { type Accessor, createUniqueId } from 'solid-js'
+import { markdownPaths } from 'virtual:markdown-manifest'
 
 import { SITE } from '@/constants/site.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
-import { serializeJsonLd } from '@/helpers/serializeJsonLd/index.ts'
 import { buildLocaleAlternates } from '@/i18n/buildLocaleAlternates/index.ts'
 import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
 import { localizeHref } from '@/i18n/urls/index.ts'
@@ -51,6 +51,20 @@ function publishRouteSeo(): void {
   const canonical = () =>
     resolveSiteUrl(localizeHref({ href: location.pathname }))
   const image = () => resolveSiteUrl(seo().image.path)
+  const initialPath = location.pathname
+  const initialMarkdownHref = import.meta.env.SSR
+    ? undefined
+    : document.querySelector<HTMLLinkElement>(
+        'head link[rel="alternate"][type="text/markdown"]'
+      )?.href
+  const markdownHref = () => {
+    if (!import.meta.env.SSR) {
+      return location.pathname === initialPath ? initialMarkdownHref : undefined
+    }
+    return markdownPaths[
+      localizeHref({ href: location.pathname }).replace(/\/$/u, '') || '/'
+    ]
+  }
   const structuredData = () =>
     buildStructuredData({ seo: seo(), url: canonical(), image: image() })
 
@@ -125,6 +139,19 @@ function publishRouteSeo(): void {
       props: { name: 'twitter:description', content: seo().description }
     },
     { tag: 'link', props: { rel: 'canonical', href: canonical() } },
+    ...(markdownHref()
+      ? [
+          {
+            tag: 'link' as const,
+            key: 'markdown-alternate',
+            props: {
+              rel: 'alternate',
+              type: 'text/markdown',
+              href: resolveSiteUrl(markdownHref() ?? '')
+            }
+          }
+        ]
+      : []),
     ...buildLocaleAlternates({
       href: location.pathname,
       siteUrl: SITE.url
@@ -184,7 +211,7 @@ export function createSeo(options: CreateSeoOptions): void {
       key: `structured-data:${id}`,
       props: {
         type: 'application/ld+json',
-        children: serializeJsonLd(withContext(nodes))
+        children: JSON.stringify(withContext(nodes))
       }
     }
   })

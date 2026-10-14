@@ -1,0 +1,30 @@
+diff --git a/dist/vite/node/chunks/node.js b/dist/vite/node/chunks/node.js
+index cb4f17b0a59954ab1916755b2b80202e45faa82d..aa41b9f35ce457832a2477dbeb5103de1e1132fd 100644
+--- a/dist/vite/node/chunks/node.js
++++ b/dist/vite/node/chunks/node.js
+@@ -36614,7 +36614,15 @@ const importEsbuild = createCachedImport(() => import("esbuild"));
+ const importLightningCSS = createCachedImport(() => import("lightningcss"));
+ async function compileLightningCSS(environment, id, src, deps, workerController, urlResolver) {
+ 	const { config } = environment;
+-	const filename = removeDirectQuery(id);
++	const cssModules = cssModuleRE.test(id) ? config.css.lightningcss?.cssModules ?? true : void 0;
++	let filename = removeDirectQuery(id);
++	if (cssModules) {
++		// Keep CSS Module names stable across stylesheet and string imports.
++		filename = filename.replace(/\?.*$/, (query) => {
++			const params = query.slice(1).split("&").filter((param) => param !== "inline" && !param.startsWith("inline="));
++			return params.length ? `?${params.join("&")}` : "";
++		});
++	}
+ 	let res;
+ 	try {
+ 		res = styleAttrRE.test(id) ? (await importLightningCSS()).transformStyleAttribute({
+@@ -36674,7 +36682,7 @@ async function compileLightningCSS(environment, id, src, deps, workerController,
+ 			minify: false,
+ 			sourceMap: config.command === "build" ? !!config.build.sourcemap : config.css.devSourcemap,
+ 			analyzeDependencies: { preserveImports: true },
+-			cssModules: cssModuleRE.test(id) ? config.css.lightningcss?.cssModules ?? true : void 0
++			cssModules
+ 		});
+ 	} catch (e) {
+ 		e.message = `[lightningcss] ${e.message}`;

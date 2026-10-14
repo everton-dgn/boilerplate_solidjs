@@ -3,6 +3,8 @@ import type { ComponentProps, JSX } from '@solidjs/web'
 import IconArrowLeft from '~icons/hugeicons/arrow-left-01'
 import IconRefresh from '~icons/hugeicons/refresh'
 
+import { HTTP_NOT_FOUND } from '@/constants/http.ts'
+
 import type { ErrorFallbackKind } from './types.ts'
 
 type ErrorFallbackContent = {
@@ -18,7 +20,7 @@ export const ERROR_FALLBACK_CONTENT: Record<
   ErrorFallbackContent
 > = {
   'not-found': {
-    badge: '404',
+    badge: String(HTTP_NOT_FOUND),
     get title() {
       return m.errorFallback_notFoundTitle()
     },

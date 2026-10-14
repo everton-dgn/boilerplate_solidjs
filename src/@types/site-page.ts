@@ -1,6 +1,6 @@
-export type SiteLink = { label: string; href: string }
+type SiteSection = { title: string; paragraphs: string[] }
 
-export type SiteSection = { title: string; paragraphs: string[] }
+export type SiteLink = { label: string; href: string }
 
 export type SitePage = {
   title: string

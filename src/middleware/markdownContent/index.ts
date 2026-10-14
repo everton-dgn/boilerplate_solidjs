@@ -1,37 +1,13 @@
-import { m } from '@paraglide/messages.js'
+import { markdownPaths } from 'virtual:markdown-manifest'
 
-import type { SitePage } from '@/@types/site-page.ts'
-import { Router } from '@/router.ts'
+import {
+  HTTP_NOT_ACCEPTABLE,
+  HTTP_NOT_FOUND,
+  HTTP_TEMPORARY_REDIRECT
+} from '@/constants/http.ts'
 
 import { negotiatePageFormat } from '../negotiatePageFormat/index.ts'
-import { isPagePath } from '../requestClassification/index.ts'
 import type { Next } from '../types.ts'
-
-type MarkdownResponseOptions = {
-  request: Request
-  body: string
-  response?: Response
-}
-
-const HTTP_NOT_FOUND = 404
-const HTTP_NOT_ACCEPTABLE = 406
-
-function escapeText(value: string): string {
-  return value.replaceAll(/[\\`*_{}[\]<>()#+.!|~-]/gu, String.raw`\$&`)
-}
-
-function renderPage(page: SitePage): string {
-  return `${[
-    `# ${escapeText(page.title)}`,
-    escapeText(page.description),
-    escapeText(page.intro),
-    ...page.sections.flatMap(section => [
-      `## ${escapeText(section.title)}`,
-      ...section.paragraphs.map(escapeText)
-    ]),
-    ...page.links.map(link => `- [${escapeText(link.label)}](<${link.href}>)`)
-  ].join('\n\n')}\n`
-}
 
 function varyAccept(response: Response): Response {
   const vary = response.headers.get('vary')
@@ -42,41 +18,23 @@ function varyAccept(response: Response): Response {
   return response
 }
 
-function markdownResponse({
-  request,
-  body,
-  response
-}: MarkdownResponseOptions): Response {
-  const headers = new Headers(response?.headers)
-  for (const header of [
-    'content-length',
-    'content-encoding',
-    'etag',
-    'last-modified'
-  ]) {
-    headers.delete(header)
-  }
-  headers.set('content-type', 'text/markdown; charset=utf-8')
-  headers.set('cache-control', 'private, no-store')
-  return varyAccept(
-    new Response(request.method === 'HEAD' ? null : body, {
-      status: response?.status,
-      headers
-    })
-  )
-}
-
 export async function markdownContent(
   request: Request,
   render: Next
 ): Promise<Response> {
-  const { pathname: requestedPath } = new URL(request.url)
-  if (
-    (request.method !== 'GET' && request.method !== 'HEAD') ||
-    !isPagePath({ pathname: requestedPath, method: request.method })
-  ) {
-    return render()
+  if (request.method !== 'GET' && request.method !== 'HEAD') return render()
+  const { pathname } = new URL(request.url)
+  if (pathname.endsWith('.md')) {
+    return new Response(request.method === 'HEAD' ? null : 'Not found\n', {
+      status: HTTP_NOT_FOUND,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'private, no-store'
+      }
+    })
   }
+  const href = markdownPaths[pathname.replace(/\/$/u, '') || '/']
+  if (!href) return render()
   const format = negotiatePageFormat(request.headers.get('accept'))
   if (!format) {
     return new Response(
@@ -91,26 +49,18 @@ export async function markdownContent(
       }
     )
   }
-  const shouldUseMarkdown = format === 'markdown'
-  const page = shouldUseMarkdown
-    ? Router.match(request.url).pop()?.info?.content?.()
-    : undefined
-  if (page) return markdownResponse({ request, body: renderPage(page) })
-  const response = await render()
-  const isHtml =
-    response.headers
-      .get('content-type')
-      ?.split(';')[0]
-      ?.trim()
-      .toLowerCase() === 'text/html'
-  if (!isHtml) return response
-  if (!shouldUseMarkdown || response.status !== HTTP_NOT_FOUND) {
-    return varyAccept(response)
+  if (format === 'markdown') {
+    return new Response(null, {
+      status: HTTP_TEMPORARY_REDIRECT,
+      headers: {
+        location: href,
+        vary: 'Accept',
+        'cache-control': 'private, no-store'
+      }
+    })
   }
-  await response.body?.cancel()
-  return markdownResponse({
-    request,
-    response,
-    body: `# ${escapeText(m.markdownContent_notFoundTitle())}\n\n${escapeText(m.markdownContent_notFoundDescription())}\n\n[${escapeText(m.markdownContent_siteIndexLabel())}](/llms.txt)\n`
-  })
+  const response = await render()
+  return response.headers.get('content-type')?.startsWith('text/html')
+    ? varyAccept(response)
+    : response
 }

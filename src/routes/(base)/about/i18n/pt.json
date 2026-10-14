@@ -5,5 +5,5 @@
   "about_purposeTitle": "Propósito e recursos",
   "about_purpose": "A proposta é reunir as integrações iniciais de um projeto: renderização no servidor, organização de rotas, tradução de conteúdo, temas e testes automatizados. Este site demonstra a base em funcionamento. Os exemplos e a documentação ajudam a entender as escolhas do projeto antes de adaptá-lo para outro produto.",
   "about_sourceTitle": "Código e documentação",
-  "about_source": "O repositório é a referência para instalação, comandos de desenvolvimento e detalhes da implementação. Os guias descrevem arquitetura, testes, SEO e tratamento de erros no servidor. A licença permite usar e modificar o código nas condições publicadas no próprio repositório. Revise essas condições e a configuração antes de colocar um produto derivado em produção."
+  "about_source": "O repositório é a referência para instalação, comandos de desenvolvimento e detalhes da implementação. Os guias descrevem arquitetura, testes, SEO e tratamento de erros no servidor. Você pode usar, modificar, distribuir e vender o código livremente, inclusive em projetos comerciais e de código fechado."
 }

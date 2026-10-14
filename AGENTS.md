@@ -158,6 +158,10 @@ release. Add a tool name to select part of the graph. For example, run
   consumidor, como `DropdownMenu/constants.ts` e
   `(seo)/robots.txt/constants.ts`. Nunca em `src/constants/` antes do segundo
   consumidor.
+- Códigos HTTP usados pela aplicação ficam em `src/constants/http.ts`, mesmo
+  quando um código ainda tiver um único consumidor. O arquivo reúne os status
+  do protocolo; acrescente apenas códigos efetivamente usados. Testes podem
+  manter valores esperados literais para validar o contrato de forma independente.
 - Rota que passa a precisar de módulos locais vira pasta com `index.ts`:
   `robots.txt.ts` passa a `robots.txt/index.ts`, e o que a rota consome fica
   dentro dessa pasta. `sitemap.xml/`, `llms.txt/` e `robots.txt/` seguem esse
@@ -176,6 +180,30 @@ release. Add a tool name to select part of the graph. For example, run
   testes e os guias correspondentes em `docs/`.
 - Testes não decidem a localização. Um módulo colocalizado mantém seus
   testes em `__tests__/` ao lado dele.
+
+## Módulos de página
+
+- Metadados próprios da página ficam em `seo.ts`, ao lado de `index.tsx`.
+  Exporte o objeto `seo` com `satisfies SeoRouteInfo` e importe-o para
+  `route.info.seo`. A página continua declarando `llms`, `markdown` e os demais
+  controles da rota explicitamente.
+- Quando HTML e Markdown compartilham conteúdo público, exporte também de
+  `seo.ts` o objeto `content`, tipado por `satisfies SitePage`.
+  O build usa esse objeto quando não existe um produtor `markdown.ts`.
+  Conteúdo usado apenas pela página pode permanecer em `index.tsx`.
+- Declare `route.info.markdown: true` para publicar. O build encontra
+  `markdown.ts` ao lado do módulo que declara `route`, seguindo reexportações.
+  Esse produtor é opcional e tem prioridade sobre `content` de `seo.ts`.
+  Falhas no produtor não acionam a alternativa. Sem produtor nem conteúdo
+  público válido, o build falha; `false` ou ausência da chave não publica.
+  A home mantém `markdown.ts` como exemplo. Rotas parametrizadas precisam dele
+  para enumerar os caminhos públicos por `getPaths`.
+- Textos e links localizados são getters: não avalie traduções nem capture o
+  idioma no topo desses módulos. Os catálogos permanecem em `i18n/` junto da
+  página, e `seo.ts` pode ler `content` para evitar duplicação.
+- `seo.ts` e `markdown.ts` são módulos de suporte à página e
+  ficam ao lado de `index.tsx`, sem entrar na contagem que exige `helpers/`.
+  Não exporte componente padrão nem handlers HTTP nesses módulos.
 
 ## Parâmetros de função
 

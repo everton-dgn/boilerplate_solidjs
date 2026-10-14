@@ -85,8 +85,7 @@ for (const language of LANGUAGES) {
       expect(response.headers()['content-type']).toContain('text/html')
       const html = await response.text()
       const markdown = await request.get(pathname, {
-        headers: { accept: 'text/markdown' },
-        maxRedirects: 0
+        headers: { accept: 'text/markdown' }
       })
       expect(markdown.status()).toBe(HTTP_OK)
       const markdownBody = await markdown.text()
@@ -107,17 +106,23 @@ for (const language of LANGUAGES) {
         await expect(heading).toBeVisible()
         // oxlint-disable-next-line unicorn/prefer-dom-node-text-content -- A contagem precisa excluir texto oculto por CSS.
         const visibleText = await main.innerText()
-        expect(
-          visibleText.replaceAll(/\s+/gu, ' ').trim().length
-        ).toBeGreaterThanOrEqual(MIN_CONTENT_CHARACTERS)
-
         const content = await page.evaluate(readMainContent, html)
-        expect(content.text.length).toBeGreaterThanOrEqual(
-          MIN_CONTENT_CHARACTERS
-        )
+        if (path === '') {
+          await expect(main.locator('footer')).toHaveCount(0)
+          await expect(main.getByRole('heading', { level: 2 })).toHaveCount(0)
+          await expect(main.locator('h1 + p')).toHaveText(/SolidJS 2/u)
+          expect(markdownBody).toContain('## ')
+        } else {
+          expect(
+            visibleText.replaceAll(/\s+/gu, ' ').trim().length
+          ).toBeGreaterThanOrEqual(MIN_CONTENT_CHARACTERS)
+          expect(content.text.length).toBeGreaterThanOrEqual(
+            MIN_CONTENT_CHARACTERS
+          )
+          expect(content.headings).toContain(SUBHEADING_LEVEL)
+        }
         expect(content.headings[0]).toBe(1)
         expect(content.headings.filter(level => level === 1)).toHaveLength(1)
-        expect(content.headings).toContain(SUBHEADING_LEVEL)
         for (const [position, level] of content.headings.entries()) {
           expect(level).toBeLessThanOrEqual(
             (content.headings[position - 1] ?? 0) + 1
@@ -140,7 +145,7 @@ for (const language of LANGUAGES) {
         ).toHaveAttribute('href', `${readSiteOrigin()}/en${path}`)
         for (const destination of PATHS) {
           const link = page
-            .locator('main footer')
+            .locator('header > nav')
             .locator(`a[href="/${language.locale}${destination}"]`)
           await expect(link).toBeVisible()
           await expect(link).toHaveAccessibleName(/\S/u)
@@ -169,6 +174,13 @@ for (const language of LANGUAGES) {
         const violations = await watchCspViolations(page)
         await page.goto(`/${language.locale}`)
         await expect.poll(() => hydrationFinished(page)).toBe(true)
+        const markdownAlternate = page.locator(
+          'head link[rel="alternate"][type="text/markdown"]'
+        )
+        await expect(markdownAlternate).toHaveAttribute(
+          'href',
+          new RegExp(`/${language.locale}/index\\.md$`, 'u')
+        )
         await page.getByRole('button', { name: language.theme }).click()
         await page
           .getByRole('menuitemradio', { name: language.dark, exact: true })
@@ -179,10 +191,11 @@ for (const language of LANGUAGES) {
 
         for (const [index, path] of PATHS.entries()) {
           await page
-            .locator('main footer')
+            .locator('header > nav')
             .locator(`a[href="/${language.locale}${path}"]`)
             .click()
           await expect(page).toHaveURL(`/${language.locale}${path}`)
+          if (path !== '') await expect(markdownAlternate).toHaveCount(0)
           await expect(page.getByRole('heading', { level: 1 })).toHaveText(
             language.headings[index] ?? ''
           )

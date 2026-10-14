@@ -38,6 +38,13 @@ medido nos três canais, só é recusado pela verificação estrutural do wrappe
 Por isso o `wrapInvocation` continua registrado. Um fallback genérico e HTML
 escapado não removem dados do payload já enviado.
 
+`ResponseEnvelope` também é uma `Response`. O wrapper verifica o valor do
+envelope antes de aceitar uma resposta sem corpo como controle, inclusive nos
+status 204, 205 e 304. Depois reconstrói a resposta com os dados verificados.
+`respond(dados)` tem o tipo dos dados para quem chama a server function; a
+fronteira usa `isResponseEnvelope()` para reconhecer seu envelope em runtime.
+Chamadas diretas no SSR recebem os dados desembrulhados pelo Solid.
+
 O hook `onError` é aditivo. Ele troca qualquer falha que chega ao runtime,
 inclusive de render e de rejeições fora de server functions, por um
 `createPublicError()` novo e registra o log `[server-error]` quando o erro não

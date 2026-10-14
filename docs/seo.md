@@ -16,7 +16,8 @@ do `createSeo`, para acompanhar a regra de `noindex` abaixo; em `Document.tsx`
 fica só `author`. Não repita no `Document.tsx` uma tag que o `createSeo`
 publica, porque o crawler lê a primeira ocorrência.
 
-Cada página pode exportar `route.info.seo` com `title`, `description`,
+Cada página mantém seus metadados em `seo.ts`, ao lado de `index.tsx`, e importa
+o objeto `seo` para `route.info.seo`. O contrato aceita `title`, `description`,
 `noindex`, `type`, `image` e `article`. Isso não muda sua estratégia de
 renderização nem torna a página estática: são metadados, disponíveis também em
 rotas com parâmetros. Na chamada com `route: true`, `createSeo` lê a cadeia de
@@ -41,6 +42,30 @@ fornecer metadados explícitos para a prévia social. Quando esse caso surgir,
 acrescente um campo em `route.info.seo` que devolva Open Graph e Twitter sem
 canonical nem JSON-LD.
 
+Por exemplo, uma página pode declarar seus metadados em `seo.ts`:
+
+```ts
+import { m } from '@paraglide/messages.js'
+
+import type { SeoRouteInfo } from '@/@types/seo.ts'
+
+export const seo = {
+  get title() {
+    return m.about_title()
+  },
+  get description() {
+    return m.about_description()
+  }
+} satisfies SeoRouteInfo
+```
+
+Em `index.tsx`, importe `seo` e use `info: { seo }` na definição da rota, junto
+dos demais controles que a página declarar. Getters preservam o idioma da
+requisição; não copie os textos traduzidos para valores no topo do módulo. Os
+catálogos ficam em `i18n/{pt,en,es}.json` ao lado desses arquivos. Quando HTML e
+Markdown compartilham conteúdo público, o mesmo `seo.ts` também exporta
+`content` com `satisfies SitePage`, e os getters de `seo` podem ler esse objeto.
+
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
 JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (nó
 `Person` com nome, URL e perfis de `SITE.author`, os perfis em `sameAs`),
@@ -56,9 +81,15 @@ um nó `Organization` com nome, descrição, URL, logo (`SITE.logo`, ao menos
 propriedade inválida falha no typecheck; as dimensões da imagem ficam só no Open
 Graph. O idioma da página vem de `SITE.locale`, que também alimenta o `lang` do
 `Document.tsx` e o `og:locale` (com sublinhado). `og:locale:alternate` lista os
-outros idiomas, e `WebSite.inLanguage` declara os três idiomas disponíveis.
-`helpers/serializeJsonLd/` escapa `<`, `>` e `&` como sequências JSON para não
-encerrar o `<script>`. Os handles do Twitter saem de `SITE.twitter`
+outros idiomas, e `WebSite.inLanguage` declara os três idiomas disponíveis. O
+grafo e os dados próprios da página usam `JSON.stringify` e chegam ao `useHead`
+com `type: 'application/ld+json'`. O Solid escapa `<` no HTML do servidor e nas
+atualizações de head do streaming; no cliente, insere o conteúdo como texto.
+Esse contrato depende do tipo JSON e do uso de `useHead`: não interpole o JSON
+diretamente em HTML. As regressões de `createSeo` e `StructuredData` verificam o
+primeiro chunk antes da resolução dos dados, conteúdo malicioso preservado como
+JSON e ausência de elementos injetados ou execução de código no navegador, antes
+e depois da hidratação. Os handles do Twitter saem de `SITE.twitter`
 (`twitter:site`, a conta do site) e de `SITE.author.twitter` (`twitter:creator`,
 a conta do autor). O LinkedIn não tem meta tag própria: ele lê o Open Graph para
 a prévia, e o perfil entra só no `sameAs`. Páginas indexáveis publicam
@@ -144,15 +175,18 @@ nessa seção, uma filha pode sair com `llms: false` ou sobrescrever só o campo
 que declara, e `llms: true` numa filha reativa a inclusão preservando seção e
 marcação opcional herdadas. `noindex: true` exclui a página do sitemap e do
 llms.txt, mesmo com a flag. O filtro considera a configuração efetiva da página,
-incluindo herança e a rota de índice filha.
+incluindo herança e a rota de índice filha. O resolvedor fica colocalizado em
+`src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. A publicação de Markdown
+é controlada separadamente por `route.info.markdown`.
 
 ## Sitemap e rotas dinâmicas
 
-O `llms.txt` só lista URLs sem parâmetros. No sitemap, uma rota com parâmetro
-entra pelas entradas de `route.info.sitemap`: uma função, síncrona ou
-assíncrona, que devolve `{ path, lastmod? }` com caminhos absolutos do site,
-enumerados a partir da fonte de dados. O módulo da rota entra no bundle do
-cliente, então banco e SDK ficam numa server function chamada pela fonte,
+O `llms.txt` coleta páginas sem parâmetros e acrescenta os snapshots Markdown de
+caminhos dinâmicos enumerados no build que tenham `llms` habilitado. No sitemap,
+uma rota com parâmetro entra pelas entradas de `route.info.sitemap`: uma função,
+síncrona ou assíncrona, que devolve `{ path, lastmod? }` com caminhos absolutos
+do site, enumerados a partir da fonte de dados. O módulo da rota entra no bundle
+do cliente, então banco e SDK ficam numa server function chamada pela fonte,
 conforme o [contrato de erros no servidor](server-errors.md). A fonte roda a
 cada request do sitemap (o CDN reutiliza a resposta por uma hora) e é ignorada
 sob `noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito.
@@ -227,43 +261,132 @@ do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
 
 ## Leitura por agentes
 
-A home e as páginas `/about`, `/contact` e `/privacy` definem seu conteúdo em
-uma função privada `readContent()` no próprio `index.tsx`. A página usa essa
-função no HTML e a disponibiliza como `route.info.content: readContent` para o
-middleware `markdownContent`. O contrato compartilhado `SitePage` fica em
-`src/@types/site-page.ts`. O middleware encontra a rota com `Router.match()` e
-lê apenas o conteúdo da última correspondência, sem manter outra lista de
-caminhos. Uma nova página estática adere ao formato declarando esse metadado na
-própria rota. O contrato atual não recebe parâmetros de rotas dinâmicas.
+O Markdown é um arquivo público gerado no build. Cada página que deseja publicar
+essa representação declara `route.info.markdown` na própria folha da árvore:
 
-Cada página mantém seus catálogos `i18n/{pt,en,es}.json` na própria pasta de
-rota, com IDs prefixados por `home_`, `about_`, `contact_` ou `privacy_`.
-`src/constants/siteLinks/` reúne os links comuns em `SITE_LINKS` e seus
-catálogos, com prefixo `siteLinks_`. Os getters `pages` e `sources` leem as
-mensagens no acesso, dentro do contexto de idioma da requisição. O conteúdo
-principal é visível no HTML inicial, inclusive sem JavaScript. A home mantém sua
-abertura e acrescenta seções de recursos e uso abaixo dela.
+```tsx
+export const route = {
+  info: {
+    markdown: true,
+    llms: true
+  }
+} satisfies RouteDefinition
+```
 
-Um GET com `Accept: text/markdown` recebe a representação Markdown dessas
-páginas, com `Content-Type: text/markdown; charset=utf-8`. A negociação compara
-pesos `q` e especificidade; HTML é a preferência quando há empate. Ausência de
-`Accept` e `*/*` usam HTML. Um tipo com `q=0` não pode ser selecionado. Se
-nenhuma representação for aceitável, a resposta é 406. As respostas negociadas
-preservam os campos existentes de `Vary` e incluem `Accept`. HEAD mantém status
-e cabeçalhos, sem corpo.
+As chaves são independentes: `markdown` publica o arquivo e `llms` decide sua
+presença no índice. `llms: false` não impede acesso a um `.md` já publicado. Sem
+`markdown: true` explícito, a página não gera arquivo. `false` também desativa a
+publicação, mesmo quando existe um produtor na pasta. A configuração não é
+herdada; declará-la num layout com filhas ou numa página com `noindex` efetivo
+faz o build falhar. `noindex` é uma restrição editorial e não autentica
+usuários. Login, área privada e conteúdo por visitante devem ficar sem
+`markdown`.
 
-As URLs sem idioma seguem a resolução existente de idioma e redirecionam para o
-caminho localizado. Endpoints de API, server functions e assets não entram nessa
-negociação. Uma rota sem representação Markdown própria continua no fluxo
-normal; quando o resultado real é HTML com status 404, o middleware o substitui
-por uma explicação Markdown com link para `/llms.txt`, preservando o status 404.
-Respostas de erro 500 não viram 404.
+Por padrão, o build usa o objeto público `content` exportado por `seo.ts`, com
+`satisfies SitePage`. Esse mesmo objeto pode alimentar o HTML da página. Os
+metadados `seo` sozinhos não bastam: `content` contém o corpo público completo,
+com introdução, seções e links. Sobre, contato e privacidade usam esse caminho,
+sem um arquivo produtor adicional.
 
-O Markdown usa `private, no-store` e continua sob os cabeçalhos de segurança:
-como não é HTML, recebe `script-src 'none'`. O contexto de idioma, os cookies de
-preferências e a proteção dos erros do servidor permanecem na cadeia existente.
-Os três índices de descoberta conservam seu contrato de cache e seus tipos de
-conteúdo.
+Quando precisar de uma fonte própria, acrescente `markdown.ts` ao lado do
+arquivo que declara `route`. Esse produtor tem prioridade sobre `content`, e uma
+falha nele interrompe o build sem recorrer a `seo.ts`. Reexportações de `route`
+são seguidas até a declaração original, inclusive nas fixtures; o caminho não
+depende da URL pública nem dos chunks produzidos por Vite e Nitro. Se a
+publicação estiver habilitada e não houver produtor nem conteúdo público válido,
+o build falha. Use uma pasta por página: arquivos soltos no mesmo diretório
+teriam a mesma fonte colocalizada. Reexportações de páginas publicadas precisam
+ser nomeadas, como `export { route } from './page/index.tsx'`; namespace e
+`export *` intermediário não fazem parte desta convenção. Páginas sem
+`markdown: true` não passam pela descoberta de produtores.
+
+O contrato `MarkdownSource`, em `src/@types/markdown.ts`, define o produtor
+exclusivo do build. Esse módulo exporta `markdown`, com uma função
+`render({ path, locale, signal })` que devolve `SitePage`, inclusive por
+Promise. A home exibe apenas a apresentação inicial; os links públicos ficam na
+topbar e usam os mesmos rótulos traduzidos do conteúdo. Seu Markdown inclui
+também as seções descritivas de `seo.ts`, sem exigir que elas apareçam no HTML.
+A home mantém o exemplo abaixo de produtor explícito, compartilhando o objeto
+`content` de `seo.ts` com o HTML. Textos e links localizados usam getters nas
+duas formas de publicação. `seo.ts` e o `markdown.ts` opcional ficam ao lado de
+`index.tsx`. Seus catálogos permanecem em `i18n/{pt,en,es}.json` na pasta da
+rota; os links comuns continuam em `src/constants/siteLinks/`.
+
+```ts
+import type { MarkdownSource } from '@/@types/markdown.ts'
+
+import { content } from './seo.ts'
+
+export const markdown = { render: () => content } satisfies MarkdownSource
+```
+
+O build avalia os produtores num runner isolado, seleciona os metadados das
+rotas sem renderizar componentes nem executar preloads e gera uma cópia por
+idioma. O serializador recebe texto simples estruturado, escapa a sintaxe de
+Markdown e HTML e valida os destinos dos links. Não converte HTML nem interpreta
+Markdown ou MDX fornecido pelo CMS. Uma string confidencial continua sendo uma
+string válida: o produtor precisa selecionar somente conteúdo publicável. O nome
+`src/**/markdown.ts` fica reservado aos produtores. Para um endpoint chamado
+`/markdown`, use uma pasta com `index.ts`. Importar um produtor no app causa
+erro de build; compartilhe com o HTML a fonte pública, sem importar o produtor.
+
+Para rotas com parâmetros, use `markdown.ts` com `getPaths({ locale, signal })`,
+que lista os caminhos públicos sem prefixo de idioma, como `/blog/meu-post`. A
+fonte pode consultar um CMS no build e usar o `signal` em operações canceláveis.
+`render` recebe o caminho enumerado e o idioma. Cada caminho precisa pertencer à
+mesma folha da árvore, respeitando os filtros do router. O gerador recusa
+caminhos inválidos, duplicatas, colisões com páginas, endpoints e arquivos de
+`public/`, conteúdo inválido e limites de quantidade, tempo e tamanho definidos
+em `tooling/markdown/constants.ts`. Falhas interrompem o build inteiro. Os
+cabeçalhos são regras exatas por arquivo somente na configuração do host, sem
+replicar essas regras no runtime do Nitro. O limite local de artefatos não
+substitui os limites da plataforma de publicação, que devem ser conferidos antes
+de aumentar o volume de conteúdo.
+
+Um novo artigo, uma tradução ou uma alteração no CMS exige outro build para
+atualizar os arquivos. Se o HTML consulta dados mais recentes em runtime, ele
+pode divergir do snapshot; use a mesma versão publicada da fonte quando precisar
+de paridade. O timeout cancela o sinal e interrompe a espera, mas não preempta
+código síncrono nem garante o encerramento de um SDK que ignore cancelamento.
+
+A home publica `/pt/index.md`, `/en/index.md` e `/es/index.md`. As outras
+páginas usam caminhos como `/pt/about.md`. O HTML inicial anuncia o arquivo com
+`<link rel="alternate" type="text/markdown">`, e o `llms.txt` prefere o `.md`
+quando a página selecionada possui esse artefato. O build grava os arquivos em
+`.markdown/public/`, e o Nitro os inclui nos estáticos da Vercel. O manifesto do
+servidor contém caminhos e metadados do índice, sem o corpo dos documentos. O
+mapa completo é eliminado do bundle do cliente: a descoberta pelo `alternate`
+acontece no SSR, e o índice público continua disponível em `/llms.txt`. A
+hidratação preserva o link recebido; a navegação dentro do documento o remove
+quando o caminho muda, para não anunciar um arquivo de outra página.
+
+GET e HEAD da página com `Accept: text/markdown` recebem 307 para o `.md`
+localizado. A negociação considera pesos `q` e especificidade, com preferência
+por HTML em empate. Ausência de `Accept` e `*/*` usam HTML; `q=0` exclui o tipo.
+Se nenhum formato for aceitável numa página com artefato, a resposta é 406. A
+negociação preserva `Vary` e acrescenta `Accept`; os redirects e o 406 usam
+`private, no-store`. Query strings não alteram o snapshot nem seguem para o
+arquivo. Páginas sem artefato conservam o fluxo normal, inclusive erros e 404.
+URLs de página sem idioma passam primeiro pela localização existente. Um `.md`
+ausente responde 404 em texto simples, sem cache e sem passar pelo SSR.
+
+O acesso direto ao `.md` é servido como estático, sem renderizar a página ou
+executar o produtor. O arquivo usa `text/markdown; charset=utf-8`, idioma da
+URL, `nosniff`, `Cross-Origin-Resource-Policy: same-origin` e
+`public, max-age=0, must-revalidate`. Cookies e `Accept-Language` não mudam seu
+conteúdo. HEAD mantém os cabeçalhos e não envia corpo. O middleware não aplica
+CSP de HTML aos arquivos servidos diretamente pelo host.
+
+Em desenvolvimento, a geração acontece ao iniciar o servidor e após mudanças nas
+fontes. Criar `markdown.ts` passa a usar o produtor; removê-lo volta ao
+`content` de `seo.ts`, sem reiniciar o servidor. Essa atualização também
+acompanha a página original quando uma fixture reexporta a rota. Os dois
+caminhos são observados: após um erro de regeneração por falta de fonte, criar
+`seo.ts` com conteúdo válido recupera a geração. A requisição lê o resultado já
+gerado; falhas de regeneração são mostradas no servidor e na interface. O
+preview lê os arquivos do último build e aplica os cabeçalhos estáticos
+configurados para a Vercel, incluindo ETag e revalidação condicional. Esse
+adapter local não comprova o comportamento do CDN após publicação.
 
 As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
 aviso de privacidade descreve as preferências e os limites observáveis na
@@ -283,7 +406,8 @@ e navegação em larguras de celular e desktop.
 Após publicar, confira status final, cabeçalhos e corpo, seguindo redirects:
 
 ```sh
-curl -sS -L -i -H 'Accept: text/markdown' https://seu-dominio.example/
+curl -sS -i https://seu-dominio.example/pt/index.md
+curl -sS -L -i -H 'Accept: text/markdown' https://seu-dominio.example/pt/
 curl -sS -L -i -H 'Accept: text/html' https://seu-dominio.example/
 curl -sS -L -i -H 'Accept: text/markdown' https://seu-dominio.example/pagina-inexistente
 ```

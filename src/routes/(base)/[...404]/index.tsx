@@ -1,24 +1,14 @@
-import { m } from '@paraglide/messages.js'
 import type { RouteDefinition } from '@solidjs/router'
 import { httpStatus } from '@solidjs/web'
 
 import { ErrorFallback } from '@/components/organisms/ErrorFallback/index.tsx'
+import { HTTP_NOT_FOUND } from '@/constants/http.ts'
 
-const HTTP_NOT_FOUND = 404
+import { seo } from './seo.ts'
 
 export const route = {
   preload: () => httpStatus(HTTP_NOT_FOUND),
-  info: {
-    seo: {
-      get title() {
-        return m.notFound_title()
-      },
-      get description() {
-        return m.notFound_description()
-      },
-      noindex: true
-    }
-  }
+  info: { seo }
 } satisfies RouteDefinition
 
 export default function NotFound() {

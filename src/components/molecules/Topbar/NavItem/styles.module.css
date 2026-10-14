@@ -1,13 +1,15 @@
 .link {
   position: relative;
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: var(--font-size-14);
   color: var(--color-muted-foreground);
   transition: color 0.18s ease;
-}
 
-.link:hover,
-.active {
-  color: var(--color-foreground);
+  &:hover,
+  &[aria-current='page'] {
+    color: var(--color-foreground);
+  }
 }
 
 .indicator {
@@ -20,7 +22,7 @@
   opacity: 0;
   transition: opacity 0.18s ease;
 
-  .active & {
+  .link[aria-current='page'] & {
     opacity: 1;
   }
 }

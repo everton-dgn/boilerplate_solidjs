@@ -126,16 +126,13 @@ describe('dados estruturados da página', () => {
     expect('datePublished' in (graph['@graph'][1] ?? {})).toBe(false)
   })
 
-  it('escapa HTML para não encerrar o script que envolve o JSON', () => {
+  it('preserva caracteres de HTML na descrição serializada como JSON', () => {
     const json = buildStructuredData({
       seo: { ...page, description: '</script><b>&</b>' },
       url: `${SITE.url}/`,
       image: `${SITE.url}${SITE.image.path}`
     })
 
-    expect(json).not.toContain('<')
-    expect(json).not.toContain('>')
-    expect(json).not.toContain('&')
     expect(parseStructuredData(json)['@graph'][1]?.description).toBe(
       '</script><b>&</b>'
     )

@@ -55,21 +55,21 @@ restaura spies, globais e variáveis de ambiente substituídos (`restoreMocks`,
 para isso. `expect.requireAssertions` faz falhar o teste que termina sem nenhuma
 asserção. `expect.poll.interval` baixa de 50ms para 10ms o intervalo entre
 checagens de `expect.poll` e `expect.element`; `vi.waitUntil` não lê essa opção
-e recebe o intervalo em cada chamada. `fsModuleCache` guarda as transformações
-em `node_modules/.vitest-cache`, então só a primeira execução após uma mudança
-paga o custo. O isolamento por arquivo (`isolate`, padrão do Vitest) é
-intencional: não use `isolate: false`, mesmo quando o Vitest sugerir o ganho de
-tempo. Sem esse isolamento, arquivos passam a compartilhar `document` e o estado
-dos módulos, e um teste pode passar ou falhar conforme a ordem. No Browser Mode,
-o contexto ainda preserva cookies entre arquivos. O setup
-`src/tests/setup/browser/index.ts` restaura o idioma base antes de cada teste
-com `setLocale(baseLocale, { reload: false })`; cada teste pode escolher outro
-idioma durante sua execução. Os projetos DOM e browser começam em inglês. No
-GitHub Actions, o reporter `github-actions` anota as falhas no PR. A
-configuração também exclui arquivos E2E, `node_modules` e `playwright`.
-`passWithNoTests: false` faz a execução falhar quando nenhum teste é encontrado.
-Essas opções ficam na configuração raiz, e os projetos as herdam pelo `extends`
-padrão do Vitest, declarando só o que muda.
+e recebe o intervalo em cada chamada. `fsModuleCache`, ativo por padrão no
+Vitest, guarda as transformações em `node_modules/.vitest-cache`, então só a
+primeira execução após uma mudança paga o custo. O isolamento por arquivo
+(`isolate`, padrão do Vitest) é intencional: não use `isolate: false`, mesmo
+quando o Vitest sugerir o ganho de tempo. Sem esse isolamento, arquivos passam a
+compartilhar `document` e o estado dos módulos, e um teste pode passar ou falhar
+conforme a ordem. No Browser Mode, o contexto ainda preserva cookies entre
+arquivos. O setup `src/tests/setup/browser/index.ts` restaura o idioma base
+antes de cada teste com `setLocale(baseLocale, { reload: false })`; cada teste
+pode escolher outro idioma durante sua execução. Os projetos DOM e browser
+começam em inglês. No GitHub Actions, o reporter `github-actions` anota as
+falhas no PR. A configuração também exclui arquivos E2E, `node_modules` e
+`playwright`. `passWithNoTests: false` faz a execução falhar quando nenhum teste
+é encontrado. Essas opções ficam na configuração raiz, e os projetos as herdam
+pelo `extends` padrão do Vitest, declarando só o que muda.
 
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
 `vite-plus/prefer-vite-plus-imports` bloqueia o import direto). O contexto de
@@ -94,6 +94,33 @@ do bundle cliente. O SSR inicial também é verificado com JavaScript desativado
 O detalhe está em [docs/server-errors.md](server-errors.md); o CI executa a
 suíte inteira.
 
+`hydrationFinished()` lê o atributo `data-hydration-ended` do `<html>`,
+publicado pela API pública experimental `onHydrationEnd` do Solid. O registro
+fica dentro do callback de `hydrate()`, após construir a árvore: a entrada
+`async` pode executar antes do fim do shell, e o preload dos módulos pode adiar
+a passagem raiz. Registrar logo depois da chamada a `hydrate()` permite que o
+callback rode cedo demais. O SSR não publica o atributo; uma falha de preload
+que impede a execução da raiz também deixa o documento sem marcador.
+
+O atributo informa que a raiz executou e a fase de hidratação terminou. Isso
+inclui cancelamento e recuperação de erro, sem garantir conteúdo completo ou
+interação correta. Os testes também verificam conteúdo, controles e erros do
+navegador. No truncamento do stream, o runtime pode encerrar a fase e buscar os
+dados novamente no cliente, mantendo `Loading` enquanto essa nova busca espera.
+O marcador permanece em navegações no mesmo documento; um documento novo começa
+sem ele. Não o use para controlar a UI: preserve `isHydrating()` e `onSettled`
+nos componentes que precisam distinguir SSR e estado do cliente. O contrato
+atual considera uma única raiz de hidratação.
+
+`Hydration/` testa HTML bruto, JavaScript desligado, bundle retido ou abortado,
+recarga, replay de clique e navegação. Os cenários de parser e preload usam o
+evento `load` do módulo de entrada como prova de avaliação. Um proxy retém o
+corpo após `</head>`; outro caso encerra o stream antes dos fragmentos. A
+fixture de dois `Loading` usa gates do backend, liberados pelo teste, para
+conferir resolução fora de ordem, erro contido, descarte por navegação e
+recuperação após truncamento. As provas usam o build real, sem mock do Solid, e
+verificam a CSP nos caminhos de streaming.
+
 O build E2E usa `--mode e2e` com otimizações de produção e acrescenta a página
 de teste pelo diretório `src/tests/fixtures/e2e/routes/`. O backend simulado
 escuta somente em `127.0.0.1:4318` e é iniciado e encerrado pelo Playwright. O
@@ -107,6 +134,30 @@ redirecionamento, com conteúdo e headers esperados, e que os helpers locais nã
 viram endpoints públicos. Também verifica a ausência de uma rota das fixtures e
 que a Home recebe os cabeçalhos de segurança do middleware real, já que o build
 E2E monta a cadeia pela fábrica `createMiddleware`.
+`AgentReadiness.build.production.e2e.test.ts` confere os 12 arquivos Markdown na
+saída final `.vercel/output/static`, o idioma e o título de cada página, os
+bytes servidos por HTTP e os manifestos de publicação. O teste lê os catálogos
+autorais como referência, sem importar produtores ou o serializador. As regras
+de headers precisam aparecer antes da resolução de arquivos no `config.json`
+gerado pelo Nitro. Isso cobre a integração do build e do preview; o
+comportamento do CDN da Vercel exige verificação após o deploy. Os testes de
+`tooling/markdown/loadArtifacts` cobrem o uso de `seo.ts` sem produtor, a
+prioridade de `markdown.ts`, reexportações por alias e caminho relativo, mudança
+de pasta de rota dinâmica, flags desativadas e falhas de conteúdo, fonte ausente
+ou ciclo. Os testes do plugin verificam a criação e remoção de um produtor
+durante o desenvolvimento, a atualização do conteúdo e a recuperação de erros,
+inclusive criando `seo.ts` depois da primeira ativação sem fonte ou após remover
+a única fonte disponível, fora da pasta de rotas reexportadas. A suíte E2E de
+fixtures também passa pelo build com as páginas reais reexportadas.
+
+`AgentReadiness.content.production.e2e.test.ts` verifica a apresentação compacta
+da home, sem artigo ou rodapé, e preserva a exigência de conteúdo detalhado nas
+páginas internas. A navegação usa os links da topbar nos três idiomas, em telas
+estreitas e largas, inclusive sem JavaScript. Em telas estreitas, os links da
+barra rolam horizontalmente sem alargar o documento; tema e idioma permanecem
+acessíveis fora da área rolável. O Markdown da home mantém as seções
+descritivas.
+
 `Home.csp.production.e2e.test.ts` confere que a CSP traz um nonce que muda a
 cada requisição, que todos os `<script>` e `modulepreload` do HTML bruto trazem
 esse nonce e que a Home hidrata sem violação de CSP no console, também com o

@@ -5,6 +5,7 @@ import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 import packageJson from './package.json'
+import { devAssetManifest } from './tooling/devAssetManifest/index.ts'
 import { fmt } from './tooling/fmt.ts'
 import { lint } from './tooling/lint.ts'
 
@@ -28,22 +29,31 @@ const TOOLING_TEST_CONCURRENCY = env.CI
 // fmt, check, staged e o tooling do editor leem a config sem pagar esse custo
 // nem receber os logs de inicialização do Nitro no stdout.
 const loadPluginModules = async () => {
-  const [solidModule, routing, nitroModule, iconsModule, loaders, i18n] =
-    await Promise.all([
-      import('@solidjs/vite-plugin'),
-      import('filesystem-routing/vite'),
-      import('nitro/vite'),
-      import('unplugin-icons/vite'),
-      import('unplugin-icons/loaders'),
-      import('./tooling/i18n/i18nPlugin/index.ts')
-    ])
+  const [
+    solidModule,
+    routing,
+    nitroModule,
+    iconsModule,
+    loaders,
+    i18n,
+    markdown
+  ] = await Promise.all([
+    import('@solidjs/vite-plugin'),
+    import('filesystem-routing/vite'),
+    import('nitro/vite'),
+    import('unplugin-icons/vite'),
+    import('unplugin-icons/loaders'),
+    import('./tooling/i18n/i18nPlugin/index.ts'),
+    import('./tooling/markdown/markdownPlugin/index.ts')
+  ])
   return {
     solid: solidModule.default,
     fileRoutes: routing.fileRoutes,
     nitro: nitroModule.nitro,
     Icons: iconsModule.default,
     FileSystemIconLoader: loaders.FileSystemIconLoader,
-    i18n: i18n.i18nPlugin
+    i18n: i18n.i18nPlugin,
+    markdown: markdown.markdownPlugin
   }
 }
 
@@ -65,6 +75,7 @@ const componentPlugins = () =>
     const modules = await loadPluginModules()
     return [
       modules.i18n(),
+      modules.markdown({ directory: 'src/routes', shouldGenerate: false }),
       icons(modules),
       modules.solid({ serverFunctions: true }),
       modules.fileRoutes({ types: 'src/@types/routes.d.ts', httpMethods: true })
@@ -75,7 +86,12 @@ const appPlugins = (mode: string) =>
   lazyPlugins(async () => {
     const modules = await loadPluginModules()
     return [
+      devAssetManifest(),
       modules.i18n(),
+      modules.markdown({
+        directory:
+          mode === 'e2e' ? 'src/tests/fixtures/e2e/routes' : 'src/routes'
+      }),
       icons(modules),
       modules.solid({
         start: {
@@ -272,7 +288,6 @@ export default defineConfig(({ mode }) => {
       restoreMocks: true,
       unstubGlobals: true,
       unstubEnvs: true,
-      fsModuleCache: true,
       expect: { requireAssertions: true, poll: { interval: 10 } },
       exclude: [
         '**/node_modules/**',

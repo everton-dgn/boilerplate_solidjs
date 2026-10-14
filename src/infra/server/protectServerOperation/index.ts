@@ -1,9 +1,5 @@
 import 'server-only'
-import {
-  isResponseEnvelope,
-  respond,
-  type ResponseEnvelope
-} from '@solidjs/web'
+import { isResponseEnvelope, respond } from '@solidjs/web'
 import { NotReadyError } from 'solid-js'
 
 import { isControlResponse } from '@/infra/server/isControlResponse/index.ts'
@@ -14,7 +10,6 @@ import {
 } from '@/infra/server/publicErrors/index.ts'
 
 type Operation<T> = { run: () => T; allowControl?: boolean }
-type ControlSignal = Response | ResponseEnvelope
 type DataCheck = { value: unknown; path?: Set<object>; done?: WeakSet<object> }
 
 const PUBLIC_PRIMITIVE_TYPES = new Set([
@@ -64,19 +59,22 @@ function assertPublicData({
   done.add(value)
 }
 
-function controlResponse(value: unknown): ControlSignal | undefined {
+function controlResponse(value: unknown): Response | undefined {
   // O transporte nunca devolve Response upstream. Respostas deliberadas da
   // aplicação preservam o contrato de redirecionamento/reload do framework.
-  if (isControlResponse(value)) return value
+  // Envelopes também são Response, inclusive quando não têm corpo.
   if (isResponseEnvelope(value)) {
     assertPublicData({ value: value.value })
     // Reconstrói o corpo a partir dos dados verificados, sem encaminhar um
     // corpo arbitrário anexado ao envelope.
-    return respond(value.value, {
+    const rebuilt: unknown = respond(value.value, {
       status: value.response?.status,
       headers: value.response?.headers
     })
+    if (isResponseEnvelope(rebuilt)) return rebuilt
+    throw new TypeError('Expected a response envelope')
   }
+  if (isControlResponse(value)) return value
   return undefined
 }
 
@@ -96,7 +94,7 @@ export function protectServerOperation({
   allowControl = false
 }: Operation<unknown>): unknown {
   function publicFailure(error: unknown): never {
-    let control: ControlSignal | NotReadyError | undefined
+    let control: Response | NotReadyError | undefined
     if (allowControl) {
       try {
         control =

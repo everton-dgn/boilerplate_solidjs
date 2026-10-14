@@ -42,6 +42,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
       name: 'architecture',
       specifier: './tooling/architecturePolicy/index.ts'
     },
+    { name: 'paraglide', specifier: '@inlang/paraglide-js/eslint' },
     { name: 'solid', specifier: 'eslint-plugin-solid' },
     { name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' }
   ],
@@ -61,8 +62,11 @@ export const lint: NonNullable<UserConfig['lint']> = {
     },
     {
       files: [
+        'src/tests/pages/AgentReadiness/AgentReadiness.build.production.e2e.test.ts',
         'src/tests/pages/BackendError/BackendError.e2e.test.ts',
         'src/tests/pages/FragmentCss/FragmentCss.e2e.test.ts',
+        'src/tests/pages/Hydration/Hydration.parser.e2e.test.ts',
+        'src/tests/pages/Hydration/Hydration.preload.e2e.test.ts',
         'src/tests/pages/OutsideError/OutsideError.e2e.test.ts',
         'src/tests/pages/I18n/I18n.production.e2e.test.ts',
         'src/tests/helpers/readSiteOrigin/index.ts'
@@ -88,7 +92,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
       rules: { 'eslint/max-params': 'off' }
     },
     {
-      files: ['src/@types/icons.d.ts'],
+      files: ['src/@types/icons.d.ts', 'src/@types/markdown-manifest.d.ts'],
       rules: {
         'import/unambiguous': 'off'
       }
@@ -466,6 +470,15 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'oxc/number-arg-out-of-range': 'error',
     'oxc/only-used-in-recursion': 'error',
     'oxc/uninvoked-array-callback': 'error',
+    'paraglide/no-dynamic-message-access': [
+      'error',
+      {
+        messageModules: [
+          '@paraglide/messages.js',
+          '@paraglide/messages/_index.js'
+        ]
+      }
+    ],
     'promise/always-return': 'error',
     'promise/avoid-new': 'error',
     'promise/catch-or-return': [

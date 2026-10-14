@@ -1,4 +1,8 @@
-import { expect, test, type TestInfo } from '@playwright/test'
+import { expect, type Page, test, type TestInfo } from '@playwright/test'
+import * as v from 'valibot'
+
+import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
+import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 
 test.use({ locale: 'pt-BR' })
 
@@ -16,6 +20,22 @@ type HtmlEvidence = {
 
 async function saveHtml({ testInfo, name, html }: HtmlEvidence): Promise<void> {
   await testInfo.attach(name, { body: html, contentType: 'text/html' })
+}
+
+async function expectSafeProduct(page: Page): Promise<void> {
+  const scripts = await page.locator(`head ${JSON_LD}`).allTextContents()
+  const json = scripts.find(text => text.includes('"@type":"Product"'))
+  const product = v.parse(
+    v.object({ description: v.string() }),
+    JSON.parse(json ?? 'null')
+  )
+  expect(product.description).toBe(UNSAFE_JSON_LD_TEXT)
+  await expect(page.locator('[data-json-ld-injected]')).toHaveCount(0)
+  expect(
+    await page.evaluate((): unknown =>
+      Reflect.get(globalThis, '__jsonLdExecuted')
+    )
+  ).toBeUndefined()
 }
 
 test('envia o JSON-LD assíncrono como atualização de head após o HTML inicial', async ({
@@ -71,6 +91,7 @@ test.describe('streaming sem JavaScript', () => {
 test('insere o JSON-LD tardio no head antes de carregar o JavaScript da aplicação', async ({
   page
 }, testInfo) => {
+  const violations = await watchCspViolations(page)
   await page.route(/\/assets\/.*\.js(?:\?.*)?$/u, route => route.abort())
   await page.goto(PAGE_URL)
   await expect(page.getByRole('heading', { name: PRODUCT_NAME })).toBeVisible()
@@ -82,6 +103,8 @@ test('insere o JSON-LD tardio no head antes de carregar o JavaScript da aplicaç
   )
   const scripts = await page.locator(`head ${JSON_LD}`).allTextContents()
   expect(scripts.filter(text => text.includes(PRODUCT_NAME))).toHaveLength(1)
+  await expectSafeProduct(page)
+  expect(violations).toStrictEqual([])
   await expect(page.locator(`body ${JSON_LD}`)).toHaveCount(0)
   await saveHtml({
     testInfo,
@@ -94,6 +117,7 @@ test('hidrata sem duplicar o JSON-LD e o remove ao sair da rota', async ({
   page
 }, testInfo) => {
   const errors: string[] = []
+  const violations = await watchCspViolations(page)
   page.on('pageerror', error => errors.push(error.message))
   await page.goto(PAGE_URL)
   await page.getByRole('button', { name: 'Incrementar', exact: true }).click()
@@ -103,6 +127,7 @@ test('hidrata sem duplicar o JSON-LD e o remove ao sair da rota', async ({
   )
   const scripts = await page.locator(`head ${JSON_LD}`).allTextContents()
   expect(scripts.filter(text => text.includes(PRODUCT_NAME))).toHaveLength(1)
+  await expectSafeProduct(page)
   await expect(page.locator(`body ${JSON_LD}`)).toHaveCount(0)
   await saveHtml({
     testInfo,
@@ -116,4 +141,5 @@ test('hidrata sem duplicar o JSON-LD e o remove ao sair da rota', async ({
   const remaining = await page.locator(JSON_LD).allTextContents()
   expect(remaining.join('')).not.toContain(PRODUCT_NAME)
   expect(errors).toStrictEqual([])
+  expect(violations).toStrictEqual([])
 })

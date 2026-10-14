@@ -2,20 +2,18 @@ import { shouldRedirect } from '@paraglide/runtime.js'
 import { paraglideMiddleware } from '@paraglide/server.js'
 import { getRequestEvent } from '@solidjs/web'
 
+import { HTTP_TEMPORARY_REDIRECT } from '@/constants/http.ts'
+
 import {
   isPagePath,
-  isPageRequest,
   isServerFunctionPath
 } from '../requestClassification/index.ts'
 import { applySecurityHeaders, requestNonce } from '../securityHeaders/index.ts'
 import type { Next } from '../types.ts'
-import { normalizeLanguageRequest } from './helpers/normalizeLanguageRequest/index.ts'
-import { persistLocale } from './helpers/persistLocale/index.ts'
+import { persistLocale } from './persistLocale/index.ts'
 
 type LocalizeRequestOptions = { request: Request; next: Next }
 type LocaleRequest = { request: Request; pageBase?: string }
-
-const HTTP_TEMPORARY_REDIRECT = 307
 
 function serverFunctionLocale(request: Request): LocaleRequest {
   let url = new URL(request.url)
@@ -51,14 +49,17 @@ export async function localizeRequest({
 }: LocalizeRequestOptions): Promise<Response> {
   const { pathname } = new URL(request.url)
   const isServerFunction = isServerFunctionPath(pathname)
+  const isPage =
+    (request.method === 'GET' || request.method === 'HEAD') &&
+    isPagePath({ pathname, method: request.method })
   const event = getRequestEvent()
   if (event) event.locals.localizedPageBase = undefined
-  if (!isServerFunction && !isPageRequest(request)) return next()
+  if (!isServerFunction && !isPage) return next()
   const localized = isServerFunction
     ? serverFunctionLocale(request)
     : { request, pageBase: request.url }
   if (event) event.locals.localizedPageBase = localized.pageBase
-  const localeRequest = normalizeLanguageRequest(localized.request)
+  const localeRequest = localized.request
   const decision = await shouldRedirect({ request: localeRequest })
   // Também atende HEAD, crawlers e clientes HTTP sem Sec-Fetch-Dest. A
   // decisão usa URL > cookie > Accept-Language > idioma base.
@@ -72,7 +73,7 @@ export async function localizeRequest({
           headers: {
             location: decision.redirectUrl.href,
             'cache-control': 'private, no-store',
-            vary: 'Cookie, Accept-Language, Accept'
+            vary: 'Cookie, Accept-Language'
           }
         }),
         nonce: requestNonce()

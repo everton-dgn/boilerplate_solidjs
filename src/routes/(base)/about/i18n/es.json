@@ -5,5 +5,5 @@
   "about_purposeTitle": "Propósito y recursos",
   "about_purpose": "El proyecto reúne las integraciones iniciales de una aplicación: renderizado en el servidor, organización de rutas, traducción del contenido, temas y pruebas automatizadas. Este sitio demuestra la base en funcionamiento. Los ejemplos y la documentación ayudan a entender las decisiones del proyecto antes de adaptarlo a otro producto.",
   "about_sourceTitle": "Código y documentación",
-  "about_source": "El repositorio es la referencia para la instalación, los comandos de desarrollo y los detalles de implementación. Sus guías explican la arquitectura, las pruebas, el SEO y el tratamiento de errores en el servidor. La licencia permite usar y modificar el código según las condiciones publicadas en el repositorio. Revisa esas condiciones y la configuración antes de publicar un producto derivado."
+  "about_source": "El repositorio es la referencia para la instalación, los comandos de desarrollo y los detalles de implementación. Sus guías explican la arquitectura, las pruebas, el SEO y el tratamiento de errores en el servidor. Puedes usar, modificar, distribuir y vender el código libremente, incluso en proyectos comerciales y de código cerrado."
 }

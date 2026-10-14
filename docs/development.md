@@ -55,6 +55,12 @@ Ele renderiza pelas entradas autorais `src/entry-server.tsx` e
 hidratação. As requisições de server functions usam a integração nativa entre
 Solid e Nitro/srvx.
 
+A entrada do cliente publica o marcador de testes com `onHydrationEnd`, dentro
+da passagem raiz de `hydrate()`. Ele acompanha o fim da fase, inclusive quando
+há recuperação de erro. O contrato e os cenários de parser, preload e streaming
+estão em
+[testes da aplicação completa](testing.md#testes-da-aplicação-completa).
+
 Para gerar o artefato da Vercel:
 
 ```bash
@@ -68,12 +74,12 @@ aplicação.
 
 ### Runtime do SSR
 
-O SSR de produção permanece em Node por diferenças observadas no Bun declarado
-no projeto: `Response.redirect()` expõe um corpo não nulo e respostas de
-`fetch()` permitem alterar os headers. A proteção do servidor depende desses
-contratos e seus testes recusaram essa substituição. Não remova o runtime
-explícito do Nitro: a detecção automática escolheria Bun por causa do processo
-que executa o build. Antes de migrar o SSR, preserve os contratos de
+O SSR de produção permanece em Node porque respostas de `fetch()` no Bun
+declarado no projeto permitem alterar os headers. `Response.redirect()` já
+preserva o corpo nulo, mas a proteção do servidor também depende da
+imutabilidade dos headers de respostas de rede. Não remova o runtime explícito
+do Nitro: a detecção automática escolheria Bun por causa do processo que executa
+o build. Antes de migrar o SSR, preserve os contratos de
 [erros de servidor](server-errors.md) e rode os testes da fronteira no runtime
 de destino, além dos E2E completos.
 
@@ -94,6 +100,33 @@ de releases automáticas estão no
 O Nitro é definido no [package.json](../package.json). Ao atualizá-lo, valide o
 build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
 `.nitro/` e `.vercel/` são ignorados pelo Git.
+
+## Estilos no primeiro carregamento em desenvolvimento
+
+`tooling/devAssetManifest` espera o servidor HTTP começar a escutar antes de
+carregar `virtual:solid-manifest`. Ele precisa aparecer antes do plugin do Solid
+em `appPlugins`. O Nitro pode importar esse módulo durante a inicialização; sem
+a espera, o Solid grava uma URL de ponte nula e o worker SSR deixa de enviar a
+CSS das rotas lazy. Isso causa texto sem estilo até o JavaScript carregar.
+
+A espera ocorre só em `serve`, uma vez por inicialização, sem atraso por página
+nem alteração no build. Em modo middleware, sem servidor HTTP próprio, o plugin
+não espera um evento `listening`; o encerramento antes do bind também libera
+qualquer importação pendente. O teste em `tooling/devAssetManifest` antecipa a
+importação ao bind, ocupa a porta inicial e confere a URL efetiva e a CSS
+devolvida pela ponte após a troca automática de porta. Ao atualizar Solid ou
+Nitro, revalide essa ordem antes de retirar a integração.
+
+Após uma edição de módulo carregado no servidor, o plugin também invalida o
+manifest e avisa o runner SSR pelo canal de HMR do servidor. O cache de CSS da
+ponte vive no worker isolado do Nitro e não acompanha sozinho as edições vistas
+pelo Vite. Sem essa invalidação, o HTML pode trazer estilos antigos que só são
+substituídos na hidratação, causando deslocamentos ao recarregar. O cache
+continua disponível entre os passes da mesma renderização e entre requisições
+sem edições; o plugin não envia esse aviso ao navegador nem altera o build de
+produção. A regressão usa um runner com contexto global isolado, edita CSS com o
+servidor ligado e confere o conteúdo atualizado e as respostas síncronas do
+cache.
 
 ## Scripts
 
