@@ -139,16 +139,23 @@ saída final `.vercel/output/static`, o idioma e o título de cada página, os
 bytes servidos por HTTP e os manifestos de publicação. O teste lê os catálogos
 autorais como referência, sem importar produtores ou o serializador. As regras
 de headers precisam aparecer antes da resolução de arquivos no `config.json`
-gerado pelo Nitro. Isso cobre a integração do build e do preview; o
-comportamento do CDN da Vercel exige verificação após o deploy. Os testes de
-`tooling/markdown/loadArtifacts` cobrem o uso de `seo.ts` sem produtor, a
-prioridade de `markdown.ts`, reexportações por alias e caminho relativo, mudança
-de pasta de rota dinâmica, flags desativadas e falhas de conteúdo, fonte ausente
-ou ciclo. Os testes do plugin verificam a criação e remoção de um produtor
-durante o desenvolvimento, a atualização do conteúdo e a recuperação de erros,
-inclusive criando `seo.ts` depois da primeira ativação sem fonte ou após remover
-a única fonte disponível, fora da pasta de rotas reexportadas. A suíte E2E de
-fixtures também passa pelo build com as páginas reais reexportadas.
+gerado pelo Nitro. Para cada `index.md` encontrado nos arquivos finais, o teste
+exige que a URL do diretório chegue ao SSR antes dessa resolução, com e sem
+barra final. Isso detecta a colisão que fazia `/pt` servir o conteúdo de
+`/pt/index.md` na Vercel, embora passasse no preview local.
+
+Essas verificações cobrem o artefato e o preview local. O comportamento do CDN e
+as regras de domínio da Vercel continuam exigindo conferência no site publicado.
+
+Os testes de `tooling/markdown/loadArtifacts` cobrem o uso de `seo.ts` sem
+produtor, a prioridade de `markdown.ts`, reexportações por alias e caminho
+relativo, mudança de pasta de rota dinâmica, flags desativadas e falhas de
+conteúdo, fonte ausente ou ciclo. Os testes do plugin verificam a criação e
+remoção de um produtor durante o desenvolvimento, a atualização do conteúdo e a
+recuperação de erros, inclusive criando `seo.ts` depois da primeira ativação sem
+fonte ou após remover a única fonte disponível, fora da pasta de rotas
+reexportadas. A suíte E2E de fixtures também passa pelo build com as páginas
+reais reexportadas.
 
 `AgentReadiness.content.production.e2e.test.ts` verifica a apresentação compacta
 da home, sem artigo ou rodapé, e preserva a exigência de conteúdo detalhado nas
@@ -167,6 +174,22 @@ e dispensa o backend simulado. No mesmo checkout local, execute as duas suítes
 em sequência, pois compartilham a porta e os artefatos de build. O CI executa
 ambas em paralelo, em runners separados para isolar portas e builds; a suíte de
 produção também valida o build final.
+
+No push para `main`, o job de E2E de produção executa `vercel build --prod` com
+as configurações obtidas da Vercel. O Playwright recebe somente as variáveis
+públicas `VITE_*` daquele arquivo, preservando valores já definidos no processo.
+Credenciais de backend do arquivo da Vercel não são repassadas ao preview. Com
+`TEST_PREBUILT=true`, o Playwright inicia somente o preview. Um tar criado antes
+dos testes e a listagem dos arquivos são comparados ao output depois deles:
+alterações ou novos arquivos fazem o job falhar. O deploy recebe esse tar na
+mesma execução do CI e publica o build testado, sem recompilar.
+
+PRs, inclusive de forks, mantêm os builds locais sem credenciais da Vercel. Os
+comandos locais também continuam compilando por padrão. Para conferir um build
+de produção já gerado, use `TEST_PREBUILT=true vp run test:e2e:production`. O
+modo exige rotas de produção; usá-lo com a suíte de fixtures causa erro. Os
+testes de `tooling/__tests__/playwright.test.ts` executam os comandos de startup
+com um CLI simulado e verificam a quantidade de builds em cada modo.
 
 Use `vp run test:e2e:ui` para abrir a interface interativa do Playwright. Com
 `CI=true`, os E2E usam dois workers; localmente, mantêm o paralelismo padrão. O

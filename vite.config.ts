@@ -257,7 +257,7 @@ export default defineConfig(({ mode }) => {
         // Os testes criam repositórios e fixtures em diretórios temporários que
         // o cache não rastreia; cada execução precisa rodar de verdade.
         'test-tooling': {
-          command: `node --test${TOOLING_TEST_CONCURRENCY} --test-timeout=60000 'tooling/!(release)/**/__tests__/*.test.ts'`,
+          command: `node --test${TOOLING_TEST_CONCURRENCY} --test-timeout=60000 'tooling/__tests__/*.test.ts' 'tooling/!(release)/**/__tests__/*.test.ts'`,
           cache: false
         }
       }

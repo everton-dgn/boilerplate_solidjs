@@ -360,6 +360,15 @@ acontece no SSR, e o índice público continua disponível em `/llms.txt`. A
 hidratação preserva o link recebido; a navegação dentro do documento o remove
 quando o caminho muda, para não anunciar um arquivo de outra página.
 
+Na Vercel, um arquivo chamado `index.md` também pode resolver a URL do seu
+diretório. Por isso, o build insere rewrites exatos desses diretórios para a
+função SSR antes de `handle: filesystem`, com e sem barra final. Isso mantém
+`/pt` como página HTML e reserva `/pt/index.md` ao documento Markdown. A regra
+também cobre um caminho dinâmico que gere, por exemplo, `/pt/blog/index.md`. O
+destino vem do fallback do Nitro; se a configuração não tiver um fallback
+incondicional reconhecido, o build falha. Os demais arquivos seguem a resolução
+estática normal.
+
 GET e HEAD da página com `Accept: text/markdown` recebem 307 para o `.md`
 localizado. A negociação considera pesos `q` e especificidade, com preferência
 por HTML em empate. Ausência de `Accept` e `*/*` usam HTML; `q=0` exclui o tipo.
@@ -386,15 +395,20 @@ caminhos são observados: após um erro de regeneração por falta de fonte, cri
 gerado; falhas de regeneração são mostradas no servidor e na interface. O
 preview lê os arquivos do último build e aplica os cabeçalhos estáticos
 configurados para a Vercel, incluindo ETag e revalidação condicional. Esse
-adapter local não comprova o comportamento do CDN após publicação.
+adapter local não comprova o comportamento do CDN após publicação. A regressão
+também inspeciona a ordem das regras no artefato final; o deploy reutiliza esse
+mesmo build depois da aprovação dos testes.
 
 As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
 aviso de privacidade descreve as preferências e os limites observáveis na
-demonstração. O `contactPoint` usa `contato@email.com` e `0000000000` como
+demonstração. O `contactPoint` usa `contato@example.com` e `0000000000` como
 placeholders, com `contactType: demo` e uma descrição que informa que esses
-valores não são canais de contato do mantenedor. A demonstração omite `address`.
-Substitua os contatos de exemplo por dados reais ao adaptar o boilerplate para
-outro produto. Revise o aviso quando adicionar serviços ou coleta de dados.
+valores não são canais de contato do mantenedor. O `address` é um
+`PostalAddress` com rua, cidade, estado, CEP e país de exemplo, identificado
+como fictício pela descrição. Os dois objetos ficam em
+`src/primitives/createSeo/buildStructuredData/index.ts`. Substitua esses dados
+ao adaptar o boilerplate para outro produto. Revise o aviso quando adicionar
+serviços ou coleta de dados.
 
 Valide com `vp run check:ci`, `vp run typecheck:node`, `vp run test:tooling` e
 os testes Node de `src/middleware/` e de SEO. Execute

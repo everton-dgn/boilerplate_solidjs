@@ -132,16 +132,23 @@ for (const { locale, tag, messages } of LANGUAGES) {
           contactPoint: {
             '@type': 'ContactPoint',
             contactType: 'demo',
-            email: 'contato@email.com',
+            email: 'contato@example.com',
             telephone: '0000000000',
             description:
               'Placeholder values for this boilerplate demonstration. Do not use them to contact the maintainer.'
+          },
+          address: {
+            '@type': 'PostalAddress',
+            streetAddress: 'Rua de exemplo, 123',
+            addressLocality: 'Cidade de exemplo',
+            addressRegion: 'Estado de exemplo',
+            postalCode: '00000-000',
+            addressCountry: 'BR',
+            description:
+              'Placeholder address for this boilerplate demonstration.'
           }
         })
       )
-      expect(
-        graph.find(node => node['@type'] === 'Organization')
-      ).not.toHaveProperty('address')
       const missing = await page.goto(`/${locale}/missing`)
       expect(missing?.status()).toBe(HTTP_NOT_FOUND)
       await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
