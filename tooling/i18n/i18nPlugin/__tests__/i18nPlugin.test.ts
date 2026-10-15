@@ -40,6 +40,7 @@ type StartOptions = {
   context: TestContext
   root?: string
   onClosing?: () => void
+  shouldDelayWatchEvents?: boolean
 }
 type DevServer = {
   root: string
@@ -64,9 +65,9 @@ const POLL_MS = 50
 const TIMEOUT_MS = 20_000
 const SETTLE_MS = 1500
 const HTTP_ERROR = 500
-// Pausa entre as partes de uma gravação, menor que a janela de estabilidade
-// do watcher.
+// Mantém as duas partes dentro da janela de agrupamento dos catálogos.
 const WRITE_PAUSE_MS = 20
+const CACHE_TEST_STABILITY_MS = 1000
 const PROJECT_WRITES: ProjectWrite[] = [
   {
     file: 'project.inlang/settings.json',
@@ -171,7 +172,8 @@ async function waitFor(check: () => Promise<boolean>): Promise<void> {
 async function startServer({
   context,
   root: existing,
-  onClosing
+  onClosing,
+  shouldDelayWatchEvents = false
 }: StartOptions): Promise<DevServer> {
   const root = existing ?? (await mkdtemp(path.join(tmpdir(), 'i18n-plugin-')))
   const closers: Close[] = []
@@ -194,7 +196,18 @@ async function startServer({
     // FSEvents e, sem ele, polling; os dois mudam a cadência dos eventos.
     server: {
       middlewareMode: true,
-      watch: { useFsEvents: false, usePolling: false }
+      watch: {
+        useFsEvents: false,
+        usePolling: false,
+        ...(shouldDelayWatchEvents
+          ? {
+              awaitWriteFinish: {
+                stabilityThreshold: CACHE_TEST_STABILITY_MS,
+                pollInterval: 10
+              }
+            }
+          : {})
+      }
     },
     optimizeDeps: { noDiscovery: true, include: [] },
     plugins: [
@@ -242,7 +255,10 @@ describe('i18n dev shutdown', () => {
       const closing = Promise.withResolvers<null>()
       const server = await startServer({
         context,
-        onClosing: () => closing.resolve(null)
+        onClosing: () => closing.resolve(null),
+        // Esta fixture retém o segundo evento para reproduzir o cache obsoleto.
+        // O plugin preserva a configuração do watcher escolhida pelo consumidor.
+        shouldDelayWatchEvents: true
       })
       const source = path.join(server.root, 'src/routes/Home/i18n/es.json')
       const aggregate = '.paraglide/messages/es.json'
@@ -336,7 +352,7 @@ describe('i18n dev shutdown', () => {
     assert.deepEqual(await temporaryFiles(server.root), [])
   })
 
-  // O Chokidar pode descartar uma escrita ainda na janela de estabilidade.
+  // O watcher pode fechar antes de entregar o evento da escrita.
   // A próxima inicialização precisa refletir o arquivo salvo em disco.
   for (const { file, update, output, expected } of PROJECT_WRITES) {
     it(`preserves a ${file} write across an immediate shutdown and restart`, async context => {

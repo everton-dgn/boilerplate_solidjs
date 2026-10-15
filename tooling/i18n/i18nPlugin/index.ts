@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 
 import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import type { Plugin, PluginOption, ViteDevServer } from 'vite-plus'
@@ -11,10 +12,7 @@ type SettingsFileOptions = { root: string; file: string }
 
 const PROJECT = './project.inlang'
 const SETTINGS_FILE = 'project.inlang/settings.json'
-// O watcher só avisa depois que o tamanho do arquivo para de mudar. Sem isso,
-// uma gravação em partes seria lida pela metade e publicaria um erro
-// passageiro. A espera vale para todos os arquivos observados pelo Vite.
-const WRITE_STABILITY = { stabilityThreshold: 100, pollInterval: 10 }
+const PREPARATION_DELAY_MS = 100
 
 function reportError({ server, error }: ReportErrorOptions): void {
   server.ws.send({
@@ -58,6 +56,8 @@ function catalogPreparation(): Plugin {
       let handled = 0
       while (handled < requested) {
         handled = requested
+        await delay(PREPARATION_DELAY_MS)
+        if (handled < requested) continue
         await prepare()
       }
     } finally {
@@ -72,11 +72,6 @@ function catalogPreparation(): Plugin {
   return {
     name: 'project:i18n-catalogs',
     enforce: 'pre',
-    config(config) {
-      // O merge do Vite trocaria `watch: null` pelo objeto e religaria o watcher.
-      if (config.server?.watch === null) return null
-      return { server: { watch: { awaitWriteFinish: WRITE_STABILITY } } }
-    },
     async configResolved(config) {
       ;({ root } = config)
       await prepareMessages(root)
@@ -97,14 +92,16 @@ function catalogPreparation(): Plugin {
       })
     },
     // Agregados e saída ficam fora do filtro para não disparar outra preparação.
-    async watchChange(file) {
-      if (!isSettingsFile({ root, file }) && !isCatalogFile({ root, file })) {
-        return
+    watchChange: {
+      // O plugin oficial também lê settings; precisa aguardar este evento.
+      sequential: true,
+      async handler(file) {
+        if (!isSettingsFile({ root, file }) && !isCatalogFile({ root, file })) {
+          return
+        }
+        await schedule()
       }
-      await schedule()
     },
-    // O Vite fecha o watcher antes deste hook: uma gravação ainda na janela de
-    // estabilidade fica para a preparação da próxima inicialização.
     closeServer() {
       return pendingPreparation
     }
