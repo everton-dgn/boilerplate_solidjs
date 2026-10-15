@@ -375,16 +375,24 @@ por HTML em empate. Ausência de `Accept` e `*/*` usam HTML; `q=0` exclui o tipo
 Se nenhum formato for aceitável numa página com artefato, a resposta é 406. A
 negociação preserva `Vary` e acrescenta `Accept`; os redirects e o 406 usam
 `private, no-store`. Query strings não alteram o snapshot nem seguem para o
-arquivo. Páginas sem artefato conservam o fluxo normal, inclusive erros e 404.
-URLs de página sem idioma passam primeiro pela localização existente. Um `.md`
-ausente responde 404 em texto simples, sem cache e sem passar pelo SSR.
+arquivo. Páginas sem artefato conservam o fluxo normal. Uma resposta HTML com
+status 404 também negocia o formato: clientes que preferem Markdown recebem um
+texto de erro preparado no build, no idioma da URL, com link para `/llms.txt`. O
+status continua 404, com `Vary: Accept`, `noindex` e `private, no-store`. O
+corpo não inclui o caminho solicitado nem dados da resposta HTML. HEAD envia os
+mesmos cabeçalhos, sem corpo. Respostas de API e outros status seguem seu
+contrato original. URLs de página sem idioma passam primeiro pela localização
+existente. Um `.md` ausente responde 404 sem passar pelo SSR: Markdown quando
+solicitado ou texto simples nos demais casos, sempre sem cache.
 
 O acesso direto ao `.md` é servido como estático, sem renderizar a página ou
 executar o produtor. O arquivo usa `text/markdown; charset=utf-8`, idioma da
 URL, `nosniff`, `Cross-Origin-Resource-Policy: same-origin` e
-`public, max-age=0, must-revalidate`. Cookies e `Accept-Language` não mudam seu
-conteúdo. HEAD mantém os cabeçalhos e não envia corpo. O middleware não aplica
-CSP de HTML aos arquivos servidos diretamente pelo host.
+`public, max-age=0, must-revalidate` e `Vary: Accept`. O último cabeçalho também
+fica na resposta final, depois do redirect, para os verificadores de negociação
+Markdown. Cookies e `Accept-Language` não mudam seu conteúdo. HEAD mantém os
+cabeçalhos e não envia corpo. O middleware não aplica CSP de HTML aos arquivos
+servidos diretamente pelo host.
 
 Em desenvolvimento, a geração acontece ao iniciar o servidor e após mudanças nas
 fontes. Criar `markdown.ts` passa a usar o produtor; removê-lo volta ao
@@ -416,6 +424,13 @@ os testes Node de `src/middleware/` e de SEO. Execute
 para exercitar também as fixtures e falhas do servidor. As suítes
 `AgentReadiness` cobrem conteúdo sem JavaScript, idiomas, negociação, HEAD, 404
 e navegação em larguras de celular e desktop.
+
+A home mantém pelo menos 500 caracteres de conteúdo visível nos três idiomas,
+também no HTML inicial. Esse limite atende ao critério de conteúdo do Is
+Agentic; não é uma garantia de posição nas buscas. O texto descreve os recursos
+reais do projeto, e o README aponta para a demonstração pública. Conforme o
+[guia de SEO do Google](https://developers.google.com/search/docs/fundamentals/seo-starter-guide),
+o efeito de mudanças na busca depende de rastreamento e pode levar tempo.
 
 Após publicar, confira status final, cabeçalhos e corpo, seguindo redirects:
 

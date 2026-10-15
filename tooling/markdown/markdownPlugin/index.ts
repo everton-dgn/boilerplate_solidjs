@@ -9,14 +9,15 @@ import { configureMarkdownPreview } from '../configureMarkdownPreview/index.ts'
 import { MARKDOWN_HEADERS } from '../constants.ts'
 import { loadArtifacts } from '../loadArtifacts/index.ts'
 import { publishArtifacts } from '../publishArtifacts/index.ts'
-import type { MarkdownArtifact } from '../types.ts'
+import type { ArtifactBuild, MarkdownArtifact } from '../types.ts'
 import { writeDeploymentManifest } from '../writeDeploymentManifest/index.ts'
 
 type MarkdownPluginOptions = { directory: string; shouldGenerate?: boolean }
+type ManifestContent = Pick<ArtifactBuild, 'artifacts' | 'notFound'>
 
 const MANIFEST = 'virtual:markdown-manifest'
 
-function serializeManifest(artifacts: MarkdownArtifact[]): string {
+function serializeManifest({ artifacts, notFound }: ManifestContent): string {
   const paths = Object.fromEntries(
     artifacts.map(artifact => [artifact.path, artifact.href])
   )
@@ -29,7 +30,7 @@ function serializeManifest(artifacts: MarkdownArtifact[]): string {
       section: artifact.llms.section,
       optional: artifact.llms.isOptional
     }))
-  return `export const markdownPaths = ${JSON.stringify(paths)}; export const markdownIndex = ${JSON.stringify(index)};`
+  return `export const markdownPaths = ${JSON.stringify(paths)}; export const markdownIndex = ${JSON.stringify(index)}; export const markdownNotFound = ${JSON.stringify(notFound)};`
 }
 
 function reloadManifest(server: ViteDevServer): void {
@@ -52,6 +53,7 @@ export function markdownPlugin({
   let environment: Record<string, string | boolean> | undefined
   let nitro: Nitro | undefined
   let artifacts: MarkdownArtifact[] = []
+  let notFound: Record<string, string> = {}
   let dependencies = new Set<string>()
   let failure: Error | undefined
   let pending = Promise.resolve()
@@ -68,7 +70,7 @@ export function markdownPlugin({
       }
     })
     await publishArtifacts({ root, artifacts: result.artifacts })
-    ;({ artifacts } = result)
+    ;({ artifacts, notFound } = result)
     dependencies = new Set(
       result.dependencies.filter(
         file => !file.startsWith(path.join(root, 'paraglide/'))
@@ -123,7 +125,7 @@ export function markdownPlugin({
       }
       if (id !== `\0${MANIFEST}`) return null
       if (failure) throw failure
-      return serializeManifest(artifacts)
+      return serializeManifest({ artifacts, notFound })
     },
     async configureServer(server) {
       if (!shouldGenerate) return
@@ -137,12 +139,15 @@ export function markdownPlugin({
           while (handled < requested) {
             handled = requested
             try {
-              const previous = serializeManifest(artifacts)
+              const previous = serializeManifest({ artifacts, notFound })
               const shouldRecover = failure !== undefined
               await generate(server)
               failure = undefined
               server.watcher.add([...dependencies])
-              if (shouldRecover || previous !== serializeManifest(artifacts)) {
+              if (
+                shouldRecover ||
+                previous !== serializeManifest({ artifacts, notFound })
+              ) {
                 reloadManifest(server)
               }
             } catch (error) {

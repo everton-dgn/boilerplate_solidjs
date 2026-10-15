@@ -54,6 +54,14 @@ describe('isolated Markdown build runner', () => {
       result.artifacts.every(artifact => !artifact.llms.shouldInclude),
       true
     )
+    assert.deepEqual(Object.keys(result.notFound), ['pt', 'en', 'es'])
+    assert.match(result.notFound.pt ?? '', /^# 404 Página não encontrada\n/u)
+    assert.match(result.notFound.en ?? '', /^# 404 Page not found\n/u)
+    assert.match(result.notFound.es ?? '', /^# 404 Página no encontrada\n/u)
+    for (const body of Object.values(result.notFound)) {
+      assert.ok(body.includes('[llms.txt](/llms.txt)'))
+      assert.doesNotMatch(body, /<!doctype|<script/iu)
+    }
   })
 
   it('follows route metadata re-exports without loading the original page component', async context => {

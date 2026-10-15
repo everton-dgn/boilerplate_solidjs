@@ -59,12 +59,24 @@ it('refreshes re-exported public content, switches optional producers and recove
     for (const close of closers.toReversed()) await close()
     await rm(root, { recursive: true, force: true })
   })
-  await writeProject({ root, messages: { home_title: 'Title' } })
+  await writeProject({
+    root,
+    messages: {
+      home_title: 'Title',
+      notFound_title: 'Page not found',
+      notFound_description: 'The requested page was not found.'
+    }
+  })
   await symlink(path.join(ROOT, 'tooling'), path.join(root, 'tooling'))
   await mkdir(path.join(root, 'src/i18n/urls'), { recursive: true })
   await copyFile(
     path.join(ROOT, 'src/i18n/urls/index.ts'),
     path.join(root, 'src/i18n/urls/index.ts')
+  )
+  await mkdir(path.join(root, 'src/constants'), { recursive: true })
+  await copyFile(
+    path.join(ROOT, 'src/constants/http.ts'),
+    path.join(root, 'src/constants/http.ts')
   )
   const source = path.join(root, 'src/routes/Home/markdown.ts')
   const contentSource = path.join(root, 'src/routes/Home/seo.ts')
@@ -114,6 +126,7 @@ it('refreshes re-exported public content, switches optional producers and recove
   const initial = await fetch(url)
   assert.equal(initial.status, HTTP_OK)
   assert.equal(initial.headers.get('content-language'), 'en')
+  assert.equal(initial.headers.get('vary'), 'Accept')
   assert.equal(initial.headers.get('set-cookie'), null)
   const body = await initial.text()
   assert.ok(body.includes('First snapshot'))

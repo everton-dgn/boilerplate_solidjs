@@ -15,7 +15,8 @@ const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
 
 vi.mock(import('virtual:markdown-manifest'), () => ({
   markdownPaths: {},
-  markdownIndex: []
+  markdownIndex: [],
+  markdownNotFound: {}
 }))
 
 // O projeto node usa um manifesto vazio. O handler de API real recebe aqui uma

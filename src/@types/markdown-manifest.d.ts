@@ -3,4 +3,5 @@ declare module 'virtual:markdown-manifest' {
 
   export const markdownPaths: Readonly<Record<string, string>>
   export const markdownIndex: readonly LlmsPage[]
+  export const markdownNotFound: Readonly<Record<string, string>>
 }
