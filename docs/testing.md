@@ -144,23 +144,8 @@ exige que a URL do diretório chegue ao SSR antes dessa resolução, com e sem
 barra final. Isso detecta a colisão que fazia `/pt` servir o conteúdo de
 `/pt/index.md` na Vercel, embora passasse no preview local.
 
-`vp run test:deployment` usa o manifesto `.vercel/output/markdown.json`, com
-`path`, `href` e `locale`, para verificar a URL imutável em `DEPLOYMENT_URL`.
-Cada página precisa responder HTML ao Accept do navegador; a negociação de
-Markdown precisa devolver 307 para o arquivo correto, com `Vary: Accept` e cache
-privado. Os `.md` precisam responder com o tipo e o idioma esperados. GET e HEAD
-são verificados, incluindo páginas com e sem barra final. A suíte recusa
-redirects inesperados e respostas de proteção da plataforma. Um manifesto vazio
-indica que nenhuma página publica Markdown: a matriz é dispensada com uma
-mensagem explícita e não exige segredo de automação. Manifesto ausente ou
-inválido causa erro.
-
-Com artefatos para testar, o comando exige `VERCEL_AUTOMATION_BYPASS_SECRET` e
-envia essa credencial somente à origem HTTPS `*.vercel.app` validada, sem seguir
-redirects. O CI publica um candidato com `--skip-domain`, executa a verificação
-e só então promove a mesma URL. Uma falha mantém os domínios na publicação
-anterior. Isso verifica o roteamento real da Vercel; regras específicas de um
-domínio personalizado ainda precisam ser verificadas nesse domínio.
+Essas verificações cobrem o artefato e o preview local. O comportamento do CDN e
+as regras de domínio da Vercel continuam exigindo conferência no site publicado.
 
 Os testes de `tooling/markdown/loadArtifacts` cobrem o uso de `seo.ts` sem
 produtor, a prioridade de `markdown.ts`, reexportações por alias e caminho
@@ -189,6 +174,22 @@ e dispensa o backend simulado. No mesmo checkout local, execute as duas suítes
 em sequência, pois compartilham a porta e os artefatos de build. O CI executa
 ambas em paralelo, em runners separados para isolar portas e builds; a suíte de
 produção também valida o build final.
+
+No push para `main`, o job de E2E de produção executa `vercel build --prod` com
+as configurações obtidas da Vercel. O Playwright recebe somente as variáveis
+públicas `VITE_*` daquele arquivo, preservando valores já definidos no processo.
+Credenciais de backend do arquivo da Vercel não são repassadas ao preview. Com
+`TEST_PREBUILT=true`, o Playwright inicia somente o preview. Um tar criado antes
+dos testes e a listagem dos arquivos são comparados ao output depois deles:
+alterações ou novos arquivos fazem o job falhar. O deploy recebe esse tar na
+mesma execução do CI e publica o build testado, sem recompilar.
+
+PRs, inclusive de forks, mantêm os builds locais sem credenciais da Vercel. Os
+comandos locais também continuam compilando por padrão. Para conferir um build
+de produção já gerado, use `TEST_PREBUILT=true vp run test:e2e:production`. O
+modo exige rotas de produção; usá-lo com a suíte de fixtures causa erro. Os
+testes de `tooling/__tests__/playwright.test.ts` executam os comandos de startup
+com um CLI simulado e verificam a quantidade de builds em cada modo.
 
 Use `vp run test:e2e:ui` para abrir a interface interativa do Playwright. Com
 `CI=true`, os E2E usam dois workers; localmente, mantêm o paralelismo padrão. O

@@ -36,7 +36,6 @@ const EXPECTED_FILES = LOCALES.flatMap(locale =>
 )
 const EXPECTED_MANIFEST = LOCALES.flatMap(locale =>
   PAGES.map(page => ({
-    path: `/${locale}${page.name}`,
     href: `/${locale}/${page.file}`,
     locale
   }))

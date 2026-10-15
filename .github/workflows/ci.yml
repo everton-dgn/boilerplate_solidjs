@@ -15,6 +15,7 @@ concurrency:
 
 env:
   LEFTHOOK: '0'
+  VERCEL_CLI_VERSION: '62.2.0'
 
 jobs:
   quality:
@@ -134,8 +135,79 @@ jobs:
       - name: Set up project
         uses: ./.github/actions/setup-project
 
+      - name: Build deployment artifact
+        id: deployment-build
+        if:
+          github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+          matrix.suite == 'production'
+        env:
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          ENABLE_EXPERIMENTAL_COREPACK: '0'
+        run: |
+          test -n "$VERCEL_ORG_ID" || { echo 'Missing VERCEL_ORG_ID variable'; exit 1; }
+          test -n "$VERCEL_PROJECT_ID" || { echo 'Missing VERCEL_PROJECT_ID variable'; exit 1; }
+          test -n "$VERCEL_TOKEN" || { echo 'Missing VERCEL_TOKEN secret'; exit 1; }
+          vp dlx "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=production
+          vp dlx "vercel@$VERCEL_CLI_VERSION" build --prod --yes
+          vp exec node --input-type=module <<'NODE_ARTIFACT'
+          import { lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
+          import { basename, join, sep } from 'node:path';
+          const root = realpathSync('.vercel/output');
+          for (const entry of readdirSync(root, { recursive: true })) {
+            const file = join(root, entry);
+            if (lstatSync(file).isSymbolicLink() && !realpathSync(file).startsWith(`${root}${sep}`)) {
+              throw new Error('Deployment output contains an external symbolic link');
+            }
+            if (basename(file) === '.vc-config.json') {
+              const config = JSON.parse(readFileSync(file, 'utf8'));
+              if (Object.keys(config.filePathMap ?? {}).length > 0) {
+                throw new Error('Deployment output must bundle files instead of using filePathMap');
+              }
+            }
+          }
+          NODE_ARTIFACT
+          tar -cf "$RUNNER_TEMP/vercel-output.tar" .vercel/output
+          find .vercel/output -printf '%y %m %P %l\n' | LC_ALL=C sort > "$RUNNER_TEMP/vercel-output-files.txt"
+
       - name: Run end-to-end tests
+        if: steps.deployment-build.outcome != 'success'
         run: vp run ${{ matrix.script }}
+
+      - name: Test deployment artifact without rebuilding
+        if: steps.deployment-build.outcome == 'success'
+        env:
+          TEST_PRODUCTION_ROUTES: 'true'
+          TEST_PREBUILT: 'true'
+        run: |
+          vp exec node --input-type=module <<'NODE_TEST'
+          import { readFileSync } from 'node:fs';
+          import { parseEnv } from 'node:util';
+          import { spawnSync } from 'node:child_process';
+          const variables = parseEnv(readFileSync('.vercel/.env.production.local', 'utf8'));
+          const publicVariables = Object.fromEntries(Object.entries(variables).filter(
+            ([key]) => key.startsWith('VITE_') && process.env[key] === undefined
+          ));
+          const result = spawnSync('vp', ['run', 'test:e2e:production'], {
+            env: { ...process.env, ...publicVariables }, stdio: 'inherit'
+          });
+          if (result.error) throw result.error;
+          process.exit(result.status ?? 1);
+          NODE_TEST
+          tar --compare -f "$RUNNER_TEMP/vercel-output.tar"
+          find .vercel/output -printf '%y %m %P %l\n' | LC_ALL=C sort > "$RUNNER_TEMP/vercel-output-files-after.txt"
+          cmp "$RUNNER_TEMP/vercel-output-files.txt" "$RUNNER_TEMP/vercel-output-files-after.txt"
+
+      - name: Upload tested deployment artifact
+        if: steps.deployment-build.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vercel-output-${{ github.sha }}
+          path: ${{ runner.temp }}/vercel-output.tar
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
 
       - name: Upload test artifacts
         if: failure()
@@ -169,7 +241,7 @@ jobs:
   deploy:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     concurrency:
       group: vercel-production
@@ -195,46 +267,19 @@ jobs:
           test -n "$VERCEL_PROJECT_ID" || { echo 'Missing VERCEL_PROJECT_ID variable'; exit 1; }
           test -n "$VERCEL_TOKEN" || { echo 'Missing VERCEL_TOKEN secret'; exit 1; }
 
-      - name: Pull production settings
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vp dlx vercel@latest pull --yes --environment=production
+      - name: Download tested deployment artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: vercel-output-${{ github.sha }}
+          path: ${{ runner.temp }}/deployment-artifact
+          digest-mismatch: error
 
-      - name: Build for production with Vite+
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          # O CLI consulta process.env antes de iniciar o build.
-          ENABLE_EXPERIMENTAL_COREPACK: '0'
-        run: vp dlx vercel@latest build --prod --yes
-
-      - name: Verify Markdown deployment access
-        env:
-          VERCEL_AUTOMATION_BYPASS_SECRET:
-            ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      - name: Restore tested deployment artifact
         run: |
-          artifact_count=$(jq -er 'if type == "array" then length else error("Invalid Markdown manifest") end' .vercel/output/markdown.json)
-          if [ "$artifact_count" -gt 0 ]; then
-            test -n "$VERCEL_AUTOMATION_BYPASS_SECRET" || { echo 'Missing VERCEL_AUTOMATION_BYPASS_SECRET secret'; exit 1; }
-          fi
+          test ! -e .vercel/output
+          tar -xpf "$RUNNER_TEMP/deployment-artifact/vercel-output.tar"
 
-      - name: Deploy candidate without assigning production domains
-        id: candidate
+      - name: Deploy tested production artifact
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          vp dlx vercel@latest deploy --prebuilt --prod --skip-domain --yes --json > "$RUNNER_TEMP/deployment.json"
-          deployment_url=$(jq -er '(.deployment // .) | select(.readyState == "READY") | .url | select(test("^https://[a-z0-9-]+[.]vercel[.]app$"))' "$RUNNER_TEMP/deployment.json")
-          printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
-
-      - name: Verify deployed HTML and Markdown routes
-        env:
-          DEPLOYMENT_URL: ${{ steps.candidate.outputs.url }}
-          VERCEL_AUTOMATION_BYPASS_SECRET:
-            ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-        run: vp run test:deployment
-
-      - name: Promote verified deployment
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          DEPLOYMENT_URL: ${{ steps.candidate.outputs.url }}
-        run: vp dlx vercel@latest promote "$DEPLOYMENT_URL" --yes
+        run: vp dlx "vercel@$VERCEL_CLI_VERSION" deploy --prebuilt --prod --yes

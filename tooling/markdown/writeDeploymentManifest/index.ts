@@ -87,13 +87,7 @@ export async function writeDeploymentManifest({
   )
   await writeFile(
     path.join(output, 'markdown.json'),
-    JSON.stringify(
-      artifacts.map(({ path: pagePath, href, locale }) => ({
-        path: pagePath,
-        href,
-        locale
-      }))
-    ),
+    JSON.stringify(artifacts.map(({ href, locale }) => ({ href, locale }))),
     'utf8'
   )
 }

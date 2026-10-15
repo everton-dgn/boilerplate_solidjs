@@ -87,10 +87,12 @@ de destino, além dos E2E completos.
 
 O deploy de produção sai do job `deploy` do
 [workflow do CI](../.github/workflows/ci.yml), só em push na `main` e depois do
-job `check`. Ele roda `vercel pull --environment=production`,
-`vercel build --prod` e `vercel deploy --prebuilt --prod`, com a variável
-`VERCEL_ORG_ID`, a variável `VERCEL_PROJECT_ID` e o secret `VERCEL_TOKEN`
-cadastrados no GitHub. O `vercel.json` desativa os deploys pela integração Git
+job `check`. No push para `main`, o job de E2E de produção roda
+`vercel pull --environment=production` e `vercel build --prod`, testa esse
+output sem recompilar e envia o artefato ao job `deploy`. Este publica o mesmo
+build com `vercel deploy --prebuilt --prod`, usando a variável `VERCEL_ORG_ID`,
+a variável `VERCEL_PROJECT_ID` e o secret `VERCEL_TOKEN` cadastrados no GitHub.
+O `vercel.json` desativa os deploys pela integração Git
 (`git.deploymentEnabled: false`) e guarda o cache imutável de `/images/` e os
 cabeçalhos `nosniff` e `Cross-Origin-Resource-Policy` dos estáticos; os demais
 cabeçalhos de segurança saem do middleware. A configuração da Vercel e o fluxo
@@ -247,6 +249,10 @@ cobertura. Os quatro jobs começam juntos, cada um com seu checkout, portas e
 artefatos de build isolados. A ação local `setup-project` compartilha a
 instalação entre os jobs e o deploy. Esse paralelismo reduz a espera, mas repete
 a preparação nos runners e pode aumentar o consumo de minutos do GitHub Actions.
+O build de produção aprovado nos E2E é transferido ao deploy na mesma execução
+do CI. Assim, tanto o PR quanto o push para `main` compilam duas aplicações: uma
+com fixtures e outra com as rotas reais. Os testes de tooling também compilam
+suas próprias fixtures menores.
 
 `CI required` aguarda todos os jobs e só passa se todos tiverem sucesso; falhas,
 cancelamentos e jobs pulados impedem sua aprovação. O deploy depende desse

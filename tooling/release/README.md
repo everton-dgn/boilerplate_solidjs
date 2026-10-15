@@ -85,40 +85,43 @@ O projeto `boilerplate-solidjs`, no escopo `verton-toffanettos-projects`, recebe
 deploys de produção pelo job `deploy` do CI. Ele depende de `check` e executa
 somente em push na `main`. O CI de PRs valida o código sem publicar na Vercel.
 
-O job faz checkout do SHA validado, prepara Node e Vite+ com as versões do
-`package.json` e instala com `vp install --frozen-lockfile`. A CLI Vercel,
-selecionada no [workflow do CI](../../.github/workflows/ci.yml), carrega as
-configurações de produção, executa `vercel build --prod` e publica o resultado
-com `vercel deploy --prebuilt --prod --skip-domain`. Essa etapa cria uma URL
-imutável sem atribuir os domínios de produção. Em seguida, o CI executa
-`vp run test:deployment` nessa URL e só promove o candidato aprovado com
-`vercel promote`. Se a verificação falhar, a publicação anterior continua
-recebendo o tráfego dos domínios. O script `build` chama o CLI local do Vite+
-com Bun explicitamente; para executá-lo, use `vp run build`.
+No push para `main`, o job de E2E de produção carrega as configurações da Vercel
+e executa `vercel build --prod` uma vez. O Playwright testa esse output sem
+recompilar, recebendo apenas as variáveis públicas `VITE_*` daquele arquivo, sem
+as credenciais de backend. O job empacota somente `.vercel/output` em tar,
+preservando permissões e links, e compara o conteúdo e a listagem dos arquivos
+após os testes antes de enviá-lo ao GitHub Actions. O build recusa links que
+saiam do output e funções com `filePathMap`, pois essas referências exigiriam
+publicar arquivos fora do artefato testado. O Nitro atual gera a função com suas
+dependências dentro do output.
+
+O job `deploy` faz checkout do mesmo SHA, prepara a toolchain do `package.json`
+e baixa o artefato da mesma execução do CI. A verificação de integridade do
+download causa erro se o digest divergir. O nome inclui o SHA e o upload
+substitui apenas o artefato desse nome na execução atual, permitindo repetir
+jobs que falharam. A retenção é de um dia; após expirar, execute novamente o job
+que gera e testa o build. Arquivos de ambiente e `.vercel/project.json` ficam
+fora do tar.
+
+Depois da aprovação de todos os checks, o deploy publica esse output com
+`vercel deploy --prebuilt --prod`, sem outro build. PRs não usam credenciais da
+Vercel e mantêm os builds locais de teste. O script `build` chama o CLI local do
+Vite+ com Bun explicitamente; para executá-lo, use `vp run build`.
 
 O GitHub precisa destas configurações em Settings > Secrets and variables >
 Actions:
 
-| Tipo     | Nome                              | Finalidade                                            |
-| -------- | --------------------------------- | ----------------------------------------------------- |
-| Secret   | `VERCEL_TOKEN`                    | Autorizar build e deploy no projeto Vercel            |
-| Secret   | `VERCEL_AUTOMATION_BYPASS_SECRET` | Permitir os testes HTTP na URL protegida do candidato |
-| Variable | `VERCEL_ORG_ID`                   | Identificar a equipe da conta pessoal                 |
-| Variable | `VERCEL_PROJECT_ID`               | Identificar o projeto de destino                      |
+| Tipo     | Nome                | Finalidade                                 |
+| -------- | ------------------- | ------------------------------------------ |
+| Secret   | `VERCEL_TOKEN`      | Autorizar build e deploy no projeto Vercel |
+| Variable | `VERCEL_ORG_ID`     | Identificar a equipe da conta pessoal      |
+| Variable | `VERCEL_PROJECT_ID` | Identificar o projeto de destino           |
 
 Os IDs e o secret `VERCEL_TOKEN` estão cadastrados no GitHub. A credencial
 `github-boilerplate-solidjs-ci` está restrita ao projeto `boilerplate-solidjs`,
 sem expiração. Ela pode ser gerenciada em
 [Tokens da Vercel](https://vercel.com/account/tokens). O valor fica somente no
 secret do repositório, sem ser adicionado aos arquivos de ambiente.
-
-Crie um segredo de automação em Settings > Deployment Protection do projeto
-Vercel e cadastre o mesmo valor no secret `VERCEL_AUTOMATION_BYPASS_SECRET` do
-GitHub. A verificação usa o header `x-vercel-protection-bypass`; não é
-necessário desativar a proteção dos deployments. Se o build gerar Markdown, o
-job exige esse secret antes de enviar o candidato. Com todas as páginas sem
-Markdown, essa credencial e a matriz de testes são dispensadas. Não grave o
-valor em arquivos, logs ou URLs.
 
 O vínculo Git também foi desconectado no projeto remoto. O `vercel.json`
 desativa deploys disparados pela integração Git com

@@ -194,7 +194,7 @@ describe('Markdown deployment metadata', () => {
     assert.equal(config.routes[0]?.continue, true)
     assert.equal(config.routes[1]?.handle, 'filesystem')
     assert.deepEqual(JSON.parse(await readFile(manifestFile, 'utf8')), [
-      { path: artifact.path, href: artifact.href, locale: 'en' }
+      { href: artifact.href, locale: 'en' }
     ])
   })
 })

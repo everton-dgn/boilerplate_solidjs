@@ -395,10 +395,9 @@ caminhos são observados: após um erro de regeneração por falta de fonte, cri
 gerado; falhas de regeneração são mostradas no servidor e na interface. O
 preview lê os arquivos do último build e aplica os cabeçalhos estáticos
 configurados para a Vercel, incluindo ETag e revalidação condicional. Esse
-adapter local não comprova o comportamento do CDN após publicação. O CI também
-executa `vp run test:deployment` na URL imutável da Vercel antes de atribuir os
-domínios de produção. Os requisitos de acesso dessa verificação estão no
-[guia de publicação](../tooling/release/README.md#integração-com-a-vercel).
+adapter local não comprova o comportamento do CDN após publicação. A regressão
+também inspeciona a ordem das regras no artefato final; o deploy reutiliza esse
+mesmo build depois da aprovação dos testes.
 
 As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
 aviso de privacidade descreve as preferências e os limites observáveis na
