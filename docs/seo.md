@@ -390,11 +390,14 @@ adapter local não comprova o comportamento do CDN após publicação.
 
 As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
 aviso de privacidade descreve as preferências e os limites observáveis na
-demonstração. O `contactPoint` usa `contato@email.com` e `0000000000` como
+demonstração. O `contactPoint` usa `contato@example.com` e `0000000000` como
 placeholders, com `contactType: demo` e uma descrição que informa que esses
-valores não são canais de contato do mantenedor. A demonstração omite `address`.
-Substitua os contatos de exemplo por dados reais ao adaptar o boilerplate para
-outro produto. Revise o aviso quando adicionar serviços ou coleta de dados.
+valores não são canais de contato do mantenedor. O `address` é um
+`PostalAddress` com rua, cidade, estado, CEP e país de exemplo, identificado
+como fictício pela descrição. Os dois objetos ficam em
+`src/primitives/createSeo/buildStructuredData/index.ts`. Substitua esses dados
+ao adaptar o boilerplate para outro produto. Revise o aviso quando adicionar
+serviços ou coleta de dados.
 
 Valide com `vp run check:ci`, `vp run typecheck:node`, `vp run test:tooling` e
 os testes Node de `src/middleware/` e de SEO. Execute
