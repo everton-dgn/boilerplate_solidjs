@@ -32,6 +32,7 @@
     "test:browser:install": "vp exec playwright install chromium",
     "test:e2e": "playwright test --config tooling/playwright.ts",
     "test:e2e:production": "TEST_PRODUCTION_ROUTES=true playwright test --config tooling/playwright.ts",
+    "test:deployment": "vp exec node tooling/deployment/check.ts",
     "test:e2e:ui": "playwright test --config tooling/playwright.ts --ui",
     "test:e2e:codegen": "playwright codegen",
     "deps:update": "vp update --interactive --latest",

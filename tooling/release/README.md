@@ -89,23 +89,36 @@ O job faz checkout do SHA validado, prepara Node e Vite+ com as versões do
 `package.json` e instala com `vp install --frozen-lockfile`. A CLI Vercel,
 selecionada no [workflow do CI](../../.github/workflows/ci.yml), carrega as
 configurações de produção, executa `vercel build --prod` e publica o resultado
-com `vercel deploy --prebuilt --prod`. O script `build` chama o CLI local do
-Vite+ com Bun explicitamente; para executá-lo, use `vp run build`.
+com `vercel deploy --prebuilt --prod --skip-domain`. Essa etapa cria uma URL
+imutável sem atribuir os domínios de produção. Em seguida, o CI executa
+`vp run test:deployment` nessa URL e só promove o candidato aprovado com
+`vercel promote`. Se a verificação falhar, a publicação anterior continua
+recebendo o tráfego dos domínios. O script `build` chama o CLI local do Vite+
+com Bun explicitamente; para executá-lo, use `vp run build`.
 
 O GitHub precisa destas configurações em Settings > Secrets and variables >
 Actions:
 
-| Tipo     | Nome                | Finalidade                                 |
-| -------- | ------------------- | ------------------------------------------ |
-| Secret   | `VERCEL_TOKEN`      | Autorizar build e deploy no projeto Vercel |
-| Variable | `VERCEL_ORG_ID`     | Identificar a equipe da conta pessoal      |
-| Variable | `VERCEL_PROJECT_ID` | Identificar o projeto de destino           |
+| Tipo     | Nome                              | Finalidade                                            |
+| -------- | --------------------------------- | ----------------------------------------------------- |
+| Secret   | `VERCEL_TOKEN`                    | Autorizar build e deploy no projeto Vercel            |
+| Secret   | `VERCEL_AUTOMATION_BYPASS_SECRET` | Permitir os testes HTTP na URL protegida do candidato |
+| Variable | `VERCEL_ORG_ID`                   | Identificar a equipe da conta pessoal                 |
+| Variable | `VERCEL_PROJECT_ID`               | Identificar o projeto de destino                      |
 
 Os IDs e o secret `VERCEL_TOKEN` estão cadastrados no GitHub. A credencial
 `github-boilerplate-solidjs-ci` está restrita ao projeto `boilerplate-solidjs`,
 sem expiração. Ela pode ser gerenciada em
 [Tokens da Vercel](https://vercel.com/account/tokens). O valor fica somente no
 secret do repositório, sem ser adicionado aos arquivos de ambiente.
+
+Crie um segredo de automação em Settings > Deployment Protection do projeto
+Vercel e cadastre o mesmo valor no secret `VERCEL_AUTOMATION_BYPASS_SECRET` do
+GitHub. A verificação usa o header `x-vercel-protection-bypass`; não é
+necessário desativar a proteção dos deployments. Se o build gerar Markdown, o
+job exige esse secret antes de enviar o candidato. Com todas as páginas sem
+Markdown, essa credencial e a matriz de testes são dispensadas. Não grave o
+valor em arquivos, logs ou URLs.
 
 O vínculo Git também foi desconectado no projeto remoto. O `vercel.json`
 desativa deploys disparados pela integração Git com

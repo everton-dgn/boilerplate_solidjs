@@ -73,6 +73,7 @@ const config = {
     'tooling/markdown/markdownPlugin/index.ts',
     // O runner virtual importa o gerador por um caminho absoluto calculado.
     'tooling/markdown/generateArtifacts/index.ts!',
+    'tooling/deployment/check.ts',
     // O build descobre os produtores colocalizados das rotas com markdown: true.
     'src/routes/**/markdown.ts!',
     // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.

@@ -360,6 +360,15 @@ acontece no SSR, e o índice público continua disponível em `/llms.txt`. A
 hidratação preserva o link recebido; a navegação dentro do documento o remove
 quando o caminho muda, para não anunciar um arquivo de outra página.
 
+Na Vercel, um arquivo chamado `index.md` também pode resolver a URL do seu
+diretório. Por isso, o build insere rewrites exatos desses diretórios para a
+função SSR antes de `handle: filesystem`, com e sem barra final. Isso mantém
+`/pt` como página HTML e reserva `/pt/index.md` ao documento Markdown. A regra
+também cobre um caminho dinâmico que gere, por exemplo, `/pt/blog/index.md`. O
+destino vem do fallback do Nitro; se a configuração não tiver um fallback
+incondicional reconhecido, o build falha. Os demais arquivos seguem a resolução
+estática normal.
+
 GET e HEAD da página com `Accept: text/markdown` recebem 307 para o `.md`
 localizado. A negociação considera pesos `q` e especificidade, com preferência
 por HTML em empate. Ausência de `Accept` e `*/*` usam HTML; `q=0` exclui o tipo.
@@ -386,7 +395,10 @@ caminhos são observados: após um erro de regeneração por falta de fonte, cri
 gerado; falhas de regeneração são mostradas no servidor e na interface. O
 preview lê os arquivos do último build e aplica os cabeçalhos estáticos
 configurados para a Vercel, incluindo ETag e revalidação condicional. Esse
-adapter local não comprova o comportamento do CDN após publicação.
+adapter local não comprova o comportamento do CDN após publicação. O CI também
+executa `vp run test:deployment` na URL imutável da Vercel antes de atribuir os
+domínios de produção. Os requisitos de acesso dessa verificação estão no
+[guia de publicação](../tooling/release/README.md#integração-com-a-vercel).
 
 As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
 aviso de privacidade descreve as preferências e os limites observáveis na

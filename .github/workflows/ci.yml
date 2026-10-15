@@ -207,7 +207,34 @@ jobs:
           ENABLE_EXPERIMENTAL_COREPACK: '0'
         run: vp dlx vercel@latest build --prod --yes
 
-      - name: Deploy production build
+      - name: Verify Markdown deployment access
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET:
+            ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          artifact_count=$(jq -er 'if type == "array" then length else error("Invalid Markdown manifest") end' .vercel/output/markdown.json)
+          if [ "$artifact_count" -gt 0 ]; then
+            test -n "$VERCEL_AUTOMATION_BYPASS_SECRET" || { echo 'Missing VERCEL_AUTOMATION_BYPASS_SECRET secret'; exit 1; }
+          fi
+
+      - name: Deploy candidate without assigning production domains
+        id: candidate
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vp dlx vercel@latest deploy --prebuilt --prod --yes
+        run: |
+          vp dlx vercel@latest deploy --prebuilt --prod --skip-domain --yes --json > "$RUNNER_TEMP/deployment.json"
+          deployment_url=$(jq -er '(.deployment // .) | select(.readyState == "READY") | .url | select(test("^https://[a-z0-9-]+[.]vercel[.]app$"))' "$RUNNER_TEMP/deployment.json")
+          printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify deployed HTML and Markdown routes
+        env:
+          DEPLOYMENT_URL: ${{ steps.candidate.outputs.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET:
+            ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: vp run test:deployment
+
+      - name: Promote verified deployment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOYMENT_URL: ${{ steps.candidate.outputs.url }}
+        run: vp dlx vercel@latest promote "$DEPLOYMENT_URL" --yes

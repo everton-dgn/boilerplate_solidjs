@@ -35,12 +35,17 @@ const EXPECTED_FILES = LOCALES.flatMap(locale =>
   PAGES.map(page => `${locale}/${page.file}`)
 )
 const EXPECTED_MANIFEST = LOCALES.flatMap(locale =>
-  PAGES.map(page => ({ href: `/${locale}/${page.file}`, locale }))
+  PAGES.map(page => ({
+    path: `/${locale}${page.name}`,
+    href: `/${locale}/${page.file}`,
+    locale
+  }))
 )
 const catalogSchema = v.record(v.string(), v.string())
 const headersSchema = v.record(v.string(), v.string())
 const deploymentRouteSchema = v.object({
   src: v.optional(v.string()),
+  dest: v.optional(v.string()),
   handle: v.optional(v.string()),
   headers: v.optional(headersSchema),
   continue: v.optional(v.boolean())
@@ -68,6 +73,32 @@ test('publishes Markdown files and routing metadata in the final Nitro output', 
     route => route.handle === 'filesystem'
   )
   expect(filesystemIndex).toBeGreaterThanOrEqual(0)
+  const beforeFilesystem = config.routes.slice(0, filesystemIndex)
+  for (const file of files.filter(
+    candidate => path.posix.basename(candidate) === 'index.md'
+  )) {
+    const directory = path.posix.dirname(file)
+    const pathname =
+      directory === '.'
+        ? '/'
+        : `/${directory
+            .split('/')
+            .map(segment => encodeURIComponent(segment))
+            .join('/')}`
+    for (const url of new Set([pathname, `${pathname.replace(/\/$/u, '')}/`])) {
+      const rewrite = beforeFilesystem.find(
+        route =>
+          route.dest !== undefined &&
+          route.continue !== true &&
+          new RegExp(route.src ?? '', 'u').test(url)
+      )
+      expect(
+        rewrite,
+        `${url} must reach SSR before Vercel serves ${file} as its index`
+      ).toBeDefined()
+      expect(rewrite?.dest).toBe('/__server')
+    }
+  }
   for (const file of EXPECTED_FILES) {
     const routeIndex = config.routes.findIndex(
       route => route.src === `^/${file.replaceAll('.', String.raw`\.`)}$`
