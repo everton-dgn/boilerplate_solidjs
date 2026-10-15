@@ -1,4 +1,5 @@
 /* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
+/* oxlint-disable vitest/prefer-each -- O runner nativo do Node.js não tem a API it.each. */
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -8,7 +9,7 @@ import path from 'node:path'
 import { describe, it, mock, type TestContext } from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 
-import { createServer } from 'vite-plus'
+import { createServer, type HotPayload } from 'vite-plus'
 
 import {
   LOCALES,
@@ -22,11 +23,13 @@ type Close = () => Promise<unknown>
 type DevServer = {
   root: string
   payloads: () => unknown[]
+  nextPayload: (type: string) => Promise<unknown>
   status: () => Promise<number>
   body: () => Promise<string>
   change: (file: string) => void
   close: () => Promise<void>
 }
+type TransientWrite = { file: string; partial: (content: string) => string }
 
 const RUNTIME_FILE = 'paraglide/runtime.js'
 const MESSAGES = { home_title: 'Title', home_body: 'Body' }
@@ -34,6 +37,15 @@ const POLL_MS = 50
 const TIMEOUT_MS = 20_000
 const SETTLE_MS = 1500
 const HTTP_ERROR = 500
+// O writeFile trunca antes de gravar; leituras no meio veem o arquivo vazio
+// ou só o começo do conteúdo.
+const TRANSIENT_WRITES: TransientWrite[] = [
+  { file: 'project.inlang/settings.json', partial: () => '' },
+  {
+    file: 'src/routes/Home/i18n/es.json',
+    partial: content => content.slice(0, content.indexOf(','))
+  }
+]
 
 function readRuntime(root: string): Promise<string> {
   return readFile(path.join(root, RUNTIME_FILE), 'utf8')
@@ -71,12 +83,23 @@ async function startServer(context: TestContext): Promise<DevServer> {
     configFile: false,
     logLevel: 'silent',
     appType: 'custom',
-    server: { middlewareMode: true },
+    // fs.watch é o backend do Chokidar no Linux do CI. No macOS o padrão é
+    // FSEvents e, sem ele, polling; os dois mudam a cadência dos eventos.
+    server: {
+      middlewareMode: true,
+      watch: { useFsEvents: false, usePolling: false }
+    },
     optimizeDeps: { noDiscovery: true, include: [] },
     plugins: [i18nPlugin()]
   })
   closers.push(() => server.close())
-  const send = mock.method(server.ws, 'send')
+  const sent = new EventTarget()
+  const deliver = server.ws.send.bind(server.ws)
+  const send = mock.method(server.ws, 'send', (payload: HotPayload) => {
+    deliver(payload)
+    const type = String(payloadType(payload))
+    sent.dispatchEvent(new Event(type))
+  })
   const http = createHttpServer(server.middlewares).listen(0, '127.0.0.1')
   closers.push(async () => {
     http.close()
@@ -97,6 +120,7 @@ async function startServer(context: TestContext): Promise<DevServer> {
     },
     close: () => server.close(),
     payloads: () => send.mock.calls.map(call => payloadType(call.arguments[0])),
+    nextPayload: type => once(sent, type),
     status: async () => {
       const response = await fetch(url)
       await response.body?.cancel()
@@ -212,5 +236,40 @@ describe('i18n dev watcher', () => {
     })
     await waitFor(() => server.payloads().includes('full-reload'))
     assert.notEqual(await server.status(), HTTP_ERROR)
+  })
+
+  // O watcher descarta, sem reemitir, as mudanças do mesmo arquivo logo após
+  // um evento. A escrita final sai assim que a geração lê o conteúdo
+  // incompleto e falha, ainda dentro dessa janela.
+  for (const { file, partial } of TRANSIENT_WRITES) {
+    it(`recovers when ${file} is completed right after a partial write`, async context => {
+      const server = await startServer(context)
+      const target = path.join(server.root, file)
+      const complete = await readFile(target, 'utf8')
+      const failed = server.nextPayload('error')
+
+      await writeFile(target, partial(complete))
+      await failed
+      await writeFile(target, complete)
+      await waitFor(() => server.payloads().includes('full-reload'))
+      assert.notEqual(await server.status(), HTTP_ERROR)
+      assert.deepEqual(server.payloads(), ['error', 'full-reload'])
+    })
+  }
+
+  it('applies a write completed inside the watcher window when the server closes', async context => {
+    const server = await startServer(context)
+    const failed = server.nextPayload('error')
+
+    await writeFile(path.join(server.root, 'project.inlang/settings.json'), '')
+    await failed
+    await writeSettings({
+      root: server.root,
+      baseLocale: 'en',
+      locales: LOCALES
+    })
+    await server.close()
+
+    assert.match(await readRuntime(server.root), /baseLocale = "en";/u)
   })
 })

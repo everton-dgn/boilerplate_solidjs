@@ -10,6 +10,10 @@ type SettingsFileOptions = { root: string; file: string }
 
 const SETTINGS_FILE = 'project.inlang/settings.json'
 const COMPILER_CONFIG = 'project.inlang/paraglide.config.ts'
+// O Chokidar do Vite descarta, sem reemitir depois, os `change` do mesmo
+// arquivo nos 50 ms seguintes a um evento. Uma gravação concluída nessa
+// janela não chega ao plugin, que ficaria com o conteúdo truncado.
+const WATCHER_THROTTLE_MS = 50
 
 function reportError({ server, error }: ReportErrorOptions): void {
   server.ws.send({
@@ -72,12 +76,21 @@ export function i18nPlugin(): Plugin {
         if (isRunning) return
         pendingGeneration = generateRequested()
       }
-      // Agregados em .paraglide/ e a saída em paraglide/ são escritos pela
-      // própria geração e não a disparam de novo. As configurações definem os
-      // idiomas e passam pela mesma fila que os catálogos.
+      let settleTimer: ReturnType<typeof setTimeout> | undefined
+      // Agendado após o throttle, relê o arquivo quando a mesma janela termina.
+      const settle = () => {
+        clearTimeout(settleTimer)
+        settleTimer = setTimeout(() => {
+          settleTimer = undefined
+          regenerate()
+        }, WATCHER_THROTTLE_MS)
+      }
+      // Configurações e catálogos usam a mesma fila; os diretórios gerados
+      // ficam fora do filtro para não disparar a própria geração.
       const update = (file: string) => {
         if (isSettingsFile({ root, file }) || isCatalogFile({ root, file })) {
           regenerate()
+          settle()
         }
       }
       server.watcher.add([
@@ -98,7 +111,13 @@ export function i18nPlugin(): Plugin {
         response.setHeader('Content-Type', 'text/plain; charset=utf-8')
         response.end(failure.message)
       })
+      // Drena a gravação que o watcher pode ter suprimido antes de fechar.
       stopWatching = () => {
+        if (settleTimer) {
+          clearTimeout(settleTimer)
+          settleTimer = undefined
+          regenerate()
+        }
         server.watcher
           .off('add', update)
           .off('change', update)
