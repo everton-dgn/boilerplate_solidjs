@@ -114,6 +114,7 @@
     "vitest@*": "catalog:"
   },
   "patchedDependencies": {
-    "@voidzero-dev/vite-plus-core@1.2.0": "patches/@voidzero-dev%2Fvite-plus-core@1.2.0.patch"
+    "@voidzero-dev/vite-plus-core@1.2.0": "patches/@voidzero-dev%2Fvite-plus-core@1.2.0.patch",
+    "@inlang/paraglide-js@2.28.0": "patches/@inlang%2Fparaglide-js@2.28.0.patch"
   }
 }

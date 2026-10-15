@@ -17,6 +17,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 
 import { build, createServer } from 'vite-plus'
 
+import { i18nPlugin } from '../../../i18n/i18nPlugin/index.ts'
 import { writeProject } from '../../../i18n/testProject/index.ts'
 import { markdownPlugin } from '../index.ts'
 
@@ -97,7 +98,7 @@ it('refreshes re-exported public content, switches optional producers and recove
     appType: 'custom',
     server: { middlewareMode: true },
     optimizeDeps: { noDiscovery: true, include: [] },
-    plugins: [markdownPlugin({ directory: 'fixtures' })]
+    plugins: [i18nPlugin(), markdownPlugin({ directory: 'fixtures' })]
   })
   closers.push(() => server.close())
   const http = createHttpServer(server.middlewares).listen(0, '127.0.0.1')
@@ -171,6 +172,21 @@ it('refreshes re-exported public content, switches optional producers and recove
   const head = await fetch(url, { method: 'HEAD' })
   assert.equal(head.status, HTTP_OK)
   assert.equal(await head.text(), '')
+
+  await writeFile(
+    contentSource,
+    `import { m } from '@paraglide/messages.js'; export const content = { get title() { return m.home_title(); }, description: 'Description', intro: 'Public text', sections: [], links: [] };`
+  )
+  await waitFor(() => bodyIncludes({ url, text: '# Title' }))
+  await writeFile(
+    path.join(root, 'src/routes/Home/i18n/en.json'),
+    JSON.stringify({
+      home_title: 'Translated snapshot',
+      notFound_title: 'Page not found',
+      notFound_description: 'The requested page was not found.'
+    })
+  )
+  await waitFor(() => bodyIncludes({ url, text: '# Translated snapshot' }))
 })
 
 it('rejects importing a Markdown producer into an application bundle', async context => {

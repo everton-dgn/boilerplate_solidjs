@@ -1,0 +1,162 @@
+diff --git a/node_modules/@inlang/paraglide-js/.bun-tag-4107e9b8029842da b/.bun-tag-4107e9b8029842da
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/dist/bundler-plugins/unplugin.d.ts b/dist/bundler-plugins/unplugin.d.ts
+index 9a644a808233506cdb4a3a096cb265d7c88be1ca..900e99a846a2589e85053dcfeab24f67a567ffd1 100644
+--- a/dist/bundler-plugins/unplugin.d.ts
++++ b/dist/bundler-plugins/unplugin.d.ts
+@@ -32,6 +32,9 @@ export type ParaglidePluginOptions = Omit<Partial<CompilerOptions>, "project"> &
+      */
+     project: string;
+ };
+-type UnpluginFactoryWithOptions = (userArgs: ParaglidePluginOptions, meta?: Parameters<UnpluginFactory<ParaglidePluginOptions>>[1], defaults?: Pick<CompilerOptions, "outputStructure">) => ReturnType<UnpluginFactory<ParaglidePluginOptions>>;
++type UnpluginIntegrationOptions = Pick<CompilerOptions, "outputStructure"> & {
++    devErrorResponse?: boolean;
++};
++type UnpluginFactoryWithOptions = (userArgs: ParaglidePluginOptions, meta?: Parameters<UnpluginFactory<ParaglidePluginOptions>>[1], defaults?: UnpluginIntegrationOptions) => ReturnType<UnpluginFactory<ParaglidePluginOptions>>;
+ export declare const unpluginFactory: UnpluginFactoryWithOptions;
+ export {};
+diff --git a/dist/bundler-plugins/unplugin.js b/dist/bundler-plugins/unplugin.js
+index cd366146eb2b6a576cd91687080dcce3cbf2bdba..df58a4e60b5095ee04bb83d5ae92fcc98077179a 100644
+--- a/dist/bundler-plugins/unplugin.js
++++ b/dist/bundler-plugins/unplugin.js
+@@ -366,6 +366,8 @@ export const unpluginFactory = (userArgs, _meta, defaults) => {
+     let hadActiveConfig = false;
+     // Watch-rebuild serialization state (see watchChange).
+     let compiling = false;
++    let isClosed = false;
++    let pendingCompilation;
+     const pendingWatchPaths = new Set();
+     // Options from the most recent successful resolution — reused by input
+     // events that cannot have changed them.
+@@ -527,6 +529,9 @@ export const unpluginFactory = (userArgs, _meta, defaults) => {
+         name: PLUGIN_NAME,
+         enforce: "pre",
+         async buildStart() {
++            if (isClosed)
++                clearParaglideConfigCache({ projectDir: getProjectDir() });
++            isClosed = false;
+             addWatchFile = this.addWatchFile?.bind(this);
+             try {
+                 const loaded = await loadActiveConfig();
+@@ -571,27 +576,36 @@ export const unpluginFactory = (userArgs, _meta, defaults) => {
+                 clearViteError();
+             }
+         },
+-        async watchChange(path) {
++        watchChange(path) {
++            if (isClosed)
++                return pendingCompilation;
+             // Serialize rebuilds: bundlers may deliver several watchChange
+             // events concurrently (webpack fires once per modified file).
+             // Every path is queued — a config event must never be starved by
+             // later input events.
+             pendingWatchPaths.add(nodeNormalizePath(path));
+             if (compiling)
+-                return;
++                return pendingCompilation;
+             compiling = true;
+-            try {
+-                while (pendingWatchPaths.size > 0) {
+-                    const batch = [...pendingWatchPaths];
+-                    pendingWatchPaths.clear();
+-                    for (const current of batch) {
+-                        await performWatchRecompile(current);
++            pendingCompilation = (async () => {
++                try {
++                    while (pendingWatchPaths.size > 0) {
++                        const batch = [...pendingWatchPaths];
++                        pendingWatchPaths.clear();
++                        for (const current of batch) {
++                            await performWatchRecompile(current);
++                        }
+                     }
+                 }
+-            }
+-            finally {
+-                compiling = false;
+-            }
++                finally {
++                    compiling = false;
++                }
++            })();
++            return pendingCompilation;
++        },
++        closeBundle() {
++            isClosed = true;
++            return pendingCompilation;
+         },
+         vite: {
+             config: {
+@@ -611,6 +625,16 @@ export const unpluginFactory = (userArgs, _meta, defaults) => {
+             },
+             configureServer(server) {
+                 viteServer = server;
++                if (defaults?.devErrorResponse) {
++                    server.middlewares.use((_request, response, next) => {
++                        if (!viteError)
++                            return next();
++                        response.statusCode = 500;
++                        response.setHeader("Content-Type", "text/plain; charset=utf-8");
++                        response.setHeader("Cache-Control", "no-store");
++                        response.end(viteError.err.message);
++                    });
++                }
+                 server.ws.on("connection", (socket) => {
+                     if (viteError)
+                         socket.send(JSON.stringify(viteError));
+diff --git a/dist/bundler-plugins/vite.d.ts b/dist/bundler-plugins/vite.d.ts
+index b4988b51bc73a16b29be68b8acc946548f4a7757..8012c056308e67495893a8e84553e1397f349e0a 100644
+--- a/dist/bundler-plugins/vite.d.ts
++++ b/dist/bundler-plugins/vite.d.ts
+@@ -1,6 +1,14 @@
+ import type { Plugin } from "vite";
+ import type { ParaglidePluginOptions } from "./unplugin.js";
+ export type ParaglideVitePluginOptions = ParaglidePluginOptions & {
++    /**
++     * Respond with HTTP 500 while the development compiler or its config is
++     * invalid, instead of serving the last successful output. Error overlays
++     * remain enabled. Set this on the Vite plugin, not in paraglide.config.
++     *
++     * @default false
++     */
++    devErrorResponse?: boolean;
+     /**
+      * Emit one compiler-specialized client asset tree per project locale.
+      *
+diff --git a/dist/bundler-plugins/vite.js b/dist/bundler-plugins/vite.js
+index 832156bab67ca3362d691daf7570b15425c79fc5..28df7c38918bd064594f1933b41d9978114f1c60 100644
+--- a/dist/bundler-plugins/vite.js
++++ b/dist/bundler-plugins/vite.js
+@@ -1,16 +1,25 @@
+ import { createVitePlugin } from "unplugin";
+ import { createPerLocaleBuildPlugins } from "./per-locale-build/index.js";
+ import { unpluginFactory } from "./unplugin.js";
+-const createCompilerVitePlugin = createVitePlugin(unpluginFactory);
+-const createPerLocaleCompilerVitePlugin = createVitePlugin((options, meta) => unpluginFactory(options, meta, { outputStructure: "locale-modules" }));
++const createCompilerVitePlugin = createVitePlugin(({ devErrorResponse, ...options }, meta) => unpluginFactory(options, meta, { devErrorResponse }));
++const createPerLocaleCompilerVitePlugin = createVitePlugin(({ devErrorResponse, ...options }, meta) => unpluginFactory(options, meta, {
++    outputStructure: "locale-modules",
++    devErrorResponse,
++}));
+ export function paraglideVitePlugin(options) {
+-    const { experimentalPerLocaleBuild, ...compilerOptions } = options;
++    const { experimentalPerLocaleBuild, devErrorResponse, ...compilerOptions } = options;
+     if (!experimentalPerLocaleBuild) {
+-        return createCompilerVitePlugin(compilerOptions);
++        return createCompilerVitePlugin({
++            ...compilerOptions,
++            devErrorResponse,
++        });
+     }
+     return createPerLocaleBuildPlugins({
+         compilerOptions,
+-        createCompilerPlugin: (options) => createPerLocaleCompilerVitePlugin(options),
++        createCompilerPlugin: (options) => createPerLocaleCompilerVitePlugin({
++            ...options,
++            devErrorResponse,
++        }),
+     });
+ }
+ //# sourceMappingURL=vite.js.map
+\ No newline at end of file

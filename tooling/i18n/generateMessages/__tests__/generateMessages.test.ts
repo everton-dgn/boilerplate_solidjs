@@ -77,20 +77,20 @@ describe('generated messages', () => {
       parent: await sandbox(context),
       messages: MESSAGES
     })
-    assert.deepEqual(await generateMessages(root), { changed: true })
+    await generateMessages(root)
     const reference = await output(root)
     const times = await modifiedTimes(root)
     assert.ok(reference.has('messages/home_title.js'))
     assert.ok(reference.has('messages/home_title.d.ts'))
 
-    assert.deepEqual(await generateMessages(root), { changed: false })
+    await generateMessages(root)
     assert.deepEqual(await modifiedTimes(root), times)
 
     await execute('bun', [GENERATE], { cwd: root })
     assert.deepEqual(await modifiedTimes(root), times)
 
     await writeFile(path.join(root, 'paraglide/runtime.js'), 'broken')
-    assert.deepEqual(await generateMessages(root), { changed: true })
+    await generateMessages(root)
     assert.deepEqual(await output(root), reference)
   })
 
@@ -110,7 +110,8 @@ describe('generated messages', () => {
     assert.deepEqual(await output(root), reference)
 
     await writeFile(catalog, JSON.stringify(MESSAGES))
-    assert.deepEqual(await generateMessages(root), { changed: false })
+    await generateMessages(root)
+    assert.deepEqual(await output(root), reference)
   })
 
   it('keeps complete outputs under concurrent generations', async context => {

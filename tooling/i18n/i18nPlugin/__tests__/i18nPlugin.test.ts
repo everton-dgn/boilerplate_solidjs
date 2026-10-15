@@ -1,16 +1,30 @@
 /* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 /* oxlint-disable vitest/prefer-each -- O runner nativo do Node.js não tem a API it.each. */
 import assert from 'node:assert/strict'
+import { execFile } from 'node:child_process'
 import { once } from 'node:events'
-import { mkdtemp, open, readFile, rm, writeFile } from 'node:fs/promises'
+import {
+  mkdir,
+  mkdtemp,
+  open,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile
+} from 'node:fs/promises'
 import { createServer as createHttpServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, it, mock, type TestContext } from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
+import { pathToFileURL } from 'node:url'
+import { promisify } from 'node:util'
 
 import { createServer } from 'vite-plus'
 
+import { generateMessages } from '../../generateMessages/index.ts'
 import {
   LOCALES,
   writeMessages,
@@ -20,6 +34,7 @@ import {
 import { i18nPlugin } from '../index.ts'
 
 type Close = () => Promise<unknown>
+type StartOptions = { context: TestContext; root?: string }
 type DevServer = {
   root: string
   payloads: () => unknown[]
@@ -28,13 +43,14 @@ type DevServer = {
   change: (file: string) => void
   close: () => Promise<void>
 }
-type ChunkedWrite = {
+type ProjectWrite = {
   file: string
   update: (content: string) => string
   output: string
   expected: RegExp
 }
 type PartsOptions = { file: string; content: string }
+type ContainsOptions = { root: string; file: string; expected: RegExp }
 
 const RUNTIME_FILE = 'paraglide/runtime.js'
 const MESSAGES = { home_title: 'Title', home_body: 'Body' }
@@ -45,7 +61,7 @@ const HTTP_ERROR = 500
 // Pausa entre as partes de uma gravação, menor que a janela de estabilidade
 // do watcher.
 const WRITE_PAUSE_MS = 20
-const CHUNKED_WRITES: ChunkedWrite[] = [
+const PROJECT_WRITES: ProjectWrite[] = [
   {
     file: 'project.inlang/settings.json',
     update: content =>
@@ -60,15 +76,63 @@ const CHUNKED_WRITES: ChunkedWrite[] = [
     expected: /Nuevo/u
   }
 ]
+const PLUGIN_URL = pathToFileURL(
+  path.resolve(import.meta.dirname, '../index.ts')
+)
+// Outro processo, sem o estado do módulo do plugin oficial: só o cache em
+// disco e a preparação da inicialização decidem a nova compilação.
+const START_IN_NEW_PROCESS = `
+const { createServer } = await import('vite-plus')
+const { i18nPlugin } = await import(${JSON.stringify(PLUGIN_URL.href)})
+const server = await createServer({
+  root: process.cwd(),
+  configFile: false,
+  logLevel: 'silent',
+  appType: 'custom',
+  server: { middlewareMode: true, watch: null },
+  optimizeDeps: { noDiscovery: true, include: [] },
+  plugins: [i18nPlugin()]
+})
+await server.close()
+`
+const execute = promisify(execFile)
 
 function readRuntime(root: string): Promise<string> {
   return readFile(path.join(root, RUNTIME_FILE), 'utf8')
+}
+
+async function contains({
+  root,
+  file,
+  expected
+}: ContainsOptions): Promise<boolean> {
+  try {
+    return expected.test(await readFile(path.join(root, file), 'utf8'))
+  } catch {
+    return false
+  }
+}
+
+async function exists(file: string): Promise<boolean> {
+  try {
+    await stat(file)
+    return true
+  } catch {
+    return false
+  }
 }
 
 function payloadType(payload: unknown): unknown {
   return typeof payload === 'object' && payload !== null && 'type' in payload
     ? payload.type
     : undefined
+}
+
+async function temporaryFiles(root: string): Promise<string[]> {
+  const files = await readdir(path.join(root, '.paraglide'), {
+    recursive: true
+  })
+  return files.filter(file => file.endsWith('.tmp'))
 }
 
 // Trunca, grava o começo e só depois o restante, como um editor que salva
@@ -85,9 +149,9 @@ async function writeInParts({ file, content }: PartsOptions): Promise<void> {
   }
 }
 
-async function waitFor(check: () => boolean): Promise<void> {
+async function waitFor(check: () => Promise<boolean>): Promise<void> {
   const deadline = Date.now() + TIMEOUT_MS
-  while (!check()) {
+  while (!(await check())) {
     if (Date.now() > deadline) {
       throw new Error('Timed out waiting for the watcher')
     }
@@ -95,17 +159,25 @@ async function waitFor(check: () => boolean): Promise<void> {
   }
 }
 
-// Servidor de desenvolvimento real, com o watcher do Vite, numa raiz
-// temporária. O teardown fecha HTTP e Vite antes de limpar a raiz, para o
-// watcher não reagir à remoção.
-async function startServer(context: TestContext): Promise<DevServer> {
-  const root = await mkdtemp(path.join(tmpdir(), 'i18n-plugin-'))
+// Servidor de desenvolvimento real, com o watcher do Vite e o plugin oficial,
+// numa raiz temporária. O teardown fecha HTTP e Vite antes de limpar a raiz,
+// para o watcher não reagir à remoção.
+async function startServer({
+  context,
+  root: existing
+}: StartOptions): Promise<DevServer> {
+  const root = existing ?? (await mkdtemp(path.join(tmpdir(), 'i18n-plugin-')))
   const closers: Close[] = []
   context.after(async () => {
     for (const close of closers.toReversed()) await close()
-    await rm(root, { recursive: true, force: true })
+    if (!existing) await rm(root, { recursive: true, force: true })
   })
-  await writeProject({ root, messages: MESSAGES })
+  if (!existing) {
+    await writeProject({ root, messages: MESSAGES })
+    // Inicializa os metadados do SDK antes de observar edições do usuário.
+    // Reinícios usam a saída anterior para verificar a recuperação real.
+    await generateMessages(root)
+  }
   const server = await createServer({
     root,
     configFile: false,
@@ -154,57 +226,110 @@ async function startServer(context: TestContext): Promise<DevServer> {
   }
 }
 
-describe('i18n dev watcher', () => {
-  it('waits for a pending generation when the server closes', async context => {
-    const server = await startServer(context)
-    await writeSettings({
-      root: server.root,
-      baseLocale: 'en',
-      locales: LOCALES
-    })
-    server.change('project.inlang/settings.json')
+describe('i18n dev shutdown', () => {
+  it('waits for a pending preparation when the server closes', async context => {
+    const server = await startServer({ context })
+    await writeFile(
+      path.join(server.root, 'src/routes/Home/i18n/es.json'),
+      JSON.stringify({ ...MESSAGES, home_body: 'Cierre' })
+    )
+    server.change('src/routes/Home/i18n/es.json')
 
     await server.close()
 
-    assert.match(await readRuntime(server.root), /baseLocale = "en";/u)
+    assert.match(
+      await readFile(
+        path.join(server.root, '.paraglide/messages/es.json'),
+        'utf8'
+      ),
+      /Cierre/u
+    )
+    assert.deepEqual(await temporaryFiles(server.root), [])
   })
 
+  // O Chokidar pode descartar uma escrita ainda na janela de estabilidade.
+  // A próxima inicialização precisa refletir o arquivo salvo em disco.
+  for (const { file, update, output, expected } of PROJECT_WRITES) {
+    it(`preserves a ${file} write across an immediate shutdown and restart`, async context => {
+      const first = await startServer({ context })
+      const target = path.join(first.root, file)
+      const options = { root: first.root, file: output, expected }
+
+      await writeFile(target, update(await readFile(target, 'utf8')))
+      await first.close()
+
+      await startServer({ context, root: first.root })
+      assert.equal(await contains(options), true)
+    })
+  }
+
+  it('preserves a write across an immediate shutdown and a new process', async context => {
+    const server = await startServer({ context })
+    const { file, update, output, expected } = PROJECT_WRITES[1] ?? {}
+    assert.ok(file && update && output && expected)
+    const target = path.join(server.root, file)
+    const options = { root: server.root, file: output, expected }
+
+    await writeFile(target, update(await readFile(target, 'utf8')))
+    await server.close()
+
+    await execute(
+      process.execPath,
+      ['--input-type=module', '--eval', START_IN_NEW_PROCESS],
+      { cwd: server.root }
+    )
+    assert.equal(await contains(options), true)
+  })
+})
+
+describe('i18n dev updates', () => {
   it('blocks requests while a catalog is invalid and recovers after the fix', async context => {
-    const server = await startServer(context)
+    const server = await startServer({ context })
     assert.notEqual(await server.status(), HTTP_ERROR)
 
     await writeFile(
       path.join(server.root, 'src/routes/Home/i18n/es.json'),
       JSON.stringify({ home_title: 'Title' })
     )
-    await waitFor(() => server.payloads().includes('error'))
-    assert.equal(await server.status(), HTTP_ERROR)
+    await waitFor(async () => (await server.status()) === HTTP_ERROR)
+    assert.ok(server.payloads().includes('error'))
     assert.match(
       await server.body(),
       /es\.json: missing-translation.*home_body/u
     )
 
     await writeMessages({ root: server.root, messages: MESSAGES })
-    await waitFor(() => server.payloads().includes('full-reload'))
-    assert.notEqual(await server.status(), HTTP_ERROR)
+    await waitFor(async () => (await server.status()) !== HTTP_ERROR)
+    // Os agregados voltam ao conteúdo anterior e não geram HMR; o reload da
+    // preparação remove o overlay do erro que ela publicou.
+    assert.ok(server.payloads().includes('full-reload'))
   })
 
-  it('reloads once per catalog change without cascades from generated files', async context => {
-    const server = await startServer(context)
+  it('compiles a catalog change without cascades from generated files', async context => {
+    const server = await startServer({ context })
+    const [, catalog] = PROJECT_WRITES
+    assert.ok(catalog)
+    const target = path.join(server.root, catalog.file)
+    const aggregate = path.join(server.root, '.paraglide/messages/es.json')
+    const output = path.join(server.root, catalog.output)
 
-    await writeMessages({
-      root: server.root,
-      messages: { ...MESSAGES, home_body: 'New' }
-    })
-    await waitFor(() => server.payloads().includes('full-reload'))
-    // Agregados, saída e eventos repetidos não podem gerar outro reload.
+    await writeFile(target, catalog.update(await readFile(target, 'utf8')))
+    await waitFor(() =>
+      contains({ root: server.root, ...catalog, file: catalog.output })
+    )
+    const before = await Promise.all([stat(aggregate), stat(output)])
+    // Agregados, saída e eventos repetidos não podem gerar outra rodada.
     await delay(SETTLE_MS)
-    assert.deepEqual(server.payloads(), ['full-reload'])
+    const after = await Promise.all([stat(aggregate), stat(output)])
+    assert.deepEqual(
+      after.map(info => info.mtimeMs),
+      before.map(info => info.mtimeMs)
+    )
+    assert.deepEqual(server.payloads(), [])
   })
 
-  // O reload chega pelo `send` do servidor original: um restart trocaria o ws.
   it('regenerates the runtime when the base locale changes', async context => {
-    const server = await startServer(context)
+    const server = await startServer({ context })
     assert.match(await readRuntime(server.root), /baseLocale = "pt";/u)
 
     await writeSettings({
@@ -212,42 +337,45 @@ describe('i18n dev watcher', () => {
       baseLocale: 'en',
       locales: LOCALES
     })
-    await waitFor(() => server.payloads().includes('full-reload'))
-    assert.match(await readRuntime(server.root), /baseLocale = "en";/u)
+    await waitFor(async () =>
+      /baseLocale = "en";/u.test(await readRuntime(server.root))
+    )
     assert.ok(!server.payloads().includes('error'))
+    assert.notEqual(await server.status(), HTTP_ERROR)
   })
 
-  it('reloads compiler configuration and blocks invalid options', async context => {
-    const server = await startServer(context)
+  it('blocks requests while the compiler configuration is invalid and recovers', async context => {
+    const server = await startServer({ context })
     const file = path.join(server.root, 'project.inlang/paraglide.config.ts')
     const source = await readFile(file, 'utf8')
+    const runtime = await readRuntime(server.root)
 
     await writeFile(
       file,
       source.replace("trailingSlash: 'never'", "trailingSlash: 'invalid'")
     )
-    await waitFor(() => server.payloads().includes('error'))
-    assert.equal(await server.status(), HTTP_ERROR)
+    await waitFor(async () => (await server.status()) === HTTP_ERROR)
+    assert.equal(await readRuntime(server.root), runtime)
 
     await writeFile(
       file,
       source.replace("cookieName: 'locale'", "cookieName: 'test-locale'")
     )
-    await waitFor(() => server.payloads().includes('full-reload'))
-    assert.notEqual(await server.status(), HTTP_ERROR)
-    assert.match(await readRuntime(server.root), /cookieName = "test-locale"/u)
+    await waitFor(async () =>
+      /cookieName = "test-locale"/u.test(await readRuntime(server.root))
+    )
+    await waitFor(async () => (await server.status()) !== HTTP_ERROR)
   })
 
   it('blocks requests while the locale settings are invalid and recovers after the fix', async context => {
-    const server = await startServer(context)
+    const server = await startServer({ context })
 
     await writeSettings({
       root: server.root,
       baseLocale: 'pt',
       locales: [...LOCALES, 'fr']
     })
-    await waitFor(() => server.payloads().includes('error'))
-    assert.equal(await server.status(), HTTP_ERROR)
+    await waitFor(async () => (await server.status()) === HTTP_ERROR)
     assert.match(await server.body(), /missing locales \[fr\]/u)
 
     await writeSettings({
@@ -255,8 +383,47 @@ describe('i18n dev watcher', () => {
       baseLocale: 'pt',
       locales: LOCALES
     })
-    await waitFor(() => server.payloads().includes('full-reload'))
-    assert.notEqual(await server.status(), HTTP_ERROR)
+    await waitFor(async () => (await server.status()) !== HTTP_ERROR)
+    await waitFor(async () =>
+      /locales = \/\*\* @type \{const\} \*\/ \(\["pt",\s*"en",\s*"es"\]\)/u.test(
+        await readRuntime(server.root)
+      )
+    )
+  })
+
+  it('discovers consumers added and removed while the server runs', async context => {
+    const server = await startServer({ context })
+    const consumer = path.join(server.root, 'src/routes/About')
+    const staging = path.join(consumer, 'staging')
+    const output = path.join(server.root, 'paraglide/messages/about_title.js')
+    await mkdir(staging, { recursive: true })
+    for (const locale of LOCALES) {
+      await writeFile(
+        path.join(staging, `${locale}.json`),
+        JSON.stringify({ about_title: 'About' })
+      )
+    }
+
+    // Os três idiomas aparecem e somem de uma vez, como numa troca de branch.
+    await rename(staging, path.join(consumer, 'i18n'))
+    await waitFor(() => exists(output))
+    await rename(path.join(consumer, 'i18n'), staging)
+    await waitFor(async () => !(await exists(output)))
+    assert.ok(!server.payloads().includes('error'))
+  })
+
+  it('keeps complete message modules when the standalone generator runs', async context => {
+    const server = await startServer({ context })
+    const directory = path.join(server.root, 'paraglide')
+    const files = await readdir(directory, { recursive: true })
+    const message = path.join(directory, 'messages/home_title.js')
+    const before = await readFile(message, 'utf8')
+
+    await generateMessages(server.root)
+
+    assert.deepEqual(await readdir(directory, { recursive: true }), files)
+    assert.equal(await readFile(message, 'utf8'), before)
+    assert.match(await readRuntime(server.root), /baseLocale = "pt"/u)
   })
 
   it('keeps the watcher disabled when the config disables it', async context => {
@@ -274,26 +441,25 @@ describe('i18n dev watcher', () => {
     })
     try {
       assert.equal(server.config.server.watch, null)
+      assert.match(await readRuntime(root), /baseLocale = "pt"/u)
     } finally {
       await server.close()
     }
   })
 
-  for (const { file, update, output, expected } of CHUNKED_WRITES) {
+  for (const { file, update, output, expected } of PROJECT_WRITES) {
     it(`publishes only the completed ${file} when it is written in parts`, async context => {
-      const server = await startServer(context)
+      const server = await startServer({ context })
       const target = path.join(server.root, file)
 
       await writeInParts({
         file: target,
         content: update(await readFile(target, 'utf8'))
       })
-      await waitFor(() => server.payloads().includes('full-reload'))
-      assert.deepEqual(server.payloads(), ['full-reload'])
-      assert.match(
-        await readFile(path.join(server.root, output), 'utf8'),
-        expected
+      await waitFor(() =>
+        contains({ root: server.root, file: output, expected })
       )
+      assert.ok(!server.payloads().includes('error'))
       assert.notEqual(await server.status(), HTTP_ERROR)
     })
   }
