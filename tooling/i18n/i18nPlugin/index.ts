@@ -95,11 +95,10 @@ function catalogPreparation(): Plugin {
     watchChange: {
       // O plugin oficial também lê settings; precisa aguardar este evento.
       sequential: true,
-      async handler(file) {
-        if (!isSettingsFile({ root, file }) && !isCatalogFile({ root, file })) {
-          return
-        }
-        await schedule()
+      handler(file) {
+        const shouldPrepare =
+          isSettingsFile({ root, file }) || isCatalogFile({ root, file })
+        return shouldPrepare ? schedule() : undefined
       }
     },
     closeServer() {
