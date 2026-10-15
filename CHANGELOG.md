@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 1.12.0 - 2026-10-14
+
+### Added
+
+- add organization address placeholders (e45212e)
+
+### Fixed
+
+- preserve html page routes on vercel (70744e9)
+
 ## 1.11.0 - 2026-10-14
 
 ### Added
