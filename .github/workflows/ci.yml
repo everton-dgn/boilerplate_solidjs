@@ -20,7 +20,7 @@ env:
 jobs:
   quality:
     name: Quality
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout repository
@@ -98,7 +98,7 @@ jobs:
 
   tooling:
     name: Tooling
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout repository
@@ -115,7 +115,7 @@ jobs:
 
   e2e:
     name: E2E (${{ matrix.suite }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -225,7 +225,7 @@ jobs:
     name: CI required
     needs: [quality, tooling, e2e]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
       - name: Require all validation jobs
@@ -241,7 +241,7 @@ jobs:
   deploy:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     concurrency:
       group: vercel-production
