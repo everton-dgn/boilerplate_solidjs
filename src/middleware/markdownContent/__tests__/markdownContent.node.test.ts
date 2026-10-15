@@ -16,6 +16,11 @@ const HTTP_REDIRECT = 307
 const HTTP_NOT_ACCEPTABLE = 406
 const HTTP_UNAUTHORIZED = 401
 const HTTP_NOT_FOUND = 404
+const HTML_CONTENT_TYPES = [
+  'Text/HTML',
+  'TEXT/HTML; charset=UTF-8',
+  'text/html ; charset=utf-8'
+]
 
 type RequestOptions = { path?: string; accept?: string; method?: string }
 
@@ -223,4 +228,96 @@ describe('negociação de artefatos Markdown', () => {
     expect(response.headers.get('location')).toBe('/en/index.md')
     await expect(response.text()).resolves.toBe('')
   })
+})
+
+describe('arquivos Markdown ausentes', () => {
+  it.each(['text/html', '*/*', 'text/markdown;q=0', 'application/json'])(
+    'preserva o erro em texto simples quando Accept é %s',
+    async accept => {
+      const render = vi.fn<Next>(renderHtml)
+      const response = await markdownContent(
+        request({ path: '/pt/missing.md', accept }),
+        render
+      )
+      expect(response.status).toBe(HTTP_NOT_FOUND)
+      expect(Object.fromEntries(response.headers)).toMatchObject({
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'private, no-store',
+        vary: 'Accept'
+      })
+      await expect(response.text()).resolves.toBe('Not found\n')
+      expect(render).not.toHaveBeenCalled()
+    }
+  )
+
+  it('usa o idioma base quando o arquivo não tem prefixo de idioma', async () => {
+    const render = vi.fn<Next>(renderHtml)
+    const response = await markdownContent(
+      request({ path: '/missing.md' }),
+      render
+    )
+    expect(response.status).toBe(HTTP_NOT_FOUND)
+    expect(response.headers.get('content-language')).toBe('en')
+    await expect(response.text()).resolves.toMatch(/^# 404 Page not found\n/u)
+    expect(render).not.toHaveBeenCalled()
+  })
+})
+
+describe('reconhecimento do tipo HTML', () => {
+  it.each(HTML_CONTENT_TYPES)(
+    'negocia o 404 com o tipo %s',
+    async contentType => {
+      const original = new Response('<main>Not found</main>', {
+        status: HTTP_NOT_FOUND,
+        headers: { 'content-type': contentType }
+      })
+      const response = await markdownContent(
+        request({ path: '/en/missing' }),
+        () => Promise.resolve(original)
+      )
+      expect(response.status).toBe(HTTP_NOT_FOUND)
+      expect(response.headers.get('content-type')).toBe(
+        'text/markdown; charset=utf-8'
+      )
+      expect(response.headers.get('vary')).toBe('Accept')
+      await expect(response.text()).resolves.toMatch(/^# 404 Page not found\n/u)
+    }
+  )
+
+  it.each(HTML_CONTENT_TYPES)(
+    'acrescenta Accept ao Vary do HTML %s',
+    async contentType => {
+      const response = await markdownContent(
+        request({ accept: 'text/html' }),
+        () =>
+          Promise.resolve(
+            new Response('<main>HTML</main>', {
+              headers: { 'content-type': contentType }
+            })
+          )
+      )
+      expect(response.status).toBe(HTTP_OK)
+      expect(response.headers.get('vary')).toBe('Accept')
+      await expect(response.text()).resolves.toBe('<main>HTML</main>')
+    }
+  )
+
+  it.each([
+    { status: HTTP_OK, path: '/en', accept: 'text/html' },
+    { status: HTTP_NOT_FOUND, path: '/en/missing', accept: 'text/markdown' }
+  ])(
+    'preserva o tipo text/html-extra com status $status',
+    async ({ status, path, accept }) => {
+      const original = new Response('Original response', {
+        status,
+        headers: { 'content-type': 'text/html-extra' }
+      })
+      const response = await markdownContent(request({ path, accept }), () =>
+        Promise.resolve(original)
+      )
+      expect(response).toBe(original)
+      expect(response.headers.get('vary')).toBeNull()
+      await expect(response.text()).resolves.toBe('Original response')
+    }
+  )
 })

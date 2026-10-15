@@ -16,6 +16,11 @@ import type { Next } from '../types.ts'
 
 type NotFoundOptions = { request: Request; response: Response }
 
+function isHtml(response: Response): boolean {
+  const [type] = response.headers.get('content-type')?.split(';') ?? []
+  return type?.trim().toLowerCase() === 'text/html'
+}
+
 function varyAccept(response: Response): Response {
   const vary = response.headers.get('vary')
   const fields = vary?.split(',').map(field => field.trim().toLowerCase()) ?? []
@@ -74,7 +79,7 @@ export async function markdownContent(
   if (!href) {
     const response = await render()
     return response.status === HTTP_NOT_FOUND &&
-      response.headers.get('content-type')?.startsWith('text/html') &&
+      isHtml(response) &&
       isPagePath({ pathname, method: request.method })
       ? negotiateNotFound({ request, response })
       : response
@@ -104,7 +109,5 @@ export async function markdownContent(
     })
   }
   const response = await render()
-  return response.headers.get('content-type')?.startsWith('text/html')
-    ? varyAccept(response)
-    : response
+  return isHtml(response) ? varyAccept(response) : response
 }
