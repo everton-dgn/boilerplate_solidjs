@@ -4,6 +4,10 @@ Base para projetos com SolidJS, TypeScript e renderização no servidor (SSR).
 Inclui roteamento por arquivos, server functions, servidor Nitro e validação
 automatizada com Vite+.
 
+Veja a
+[demonstração do SolidJS Boilerplate](https://boilerplate-solidjs.devinsights.dev/en)
+para conhecer as páginas, os componentes e os idiomas disponíveis.
+
 ## O que já vem pronto
 
 - SSR com hidratação, páginas de erro e proteção de chamadas de backend.

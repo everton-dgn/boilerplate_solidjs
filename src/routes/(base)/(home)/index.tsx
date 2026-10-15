@@ -1,3 +1,4 @@
+import { m } from '@paraglide/messages.js'
 import type { RouteDefinition } from '@solidjs/router'
 import SolidLogo from '~icons/my-images/solid'
 
@@ -27,6 +28,8 @@ export default function Home() {
           <h1 class={S.title}>{content.title}</h1>
 
           <p class={S.description}>{content.intro}</p>
+
+          <p class={S.description}>{m.home_features()}</p>
 
           <div class={S.logos}>
             <SolidLogo class={S.logo} />

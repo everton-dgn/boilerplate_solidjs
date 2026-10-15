@@ -48,5 +48,6 @@ export type LoadArtifactsOptions = {
 
 export type ArtifactBuild = {
   artifacts: MarkdownArtifact[]
+  notFound: Record<string, string>
   dependencies: string[]
 }

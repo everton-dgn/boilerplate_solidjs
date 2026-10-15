@@ -121,6 +121,8 @@ export async function loadArtifacts({
         ${imports.join('\n')}
         import { buildRouteTree } from 'filesystem-routing/tree';
         import { locales, overwriteGetLocale } from '@paraglide/runtime.js';
+        import { m } from '@paraglide/messages.js';
+        import { HTTP_NOT_FOUND } from '@/constants/http.ts';
         import { localizeHref } from '@/i18n/urls/index.ts';
         import { generateArtifacts } from ${JSON.stringify(path.join(root, 'tooling/markdown/generateArtifacts/index.ts'))};
         const tree = buildRouteTree([${definitions.join(',')}]);
@@ -135,6 +137,11 @@ export async function loadArtifacts({
           localize: path => localizeHref({ href: path }),
           load: source => import(source)
         });
+        export const notFound = Object.fromEntries(locales.map(locale => [locale, [
+          '# ' + HTTP_NOT_FOUND + ' ' + m.notFound_title({}, { locale }),
+          m.notFound_description({}, { locale }),
+          '[llms.txt](/llms.txt)'
+        ].join('\\n\\n') + '\\n']));
       `
     }
   }

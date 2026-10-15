@@ -5,6 +5,7 @@ const HTTP_REDIRECT = 307
 const HTTP_NOT_FOUND = 404
 const HTTP_NOT_ACCEPTABLE = 406
 const MINIMUM_PAGE_LENGTH = 500
+const MINIMUM_ERROR_LENGTH = 20
 const LOCALES = [
   { locale: 'pt', tag: 'pt-BR' },
   { locale: 'en', tag: 'en-US' },
@@ -47,6 +48,9 @@ for (const { locale, tag } of LOCALES) {
         'public, max-age=0, must-revalidate'
       )
       expect(markdown.headers()['set-cookie']).toBeUndefined()
+      expect(markdown.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
+        'accept'
+      )
       expect(markdown.headers()['x-content-type-options']).toBe('nosniff')
       expect(markdown.headers().vary?.toLowerCase() ?? '').not.toContain(
         'cookie'
@@ -88,7 +92,7 @@ for (const { locale, tag } of LOCALES) {
     })
   }
 
-  test(`preserves the noindex HTML 404 for Markdown clients in ${locale}`, async ({
+  test(`serves a noindex Markdown 404 and preserves HTML in ${locale}`, async ({
     request
   }) => {
     const path = `/${locale}/__agent-readiness-missing-page`
@@ -96,21 +100,27 @@ for (const { locale, tag } of LOCALES) {
       headers: { accept: 'text/markdown' }
     })
     expect(response.status()).toBe(HTTP_NOT_FOUND)
-    expect(response.headers()['content-type']).toContain('text/html')
+    expect(response.headers()['content-type']).toContain('text/markdown')
     expect(response.headers()['content-language']).toBe(locale)
-    expect(response.headers().vary?.toLowerCase().split(/,\s*/u)).not.toContain(
+    expect(response.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
       'accept'
     )
     expect(response.headers()['content-security-policy']).toContain(
-      "script-src 'nonce-"
+      "script-src 'none'"
     )
-    expect(await response.text()).toMatch(/<!doctype html>/iu)
+    expect(response.headers()['x-robots-tag']).toBe('noindex')
+    expect(response.headers()['cache-control']).toBe('private, no-store')
+    const body = await response.text()
+    expect(body).toMatch(/^# 404 /u)
+    expect(body).toContain('[llms.txt](/llms.txt)')
+    expect(body.length).toBeGreaterThan(MINIMUM_ERROR_LENGTH)
+    expect(body).not.toMatch(/<!doctype|<script/iu)
 
     const head = await request.head(path, {
       headers: { accept: 'text/markdown' }
     })
     expect(head.status()).toBe(HTTP_NOT_FOUND)
-    expect(head.headers()['content-type']).toContain('text/html')
+    expect(head.headers()['content-type']).toContain('text/markdown')
     expect(await head.body()).toHaveLength(0)
 
     const html = await request.get(path, { headers: { accept: 'text/html' } })
@@ -161,6 +171,9 @@ test('preserves language negotiation and Markdown across the root redirect', asy
   const markdown = await request.get('/', { headers })
   expect(markdown.status()).toBe(HTTP_OK)
   expect(markdown.headers()['content-type']).toContain('text/markdown')
+  expect(markdown.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
+    'accept'
+  )
   expect(markdown.headers()['content-language']).toBe('pt')
   expect(await markdown.text()).toMatch(/^# .+\n/u)
   const html = await request.get('/', { headers: { accept: 'text/html' } })
@@ -169,18 +182,18 @@ test('preserves language negotiation and Markdown across the root redirect', asy
   expect(html.headers().vary?.toLowerCase().split(/,\s*/u)).toContain('accept')
 })
 
-test('preserves the HTML 404 after an unprefixed missing-page redirect', async ({
+test('serves a Markdown 404 after an unprefixed missing-page redirect', async ({
   request
 }) => {
   const response = await request.get('/__ora-404-probe-agent-readiness', {
     headers: { accept: 'text/markdown' }
   })
   expect(response.status()).toBe(HTTP_NOT_FOUND)
-  expect(response.headers()['content-type']).toContain('text/html')
-  expect(response.headers().vary?.toLowerCase().split(/,\s*/u)).not.toContain(
+  expect(response.headers()['content-type']).toContain('text/markdown')
+  expect(response.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
     'accept'
   )
-  expect(await response.text()).toMatch(/<!doctype html>/iu)
+  expect(await response.text()).toContain('[llms.txt](/llms.txt)')
 })
 
 // oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
@@ -277,7 +290,7 @@ for (const endpoint of [
   })
 }
 
-test('returns an uncached plain 404 for unpublished Markdown without rendering a page', async ({
+test('returns an uncached Markdown 404 for unpublished files without rendering a page', async ({
   request
 }) => {
   const response = await request.get('/pt/login.md', {
@@ -289,11 +302,14 @@ test('returns an uncached plain 404 for unpublished Markdown without rendering a
     }
   })
   expect(response.status()).toBe(HTTP_NOT_FOUND)
-  expect(response.headers()['content-type']).toBe('text/plain; charset=utf-8')
+  expect(response.headers()['content-type']).toBe(
+    'text/markdown; charset=utf-8'
+  )
+  expect(response.headers()['content-language']).toBe('pt')
   expect(response.headers()['cache-control']).toBe('private, no-store')
   expect(response.headers()['set-cookie']).toBeUndefined()
   expect(response.headers().location).toBeUndefined()
-  expect(await response.text()).toBe('Not found\n')
+  expect(await response.text()).toContain('# 404 Página não encontrada')
   const head = await request.head('/pt/login.md')
   expect(head.status()).toBe(HTTP_NOT_FOUND)
   expect(await head.body()).toHaveLength(0)

@@ -111,6 +111,7 @@ test('publishes Markdown files and routing metadata in the final Nitro output', 
       continue: true,
       headers: {
         'content-type': 'text/markdown; charset=utf-8',
+        vary: 'Accept',
         'content-language': file.split('/')[0],
         'cache-control': 'public, max-age=0, must-revalidate',
         'x-content-type-options': 'nosniff',

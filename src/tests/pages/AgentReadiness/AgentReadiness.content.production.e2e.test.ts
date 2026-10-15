@@ -107,18 +107,18 @@ for (const language of LANGUAGES) {
         // oxlint-disable-next-line unicorn/prefer-dom-node-text-content -- A contagem precisa excluir texto oculto por CSS.
         const visibleText = await main.innerText()
         const content = await page.evaluate(readMainContent, html)
+        expect(
+          visibleText.replaceAll(/\s+/gu, ' ').trim().length
+        ).toBeGreaterThanOrEqual(MIN_CONTENT_CHARACTERS)
+        expect(content.text.length).toBeGreaterThanOrEqual(
+          MIN_CONTENT_CHARACTERS
+        )
         if (path === '') {
           await expect(main.locator('footer')).toHaveCount(0)
           await expect(main.getByRole('heading', { level: 2 })).toHaveCount(0)
           await expect(main.locator('h1 + p')).toHaveText(/SolidJS 2/u)
           expect(markdownBody).toContain('## ')
         } else {
-          expect(
-            visibleText.replaceAll(/\s+/gu, ' ').trim().length
-          ).toBeGreaterThanOrEqual(MIN_CONTENT_CHARACTERS)
-          expect(content.text.length).toBeGreaterThanOrEqual(
-            MIN_CONTENT_CHARACTERS
-          )
           expect(content.headings).toContain(SUBHEADING_LEVEL)
         }
         expect(content.headings[0]).toBe(1)

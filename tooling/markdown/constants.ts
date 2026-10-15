@@ -7,6 +7,7 @@ export const MARKDOWN_LIMITS = {
 
 export const MARKDOWN_HEADERS = {
   'content-type': 'text/markdown; charset=utf-8',
+  vary: 'Accept',
   'cache-control': 'public, max-age=0, must-revalidate',
   'x-content-type-options': 'nosniff',
   'cross-origin-resource-policy': 'same-origin'
