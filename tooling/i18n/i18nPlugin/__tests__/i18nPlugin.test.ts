@@ -3,12 +3,14 @@
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { once } from 'node:events'
+import fs from 'node:fs'
 import {
   mkdir,
   mkdtemp,
   open,
   readdir,
   readFile,
+  realpath,
   rename,
   rm,
   stat,
@@ -34,7 +36,11 @@ import {
 import { i18nPlugin } from '../index.ts'
 
 type Close = () => Promise<unknown>
-type StartOptions = { context: TestContext; root?: string }
+type StartOptions = {
+  context: TestContext
+  root?: string
+  onClosing?: () => void
+}
 type DevServer = {
   root: string
   payloads: () => unknown[]
@@ -164,7 +170,8 @@ async function waitFor(check: () => Promise<boolean>): Promise<void> {
 // para o watcher não reagir à remoção.
 async function startServer({
   context,
-  root: existing
+  root: existing,
+  onClosing
 }: StartOptions): Promise<DevServer> {
   const root = existing ?? (await mkdtemp(path.join(tmpdir(), 'i18n-plugin-')))
   const closers: Close[] = []
@@ -190,7 +197,10 @@ async function startServer({
       watch: { useFsEvents: false, usePolling: false }
     },
     optimizeDeps: { noDiscovery: true, include: [] },
-    plugins: [i18nPlugin()]
+    plugins: [
+      i18nPlugin(),
+      { name: 'test:shutdown-observer', closeBundle: onClosing }
+    ]
   })
   closers.push(() => server.close())
   const send = mock.method(server.ws, 'send')
@@ -227,6 +237,85 @@ async function startServer({
 }
 
 describe('i18n dev shutdown', () => {
+  for (const restart of ['same process', 'new process']) {
+    it(`recovers an overlapping write after shutdown in the ${restart}`, async context => {
+      const closing = Promise.withResolvers<null>()
+      const server = await startServer({
+        context,
+        onClosing: () => closing.resolve(null)
+      })
+      const source = path.join(server.root, 'src/routes/Home/i18n/es.json')
+      const aggregate = '.paraglide/messages/es.json'
+      const aggregatePath = await realpath(path.join(server.root, aggregate))
+      const output = 'paraglide/messages/home_body.js'
+      const released = Promise.withResolvers<null>()
+      const read = fs.promises.readFile
+      let shouldPause = true
+
+      // Preserva os bytes lidos pelo compilador enquanto outra preparação
+      // publica o agregado novo, antes de calcular o digest.
+      context.mock.method(
+        fs.promises,
+        'readFile',
+        async (...args: Parameters<typeof read>) => {
+          const content = await read(...args)
+          if (
+            shouldPause &&
+            args[0] === aggregatePath &&
+            content.toString().includes('Primero')
+          ) {
+            shouldPause = false
+            await released.promise
+          }
+          return content
+        }
+      )
+      try {
+        await writeFile(
+          source,
+          JSON.stringify({ ...MESSAGES, home_body: 'Primero' })
+        )
+        await waitFor(() => Promise.resolve(!shouldPause))
+        context.diagnostic('Compiler paused after reading Primero')
+        await writeFile(
+          source,
+          JSON.stringify({ ...MESSAGES, home_body: 'Segundo' })
+        )
+        await waitFor(() =>
+          contains({ root: server.root, file: aggregate, expected: /Segundo/u })
+        )
+        context.diagnostic('Aggregate now contains Segundo')
+        const stopped = server.close()
+        await closing.promise
+        released.resolve(null)
+        await stopped
+        context.diagnostic('Shutdown completed after releasing the compiler')
+        assert.match(
+          await readFile(path.join(server.root, output), 'utf8'),
+          /Primero/u
+        )
+        assert.match(await readFile(aggregatePath, 'utf8'), /Segundo/u)
+
+        if (restart === 'new process') {
+          const result = await execute(
+            process.execPath,
+            ['--input-type=module', '--eval', START_IN_NEW_PROCESS],
+            { cwd: server.root }
+          )
+          context.diagnostic(result.stdout.trim())
+        } else {
+          await startServer({ context, root: server.root })
+        }
+        assert.match(
+          await readFile(path.join(server.root, output), 'utf8'),
+          /Segundo/u
+        )
+      } finally {
+        released.resolve(null)
+      }
+    })
+  }
+
   it('waits for a pending preparation when the server closes', async context => {
     const server = await startServer({ context })
     await writeFile(
