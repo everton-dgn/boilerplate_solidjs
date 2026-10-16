@@ -1,5 +1,5 @@
 import { getLocale, type Locale } from '@paraglide/runtime.js'
-import { useLocation, type TypedPath } from '@solidjs/router'
+import { useInRouter, useLocation, type TypedPath } from '@solidjs/router'
 import type { JSX } from '@solidjs/web'
 import { omit } from 'solid-js'
 
@@ -15,16 +15,8 @@ type LocalizedLinkProps = Omit<
   shouldLocalize?: boolean
 }
 
-function optionalLocation() {
-  try {
-    return useLocation()
-  } catch {
-    return null
-  }
-}
-
 export function LocalizedLink(props: LocalizedLinkProps) {
-  const location = optionalLocation()
+  const location = useInRouter() ? useLocation() : undefined
   const nativeProps = omit(
     props,
     'href',
