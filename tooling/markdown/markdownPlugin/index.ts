@@ -3,8 +3,6 @@ import path from 'node:path'
 import type { Nitro } from 'nitro/types'
 import { normalizePath, type Plugin, type ViteDevServer } from 'vite-plus'
 
-import { generateMessages } from '../../i18n/generateMessages/index.ts'
-import { isCatalogFile } from '../../i18n/readCatalogs/index.ts'
 import { configureMarkdownPreview } from '../configureMarkdownPreview/index.ts'
 import { MARKDOWN_HEADERS } from '../constants.ts'
 import { loadArtifacts } from '../loadArtifacts/index.ts'
@@ -57,8 +55,10 @@ export function markdownPlugin({
   let dependencies = new Set<string>()
   let failure: Error | undefined
   let pending = Promise.resolve()
+  let initialGeneration: Promise<void> | undefined
+  let devServer: ViteDevServer | undefined
+  let watchSources: (() => void) | undefined
   const generate = async (server?: ViteDevServer) => {
-    await generateMessages(root)
     const result = await loadArtifacts({
       root,
       directory,
@@ -71,15 +71,16 @@ export function markdownPlugin({
     })
     await publishArtifacts({ root, artifacts: result.artifacts })
     ;({ artifacts, notFound } = result)
-    dependencies = new Set(
-      result.dependencies.filter(
-        file => !file.startsWith(path.join(root, 'paraglide/'))
-      )
-    )
+    dependencies = new Set(result.dependencies)
+  }
+  const initialize = async () => {
+    await generate(devServer)
+    watchSources?.()
   }
   return {
     name: 'project:markdown',
     enforce: 'pre',
+    sharedDuringBuild: true,
     configResolved(config) {
       ;({ root } = config)
       ;({ mode, env: environment } = config)
@@ -103,12 +104,23 @@ export function markdownPlugin({
     },
     buildApp: {
       order: 'pre',
+      handler() {
+        if (shouldGenerate && !nitro) {
+          return Promise.reject(
+            new Error('Markdown publication requires the Nitro plugin')
+          )
+        }
+        return Promise.resolve()
+      }
+    },
+    buildStart: {
+      order: 'post',
+      sequential: true,
       async handler() {
         if (!shouldGenerate) return
-        await generate()
-        if (!nitro) {
-          throw new Error('Markdown publication requires the Nitro plugin')
-        }
+        initialGeneration ??= initialize()
+        pending = initialGeneration
+        await initialGeneration
       }
     },
     resolveId(id) {
@@ -127,9 +139,9 @@ export function markdownPlugin({
       if (failure) throw failure
       return serializeManifest({ artifacts, notFound })
     },
-    async configureServer(server) {
+    configureServer(server) {
       if (!shouldGenerate) return
-      await generate(server)
+      devServer = server
       let requested = 0
       let isRunning = false
       const generateRequested = async () => {
@@ -170,8 +182,7 @@ export function markdownPlugin({
             file.startsWith(path.join(root, directory) + path.sep) &&
             /\.[jt]sx?$/u.test(file)
           ) &&
-          !isCatalogFile({ root, file }) &&
-          !file.startsWith(path.join(root, 'project.inlang/'))
+          !file.startsWith(path.join(root, 'paraglide') + path.sep)
         ) {
           return
         }
@@ -179,11 +190,13 @@ export function markdownPlugin({
         if (isRunning) return
         pending = generateRequested()
       }
-      server.watcher.add([...dependencies, path.join(root, directory)])
-      server.watcher
-        .on('add', refresh)
-        .on('change', refresh)
-        .on('unlink', refresh)
+      watchSources = () => {
+        server.watcher.add([...dependencies, path.join(root, directory)])
+        server.watcher
+          .on('add', refresh)
+          .on('change', refresh)
+          .on('unlink', refresh)
+      }
       server.httpServer?.once('close', () => {
         server.watcher
           .off('add', refresh)

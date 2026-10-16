@@ -1,15 +1,18 @@
 import path from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 
-import type { Plugin, ViteDevServer } from 'vite-plus'
+import { paraglideVitePlugin } from '@inlang/paraglide-js'
+import type { Plugin, PluginOption, ViteDevServer } from 'vite-plus'
 
-import { generateMessages } from '../generateMessages/index.ts'
+import { prepareMessages } from '../prepareMessages/index.ts'
 import { isCatalogFile } from '../readCatalogs/index.ts'
 
 type ReportErrorOptions = { server: ViteDevServer; error: Error }
 type SettingsFileOptions = { root: string; file: string }
 
+const PROJECT = './project.inlang'
 const SETTINGS_FILE = 'project.inlang/settings.json'
-const COMPILER_CONFIG = 'project.inlang/paraglide.config.ts'
+const PREPARATION_DELAY_MS = 100
 
 function reportError({ server, error }: ReportErrorOptions): void {
   server.ws.send({
@@ -20,75 +23,64 @@ function reportError({ server, error }: ReportErrorOptions): void {
 
 function isSettingsFile({ root, file }: SettingsFileOptions): boolean {
   const relative = path.relative(root, file).split(path.sep).join('/')
-  return relative === SETTINGS_FILE || relative === COMPILER_CONFIG
+  return relative === SETTINGS_FILE
 }
 
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error))
 }
 
-export function i18nPlugin(): Plugin {
+function catalogPreparation(): Plugin {
   let root = process.cwd()
+  let server: ViteDevServer | undefined
   let failure: Error | undefined
-  let pendingGeneration: Promise<void> | undefined
-  let stopWatching: (() => void) | undefined
+  let pendingPreparation: Promise<void> | undefined
+  let requested = 0
+  let isRunning = false
+  const prepare = async () => {
+    try {
+      await prepareMessages(root)
+      if (!failure) return
+      failure = undefined
+      // Agregados restaurados ao conteúdo anterior não geram compilação nem
+      // HMR, então só um reload remove o overlay do erro.
+      server?.ws.send({ type: 'full-reload' })
+    } catch (error) {
+      failure = toError(error)
+      if (server) reportError({ server, error: failure })
+    }
+  }
+  const prepareRequested = async () => {
+    isRunning = true
+    try {
+      let handled = 0
+      while (handled < requested) {
+        handled = requested
+        await delay(PREPARATION_DELAY_MS)
+        if (handled < requested) continue
+        await prepare()
+      }
+    } finally {
+      isRunning = false
+    }
+  }
+  const schedule = () => {
+    requested += 1
+    if (!isRunning) pendingPreparation = prepareRequested()
+    return pendingPreparation
+  }
   return {
-    name: 'project:i18n',
+    name: 'project:i18n-catalogs',
     enforce: 'pre',
     async configResolved(config) {
       ;({ root } = config)
-      await generateMessages(root)
+      await prepareMessages(root)
     },
-    configureServer(server) {
-      let requested = 0
-      let isRunning = false
-      const generate = async () => {
-        try {
-          const recovering = failure !== undefined
-          const { changed } = await generateMessages(root)
-          failure = undefined
-          // Sem mudança na saída, só a recuperação de uma falha recarrega.
-          if (changed || recovering) server.ws.send({ type: 'full-reload' })
-        } catch (error) {
-          failure = toError(error)
-          reportError({ server, error: failure })
-        }
-      }
-      const generateRequested = async () => {
-        isRunning = true
-        try {
-          let handled = 0
-          while (handled < requested) {
-            handled = requested
-            await generate()
-          }
-        } finally {
-          isRunning = false
-        }
-      }
-      // Eventos que chegam durante uma geração viram uma única rodada extra.
-      const regenerate = () => {
-        requested += 1
-        if (isRunning) return
-        pendingGeneration = generateRequested()
-      }
-      // Agregados em .paraglide/ e a saída em paraglide/ são escritos pela
-      // própria geração e não a disparam de novo. As configurações definem os
-      // idiomas e passam pela mesma fila que os catálogos.
-      const update = (file: string) => {
-        if (isSettingsFile({ root, file }) || isCatalogFile({ root, file })) {
-          regenerate()
-        }
-      }
-      server.watcher.add([
-        path.join(root, 'src'),
-        path.join(root, SETTINGS_FILE),
-        path.join(root, COMPILER_CONFIG)
-      ])
-      server.watcher.on('add', update).on('change', update).on('unlink', update)
-      // Uma tradução inválida não pode continuar sendo servida a partir da
+    configureServer(devServer) {
+      server = devServer
+      // Um catálogo inválido não pode continuar sendo servido a partir da
       // última compilação boa, inclusive num reload completo do navegador.
-      server.middlewares.use((_request, response, next) => {
+      devServer.middlewares.use((_request, response, next) => {
         if (!failure) {
           next()
           return
@@ -98,17 +90,26 @@ export function i18nPlugin(): Plugin {
         response.setHeader('Content-Type', 'text/plain; charset=utf-8')
         response.end(failure.message)
       })
-      stopWatching = () => {
-        server.watcher
-          .off('add', update)
-          .off('change', update)
-          .off('unlink', update)
+    },
+    // Agregados e saída ficam fora do filtro para não disparar outra preparação.
+    watchChange: {
+      // O plugin oficial também lê settings; precisa aguardar este evento.
+      sequential: true,
+      handler(file) {
+        const shouldPrepare =
+          isSettingsFile({ root, file }) || isCatalogFile({ root, file })
+        return shouldPrepare ? schedule() : undefined
       }
-      server.httpServer?.once('close', stopWatching)
     },
     closeServer() {
-      stopWatching?.()
-      return pendingGeneration
+      return pendingPreparation
     }
   }
+}
+
+export function i18nPlugin(): PluginOption[] {
+  return [
+    catalogPreparation(),
+    paraglideVitePlugin({ project: PROJECT, devErrorResponse: true })
+  ]
 }
