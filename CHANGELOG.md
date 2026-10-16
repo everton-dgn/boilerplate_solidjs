@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 1.12.1 - 2026-10-16
+
+### Fixed
+
+- update Paraglide and isolate catalog debounce (80070a5)
+- invalidate compilation caches during shutdown (86fa6ad)
+- use the official Paraglide Vite plugin (cf96056)
+- wait for stable writes before regenerating messages (e1eaf31)
+- recover writes suppressed by the dev watcher (b154659)
+- normalize HTML media type matching (0cc718e)
+- complete markdown negotiation and homepage content (c0bb16a)
+
 ## 1.12.0 - 2026-10-14
 
 ### Added
