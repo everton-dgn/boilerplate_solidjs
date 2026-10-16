@@ -8,10 +8,13 @@ import { prepareMessages } from '../prepareMessages/index.ts'
 import { isCatalogFile } from '../readCatalogs/index.ts'
 
 type ReportErrorOptions = { server: ViteDevServer; error: Error }
-type SettingsFileOptions = { root: string; file: string }
+type ProjectFileOptions = { root: string; file: string }
 
 const PROJECT = './project.inlang'
-const SETTINGS_FILE = 'project.inlang/settings.json'
+const PROJECT_FILES = new Set([
+  'project.inlang/settings.json',
+  'project.inlang/paraglide.config.ts'
+])
 const PREPARATION_DELAY_MS = 100
 
 function reportError({ server, error }: ReportErrorOptions): void {
@@ -21,9 +24,9 @@ function reportError({ server, error }: ReportErrorOptions): void {
   })
 }
 
-function isSettingsFile({ root, file }: SettingsFileOptions): boolean {
+function isProjectFile({ root, file }: ProjectFileOptions): boolean {
   const relative = path.relative(root, file).split(path.sep).join('/')
-  return relative === SETTINGS_FILE
+  return PROJECT_FILES.has(relative)
 }
 
 function toError(error: unknown): Error {
@@ -93,11 +96,11 @@ function catalogPreparation(): Plugin {
     },
     // Agregados e saída ficam fora do filtro para não disparar outra preparação.
     watchChange: {
-      // O plugin oficial também lê settings; precisa aguardar este evento.
+      // O plugin oficial também lê a configuração; precisa aguardar este evento.
       sequential: true,
       handler(file) {
         const shouldPrepare =
-          isSettingsFile({ root, file }) || isCatalogFile({ root, file })
+          isProjectFile({ root, file }) || isCatalogFile({ root, file })
         return shouldPrepare ? schedule() : undefined
       }
     },

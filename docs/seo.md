@@ -333,11 +333,13 @@ erro de build; compartilhe com o HTML a fonte pública, sem importar o produtor.
 Para rotas com parâmetros, use `markdown.ts` com `getPaths({ locale, signal })`,
 que lista os caminhos públicos sem prefixo de idioma, como `/blog/meu-post`. A
 fonte pode consultar um CMS no build e usar o `signal` em operações canceláveis.
-`render` recebe o caminho enumerado e o idioma. Cada caminho precisa pertencer à
-mesma folha da árvore, respeitando os filtros do router. O gerador recusa
-caminhos inválidos, duplicatas, colisões com páginas, endpoints e arquivos de
-`public/`, conteúdo inválido e limites de quantidade, tempo e tamanho definidos
-em `tooling/markdown/constants.ts`. Falhas interrompem o build inteiro. Os
+`render` recebe o caminho enumerado e o idioma. O caminho preserva a codificação
+da URL, como `/blog/caf%C3%A9`; os `matchFilters` do router recebem o parâmetro
+decodificado, como `café`. Cada caminho precisa pertencer à mesma folha da
+árvore, respeitando esses filtros. O gerador recusa caminhos inválidos,
+duplicatas, colisões com páginas, endpoints e arquivos de `public/`, conteúdo
+inválido e limites de quantidade, tempo e tamanho definidos em
+`tooling/markdown/constants.ts`. Falhas interrompem o build inteiro. Os
 cabeçalhos são regras exatas por arquivo somente na configuração do host, sem
 replicar essas regras no runtime do Nitro. O limite local de artefatos não
 substitui os limites da plataforma de publicação, que devem ser conferidos antes

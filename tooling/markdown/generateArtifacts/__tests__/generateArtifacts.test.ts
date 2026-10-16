@@ -170,6 +170,26 @@ describe('Markdown build policy', () => {
     )
   })
 
+  it('matches decoded route parameters while preserving encoded artifact paths', async () => {
+    const artifacts = await generateArtifacts(
+      fixture({
+        routes: [{ ...DYNAMIC, matchFilters: { slug: ['café'] } }],
+        source: {
+          getPaths: () => ['/articles/caf%C3%A9'],
+          render: ({ path }) => ({ ...PAGE, title: path })
+        }
+      })
+    )
+    assert.deepEqual(
+      artifacts.map(artifact => artifact.href),
+      ['/en/articles/caf%C3%A9.md', '/pt/articles/caf%C3%A9.md']
+    )
+    assert.deepEqual(
+      artifacts.map(artifact => artifact.title),
+      ['/articles/caf%C3%A9', '/articles/caf%C3%A9']
+    )
+  })
+
   it('rejects duplicate paths after trailing-slash normalization', async () => {
     await assert.rejects(
       generateArtifacts(

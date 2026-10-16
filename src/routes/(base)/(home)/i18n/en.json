@@ -1,9 +1,9 @@
 {
   "home_title": "SolidJS Boilerplate for web applications",
-  "home_description": "Start your next project with {framework}, {toolchain} and {language}. A foundation with server-side rendering and light and dark themes.",
+  "home_description": "Start your next project with {framework}, {toolchain} and {language}. Server-side rendering and light, dark or system theme preferences are already configured.",
   "home_seoTitle": "SolidJS Boilerplate | Web applications with SSR",
   "home_featuresTitle": "What this foundation includes",
-  "home_features": "SolidJS Boilerplate brings together server-side rendering, file-based routing and TypeScript to start a web application. The structure includes interface components, light and dark themes, and pages in Portuguese, English and Spanish. Page content arrives in the initial HTML, while JavaScript adds interactive controls.",
+  "home_features": "You start with pages in Portuguese, English and Spanish, SEO defined per route and user interface components ready to adapt. Automated unit, component and browser tests accompany the source code, while backend calls handle errors without exposing server details.",
   "home_usageTitle": "When to use this",
   "home_usage": "Use this project as a starting point for SolidJS websites and applications, or as a reference for integrating SSR, translated pages and automated tests. The repository contains the source code and guides for development, architecture and SEO. When building a product from this foundation, adapt its content, public details and policies to your own requirements."
 }

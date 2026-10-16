@@ -449,6 +449,39 @@ describe('i18n dev updates', () => {
     assert.notEqual(await server.status(), HTTP_ERROR)
   })
 
+  it('compiles the complete compiler configuration without transient errors after a save in multiple writes', async context => {
+    const server = await startServer({ context })
+    const file = path.join(server.root, 'project.inlang/paraglide.config.ts')
+    const source = await readFile(file, 'utf8')
+    const statuses: number[] = []
+    const requestController = new AbortController()
+    const requestWhileSaving = async () => {
+      while (!requestController.signal.aborted) {
+        statuses.push(await server.status())
+        await delay(POLL_MS)
+      }
+    }
+    const pendingRequests = requestWhileSaving()
+
+    try {
+      await writeInParts({
+        file,
+        content: source.replace(
+          "cookieName: 'locale'",
+          "cookieName: 'test-locale'"
+        )
+      })
+      await waitFor(async () =>
+        /cookieName = "test-locale"/u.test(await readRuntime(server.root))
+      )
+      await waitFor(async () => (await server.status()) !== HTTP_ERROR)
+    } finally {
+      requestController.abort()
+      await pendingRequests
+    }
+    assert.ok(!statuses.includes(HTTP_ERROR))
+  })
+
   it('blocks requests while the compiler configuration is invalid and recovers', async context => {
     const server = await startServer({ context })
     const file = path.join(server.root, 'project.inlang/paraglide.config.ts')
