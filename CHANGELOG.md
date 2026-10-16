@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.12.2 - 2026-10-16
+
+### Fixed
+
+- remove repeated introductory copy (ad16b6d)
+- wait for compiler configuration saves (ab585e9)
+- refresh compatible runtime and toolchain dependencies (0c73aaf)
+
 ## 1.12.1 - 2026-10-16
 
 ### Fixed
