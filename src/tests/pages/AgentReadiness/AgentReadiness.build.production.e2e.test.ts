@@ -1,33 +1,69 @@
+import { readFile } from 'node:fs/promises'
+
 import { expect, test } from '@playwright/test'
+import * as v from 'valibot'
 
 const HTTP_OK = 200
 
 const LOCALES = ['pt', 'en', 'es']
 const PAGES = ['', '/about', '/contact', '/privacy']
+const STATIC_OUTPUT = new URL(
+  '../../../../.vercel/output/static/',
+  import.meta.url
+)
+const VERCEL_CONFIG = new URL('../../../../vercel.json', import.meta.url)
+
+const headerSchema = v.object({ key: v.string(), value: v.string() })
+const ruleSchema = v.object({
+  source: v.string(),
+  headers: v.array(headerSchema)
+})
+const configSchema = v.object({ headers: v.array(ruleSchema) })
 
 test.use({ headless: true })
+
+test('declares the headers of the static Markdown files', async () => {
+  const config = v.parse(
+    configSchema,
+    JSON.parse(await readFile(VERCEL_CONFIG, 'utf8'))
+  )
+  const rule = config.headers.find(({ source }) => source === '/(.*).md')
+  expect(
+    Object.fromEntries(
+      rule?.headers.map(({ key, value }) => [key, value]) ?? []
+    )
+  ).toStrictEqual({
+    'Content-Type': 'text/markdown; charset=utf-8',
+    'X-Content-Type-Options': 'nosniff',
+    'Cross-Origin-Resource-Policy': 'same-origin'
+  })
+})
 
 for (const locale of LOCALES) {
   // oxlint-disable-next-line vitest/prefer-each -- Playwright não oferece test.each.
   for (const path of PAGES) {
-    test(`serves ${locale}${path || '/'} Markdown from the deployed HTML page`, async ({
+    test(`serves ${locale}${path || '/'} Markdown generated at build time`, async ({
       request,
       browser,
       baseURL
     }) => {
       const pathname = `/${locale}${path}`
       const href = path ? `${pathname}.md` : `${pathname}/index.md`
+      const markdown = await readFile(
+        new URL(href.slice(1), STATIC_OUTPUT),
+        'utf8'
+      )
       const response = await request.get(href, { maxRedirects: 0 })
       expect(response.status()).toBe(HTTP_OK)
-      expect(response.headers()['content-type']).toContain('text/markdown')
-      expect(response.headers()['content-language']).toBe(locale)
-      expect(response.headers()['cache-control']).toBe('private, no-store')
-      const markdown = await response.text()
+      expect(response.headers()['set-cookie']).toBeUndefined()
+      expect(response.headers()['cache-control']).not.toBe('private, no-store')
+      expect(await response.text()).toBe(markdown)
       const negotiated = await request.get(pathname, {
         headers: { accept: 'text/markdown' },
         maxRedirects: 0
       })
       expect(negotiated.status()).toBe(HTTP_OK)
+      expect(negotiated.headers()['cache-control']).toBe('private, no-store')
       expect(await negotiated.text()).toBe(markdown)
       const context = await browser.newContext({
         baseURL,

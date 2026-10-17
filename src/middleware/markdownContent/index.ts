@@ -1,5 +1,6 @@
 import { m } from '@paraglide/messages.js'
 import type { StartMiddleware } from '@solidjs/vite-plugin'
+import { pageRoutes } from 'virtual:file-routes'
 
 import {
   HTTP_BAD_REQUEST,
@@ -9,6 +10,7 @@ import {
   HTTP_OK
 } from '@/constants/http.ts'
 import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
+import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { delocalizePathname } from '@/i18n/urls/index.ts'
 import { PUBLIC_ERROR_MESSAGE } from '@/infra/server/publicErrors/index.ts'
 import { Router } from '@/router.ts'
@@ -20,8 +22,9 @@ import {
 } from '../negotiatePageFormat/index.ts'
 import { isPagePath } from '../requestClassification/index.ts'
 import { applySecurityHeaders } from '../securityHeaders/index.ts'
-import { MARKDOWN_TIMEOUT_MS } from './constants.ts'
-import { convertHtml } from './convert-html.ts'
+import { MARKDOWN_PRERENDER_PATH, MARKDOWN_TIMEOUT_MS } from './constants.ts'
+import { collectStaticMarkdownPages } from './helpers/collectStaticMarkdownPages/index.ts'
+import { convertHtml } from './helpers/convertHtml/index.ts'
 
 type Event = Parameters<StartMiddleware>[0]
 type Next = Parameters<StartMiddleware>[1]
@@ -128,6 +131,28 @@ function publicResponse(status: number): Response {
   })
 }
 
+// O prerender do Nitro identifica suas requisições com este header; o build
+// grava cada caminho listado como arquivo `.md` estático.
+function isStaticListing(request: Request): boolean {
+  return (
+    request.headers.has('x-nitro-prerender') &&
+    new URL(request.url).pathname === MARKDOWN_PRERENDER_PATH
+  )
+}
+
+function listStaticMarkdown(): Response {
+  const paths = collectStaticMarkdownPages(pageRoutes)
+    .map(path => new URL(resolveSiteUrl(path)))
+    .filter(url => isEligible(url))
+    .map(url => markdownPath(url.pathname))
+  return applySecurityHeaders({
+    response: Response.json(paths, {
+      headers: { 'cache-control': 'private, no-store' }
+    }),
+    nonce: undefined
+  })
+}
+
 function notAcceptable(request: Request): Promise<Response> {
   return localizeRequest({
     request,
@@ -224,7 +249,12 @@ async function renderMarkdown({
     await response.body?.cancel()
     return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
   }
-  const markdown = await convertHtml({ response, url: url.href, signal })
+  // A origem pública resolve os links: no prerender a requisição é local.
+  const markdown = await convertHtml({
+    response,
+    url: resolveSiteUrl(`${url.pathname}${url.search}`),
+    signal
+  })
   const headers = new Headers(response.headers)
   for (const name of ['content-length', 'content-encoding', 'etag']) {
     headers.delete(name)
@@ -276,6 +306,7 @@ export async function markdownContent(
 ): Promise<Response> {
   const original = event.request
   if (!['GET', 'HEAD'].includes(original.method)) return render()
+  if (isStaticListing(original)) return listStaticMarkdown()
   const originalUrl = new URL(original.url)
   const url = documentUrl(original)
   if (

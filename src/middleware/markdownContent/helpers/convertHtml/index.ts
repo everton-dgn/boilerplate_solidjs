@@ -1,7 +1,7 @@
 import { htmlToMarkdown } from '@mdream/js'
 import { filterPlugin, isolateMainPlugin } from '@mdream/js/plugins'
 
-import { EXCLUDED_ELEMENTS, MAX_HTML_BYTES } from './constants.ts'
+import { EXCLUDED_ELEMENTS, MAX_HTML_BYTES } from '../../constants.ts'
 
 type ConvertOptions = { response: Response; url: string; signal: AbortSignal }
 

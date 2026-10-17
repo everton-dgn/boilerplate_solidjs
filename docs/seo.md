@@ -261,12 +261,15 @@ do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
 
 ## Leitura por agentes
 
-O Markdown é derivado do HTML renderizado na requisição. A folha da rota deve
-declarar `route.info.markdown: true`; a elegibilidade usa o SEO efetivo,
-inclusive a herança e um `noindex: false` explícito no filho. `llms` continua
-independente: decide a inclusão no índice. Login e conteúdo por visitante não
-devem optar pela publicação. O opt-in é um compromisso de conteúdo público, não
-um mecanismo de autorização.
+O Markdown é derivado do HTML renderizado. Com `route.info.markdown: true` na
+folha da rota, o build gera um arquivo `.md` por idioma; com `'dynamic'`, a
+conversão acontece a cada requisição, para páginas cujo conteúdo depende dela.
+Rotas com parâmetro ficam sempre na requisição, porque o build não conhece seus
+valores. A elegibilidade usa o SEO efetivo, inclusive a herança e um
+`noindex: false` explícito no filho. `llms` continua independente: decide a
+inclusão no índice. Login e conteúdo por visitante não devem optar pela
+publicação. O opt-in é um compromisso de conteúdo público, não um mecanismo de
+autorização.
 
 `/pt/index.md` representa a home e `/pt/about.md` representa a página sobre. Uma
 página cujo último segmento é `index` acrescenta `/index.md`: `/pt/index` usa
@@ -297,12 +300,22 @@ hook global pode deduplicar avisos e não serve como prova de integridade. HTML
 normal mantém streaming. O contrato e o critério para remover os patches estão
 em [erros no servidor](server-errors.md#integridade-do-ssr-para-markdown).
 
-`@mdream/js` recebe a URL completa do documento para resolver links relativos.
-Seus seletores isolam o conteúdo principal e removem navegação, controles,
-scripts, templates, SVG, elementos com `hidden`, `aria-hidden="true"` e
-`data-md-exclude`. Rodapés contextuais dentro de main permanecem. CSS calculado
-e conteúdo criado exclusivamente no navegador não são interpretados. Use
-marcação semântica para conteúdo que não deve aparecer.
+O prerender do build passa pelo mesmo adaptador. O módulo
+`tooling/markdownPrerender/` pede ao middleware a lista das páginas estáticas
+(`/_markdown/static.json`, respondida só com o header `x-nitro-prerender`),
+prerenderiza cada `.md` e não grava a lista. Uma página que falhe, ou uma lista
+inválida, interrompe o build. O resultado fica em `.vercel/output/static`.
+
+`@mdream/js` recebe o caminho do documento sobre a origem pública
+(`VITE_SITE_URL`) para resolver links relativos; no prerender, a requisição é
+local. Seus seletores isolam o conteúdo principal e removem navegação,
+controles, formulários, diálogos, regiões `aria-live`, widgets ARIA, texto
+alternativo de mídia, scripts, templates, SVG, `aria-hidden="true"` e
+`data-md-exclude`. O próprio conversor descarta `hidden`, exceto
+`hidden="until-found"`, que é conteúdo pesquisável. Rodapés contextuais dentro
+de main permanecem. CSS calculado e conteúdo criado exclusivamente no navegador
+não são interpretados. Use marcação semântica para conteúdo que não deve
+aparecer.
 
 GET com `Accept: text/markdown` recebe Markdown diretamente, sem redirect para
 arquivo. A negociação respeita pesos e especificidade, com HTML em empate. O
@@ -318,11 +331,14 @@ segue redirects. Erros não viram documentos de sucesso. Um 404 HTML negociado
 mantém status 404, idioma e `noindex`; páginas sem opt-in não publicam seu
 conteúdo de sucesso pelo alias Markdown.
 
-As respostas convertidas recebem `text/markdown; charset=utf-8`,
+As respostas convertidas na requisição recebem `text/markdown; charset=utf-8`,
 `private, no-store`, `Vary: Accept` adicional ao Vary existente e CSP com
-`script-src 'none'`. Não há arquivos Markdown físicos no build, regras especiais
-de index.md na Vercel nem cache compartilhado. A política de cache do deployment
-ainda exige prova própria.
+`script-src 'none'`. Os arquivos do build são servidos pela camada estática, sem
+passar pela função: o `vercel.json` define `Content-Type`, `nosniff` e
+`Cross-Origin-Resource-Policy`, e o cache segue o padrão da Vercel para
+estáticos. Eles não gravam cookie de idioma nem `Content-Language`; o idioma vem
+da URL. O preview local (`vp run start`) não aplica o `vercel.json` e serve
+`.md` como `application/octet-stream`.
 
 Os limites ficam em `src/middleware/markdownContent/constants.ts`: espera de SSR
 cancelável e tamanho máximo do HTML antes da conversão síncrona. Timeout e

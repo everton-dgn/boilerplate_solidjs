@@ -7,10 +7,19 @@ import {
 } from '@solidjs/web'
 import { createMemo, Loading, onCleanup } from 'solid-js'
 
+import { SITE } from '@/constants/site.ts'
 import { Router } from '@/router.ts'
 
-import { MARKDOWN_TIMEOUT_MS, MAX_HTML_BYTES } from '../constants.ts'
+import {
+  MARKDOWN_PRERENDER_PATH,
+  MARKDOWN_TIMEOUT_MS,
+  MAX_HTML_BYTES
+} from '../constants.ts'
 import { markdownContent } from '../index.ts'
+
+vi.mock(import('../helpers/collectStaticMarkdownPages/index.ts'), () => ({
+  collectStaticMarkdownPages: () => ['/pt', '/en/about', '/en/private']
+}))
 
 const HTTP_OK = 200
 const HTTP_REDIRECT = 307
@@ -114,8 +123,10 @@ describe('html-derived Markdown', () => {
       hasNoScripts: true
     })
     expect(body).toMatch(/# Title[\s\S]*Contextual aside/u)
-    expect(body).toContain('[Next](https://example.com/en/docs/next)')
-    expect(body).toContain('[Citation](https://example.com/en/docs/source)')
+    expect(body).toContain(`[Next](${new URL('/en/docs/next', SITE.url).href})`)
+    expect(body).toContain(
+      `[Citation](${new URL('/en/docs/source', SITE.url).href})`
+    )
     expect(body).not.toMatch(
       /Navigation|Hidden|ARIA|Excluded|Secret script|Control|Menu controls/u
     )
@@ -129,6 +140,74 @@ describe('html-derived Markdown', () => {
     )
     expect(response).toBe(original)
     expect(request.renderMode).toBeUndefined()
+  })
+})
+
+function prerender(path: string): RequestEvent {
+  return createRequestEvent(
+    new Request(`https://example.com${path}`, {
+      headers: { 'x-nitro-prerender': path }
+    })
+  )
+}
+
+describe('build-time Markdown', () => {
+  it('lists the publishable static pages for the build prerender', async () => {
+    vi.spyOn(Router, 'match').mockImplementation(href => {
+      const { pathname } = new URL(href)
+      return [
+        {
+          path: pathname,
+          pattern: pathname,
+          match: pathname,
+          params: {},
+          info: {
+            markdown: true,
+            seo: { noindex: pathname === '/en/private' }
+          }
+        }
+      ]
+    })
+    const next = vi.fn<() => Promise<Response>>(() => html())
+    const response = await markdownContent(
+      prerender(MARKDOWN_PRERENDER_PATH),
+      next
+    )
+    expect(next).not.toHaveBeenCalled()
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
+    await expect(response.json()).resolves.toStrictEqual([
+      '/pt/index.md',
+      '/en/about.md'
+    ])
+  })
+
+  it('keeps the listing path private outside the prerender', async () => {
+    const original = new Response('missing', { status: HTTP_NOT_FOUND })
+    const response = await markdownContent(
+      event({ path: MARKDOWN_PRERENDER_PATH, accept: 'application/json' }),
+      () => Promise.resolve(original)
+    )
+    expect(response).toBe(original)
+  })
+
+  it('converts a dynamic page on request', async () => {
+    vi.spyOn(Router, 'match').mockReturnValue([
+      {
+        path: '/blog',
+        pattern: '/blog',
+        match: '/blog',
+        params: {},
+        info: { markdown: 'dynamic' }
+      }
+    ])
+    const response = await markdownContent(event({ path: '/en/blog.md' }), () =>
+      html()
+    )
+    expect(response.status).toBe(HTTP_OK)
+    expect(response.headers.get('content-type')).toBe(
+      'text/markdown; charset=utf-8'
+    )
+    await expect(response.text()).resolves.toContain('# Title')
   })
 })
 

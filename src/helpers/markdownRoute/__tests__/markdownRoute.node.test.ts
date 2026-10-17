@@ -17,6 +17,14 @@ describe('hTML-derived Markdown', () => {
     )
   })
 
+  it('publishes dynamic pages under the same SEO rule', () => {
+    expect(isMarkdownRoute([{ markdown: 'dynamic' }])).toBe(true)
+    expect(
+      isMarkdownRoute([{ markdown: 'dynamic', seo: { noindex: true } }])
+    ).toBe(false)
+    expect(isMarkdownRoute([{ markdown: false }])).toBe(false)
+  })
+
   it.each([
     ['/', '/index.md'],
     ['/pt', '/pt/index.md'],

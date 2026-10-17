@@ -8,8 +8,9 @@ const LAST_MATCH = -1
 export function isMarkdownRoute(
   info: readonly (RouteInfo | undefined)[]
 ): boolean {
+  const markdown = info.at(LAST_MATCH)?.markdown
   return (
-    info.at(LAST_MATCH)?.markdown === true &&
+    (markdown === true || markdown === 'dynamic') &&
     !resolveRouteSeo(info.map(route => route?.seo)).noindex
   )
 }
