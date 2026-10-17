@@ -12,9 +12,9 @@ As versões exatas vivem no `package.json`, não nesta página:
 - Node: o runtime do Vitest, testes de tooling e SSR de produção.
   `devEngines.runtime` fixa a versão exata, dentro da linha declarada em
   `engines.node`.
-- Bun: o instalador e runtime de desenvolvimento, build, lint de CSS e automação
-  de release, fixado em `packageManager`. O Vite+ seleciona essa versão para a
-  instalação e para o comando `bun`.
+- Bun: o instalador e runtime de desenvolvimento, build, Knip, lint de CSS e
+  automação de release, fixado em `packageManager`. O Vite+ seleciona essa
+  versão para a instalação e para o comando `bun`.
 - Chromium do Playwright: usado pelos testes de navegador e E2E. Não é baixado
   no `vp install`; instale uma vez com `vp run test:browser:install`.
 
@@ -171,6 +171,10 @@ cache.
 | `vp run commitlint`           | Validar mensagem de commit                                  |
 
 ## Execução e cache
+
+O Knip executa em Bun pelo binário `knip-bun`, inclusive em `dead-code:fix`. Com
+Node, o carregamento deste `vite.config.ts` pelo Jiti falha ao avaliar as
+factories de `lazyPlugins`. O carregador nativo do Bun aceita a configuração.
 
 Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
 comando embutido; `vp run <script>` executa um script do `package.json`. Os dois

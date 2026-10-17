@@ -174,7 +174,7 @@ export default defineConfig(({ mode }) => {
         },
         'dead-code-project': {
           command:
-            'knip --config tooling/knip.ts && knip --config tooling/knip.ts --strict && knip --config tooling/knip.ts --cycles',
+            'knip-bun --config tooling/knip.ts && knip-bun --config tooling/knip.ts --strict && knip-bun --config tooling/knip.ts --cycles',
           cache: {
             env: ['NODE_ENV'],
             input: [
