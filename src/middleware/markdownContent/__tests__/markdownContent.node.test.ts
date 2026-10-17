@@ -22,7 +22,11 @@ vi.mock(import('../helpers/collectStaticMarkdownPages/index.ts'), () => ({
 }))
 
 const HTTP_OK = 200
+const HTTP_MOVED_PERMANENTLY = 301
+const HTTP_FOUND = 302
+const HTTP_SEE_OTHER = 303
 const HTTP_REDIRECT = 307
+const HTTP_PERMANENT_REDIRECT = 308
 const HTTP_BAD_REQUEST = 400
 const HTTP_UNAUTHORIZED = 401
 const HTTP_FORBIDDEN = 403
@@ -152,6 +156,38 @@ function prerender(path: string): RequestEvent {
 }
 
 describe('build-time Markdown', () => {
+  it.each([
+    HTTP_MOVED_PERMANENTLY,
+    HTTP_FOUND,
+    HTTP_SEE_OTHER,
+    HTTP_REDIRECT,
+    HTTP_PERMANENT_REDIRECT
+  ])(
+    'fails the prerender instead of publishing an HTTP %s redirect body',
+    async status => {
+      mockPublishedRoute()
+      const cancel = vi.fn<() => void>()
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('Redirect body'))
+        },
+        cancel
+      })
+      const response = await markdownContent(prerender('/en/about.md'), () =>
+        Promise.resolve(
+          new Response(body, {
+            status,
+            headers: { location: '/en/contact' }
+          })
+        )
+      )
+      expect(response.status).toBe(HTTP_SERVER_ERROR)
+      expect(response.headers.has('location')).toBe(false)
+      await expect(response.text()).resolves.not.toContain('Redirect body')
+      expect(cancel).toHaveBeenCalledOnce()
+    }
+  )
+
   it('lists the publishable static pages for the build prerender', async () => {
     vi.spyOn(Router, 'match').mockImplementation(href => {
       const { pathname } = new URL(href)

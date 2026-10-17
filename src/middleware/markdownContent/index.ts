@@ -39,6 +39,7 @@ const LAST_MATCH = -1
 const REDIRECT_START = 300
 
 type RedirectOptions = { response: Response; url: URL }
+type RedirectContext = RedirectOptions & { request: Request }
 type RouteRequest = { request: Request; url: URL }
 
 function unpublished(request: Request): Promise<Response> {
@@ -182,7 +183,16 @@ function varyAccept(response: Response): Response {
   return response
 }
 
-function preserveRedirect({ response, url }: RedirectOptions): Response {
+async function resolveRedirect({
+  response,
+  url,
+  request
+}: RedirectContext): Promise<Response> {
+  if (request.headers.has('x-nitro-prerender')) {
+    // Nitro aceita redirects no prerender, mas o arquivo perde o status HTTP.
+    await response.body?.cancel()
+    return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
+  }
   const headers = new Headers(response.headers)
   headers.set('cache-control', 'private, no-store')
   const redirect = varyAccept(
@@ -223,7 +233,9 @@ async function renderMarkdown({
   signal.throwIfAborted()
   const url = new URL(event.request.url)
   if (response.status >= REDIRECT_START && response.status < HTTP_BAD_REQUEST) {
-    return isDirect ? preserveRedirect({ response, url }) : response
+    return isDirect
+      ? resolveRedirect({ response, url, request: event.request })
+      : response
   }
   const isNotFound = response.status === HTTP_NOT_FOUND
 
