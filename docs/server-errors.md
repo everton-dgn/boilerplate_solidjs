@@ -475,27 +475,31 @@ o SSR, antes de publicar HTML convertido. Estado ausente ou inválido resulta em
 erro público 500 sem cache. Redirects e respostas que não são páginas elegíveis
 preservam seu fluxo anterior.
 
-O estado é observacional. Registra falhas do render, lançamentos síncronos nas
-escritas do serializador e falhas informadas ao hook local quando ele existe.
-Não detecta erros suprimidos internamente pelo serializador nem lançamentos
-assíncronos que ele não reporte ao render. A entrada não instala hook local; o
-contrato de presença do callback e a política global permanecem preservados.
+O serializador padrão informa falhas de parse e de emissão ao render, inclusive
+sem um hook local. A primeira falha marca `hasErrors`, passa pela política de
+`configureServerErrors` e encerra o render sem chamar `onCompleteAll`. Falhas
+síncronas também seguem esse caminho, sem relançar a exceção para o chamador. O
+descarte libera o owner e as fontes assíncronas pendentes. A entrada continua
+sem um `onError` local, preservando a sanitização e o log globais.
 
-No serializador padrão, o descarte silencioso durante a serialização remove
-dados de hidratação. O HTML dos fragmentos segue um caminho separado e o
-fechamento aguarda os fragmentos pendentes. Markdown usa esse HTML assentado e
-exclui scripts, sem depender do payload de hidratação. Isso não comprova a
-integridade de serializadores personalizados; qualquer adoção exige validar
-novamente a relação entre conteúdo, conclusão e erros observáveis.
+Esse encerramento também vale para HTML em streaming. Os bytes já enviados não
+podem ser recolhidos; a conexão termina com o conteúdo que já saiu. Markdown
+aguarda o render e recusa a publicação com erro público 500 e
+`cache-control: private, no-store`. Uma falha de serialização não depende do
+timeout do adaptador para encerrar a resposta.
 
-Os patches Bun de `solid-js` e `@solidjs/web` aplicam o delta de
+Serializadores personalizados mantêm seu contrato anterior de callbacks. O
+estado registra lançamentos síncronos nas escritas e falhas informadas ao hook
+local, quando fornecido. Erros suprimidos internamente não são observáveis.
+Qualquer adoção exige validar a relação entre conteúdo, conclusão e falhas.
+
+Os patches Bun de `solid-js` e `@solidjs/web` aplicam as mudanças de
 [solidjs/solid#4126](https://github.com/solidjs/solid/pull/4126) às versões
 fixadas no manifest e lock. Cobrem os runtimes padrão, de desenvolvimento e de
-observação, além das duas declarações públicas de web. A versão instalada não
-tem o catch de descarte presente na base upstream; esse comportamento adicional
-não foi transplantado. Erros de descarte que interrompem a conclusão continuam
-recusados pelo estado incompleto ou pelo catch do adaptador. A política
-existente de `configureServerErrors` permanece intacta.
+observação, além das duas declarações públicas de web. O patch de web também
+contém a proteção upstream contra exceções durante o descarte do owner: a falha
+é informada à política global e a limpeza prossegue. Isso impede que um
+`onCleanup` que lance uma exceção interrompa o encerramento agendado.
 
 Remova os patches somente quando os pacotes publicados incluírem esse contrato e
 passarem as regressões de erro reutilizado entre requisições, falha de server
