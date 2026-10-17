@@ -1,8 +1,7 @@
 diff --git a/dist/server.dev.js b/dist/server.dev.js
-index 5551ee8481cf2ab3ae9ef4013df710cc8cbb70da..b002cef3f2f9850c0d0853ba367d815653d8c963 100644
 --- a/dist/server.dev.js
 +++ b/dist/server.dev.js
-@@ -1885,6 +1885,10 @@ function renderToStream(code, options = {}) {
+@@ -1885,9 +1885,21 @@
    if (requestEvent) setRequestErrorHook(requestEvent, options.onError);
    let dispose;
    let dead = false;
@@ -13,7 +12,18 @@ index 5551ee8481cf2ab3ae9ef4013df710cc8cbb70da..b002cef3f2f9850c0d0853ba367d8156
    let render;
    let rootOwner;
    let serializer;
-@@ -1943,6 +1947,7 @@ function renderToStream(code, options = {}) {
++  const writeSerialized = (id, value) => {
++    try {
++      return serializer.write(id, value);
++    } catch (err) {
++      recordRenderError();
++      throw err;
++    }
++  };
+   let disconnected = false;
+   let failed = false;
+   let onFailed;
+@@ -1943,6 +1955,7 @@
        try {
          serializer.close();
        } catch (err) {
@@ -21,7 +31,7 @@ index 5551ee8481cf2ab3ae9ef4013df710cc8cbb70da..b002cef3f2f9850c0d0853ba367d8156
          reportServerError(err, {
            kind: "render",
            handling: "serialize"
-@@ -1960,6 +1965,7 @@ function renderToStream(code, options = {}) {
+@@ -1960,6 +1973,7 @@
      } else if (!sink && onDisconnectedBeforeShell) onDisconnectedBeforeShell();
    };
    const failRender = err => {
@@ -29,26 +39,70 @@ index 5551ee8481cf2ab3ae9ef4013df710cc8cbb70da..b002cef3f2f9850c0d0853ba367d8156
      reportServerError(err, {
        kind: "render",
        handling: "failed"
-@@ -2114,12 +2120,17 @@ function renderToStream(code, options = {}) {
+@@ -2034,12 +2048,12 @@
+     stubBatch = null;
+     if (batch.size === 1) {
+       const [id, p] = batch.entries().next().value;
+-      serializer.write(id, p);
++      writeSerialized(id, p);
+       return;
+     }
+     const obj = {};
+     for (const [id, p] of batch) obj[id] = p;
+-    serializer.write(STUB_BATCH_KEY, obj);
++    writeSerialized(STUB_BATCH_KEY, obj);
+     pushTask(`(b=>{for(var k in b)_$HY.r[k]=b[k];delete _$HY.r["${STUB_BATCH_KEY}"]})(_$HY.r["${STUB_BATCH_KEY}"])`);
+   };
+   let headerEmitted = false;
+@@ -2114,12 +2128,19 @@
      },
      ...options.sink
    };
-+  const onSerializerError = serializerErrorHook(options.onError);
++  const observeSerializerError = hook =>
++    hook === undefined
++      ? undefined
++      : err => {
++          recordRenderError();
++          hook(err);
++        };
    serializer = (options.serializer || createHydrationSerializer)({
      scopeId: options.renderId,
      plugins: options.plugins,
      onData: payload => sink.data(payload),
      onDone,
 -    onError: serializerErrorHook(options.onError)
-+    onError: err => {
-+      recordRenderError();
-+      if (onSerializerError === undefined) throw err;
-+      onSerializerError(err);
-+    }
++    onError: observeSerializerError(serializerErrorHook(options.onError))
    });
    let rootAssetsSerialized = false;
    const serializeRootAssets = () => {
-@@ -2472,6 +2483,7 @@ function renderToStream(code, options = {}) {
+@@ -2359,7 +2380,7 @@
+       if (p && typeof p === "object" && typeof p.then === "function") {
+         if (!firstFlushed && deferStream) {
+           blockingPromises.add(p);
+-          p.then(d => serializer.write(id, d)).catch(e => serializer.write(id, e));
++          p.then(d => writeSerialized(id, d)).catch(e => writeSerialized(id, e));
+           return;
+         }
+         p = trackSerialized(id, p);
+@@ -2368,7 +2389,7 @@
+           return;
+         }
+       }
+-      serializer.write(id, p);
++      writeSerialized(id, p);
+     },
+     escape: escape,
+     resolve: resolveSSRNode,
+@@ -2403,7 +2424,7 @@
+             queue(flushEnd);
+           }))
+         });
+-        if (canBatchStubs && !shellCompleted && !dead) (stubBatch ||= new Map()).set(key + "_fr", p);else serializer.write(key + "_fr", p);
++        if (canBatchStubs && !shellCompleted && !dead) (stubBatch ||= new Map()).set(key + "_fr", p);else writeSerialized(key + "_fr", p);
+       }
+       return (value, error, escaped) => {
+         if (registry.has(key)) {
+@@ -2472,6 +2493,7 @@
    applyAssetTracking(context, tracking, manifest, noScripts);
    context.failRender = failRender;
    context.errorPolicy = options.onError;
@@ -56,7 +110,7 @@ index 5551ee8481cf2ab3ae9ef4013df710cc8cbb70da..b002cef3f2f9850c0d0853ba367d8156
    context.flushed = () => firstFlushed;
    context.trace = requestEvent ? traceForEvent(requestEvent) : traceFor(context, undefined);
    render = timeDocument(context, context.trace, "stream", requestEvent);
-@@ -2491,6 +2503,7 @@ function renderToStream(code, options = {}) {
+@@ -2491,6 +2513,7 @@
      try {
        res = resolveSSRNode(escape(code()));
      } catch (err) {
@@ -64,7 +118,7 @@ index 5551ee8481cf2ab3ae9ef4013df710cc8cbb70da..b002cef3f2f9850c0d0853ba367d8156
        reportServerError(err, {
          kind: "render",
          handling: "failed"
-@@ -2671,6 +2684,9 @@ function renderToStream(code, options = {}) {
+@@ -2671,6 +2694,9 @@
      return p;
    };
    return {
@@ -75,10 +129,9 @@ index 5551ee8481cf2ab3ae9ef4013df710cc8cbb70da..b002cef3f2f9850c0d0853ba367d8156
        const freezeHead = () => {
          if (requestEvent && requestEvent.response) commitResponseStub(requestEvent.response, {
 diff --git a/dist/server.js b/dist/server.js
-index b251a2c7ecda213cd58193e51724a7f6c954a5ae..2344d2823eba32e9a68ff04e9fc9cb400b437230 100644
 --- a/dist/server.js
 +++ b/dist/server.js
-@@ -1620,6 +1620,10 @@ function renderToStream(code, options = {}) {
+@@ -1620,9 +1620,21 @@
    if (requestEvent) setRequestErrorHook(requestEvent, options.onError);
    let dispose;
    let dead = false;
@@ -89,7 +142,18 @@ index b251a2c7ecda213cd58193e51724a7f6c954a5ae..2344d2823eba32e9a68ff04e9fc9cb40
    let render;
    let rootOwner;
    let serializer;
-@@ -1667,6 +1671,7 @@ function renderToStream(code, options = {}) {
++  const writeSerialized = (id, value) => {
++    try {
++      return serializer.write(id, value);
++    } catch (err) {
++      recordRenderError();
++      throw err;
++    }
++  };
+   let disconnected = false;
+   let failed = false;
+   let onFailed;
+@@ -1667,6 +1679,7 @@
        try {
          serializer.close();
        } catch (err) {
@@ -97,7 +161,7 @@ index b251a2c7ecda213cd58193e51724a7f6c954a5ae..2344d2823eba32e9a68ff04e9fc9cb40
          reportServerError(err, {
            kind: "render",
            handling: "serialize"
-@@ -1684,6 +1689,7 @@ function renderToStream(code, options = {}) {
+@@ -1684,6 +1697,7 @@
      } else if (!sink && onDisconnectedBeforeShell) onDisconnectedBeforeShell();
    };
    const failRender = err => {
@@ -105,26 +169,70 @@ index b251a2c7ecda213cd58193e51724a7f6c954a5ae..2344d2823eba32e9a68ff04e9fc9cb40
      reportServerError(err, {
        kind: "render",
        handling: "failed"
-@@ -1828,12 +1834,17 @@ function renderToStream(code, options = {}) {
+@@ -1748,12 +1762,12 @@
+     stubBatch = null;
+     if (batch.size === 1) {
+       const [id, p] = batch.entries().next().value;
+-      serializer.write(id, p);
++      writeSerialized(id, p);
+       return;
+     }
+     const obj = {};
+     for (const [id, p] of batch) obj[id] = p;
+-    serializer.write(STUB_BATCH_KEY, obj);
++    writeSerialized(STUB_BATCH_KEY, obj);
+     pushTask(`(b=>{for(var k in b)_$HY.r[k]=b[k];delete _$HY.r["${STUB_BATCH_KEY}"]})(_$HY.r["${STUB_BATCH_KEY}"])`);
+   };
+   let headerEmitted = false;
+@@ -1828,12 +1842,19 @@
      },
      ...options.sink
    };
-+  const onSerializerError = serializerErrorHook(options.onError);
++  const observeSerializerError = hook =>
++    hook === undefined
++      ? undefined
++      : err => {
++          recordRenderError();
++          hook(err);
++        };
    serializer = (options.serializer || createHydrationSerializer)({
      scopeId: options.renderId,
      plugins: options.plugins,
      onData: payload => sink.data(payload),
      onDone,
 -    onError: serializerErrorHook(options.onError)
-+    onError: err => {
-+      recordRenderError();
-+      if (onSerializerError === undefined) throw err;
-+      onSerializerError(err);
-+    }
++    onError: observeSerializerError(serializerErrorHook(options.onError))
    });
    let rootAssetsSerialized = false;
    const serializeRootAssets = () => {
-@@ -2170,6 +2181,7 @@ function renderToStream(code, options = {}) {
+@@ -2057,7 +2078,7 @@
+       if (p && typeof p === "object" && typeof p.then === "function") {
+         if (!firstFlushed && deferStream) {
+           blockingPromises.add(p);
+-          p.then(d => serializer.write(id, d)).catch(e => serializer.write(id, e));
++          p.then(d => writeSerialized(id, d)).catch(e => writeSerialized(id, e));
+           return;
+         }
+         p = trackSerialized(id, p);
+@@ -2066,7 +2087,7 @@
+           return;
+         }
+       }
+-      serializer.write(id, p);
++      writeSerialized(id, p);
+     },
+     escape: escape,
+     resolve: resolveSSRNode,
+@@ -2101,7 +2122,7 @@
+             queue(flushEnd);
+           }))
+         });
+-        if (canBatchStubs && !shellCompleted && !dead) (stubBatch ||= new Map()).set(key + "_fr", p);else serializer.write(key + "_fr", p);
++        if (canBatchStubs && !shellCompleted && !dead) (stubBatch ||= new Map()).set(key + "_fr", p);else writeSerialized(key + "_fr", p);
+       }
+       return (value, error, escaped) => {
+         if (registry.has(key)) {
+@@ -2170,6 +2191,7 @@
    applyAssetTracking(context, tracking, manifest, noScripts);
    context.failRender = failRender;
    context.errorPolicy = options.onError;
@@ -132,7 +240,7 @@ index b251a2c7ecda213cd58193e51724a7f6c954a5ae..2344d2823eba32e9a68ff04e9fc9cb40
    context.flushed = () => firstFlushed;
    context.trace = requestEvent ? traceForEvent(requestEvent) : traceFor(context, undefined);
    render = timeDocument(context, context.trace);
-@@ -2189,6 +2201,7 @@ function renderToStream(code, options = {}) {
+@@ -2189,6 +2211,7 @@
      try {
        res = resolveSSRNode(escape(code()));
      } catch (err) {
@@ -140,7 +248,7 @@ index b251a2c7ecda213cd58193e51724a7f6c954a5ae..2344d2823eba32e9a68ff04e9fc9cb40
        reportServerError(err, {
          kind: "render",
          handling: "failed"
-@@ -2369,6 +2382,9 @@ function renderToStream(code, options = {}) {
+@@ -2369,6 +2392,9 @@
      return p;
    };
    return {
@@ -151,10 +259,9 @@ index b251a2c7ecda213cd58193e51724a7f6c954a5ae..2344d2823eba32e9a68ff04e9fc9cb40
        const freezeHead = () => {
          if (requestEvent && requestEvent.response) commitResponseStub(requestEvent.response, {
 diff --git a/dist/server.observe.js b/dist/server.observe.js
-index f5198885c360275845344c9871f8104f2df1d160..272b2410a4c4636c0f914ff15eff2f25f3290767 100644
 --- a/dist/server.observe.js
 +++ b/dist/server.observe.js
-@@ -1716,6 +1716,10 @@ function renderToStream(code, options = {}) {
+@@ -1716,9 +1716,21 @@
    if (requestEvent) setRequestErrorHook(requestEvent, options.onError);
    let dispose;
    let dead = false;
@@ -165,7 +272,18 @@ index f5198885c360275845344c9871f8104f2df1d160..272b2410a4c4636c0f914ff15eff2f25
    let render;
    let rootOwner;
    let serializer;
-@@ -1774,6 +1778,7 @@ function renderToStream(code, options = {}) {
++  const writeSerialized = (id, value) => {
++    try {
++      return serializer.write(id, value);
++    } catch (err) {
++      recordRenderError();
++      throw err;
++    }
++  };
+   let disconnected = false;
+   let failed = false;
+   let onFailed;
+@@ -1774,6 +1786,7 @@
        try {
          serializer.close();
        } catch (err) {
@@ -173,7 +291,7 @@ index f5198885c360275845344c9871f8104f2df1d160..272b2410a4c4636c0f914ff15eff2f25
          reportServerError(err, {
            kind: "render",
            handling: "serialize"
-@@ -1791,6 +1796,7 @@ function renderToStream(code, options = {}) {
+@@ -1791,6 +1804,7 @@
      } else if (!sink && onDisconnectedBeforeShell) onDisconnectedBeforeShell();
    };
    const failRender = err => {
@@ -181,26 +299,70 @@ index f5198885c360275845344c9871f8104f2df1d160..272b2410a4c4636c0f914ff15eff2f25
      reportServerError(err, {
        kind: "render",
        handling: "failed"
-@@ -1945,12 +1951,17 @@ function renderToStream(code, options = {}) {
+@@ -1865,12 +1879,12 @@
+     stubBatch = null;
+     if (batch.size === 1) {
+       const [id, p] = batch.entries().next().value;
+-      serializer.write(id, p);
++      writeSerialized(id, p);
+       return;
+     }
+     const obj = {};
+     for (const [id, p] of batch) obj[id] = p;
+-    serializer.write(STUB_BATCH_KEY, obj);
++    writeSerialized(STUB_BATCH_KEY, obj);
+     pushTask(`(b=>{for(var k in b)_$HY.r[k]=b[k];delete _$HY.r["${STUB_BATCH_KEY}"]})(_$HY.r["${STUB_BATCH_KEY}"])`);
+   };
+   let headerEmitted = false;
+@@ -1945,12 +1959,19 @@
      },
      ...options.sink
    };
-+  const onSerializerError = serializerErrorHook(options.onError);
++  const observeSerializerError = hook =>
++    hook === undefined
++      ? undefined
++      : err => {
++          recordRenderError();
++          hook(err);
++        };
    serializer = (options.serializer || createHydrationSerializer)({
      scopeId: options.renderId,
      plugins: options.plugins,
      onData: payload => sink.data(payload),
      onDone,
 -    onError: serializerErrorHook(options.onError)
-+    onError: err => {
-+      recordRenderError();
-+      if (onSerializerError === undefined) throw err;
-+      onSerializerError(err);
-+    }
++    onError: observeSerializerError(serializerErrorHook(options.onError))
    });
    let rootAssetsSerialized = false;
    const serializeRootAssets = () => {
-@@ -2303,6 +2314,7 @@ function renderToStream(code, options = {}) {
+@@ -2190,7 +2211,7 @@
+       if (p && typeof p === "object" && typeof p.then === "function") {
+         if (!firstFlushed && deferStream) {
+           blockingPromises.add(p);
+-          p.then(d => serializer.write(id, d)).catch(e => serializer.write(id, e));
++          p.then(d => writeSerialized(id, d)).catch(e => writeSerialized(id, e));
+           return;
+         }
+         p = trackSerialized(id, p);
+@@ -2199,7 +2220,7 @@
+           return;
+         }
+       }
+-      serializer.write(id, p);
++      writeSerialized(id, p);
+     },
+     escape: escape,
+     resolve: resolveSSRNode,
+@@ -2234,7 +2255,7 @@
+             queue(flushEnd);
+           }))
+         });
+-        if (canBatchStubs && !shellCompleted && !dead) (stubBatch ||= new Map()).set(key + "_fr", p);else serializer.write(key + "_fr", p);
++        if (canBatchStubs && !shellCompleted && !dead) (stubBatch ||= new Map()).set(key + "_fr", p);else writeSerialized(key + "_fr", p);
+       }
+       return (value, error, escaped) => {
+         if (registry.has(key)) {
+@@ -2303,6 +2324,7 @@
    applyAssetTracking(context, tracking, manifest, noScripts);
    context.failRender = failRender;
    context.errorPolicy = options.onError;
@@ -208,7 +370,7 @@ index f5198885c360275845344c9871f8104f2df1d160..272b2410a4c4636c0f914ff15eff2f25
    context.flushed = () => firstFlushed;
    context.trace = requestEvent ? traceForEvent(requestEvent) : traceFor(context, undefined);
    render = timeDocument(context, context.trace, "stream", requestEvent);
-@@ -2322,6 +2334,7 @@ function renderToStream(code, options = {}) {
+@@ -2322,6 +2344,7 @@
      try {
        res = resolveSSRNode(escape(code()));
      } catch (err) {
@@ -216,7 +378,7 @@ index f5198885c360275845344c9871f8104f2df1d160..272b2410a4c4636c0f914ff15eff2f25
        reportServerError(err, {
          kind: "render",
          handling: "failed"
-@@ -2502,6 +2515,9 @@ function renderToStream(code, options = {}) {
+@@ -2502,6 +2525,9 @@
      return p;
    };
    return {
@@ -227,27 +389,33 @@ index f5198885c360275845344c9871f8104f2df1d160..272b2410a4c4636c0f914ff15eff2f25
        const freezeHead = () => {
          if (requestEvent && requestEvent.response) commitResponseStub(requestEvent.response, {
 diff --git a/types/server-mock.d.ts b/types/server-mock.d.ts
-index 7dabe89ca60dd5ea7213b745d5a26b62974ea8f3..ff5334b961070e925373d997e186a583a6e47449 100644
 --- a/types/server-mock.d.ts
 +++ b/types/server-mock.d.ts
-@@ -218,6 +218,8 @@ export declare function renderToStream<T>(fn: () => T, options?: {
+@@ -218,6 +218,12 @@
       */
      signal?: AbortSignal;
  }): {
-+    /** Render-local error state. Read after completion; false does not imply completion. */
++    /**
++     * Render-local observed error state. Includes synchronous serializer throws and
++     * errors reported to a local hook. Suppressed or unreported async errors are unobservable.
++     * Read after completion; false does not imply completion.
++     */
 +    readonly hasErrors: boolean;
      /**
       * Awaiting the stream resolves with the complete HTML once every boundary
       * settles — the fully-settled-string form of the render. Render errors
 diff --git a/types/server.d.ts b/types/server.d.ts
-index 290a2f63ede8191e2d36a1c6f1f8adf0da26f49b..e6f6a8593110122a9abf2d59241eacb177e7a23a 100644
 --- a/types/server.d.ts
 +++ b/types/server.d.ts
-@@ -309,6 +309,8 @@ export declare function renderToStream<T>(fn: () => T, options?: {
+@@ -309,6 +309,12 @@
       */
      signal?: AbortSignal;
  }): {
-+    /** Render-local error state. Read after completion; false does not imply completion. */
++    /**
++     * Render-local observed error state. Includes synchronous serializer throws and
++     * errors reported to a local hook. Suppressed or unreported async errors are unobservable.
++     * Read after completion; false does not imply completion.
++     */
 +    readonly hasErrors: boolean;
      /**
       * Awaiting the stream resolves with the complete HTML once every boundary

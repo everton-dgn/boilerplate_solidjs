@@ -285,10 +285,12 @@ Markdown e aguarda o SSR. A entrada repassa o sinal da requisição ao
 `renderToStream`. Antes da conversão, o adaptador exige `hasCompleted === true`
 e `hasErrors === false` no estado seguro guardado em
 `event.locals.ssrRenderState`. Ausência, conclusão incompleta ou erro descarta o
-HTML e devolve erro público 500 com `private, no-store`. O hook global pode
-deduplicar avisos e não serve como prova de integridade. HTML normal mantém
-streaming. O contrato e o critério para remover os patches estão em
-[erros no servidor](server-errors.md#integridade-do-ssr-para-markdown).
+HTML e devolve erro público 500 com `private, no-store`. O estado cobre erros
+observados pelo render; não atesta dados de hidratação silenciosamente
+descartados pelo serializador. Markdown usa o HTML assentado, sem esses dados. O
+hook global pode deduplicar avisos e não serve como prova de integridade. HTML
+normal mantém streaming. O contrato e o critério para remover os patches estão
+em [erros no servidor](server-errors.md#integridade-do-ssr-para-markdown).
 
 `@mdream/js` recebe a URL completa do documento para resolver links relativos.
 Seus seletores isolam o conteúdo principal e removem navegação, controles,

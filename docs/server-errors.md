@@ -470,10 +470,23 @@ A entrada mantém em `event.locals.ssrRenderState` somente getters para
 `hasErrors` e `hasCompleted`. O primeiro lê o estado monotônico nativo do
 render; o segundo registra `onCompleteAll`. O callback sozinho não comprova
 integridade: ele também pode ocorrer após falha de fragmento. O adaptador exige
-conclusão e ausência estrita de erros depois de aguardar o SSR, antes de
-publicar HTML convertido. Estado ausente ou inválido resulta em erro público 500
-sem cache. Redirects e respostas que não são páginas elegíveis preservam seu
-fluxo anterior.
+conclusão e ausência estrita de erros observados pelo render depois de aguardar
+o SSR, antes de publicar HTML convertido. Estado ausente ou inválido resulta em
+erro público 500 sem cache. Redirects e respostas que não são páginas elegíveis
+preservam seu fluxo anterior.
+
+O estado é observacional. Registra falhas do render, lançamentos síncronos nas
+escritas do serializador e falhas informadas ao hook local quando ele existe.
+Não detecta erros suprimidos internamente pelo serializador nem lançamentos
+assíncronos que ele não reporte ao render. A entrada não instala hook local; o
+contrato de presença do callback e a política global permanecem preservados.
+
+No serializador padrão, o descarte silencioso durante a serialização remove
+dados de hidratação. O HTML dos fragmentos segue um caminho separado e o
+fechamento aguarda os fragmentos pendentes. Markdown usa esse HTML assentado e
+exclui scripts, sem depender do payload de hidratação. Isso não comprova a
+integridade de serializadores personalizados; qualquer adoção exige validar
+novamente a relação entre conteúdo, conclusão e erros observáveis.
 
 Os patches Bun de `solid-js` e `@solidjs/web` aplicam o delta de
 [solidjs/solid#4126](https://github.com/solidjs/solid/pull/4126) às versões
