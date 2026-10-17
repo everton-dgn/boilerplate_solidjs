@@ -188,10 +188,12 @@ release. Add a tool name to select part of the graph. For example, run
   `route.info.seo`. A página continua declarando `llms`, `markdown` e os demais
   controles da rota explicitamente.
 - Declare `route.info.markdown: true` na folha para publicar a representação
-  derivada do HTML assentado. O SEO efetivo precisa permitir indexação.
+  derivada do HTML assentado: o build gera um `.md` estático por idioma. Use
+  `'dynamic'` quando o conteúdo depender da requisição; a conversão acontece a
+  cada pedido. O SEO efetivo precisa permitir indexação.
   Não crie produtores `markdown.ts`, manifestos ou conteúdo exclusivo de Markdown.
-- Páginas parametrizadas usam o matching nativo na requisição. A enumeração
-  finita de sitemap e llms.txt é um contrato separado.
+- Páginas parametrizadas ficam fora do build e usam o matching nativo na
+  requisição. A enumeração finita de sitemap e llms.txt é um contrato separado.
 - Textos e links localizados são getters ou chamadas no componente: não capture
   idioma no topo do módulo. Objetos usados pelo HTML podem permanecer como dados
   de UI; não precisam implementar um contrato de publicação.
@@ -348,9 +350,10 @@ release. Add a tool name to select part of the graph. For example, run
 
 - Os cabeçalhos de segurança e a Content-Security-Policy saem do middleware,
   com os valores em `src/middleware/securityHeaders/constants.ts`.
-  O `vercel.json` guarda o cache de `/images/` e só `nosniff` e
-  `Cross-Origin-Resource-Policy` para os estáticos, que não passam pela função;
-  não devolva a CSP nem os demais cabeçalhos a ele.
+  O `vercel.json` guarda o cache de `/images/`, o `Content-Type` dos `.md`
+  gerados no build e só `nosniff` e `Cross-Origin-Resource-Policy` para os
+  estáticos, que não passam pela função; não devolva a CSP nem os demais
+  cabeçalhos a ele.
 - O `script-src` usa o nonce da requisição com `'strict-dynamic'`. Não
   acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts para scripts.
 - O `style-src` é `'self'`, também sem `'unsafe-inline'`: um `<style>` ou um

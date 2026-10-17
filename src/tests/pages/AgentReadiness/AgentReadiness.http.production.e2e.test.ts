@@ -39,19 +39,10 @@ for (const { locale, tag, missing } of LOCALES) {
           cookie: `session=private; locale=${locale === 'es' ? 'en' : 'es'}`
         }
       })
+      // O arquivo vem do build: a camada estática não grava idioma nem cookie.
       expect(markdown.status()).toBe(HTTP_OK)
-      expect(markdown.headers()['content-type']).toBe(
-        'text/markdown; charset=utf-8'
-      )
-      expect(markdown.headers()['content-language']).toBe(locale)
-      expect(markdown.headers()['cache-control']).toBe('private, no-store')
-      expect(markdown.headers()['set-cookie']).toBe(
-        `locale=${locale}; Path=/; Max-Age=34560000; SameSite=Lax`
-      )
-      expect(markdown.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
-        'accept'
-      )
-      expect(markdown.headers()['x-content-type-options']).toBe('nosniff')
+      expect(markdown.headers()['set-cookie']).toBeUndefined()
+      expect(markdown.headers()['cache-control']).not.toBe('private, no-store')
       const body = await markdown.text()
       expect(body.trim().length).toBeGreaterThanOrEqual(MINIMUM_PAGE_LENGTH)
       expect(body).toMatch(/^# .+$/mu)

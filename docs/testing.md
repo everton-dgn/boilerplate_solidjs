@@ -136,11 +136,12 @@ que a Home recebe os cabeçalhos de segurança do middleware real, já que o bui
 E2E monta a cadeia pela fábrica `createMiddleware`. Os testes de Markdown
 verificam o conteúdo servido por HTTP a partir do HTML, sem exigir arquivos
 estáticos ou manifestos de publicação. Os testes Node do middleware cobrem
-filtros semânticos, links relativos, negociação, HEAD, erros, limites de tamanho
-e cancelamento. A elegibilidade compartilhada tem regressão para herança de
-noindex com override explícito do filho. As fixtures E2E exercitam páginas
-parametrizadas, resolução assíncrona e isolamento de idiomas. A suíte definitiva
-precisa incluir o hook SSR que sinaliza render incompleto.
+filtros semânticos, links relativos, links com esquema de script ou de dados,
+imagens sem `alt`, negociação, HEAD, erros, limites de tamanho e cancelamento. A
+elegibilidade compartilhada tem regressão para herança de noindex com override
+explícito do filho. As fixtures E2E exercitam páginas parametrizadas, resolução
+assíncrona e isolamento de idiomas. A suíte definitiva precisa incluir o hook
+SSR que sinaliza render incompleto.
 
 Essas verificações cobrem o build e o preview local. Cache e regras de domínio
 da Vercel continuam exigindo conferência no site publicado.

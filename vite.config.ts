@@ -29,22 +29,31 @@ const TOOLING_TEST_CONCURRENCY = env.CI
 // fmt, check, staged e o tooling do editor leem a config sem pagar esse custo
 // nem receber os logs de inicialização do Nitro no stdout.
 const loadPluginModules = async () => {
-  const [solidModule, routing, nitroModule, iconsModule, loaders, i18n] =
-    await Promise.all([
-      import('@solidjs/vite-plugin'),
-      import('filesystem-routing/vite'),
-      import('nitro/vite'),
-      import('unplugin-icons/vite'),
-      import('unplugin-icons/loaders'),
-      import('./tooling/i18n/i18nPlugin/index.ts')
-    ])
+  const [
+    solidModule,
+    routing,
+    nitroModule,
+    iconsModule,
+    loaders,
+    i18n,
+    markdown
+  ] = await Promise.all([
+    import('@solidjs/vite-plugin'),
+    import('filesystem-routing/vite'),
+    import('nitro/vite'),
+    import('unplugin-icons/vite'),
+    import('unplugin-icons/loaders'),
+    import('./tooling/i18n/i18nPlugin/index.ts'),
+    import('./tooling/markdownPrerender/index.ts')
+  ])
   return {
     solid: solidModule.default,
     fileRoutes: routing.fileRoutes,
     nitro: nitroModule.nitro,
     Icons: iconsModule.default,
     FileSystemIconLoader: loaders.FileSystemIconLoader,
-    i18n: i18n.i18nPlugin
+    i18n: i18n.i18nPlugin,
+    markdownPrerender: markdown.markdownPrerender
   }
 }
 
@@ -101,6 +110,7 @@ const appPlugins = (mode: string) =>
       modules.nitro({
         serverEntry: false,
         preset: 'vercel',
+        modules: [modules.markdownPrerender],
         vercel: {
           functions: {
             runtime: `nodejs${packageJson.devEngines.runtime.version.split('.')[0]}.x`

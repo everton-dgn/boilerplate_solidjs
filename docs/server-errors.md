@@ -473,7 +473,8 @@ integridade: ele também pode ocorrer após falha de fragmento. O adaptador exig
 conclusão e ausência estrita de erros observados pelo render depois de aguardar
 o SSR, antes de publicar HTML convertido. Estado ausente ou inválido resulta em
 erro público 500 sem cache. Redirects e respostas que não são páginas elegíveis
-preservam seu fluxo anterior.
+preservam seu fluxo anterior. As páginas estáticas passam por esse mesmo
+adaptador no prerender do build, e uma recusa ali interrompe o build.
 
 O serializador padrão informa falhas de parse e de emissão ao render, inclusive
 sem um hook local. A primeira falha marca `hasErrors`, passa pela política de

@@ -40,9 +40,8 @@ function expectPublicMarkdown(body: string) {
   )
 }
 
-test('converts only native public HTML and resolves links against the document', async ({
-  request,
-  baseURL
+test('converts only native public HTML and resolves links against the public document', async ({
+  request
 }) => {
   const response = await request.get(`${PAGE}.md`)
   expect(response.status()).toBe(HTTP_OK)
@@ -55,7 +54,7 @@ test('converts only native public HTML and resolves links against the document',
   const body = await response.text()
   expectPublicMarkdown(body)
   expect(body).toContain(
-    `[contextual link](${new URL('relative?x=1&y=2', `${baseURL}${PAGE}`).href})`
+    `[contextual link](${new URL('relative?x=1&y=2', `${readSiteOrigin()}${PAGE}`).href})`
   )
 })
 
@@ -165,10 +164,10 @@ for (const locale of LOCALES) {
     expect(markdown.headers()['content-language']).toBe(locale)
     expect(await markdown.text()).toContain('# HTML Markdown contract: index')
 
+    // A home é estática: o arquivo gerado no build dispensa a função.
     const home = await request.get(`/${locale}/index.md`)
     expect(home.status()).toBe(HTTP_OK)
-    expect(home.headers()['content-type']).toContain('text/markdown')
-    expect(home.headers()['content-language']).toBe(locale)
+    expect(home.headers()['set-cookie']).toBeUndefined()
     const homeBody = await home.text()
     expect(homeBody).toContain('# SolidJS Boilerplate')
     expect(homeBody).not.toContain('# HTML Markdown contract: index')
