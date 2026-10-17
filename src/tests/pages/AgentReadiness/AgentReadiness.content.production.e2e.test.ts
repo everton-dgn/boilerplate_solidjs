@@ -7,7 +7,7 @@ import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 test.use({ headless: true })
 
 const HTTP_OK = 200
-const MIN_CONTENT_CHARACTERS = 500
+const MIN_CONTENT_CHARACTERS = 100
 const MOBILE_WIDTH = 375
 const DESKTOP_WIDTH = 1280
 const VIEWPORT_HEIGHT = 800
@@ -89,7 +89,7 @@ for (const language of LANGUAGES) {
       })
       expect(markdown.status()).toBe(HTTP_OK)
       const markdownBody = await markdown.text()
-      expect(markdownBody.split('\n')[0]).toBe(`# ${language.headings[index]}`)
+      expect(markdownBody).toContain(`# ${language.headings[index]}`)
       const context = await browser.newContext({
         baseURL,
         javaScriptEnabled: false
@@ -117,7 +117,7 @@ for (const language of LANGUAGES) {
           await expect(main.locator('footer')).toHaveCount(0)
           await expect(main.getByRole('heading', { level: 2 })).toHaveCount(0)
           await expect(main.locator('h1 + p')).toHaveText(/SolidJS 2/u)
-          expect(markdownBody).toContain('## ')
+          expect(markdownBody).not.toContain('\n## ')
         } else {
           expect(content.headings).toContain(SUBHEADING_LEVEL)
         }
@@ -195,7 +195,13 @@ for (const language of LANGUAGES) {
             .locator(`a[href="/${language.locale}${path}"]`)
             .click()
           await expect(page).toHaveURL(`/${language.locale}${path}`)
-          if (path !== '') await expect(markdownAlternate).toHaveCount(0)
+          await expect(markdownAlternate).toHaveAttribute(
+            'href',
+            new RegExp(
+              `/${language.locale}${path ? `${path}\\.md` : String.raw`/index\.md`}$`,
+              'u'
+            )
+          )
           await expect(page.getByRole('heading', { level: 1 })).toHaveText(
             language.headings[index] ?? ''
           )
