@@ -309,13 +309,25 @@ inválida, interrompe o build. O resultado fica em `.vercel/output/static`.
 `@mdream/js` recebe o caminho do documento sobre a origem pública
 (`VITE_SITE_URL`) para resolver links relativos; no prerender, a requisição é
 local. Seus seletores isolam o conteúdo principal e removem navegação,
-controles, formulários, diálogos, regiões `aria-live`, widgets ARIA, texto
-alternativo de mídia, scripts, templates, SVG, `aria-hidden="true"` e
+controles, formulários, diálogos, regiões `aria-live`, widgets ARIA, conteúdo de
+fallback de mídia, scripts, templates, SVG, `aria-hidden="true"` e
 `data-md-exclude`. O próprio conversor descarta `hidden`, exceto
-`hidden="until-found"`, que é conteúdo pesquisável. Rodapés contextuais dentro
-de main permanecem. CSS calculado e conteúdo criado exclusivamente no navegador
-não são interpretados. Use marcação semântica para conteúdo que não deve
-aparecer.
+`hidden="until-found"`, que é conteúdo pesquisável. O plugin de `convertHtml`
+troca por `#` o destino que começa com `javascript:`, `vbscript:` ou `data:`,
+sem remover o link: sem ele, o mdream emitiria um título interno como HTML bruto
+no início da linha. Com espaço ou controle antes do esquema, o mdream resolve o
+valor pela origem pública. Em `details`, `summary`, `dl`, `dt`, `dd` e
+`address`, o próprio mdream emite o link como HTML e descarta esses destinos. O
+plugin também descarta, como `data-md-exclude`, imagens sem texto em `alt` nem
+`title` quando todos os ancestrais são contêineres comuns: seções, parágrafos,
+títulos, listas, tabelas, citações, figuras e `span`. Em links, ênfases,
+legendas e outros elementos com sintaxe ou HTML próprio, a imagem fica, porque a
+remoção poderia esvaziar o link, desfazer delimitadores ou levar HTML bruto ao
+início da linha. Imagens não usam `aria-label` nem `aria-labelledby`, que o
+`jsx-a11y/alt-text` aceita; use `alt=""` somente em imagens decorativas. Rodapés
+contextuais dentro de main permanecem. CSS calculado e conteúdo criado
+exclusivamente no navegador não são interpretados. Use marcação semântica para
+conteúdo que não deve aparecer.
 
 GET com `Accept: text/markdown` recebe Markdown diretamente, sem redirect para
 arquivo. A negociação respeita pesos e especificidade, com HTML em empate. O
