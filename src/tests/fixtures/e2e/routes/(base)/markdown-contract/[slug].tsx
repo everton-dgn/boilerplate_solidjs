@@ -71,7 +71,7 @@ export default function MarkdownContract() {
       <p hidden>HIDDEN_NOISE</p>
       <span aria-hidden="true">DECORATIVE_NOISE</span>
       <p data-md-exclude>EXCLUDED_NOISE</p>
-      <template>TEMPLATE_NOISE</template>
+      <template innerHTML="<p>TEMPLATE_NOISE</p>" />
       <p>
         Useful <a href="./relative?x=1&amp;y=2">contextual link</a>.
       </p>
