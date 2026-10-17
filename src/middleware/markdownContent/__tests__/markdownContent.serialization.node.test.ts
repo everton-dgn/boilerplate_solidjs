@@ -3,11 +3,12 @@ import {
   configureServerErrors,
   createComponent,
   createRequestEvent,
+  createSSRResponse,
   renderToStream,
   ssr
 } from '@solidjs/web'
 import { provideRequestEvent } from '@solidjs/web/storage'
-import { createMemo, Loading, onCleanup } from 'solid-js'
+import { createMemo, Loading, NotReadyError, onCleanup } from 'solid-js'
 import { sharedConfig } from 'solid-js/internal'
 
 import { Router } from '@/router.ts'
@@ -29,6 +30,7 @@ type ParsedValue = Record<string, never>
 type ProbeOptions = {
   scenario?: Scenario
   shouldRecover?: boolean
+  shouldThrowCleanup?: boolean
 }
 
 const PRIVATE_MARKER = 'PRIVATE_SERIALIZATION_FAILURE'
@@ -63,7 +65,11 @@ function page() {
   )
 }
 
-function makeProbe({ scenario, shouldRecover = false }: ProbeOptions) {
+function makeProbe({
+  scenario,
+  shouldRecover = false,
+  shouldThrowCleanup = scenario?.shouldThrowCleanup ?? false
+}: ProbeOptions) {
   const controller = new AbortController()
   const event: Event = createRequestEvent(
     new Request('https://example.com/en/about.md', {
@@ -74,7 +80,7 @@ function makeProbe({ scenario, shouldRecover = false }: ProbeOptions) {
   const failure = new Error(PRIVATE_MARKER)
   const token = Object.freeze({ isProbe: true })
   const cleanup = vi.fn<() => void>(() => {
-    if (scenario?.shouldThrowCleanup) throw new Error('PRIVATE_CLEANUP_FAILURE')
+    if (shouldThrowCleanup) throw new Error('PRIVATE_CLEANUP_FAILURE')
   })
   const parse = vi.fn<() => ParsedValue>(() => {
     if (scenario?.phase === 'parse') throw failure
@@ -244,6 +250,88 @@ describe('markdown with the installed SSR serializer', () => {
       }
     }
   )
+
+  it('keeps the 500 of an HTML shell that failed to serialize', async () => {
+    const token = Object.freeze({ isProbe: true })
+    const plugin: SerializerPlugin = {
+      tag: 'shell-serialization-failure',
+      test: (value: unknown) => value === token,
+      parse: {
+        stream: () => {
+          throw new Error(PRIVATE_MARKER)
+        }
+      },
+      serialize: () => '{}',
+      deserialize: () => token
+    }
+    let isPending = true
+    // O primeiro passe suspende; o re-pull acontece enquanto o shell é montado.
+    function shellContent() {
+      if (isPending) {
+        isPending = false
+        throw new NotReadyError(Promise.resolve())
+      }
+      const { context } = sharedConfig
+      if (!context) throw new Error('Missing SSR context')
+      context.serialize('shell-probe', token)
+      return 'Public shell'
+    }
+    const controller = new AbortController()
+    const event: Event = createRequestEvent(
+      new Request('https://example.com/en/about', {
+        headers: { accept: 'text/html' },
+        signal: controller.signal
+      })
+    )
+    const next = () =>
+      createSSRResponse(
+        renderToStream(() => ssr(['<main>', '</main>'], shellContent), {
+          plugins: [plugin],
+          signal: event.request.signal
+        }),
+        event
+      )
+    try {
+      const response = await provideRequestEvent(event, () =>
+        markdownContent(event, next)
+      )
+      expect(response.status).toBe(HTTP_SERVER_ERROR)
+      await expect(response.text()).resolves.toBe('')
+      expect(readLog(console.error)).toStrictEqual({
+        heads: [[LOG_MESSAGE, 'Error']],
+        leaks: []
+      })
+    } finally {
+      controller.abort()
+    }
+  })
+
+  it('refuses a completed render whose cleanup throws', async () => {
+    const probe = makeProbe({ shouldThrowCleanup: true })
+    try {
+      const response = await boundedResponse(probe)
+      expect({
+        status: response.status,
+        cacheControl: response.headers.get('cache-control'),
+        hasErrors: probe.hasErrors,
+        completed: probe.completed.mock.calls.length,
+        cleanup: probe.cleanup.mock.calls.length
+      }).toStrictEqual({
+        status: HTTP_SERVER_ERROR,
+        cacheControl: 'private, no-store',
+        hasErrors: true,
+        completed: 1,
+        cleanup: 1
+      })
+      await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+      expect(readLog(console.error)).toStrictEqual({
+        heads: [[LOG_MESSAGE, 'Error']],
+        leaks: []
+      })
+    } finally {
+      probe.controller.abort()
+    }
+  })
 
   it.each([false, true])(
     'preserves successful content (recovery: %s)',
