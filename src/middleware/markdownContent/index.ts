@@ -70,6 +70,10 @@ function isHtml(response: Response): boolean {
 
 function documentUrl(request: Request): URL {
   const url = new URL(request.url)
+  if (url.pathname.endsWith('/index/index.md')) {
+    url.pathname = url.pathname.slice(0, -'/index.md'.length)
+    return url
+  }
   if (url.pathname.endsWith('.md')) {
     url.pathname =
       delocalizePathname(url.pathname) === '/index.md'
@@ -86,14 +90,17 @@ function isEligible(url: URL): boolean {
   )
 }
 
-function canConvert({ response, url }: RedirectOptions): boolean {
-  if (!isHtml(response)) return false
-  if (response.status === HTTP_NOT_FOUND) return true
+function canPublish({ response, url }: RedirectOptions): boolean {
   return (
-    response.status === HTTP_OK &&
     isEligible(url) &&
     !/noindex/iu.test(response.headers.get('x-robots-tag') ?? '')
   )
+}
+
+function canConvert({ response, url }: RedirectOptions): boolean {
+  if (!isHtml(response)) return false
+  if (response.status === HTTP_NOT_FOUND) return true
+  return response.status === HTTP_OK && canPublish({ response, url })
 }
 
 function isUnpublished({ request, url }: RouteRequest): boolean {
@@ -151,8 +158,17 @@ function varyAccept(response: Response): Response {
 }
 
 function preserveRedirect({ response, url }: RedirectOptions): Response {
+  const headers = new Headers(response.headers)
+  headers.set('cache-control', 'private, no-store')
+  const redirect = varyAccept(
+    new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers
+    })
+  )
   const location = response.headers.get('location')
-  if (!location) return response
+  if (!location) return redirect
   const target = new URL(location, url)
   if (
     target.origin !== url.origin ||
@@ -162,13 +178,14 @@ function preserveRedirect({ response, url }: RedirectOptions): Response {
     target.pathname.endsWith('.md') ||
     !isEligible(target)
   ) {
-    return response
+    return redirect
   }
   target.pathname = markdownPath(target.pathname)
-  const headers = new Headers(response.headers)
-  headers.set('location', `${target.pathname}${target.search}${target.hash}`)
-  headers.set('cache-control', 'private, no-store')
-  return new Response(null, { status: response.status, headers })
+  redirect.headers.set(
+    'location',
+    `${target.pathname}${target.search}${target.hash}`
+  )
+  return redirect
 }
 
 async function renderMarkdown({
@@ -185,7 +202,11 @@ async function renderMarkdown({
   }
   const isNotFound = response.status === HTTP_NOT_FOUND
 
-  if (isDirect && response.status === HTTP_OK && !isEligible(url)) {
+  if (
+    isDirect &&
+    response.status === HTTP_OK &&
+    !canPublish({ response, url })
+  ) {
     await response.body?.cancel()
     return publicResponse(HTTP_NOT_FOUND)
   }

@@ -268,8 +268,13 @@ independente: decide a inclusão no índice. Login e conteúdo por visitante nã
 devem optar pela publicação. O opt-in é um compromisso de conteúdo público, não
 um mecanismo de autorização.
 
-`/pt/index.md` representa a home e `/pt/about.md` representa a página sobre. O
-middleware usa o matching nativo também para parâmetros, sem produtor,
+`/pt/index.md` representa a home e `/pt/about.md` representa a página sobre. Uma
+página cujo último segmento é `index` acrescenta `/index.md`: `/pt/index` usa
+`/pt/index/index.md`, e `/pt/docs/index` usa `/pt/docs/index/index.md`. Essa
+regra também cobre segmentos repetidos: `/pt/index/index` usa
+`/pt/index/index/index.md`. O middleware remove somente o último `/index.md`
+quando encontra o sufixo `/index/index.md`, antes de reconhecer o alias da home.
+O middleware usa o matching nativo também para parâmetros, sem produtor,
 `SitePage` obrigatório, `getPaths` ou manifesto de artefatos. A enumeração
 finita do sitemap e do llms.txt continua separada; o llms enumera as rotas
 estáticas conhecidas. O alternate de SEO acompanha a rota atual também na

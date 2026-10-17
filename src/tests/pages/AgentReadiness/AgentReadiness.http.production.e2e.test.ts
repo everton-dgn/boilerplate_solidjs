@@ -4,7 +4,7 @@ const HTTP_OK = 200
 const HTTP_REDIRECT = 307
 const HTTP_NOT_FOUND = 404
 const HTTP_NOT_ACCEPTABLE = 406
-const MINIMUM_PAGE_LENGTH = 100
+const MINIMUM_PAGE_LENGTH = 500
 const MINIMUM_ERROR_LENGTH = 20
 const LOCALES = [
   { locale: 'pt', tag: 'pt-BR', missing: 'Página não encontrada!' },

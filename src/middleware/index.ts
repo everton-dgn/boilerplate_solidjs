@@ -24,13 +24,21 @@ export function createMiddleware(extra: Middleware[] = []): StartMiddleware {
     localizeRequest({ request, next: () => run(request, next) })
   const contained = containFailures([localized])
   // O filesystem-routing e composeMiddleware recebem Request; o plugin recebe o evento.
-  return (event, next) =>
-    markdownContent(event, () =>
-      contained(event.request, request => {
-        if (request) event.request = request
-        return next()
+  return (event, next) => {
+    let hasEnteredLocalizedChain = false
+    const markdown: Middleware = (_request, render) =>
+      markdownContent(event, () => {
+        hasEnteredLocalizedChain = true
+        return contained(event.request, request => {
+          if (request) event.request = request
+          return render()
+        })
       })
-    )
+    return containFailures([markdown])(event.request, () => {
+      if (hasEnteredLocalizedChain) return next()
+      return localizeRequest({ request: event.request, next })
+    })
+  }
 }
 
 export default createMiddleware()
