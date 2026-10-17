@@ -36,7 +36,7 @@ for (const { locale, tag, missing } of LOCALES) {
         maxRedirects: 0,
         headers: {
           accept: 'text/markdown',
-          cookie: 'session=private; PARAGLIDE_LOCALE=es'
+          cookie: `session=private; locale=${locale === 'es' ? 'en' : 'es'}`
         }
       })
       expect(markdown.status()).toBe(HTTP_OK)
@@ -45,7 +45,9 @@ for (const { locale, tag, missing } of LOCALES) {
       )
       expect(markdown.headers()['content-language']).toBe(locale)
       expect(markdown.headers()['cache-control']).toBe('private, no-store')
-      expect(markdown.headers()['set-cookie']).toBeUndefined()
+      expect(markdown.headers()['set-cookie']).toBe(
+        `locale=${locale}; Path=/; Max-Age=34560000; SameSite=Lax`
+      )
       expect(markdown.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
         'accept'
       )
@@ -75,7 +77,7 @@ for (const { locale, tag, missing } of LOCALES) {
       expect(htmlBody).toContain(markdownPath)
 
       const head = await request.head(pathname, {
-        headers: { accept: 'text/markdown' }
+        headers: { accept: 'text/markdown', cookie: `locale=${locale}` }
       })
       expect(head.status()).toBe(HTTP_OK)
       expect(head.headers()['content-type']).toBe(
@@ -285,7 +287,7 @@ for (const endpoint of [
   })
 }
 
-test('returns an uncached Markdown 404 for unpublished URLs', async ({
+test('localizes an uncached Markdown 404 for unknown URLs', async ({
   request
 }) => {
   const response = await request.get('/pt/login.md', {
@@ -302,11 +304,21 @@ test('returns an uncached Markdown 404 for unpublished URLs', async ({
   )
   expect(response.headers()['content-language']).toBe('pt')
   expect(response.headers()['cache-control']).toBe('private, no-store')
-  expect(response.headers()['set-cookie']).toBeUndefined()
+  expect(response.headers()['set-cookie']).toBe(
+    'locale=pt; Path=/; Max-Age=34560000; SameSite=Lax'
+  )
+  expect(response.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
+    'cookie'
+  )
+  expect(response.headers()['x-robots-tag']).toBe('noindex')
   expect(response.headers().location).toBeUndefined()
   expect(await response.text()).toContain('# Página não encontrada!')
-  const head = await request.head('/pt/login.md')
+  const head = await request.head('/pt/login.md', {
+    headers: { cookie: 'locale=pt' }
+  })
   expect(head.status()).toBe(HTTP_NOT_FOUND)
+  expect(head.headers()['content-language']).toBe('pt')
+  expect(head.headers()['set-cookie']).toBeUndefined()
   expect(await head.body()).toHaveLength(0)
 })
 
