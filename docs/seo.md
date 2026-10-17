@@ -261,153 +261,102 @@ do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
 
 ## Leitura por agentes
 
-O Markdown é um arquivo público gerado no build. Cada página que deseja publicar
-essa representação declara `route.info.markdown` na própria folha da árvore:
+O Markdown é derivado do HTML renderizado. Com `route.info.markdown: true` na
+folha da rota, o build gera um arquivo `.md` por idioma; com `'dynamic'`, a
+conversão acontece a cada requisição, para páginas cujo conteúdo depende dela.
+Rotas com parâmetro ficam sempre na requisição, porque o build não conhece seus
+valores. A elegibilidade usa o SEO efetivo, inclusive a herança e um
+`noindex: false` explícito no filho. `llms` continua independente: decide a
+inclusão no índice. Login e conteúdo por visitante não devem optar pela
+publicação. O opt-in é um compromisso de conteúdo público, não um mecanismo de
+autorização.
 
-```tsx
-export const route = {
-  info: {
-    markdown: true,
-    llms: true
-  }
-} satisfies RouteDefinition
-```
+`/pt/index.md` representa a home e `/pt/about.md` representa a página sobre. Uma
+página cujo último segmento é `index` acrescenta `/index.md`: `/pt/index` usa
+`/pt/index/index.md`, e `/pt/docs/index` usa `/pt/docs/index/index.md`. Essa
+regra também cobre segmentos repetidos: `/pt/index/index` usa
+`/pt/index/index/index.md`. O middleware remove somente o último `/index.md`
+quando encontra o sufixo `/index/index.md`, antes de reconhecer o alias da home.
+O middleware usa o matching nativo também para parâmetros, sem produtor,
+`SitePage` obrigatório, `getPaths` ou manifesto de artefatos. A enumeração
+finita do sitemap e do llms.txt continua separada; o llms enumera as rotas
+estáticas conhecidas. O alternate de SEO acompanha a rota atual também na
+navegação cliente.
 
-As chaves são independentes: `markdown` publica o arquivo e `llms` decide sua
-presença no índice. `llms: false` não impede acesso a um `.md` já publicado. Sem
-`markdown: true` explícito, a página não gera arquivo. `false` também desativa a
-publicação, mesmo quando existe um produtor na pasta. A configuração não é
-herdada; declará-la num layout com filhas ou numa página com `noindex` efetivo
-faz o build falhar. `noindex` é uma restrição editorial e não autentica
-usuários. Login, área privada e conteúdo por visitante devem ficar sem
-`markdown`.
+HTML é a única fonte autoral. Objetos usados pelos componentes, como
+`SiteArticle`, podem permanecer como dados da UI; não há serializador manual nem
+conteúdo adicional exclusivo do Markdown. Traduções permanecem em getters ou
+chamadas no componente, no contexto do idioma da requisição.
 
-Por padrão, o build usa o objeto público `content` exportado por `seo.ts`, com
-`satisfies SitePage`. Esse mesmo objeto pode alimentar o HTML da página. Os
-metadados `seo` sozinhos não bastam: `content` contém o corpo público completo,
-com introdução, seções e links. Sobre, contato e privacidade usam esse caminho,
-sem um arquivo produtor adicional.
+O adaptador escolhe `event.renderMode = 'async'` apenas para solicitações de
+Markdown e aguarda o SSR. A entrada repassa o sinal da requisição ao
+`renderToStream`. Antes da conversão, o adaptador exige `hasCompleted === true`
+e `hasErrors === false` no estado seguro guardado em
+`event.locals.ssrRenderState`. Ausência, conclusão incompleta ou erro descarta o
+HTML e devolve erro público 500 com `private, no-store`. O estado cobre erros
+observados pelo render; não atesta dados de hidratação silenciosamente
+descartados pelo serializador. Markdown usa o HTML assentado, sem esses dados. O
+hook global pode deduplicar avisos e não serve como prova de integridade. HTML
+normal mantém streaming. O contrato e o critério para remover os patches estão
+em [erros no servidor](server-errors.md#integridade-do-ssr-para-markdown).
 
-Quando precisar de uma fonte própria, acrescente `markdown.ts` ao lado do
-arquivo que declara `route`. Esse produtor tem prioridade sobre `content`, e uma
-falha nele interrompe o build sem recorrer a `seo.ts`. Reexportações de `route`
-são seguidas até a declaração original, inclusive nas fixtures; o caminho não
-depende da URL pública nem dos chunks produzidos por Vite e Nitro. Se a
-publicação estiver habilitada e não houver produtor nem conteúdo público válido,
-o build falha. Use uma pasta por página: arquivos soltos no mesmo diretório
-teriam a mesma fonte colocalizada. Reexportações de páginas publicadas precisam
-ser nomeadas, como `export { route } from './page/index.tsx'`; namespace e
-`export *` intermediário não fazem parte desta convenção. Páginas sem
-`markdown: true` não passam pela descoberta de produtores.
+O prerender do build passa pelo mesmo adaptador. O módulo
+`tooling/markdownPrerender/` pede ao middleware a lista das páginas estáticas
+(`/_markdown/static.json`, respondida só com o header `x-nitro-prerender`),
+prerenderiza cada `.md` e não grava a lista. Uma página que falhe, ou uma lista
+inválida, interrompe o build. O resultado fica em `.vercel/output/static`.
 
-O contrato `MarkdownSource`, em `src/@types/markdown.ts`, define o produtor
-exclusivo do build. Esse módulo exporta `markdown`, com uma função
-`render({ path, locale, signal })` que devolve `SitePage`, inclusive por
-Promise. A home exibe apenas a apresentação inicial; os links públicos ficam na
-topbar e usam os mesmos rótulos traduzidos do conteúdo. Seu Markdown inclui
-também as seções descritivas de `seo.ts`, sem exigir que elas apareçam no HTML.
-A home mantém o exemplo abaixo de produtor explícito, compartilhando o objeto
-`content` de `seo.ts` com o HTML. Textos e links localizados usam getters nas
-duas formas de publicação. `seo.ts` e o `markdown.ts` opcional ficam ao lado de
-`index.tsx`. Seus catálogos permanecem em `i18n/{pt,en,es}.json` na pasta da
-rota; os links comuns continuam em `src/constants/siteLinks/`.
+`@mdream/js` recebe o caminho do documento sobre a origem pública
+(`VITE_SITE_URL`) para resolver links relativos; no prerender, a requisição é
+local. Seus seletores isolam o conteúdo principal e removem navegação,
+controles, formulários, diálogos, regiões `aria-live`, widgets ARIA, conteúdo de
+fallback de mídia, scripts, templates, SVG, `aria-hidden="true"` e
+`data-md-exclude`. O próprio conversor descarta `hidden`, exceto
+`hidden="until-found"`, que é conteúdo pesquisável. O plugin de `convertHtml`
+troca por `#` o destino que começa com `javascript:`, `vbscript:` ou `data:`,
+sem remover o link: sem ele, o mdream emitiria um título interno como HTML bruto
+no início da linha. Com espaço ou controle antes do esquema, o mdream resolve o
+valor pela origem pública. Em `details`, `summary`, `dl`, `dt`, `dd` e
+`address`, o próprio mdream emite o link como HTML e descarta esses destinos. O
+plugin também descarta, como `data-md-exclude`, imagens sem texto em `alt` nem
+`title` quando todos os ancestrais são contêineres comuns: seções, parágrafos,
+títulos, listas, tabelas, citações, figuras e `span`. Em links, ênfases,
+legendas e outros elementos com sintaxe ou HTML próprio, a imagem fica, porque a
+remoção poderia esvaziar o link, desfazer delimitadores ou levar HTML bruto ao
+início da linha. Imagens não usam `aria-label` nem `aria-labelledby`, que o
+`jsx-a11y/alt-text` aceita; use `alt=""` somente em imagens decorativas. Rodapés
+contextuais dentro de main permanecem. CSS calculado e conteúdo criado
+exclusivamente no navegador não são interpretados. Use marcação semântica para
+conteúdo que não deve aparecer.
 
-```ts
-import type { MarkdownSource } from '@/@types/markdown.ts'
+GET com `Accept: text/markdown` recebe Markdown diretamente, sem redirect para
+arquivo. A negociação respeita pesos e especificidade, com HTML em empate. O
+acesso explícito a `.md` exige somente que Markdown seja aceitável, mesmo quando
+HTML tenha peso maior; uma exclusão exata `text/markdown;q=0` prevalece sobre
+curingas. Nenhum formato aceitável na página publicada resulta em 406. Query
+strings permanecem no SSR. HEAD renderiza a mesma representação e remove o
+corpo. APIs, assets, RPC e métodos de escrita mantêm o fluxo original.
 
-import { content } from './seo.ts'
+A localização preserva URL > cookie > Accept-Language. Redirects seguros para
+uma página elegível da mesma origem preservam a intenção `.md`; o middleware não
+segue redirects. Erros não viram documentos de sucesso. Um 404 HTML negociado
+mantém status 404, idioma e `noindex`; páginas sem opt-in não publicam seu
+conteúdo de sucesso pelo alias Markdown.
 
-export const markdown = { render: () => content } satisfies MarkdownSource
-```
+As respostas convertidas na requisição recebem `text/markdown; charset=utf-8`,
+`private, no-store`, `Vary: Accept` adicional ao Vary existente e CSP com
+`script-src 'none'`. Os arquivos do build são servidos pela camada estática, sem
+passar pela função: o `vercel.json` define `Content-Type`, `nosniff` e
+`Cross-Origin-Resource-Policy`, e o cache segue o padrão da Vercel para
+estáticos. Eles não gravam cookie de idioma nem `Content-Language`; o idioma vem
+da URL. O preview local (`vp run start`) não aplica o `vercel.json` e serve
+`.md` como `application/octet-stream`.
 
-O build avalia os produtores num runner isolado, seleciona os metadados das
-rotas sem renderizar componentes nem executar preloads e gera uma cópia por
-idioma. O serializador recebe texto simples estruturado, escapa a sintaxe de
-Markdown e HTML e valida os destinos dos links. Não converte HTML nem interpreta
-Markdown ou MDX fornecido pelo CMS. Uma string confidencial continua sendo uma
-string válida: o produtor precisa selecionar somente conteúdo publicável. O nome
-`src/**/markdown.ts` fica reservado aos produtores. Para um endpoint chamado
-`/markdown`, use uma pasta com `index.ts`. Importar um produtor no app causa
-erro de build; compartilhe com o HTML a fonte pública, sem importar o produtor.
-
-Para rotas com parâmetros, use `markdown.ts` com `getPaths({ locale, signal })`,
-que lista os caminhos públicos sem prefixo de idioma, como `/blog/meu-post`. A
-fonte pode consultar um CMS no build e usar o `signal` em operações canceláveis.
-`render` recebe o caminho enumerado e o idioma. O caminho preserva a codificação
-da URL, como `/blog/caf%C3%A9`; os `matchFilters` do router recebem o parâmetro
-decodificado, como `café`. Cada caminho precisa pertencer à mesma folha da
-árvore, respeitando esses filtros. O gerador recusa caminhos inválidos,
-duplicatas, colisões com páginas, endpoints e arquivos de `public/`, conteúdo
-inválido e limites de quantidade, tempo e tamanho definidos em
-`tooling/markdown/constants.ts`. Falhas interrompem o build inteiro. Os
-cabeçalhos são regras exatas por arquivo somente na configuração do host, sem
-replicar essas regras no runtime do Nitro. O limite local de artefatos não
-substitui os limites da plataforma de publicação, que devem ser conferidos antes
-de aumentar o volume de conteúdo.
-
-Um novo artigo, uma tradução ou uma alteração no CMS exige outro build para
-atualizar os arquivos. Se o HTML consulta dados mais recentes em runtime, ele
-pode divergir do snapshot; use a mesma versão publicada da fonte quando precisar
-de paridade. O timeout cancela o sinal e interrompe a espera, mas não preempta
-código síncrono nem garante o encerramento de um SDK que ignore cancelamento.
-
-A home publica `/pt/index.md`, `/en/index.md` e `/es/index.md`. As outras
-páginas usam caminhos como `/pt/about.md`. O HTML inicial anuncia o arquivo com
-`<link rel="alternate" type="text/markdown">`, e o `llms.txt` prefere o `.md`
-quando a página selecionada possui esse artefato. O build grava os arquivos em
-`.markdown/public/`, e o Nitro os inclui nos estáticos da Vercel. O manifesto do
-servidor contém caminhos e metadados do índice, sem o corpo dos documentos. O
-mapa completo é eliminado do bundle do cliente: a descoberta pelo `alternate`
-acontece no SSR, e o índice público continua disponível em `/llms.txt`. A
-hidratação preserva o link recebido; a navegação dentro do documento o remove
-quando o caminho muda, para não anunciar um arquivo de outra página.
-
-Na Vercel, um arquivo chamado `index.md` também pode resolver a URL do seu
-diretório. Por isso, o build insere rewrites exatos desses diretórios para a
-função SSR antes de `handle: filesystem`, com e sem barra final. Isso mantém
-`/pt` como página HTML e reserva `/pt/index.md` ao documento Markdown. A regra
-também cobre um caminho dinâmico que gere, por exemplo, `/pt/blog/index.md`. O
-destino vem do fallback do Nitro; se a configuração não tiver um fallback
-incondicional reconhecido, o build falha. Os demais arquivos seguem a resolução
-estática normal.
-
-GET e HEAD da página com `Accept: text/markdown` recebem 307 para o `.md`
-localizado. A negociação considera pesos `q` e especificidade, com preferência
-por HTML em empate. Ausência de `Accept` e `*/*` usam HTML; `q=0` exclui o tipo.
-Se nenhum formato for aceitável numa página com artefato, a resposta é 406. A
-negociação preserva `Vary` e acrescenta `Accept`; os redirects e o 406 usam
-`private, no-store`. Query strings não alteram o snapshot nem seguem para o
-arquivo. Páginas sem artefato conservam o fluxo normal. Uma resposta HTML com
-status 404 também negocia o formato: clientes que preferem Markdown recebem um
-texto de erro preparado no build, no idioma da URL, com link para `/llms.txt`. O
-status continua 404, com `Vary: Accept`, `noindex` e `private, no-store`. O
-corpo não inclui o caminho solicitado nem dados da resposta HTML. HEAD envia os
-mesmos cabeçalhos, sem corpo. Respostas de API e outros status seguem seu
-contrato original. URLs de página sem idioma passam primeiro pela localização
-existente. Um `.md` ausente responde 404 sem passar pelo SSR: Markdown quando
-solicitado ou texto simples nos demais casos, sempre sem cache.
-
-O acesso direto ao `.md` é servido como estático, sem renderizar a página ou
-executar o produtor. O arquivo usa `text/markdown; charset=utf-8`, idioma da
-URL, `nosniff`, `Cross-Origin-Resource-Policy: same-origin` e
-`public, max-age=0, must-revalidate` e `Vary: Accept`. O último cabeçalho também
-fica na resposta final, depois do redirect, para os verificadores de negociação
-Markdown. Cookies e `Accept-Language` não mudam seu conteúdo. HEAD mantém os
-cabeçalhos e não envia corpo. O middleware não aplica CSP de HTML aos arquivos
-servidos diretamente pelo host.
-
-Em desenvolvimento, a geração acontece ao iniciar o servidor e após mudanças nas
-fontes. Criar `markdown.ts` passa a usar o produtor; removê-lo volta ao
-`content` de `seo.ts`, sem reiniciar o servidor. Essa atualização também
-acompanha a página original quando uma fixture reexporta a rota. Os dois
-caminhos são observados: após um erro de regeneração por falta de fonte, criar
-`seo.ts` com conteúdo válido recupera a geração. A requisição lê o resultado já
-gerado; falhas de regeneração são mostradas no servidor e na interface. O
-preview lê os arquivos do último build e aplica os cabeçalhos estáticos
-configurados para a Vercel, incluindo ETag e revalidação condicional. Esse
-adapter local não comprova o comportamento do CDN após publicação. A regressão
-também inspeciona a ordem das regras no artefato final; o deploy reutiliza esse
-mesmo build depois da aprovação dos testes.
+Os limites ficam em `src/middleware/markdownContent/constants.ts`: espera de SSR
+cancelável e tamanho máximo do HTML antes da conversão síncrona. Timeout e
+desconexão abortam o sinal do render; o limite de bytes reduz o trabalho do
+conversor, mas não limita o HTML que o SSR já acumulou internamente. Código
+síncrono e serviços que ignoram AbortSignal não são preemptados.
 
 As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
 aviso de privacidade descreve as preferências e os limites observáveis na

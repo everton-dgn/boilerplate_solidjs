@@ -1,9 +1,13 @@
+import { getLocale } from '@paraglide/runtime.js'
 import { createRequestEvent, type RequestEvent } from '@solidjs/web'
 import { provideRequestEvent } from '@solidjs/web/storage'
 
+import { isPublicError } from '@/infra/server/publicErrors/index.ts'
+import { Router } from '@/router.ts'
 import { readLog } from '@/tests/helpers/readLog/index.ts'
 
-import middleware from '../index.ts'
+import middleware, { createMiddleware } from '../index.ts'
+import { localizeRequest } from '../localizeRequest/index.ts'
 
 const TEST_ORIGIN = 'http://localhost'
 // vi.mock é içado para o topo do arquivo; o caminho sobe junto.
@@ -12,12 +16,10 @@ const HTTP_FOUND = 302
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
+const ERROR_PAGE_LOG =
+  '[error-page] Unexpected failure; private details omitted'
 
-vi.mock(import('virtual:markdown-manifest'), () => ({
-  markdownPaths: {},
-  markdownIndex: [],
-  markdownNotFound: {}
-}))
+vi.mock(import('../localizeRequest/index.ts'), { spy: true })
 
 // O projeto node usa um manifesto vazio. O handler de API real recebe aqui uma
 // rota sintética que responde sem chamar next, como sitemap.xml e robots.txt.
@@ -56,12 +58,14 @@ function pageEvent(path = '/pt'): RequestEvent {
   return createRequestEvent(request)
 }
 
+function mockProductionLog(): void {
+  // A contenção só vale nos builds de produção; o Vitest roda com DEV.
+  vi.stubEnv('DEV', false)
+  vi.spyOn(console, 'error').mockImplementation(vi.fn())
+}
+
 describe('export padrão do middleware', () => {
-  beforeEach(() => {
-    // A contenção só vale nos builds de produção; o Vitest roda com DEV.
-    vi.stubEnv('DEV', false)
-    vi.spyOn(console, 'error').mockImplementation(vi.fn())
-  })
+  beforeEach(mockProductionLog)
 
   it('compõe a cadeia de produção dentro da contenção', async () => {
     const response = new Response('página')
@@ -98,6 +102,170 @@ describe('export padrão do middleware', () => {
       leaks: []
     })
   })
+})
+
+describe('contenção do adaptador Markdown', () => {
+  beforeEach(mockProductionLog)
+
+  it.each(['pt', 'en', 'es'])(
+    'contém uma falha do matching Markdown antes do render no idioma %s',
+    async locale => {
+      vi.spyOn(Router, 'match').mockImplementation(() => {
+        throw new Error('PRIVATE_MATCH', { cause: 'PRIVATE_CAUSE' })
+      })
+      const event = pageEvent(`/${locale}/about`)
+      const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
+        expect(isPublicError(event.locals.serverFailure)).toBe(true)
+        return Promise.resolve(new Response(`${getLocale()}:${PUBLIC_MESSAGE}`))
+      })
+
+      const response = await provideRequestEvent(event, () =>
+        middleware(event, next)
+      )
+
+      expect(next).toHaveBeenCalledExactlyOnceWith()
+      expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+      await expect(response.text()).resolves.toBe(`${locale}:${PUBLIC_MESSAGE}`)
+      expect(Object.fromEntries(response.headers)).toMatchObject({
+        'content-language': locale,
+        'x-content-type-options': 'nosniff'
+      })
+      expect(readLog(console.error)).toStrictEqual({
+        heads: [[LOG_MESSAGE, 'Error']],
+        leaks: []
+      })
+    }
+  )
+
+  it('contém uma falha de localização do fallback anterior ao matching', async () => {
+    vi.spyOn(Router, 'match').mockImplementation(() => {
+      throw new Error('PRIVATE_MATCH')
+    })
+    vi.mocked(localizeRequest).mockRejectedValueOnce(
+      new Error('PRIVATE_LOCALE')
+    )
+    const event = pageEvent('/pt/about')
+    const next = vi.fn<() => Promise<Response>>()
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event, next)
+    )
+
+    expect(next).not.toHaveBeenCalled()
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [
+        [LOG_MESSAGE, 'Error'],
+        [ERROR_PAGE_LOG, 'Error']
+      ],
+      leaks: []
+    })
+  })
+
+  it('contém uma falha de Vary do Markdown sem repetir o render', async () => {
+    vi.spyOn(Router, 'match').mockReturnValue([
+      {
+        path: '/about',
+        pattern: '/about',
+        match: '/about',
+        params: {},
+        info: { markdown: true }
+      }
+    ])
+    const event = pageEvent('/en/about')
+    const page = new Response('PRIVATE_RENDERED_BODY', {
+      headers: { 'content-type': 'text/html' }
+    })
+    const setHeader = page.headers.set.bind(page.headers)
+    vi.spyOn(page.headers, 'set').mockImplementation((name, value) => {
+      if (name === 'vary' && value.includes('Accept')) {
+        throw new Error('PRIVATE_VARY', { cause: 'PRIVATE_CAUSE' })
+      }
+      setHeader(name, value)
+    })
+    const next = vi.fn<() => Promise<Response>>().mockResolvedValue(page)
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event, next)
+    )
+
+    expect(next).toHaveBeenCalledExactlyOnceWith()
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
+  })
+
+  it('mantém o idioma durante o render do fallback interno', async () => {
+    const event = pageEvent('/en/about')
+    const fail = vi
+      .fn<() => Promise<Response>>()
+      .mockRejectedValue(new Error('PRIVATE_MIDDLEWARE'))
+    const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
+      expect(isPublicError(event.locals.serverFailure)).toBe(true)
+      return Promise.resolve(new Response(getLocale()))
+    })
+
+    const response = await provideRequestEvent(event, () =>
+      createMiddleware([fail])(event, next)
+    )
+
+    expect(next).toHaveBeenCalledExactlyOnceWith()
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    expect(response.headers.get('content-language')).toBe('en')
+    await expect(response.text()).resolves.toBe('en')
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
+  })
+
+  it('entrega o alias reescrito ao render dentro do idioma da página', async () => {
+    vi.spyOn(Router, 'match').mockReturnValue([
+      {
+        path: '/about',
+        pattern: '/about',
+        match: '/about',
+        params: {},
+        info: { markdown: true }
+      }
+    ])
+    const event = pageEvent('/en/about.md?version=2')
+    event.request = new Request(event.request, {
+      headers: { accept: 'text/markdown' }
+    })
+    const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
+      expect(event.request.url).toBe(`${TEST_ORIGIN}/en/about?version=2`)
+      expect(event.request.headers.get('accept')).toBe('text/html')
+      expect(getLocale()).toBe('en')
+      event.locals.ssrRenderState = { hasCompleted: true, hasErrors: false }
+      return Promise.resolve(
+        new Response('<main><h1>Public content</h1></main>', {
+          headers: { 'content-type': 'text/html' }
+        })
+      )
+    })
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event, next)
+    )
+
+    expect(next).toHaveBeenCalledExactlyOnceWith()
+    expect(response.headers.get('content-language')).toBe('en')
+    expect(response.headers.get('content-type')).toBe(
+      'text/markdown; charset=utf-8'
+    )
+    await expect(response.text()).resolves.toContain('# Public content')
+    expect(console.error).not.toHaveBeenCalled()
+  })
+})
+
+describe('respostas com headers imutáveis', () => {
+  beforeEach(mockProductionLog)
 
   // Response.redirect() chega com headers imutáveis e sem corpo.
   it('grava os headers da cadeia num redirect sem trocar por 500', async () => {

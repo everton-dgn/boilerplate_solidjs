@@ -3,9 +3,9 @@ import { useLocation, useRouteMatches } from '@solidjs/router'
 import { type HeadTag, useHead } from '@solidjs/web'
 import type { Thing } from 'schema-dts'
 import { type Accessor, createUniqueId } from 'solid-js'
-import { markdownPaths } from 'virtual:markdown-manifest'
 
 import { SITE } from '@/constants/site.ts'
+import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { buildLocaleAlternates } from '@/i18n/buildLocaleAlternates/index.ts'
@@ -51,20 +51,10 @@ function publishRouteSeo(): void {
   const canonical = () =>
     resolveSiteUrl(localizeHref({ href: location.pathname }))
   const image = () => resolveSiteUrl(seo().image.path)
-  const initialPath = location.pathname
-  const initialMarkdownHref = import.meta.env.SSR
-    ? undefined
-    : document.querySelector<HTMLLinkElement>(
-        'head link[rel="alternate"][type="text/markdown"]'
-      )?.href
-  const markdownHref = () => {
-    if (!import.meta.env.SSR) {
-      return location.pathname === initialPath ? initialMarkdownHref : undefined
-    }
-    return markdownPaths[
-      localizeHref({ href: location.pathname }).replace(/\/$/u, '') || '/'
-    ]
-  }
+  const markdownHref = () =>
+    isMarkdownRoute(matches().map(match => match.route.info))
+      ? markdownPath(localizeHref({ href: location.pathname }))
+      : undefined
   const structuredData = () =>
     buildStructuredData({ seo: seo(), url: canonical(), image: image() })
 

@@ -133,37 +133,26 @@ por HTTP que `/robots.txt`, `/llms.txt` e `/sitemap.xml` respondem sem
 redirecionamento, com conteúdo e headers esperados, e que os helpers locais não
 viram endpoints públicos. Também verifica a ausência de uma rota das fixtures e
 que a Home recebe os cabeçalhos de segurança do middleware real, já que o build
-E2E monta a cadeia pela fábrica `createMiddleware`.
-`AgentReadiness.build.production.e2e.test.ts` confere os 12 arquivos Markdown na
-saída final `.vercel/output/static`, o idioma e o título de cada página, os
-bytes servidos por HTTP e os manifestos de publicação. O teste lê os catálogos
-autorais como referência, sem importar produtores ou o serializador. As regras
-de headers precisam aparecer antes da resolução de arquivos no `config.json`
-gerado pelo Nitro. Para cada `index.md` encontrado nos arquivos finais, o teste
-exige que a URL do diretório chegue ao SSR antes dessa resolução, com e sem
-barra final. Isso detecta a colisão que fazia `/pt` servir o conteúdo de
-`/pt/index.md` na Vercel, embora passasse no preview local.
+E2E monta a cadeia pela fábrica `createMiddleware`. Os testes de Markdown
+verificam o conteúdo servido por HTTP a partir do HTML, sem exigir arquivos
+estáticos ou manifestos de publicação. Os testes Node do middleware cobrem
+filtros semânticos, links relativos, links com esquema de script ou de dados,
+imagens sem `alt`, negociação, HEAD, erros, limites de tamanho e cancelamento. A
+elegibilidade compartilhada tem regressão para herança de noindex com override
+explícito do filho. As fixtures E2E exercitam páginas parametrizadas, resolução
+assíncrona e isolamento de idiomas. A suíte definitiva precisa incluir o hook
+SSR que sinaliza render incompleto.
 
-Essas verificações cobrem o artefato e o preview local. O comportamento do CDN e
-as regras de domínio da Vercel continuam exigindo conferência no site publicado.
-
-Os testes de `tooling/markdown/loadArtifacts` cobrem o uso de `seo.ts` sem
-produtor, a prioridade de `markdown.ts`, reexportações por alias e caminho
-relativo, mudança de pasta de rota dinâmica, flags desativadas e falhas de
-conteúdo, fonte ausente ou ciclo. Os testes do plugin verificam a criação e
-remoção de um produtor durante o desenvolvimento, a atualização do conteúdo e a
-recuperação de erros, inclusive criando `seo.ts` depois da primeira ativação sem
-fonte ou após remover a única fonte disponível, fora da pasta de rotas
-reexportadas. A suíte E2E de fixtures também passa pelo build com as páginas
-reais reexportadas.
+Essas verificações cobrem o build e o preview local. Cache e regras de domínio
+da Vercel continuam exigindo conferência no site publicado.
 
 `AgentReadiness.content.production.e2e.test.ts` verifica a apresentação compacta
 da home, sem artigo ou rodapé, e preserva a exigência de conteúdo detalhado nas
 páginas internas. A navegação usa os links da topbar nos três idiomas, em telas
 estreitas e largas, inclusive sem JavaScript. Em telas estreitas, os links da
 barra rolam horizontalmente sem alargar o documento; tema e idioma permanecem
-acessíveis fora da área rolável. O Markdown da home mantém as seções
-descritivas.
+acessíveis fora da área rolável. O Markdown da home contém a mesma apresentação
+autoral do HTML.
 
 `Home.csp.production.e2e.test.ts` confere que a CSP traz um nonce que muda a
 cada requisição, que todos os `<script>` e `modulepreload` do HTML bruto trazem

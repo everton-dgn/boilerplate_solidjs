@@ -187,23 +187,24 @@ release. Add a tool name to select part of the graph. For example, run
   Exporte o objeto `seo` com `satisfies SeoRouteInfo` e importe-o para
   `route.info.seo`. A página continua declarando `llms`, `markdown` e os demais
   controles da rota explicitamente.
-- Quando HTML e Markdown compartilham conteúdo público, exporte também de
-  `seo.ts` o objeto `content`, tipado por `satisfies SitePage`.
-  O build usa esse objeto quando não existe um produtor `markdown.ts`.
-  Conteúdo usado apenas pela página pode permanecer em `index.tsx`.
-- Declare `route.info.markdown: true` para publicar. O build encontra
-  `markdown.ts` ao lado do módulo que declara `route`, seguindo reexportações.
-  Esse produtor é opcional e tem prioridade sobre `content` de `seo.ts`.
-  Falhas no produtor não acionam a alternativa. Sem produtor nem conteúdo
-  público válido, o build falha; `false` ou ausência da chave não publica.
-  A home mantém `markdown.ts` como exemplo. Rotas parametrizadas precisam dele
-  para enumerar os caminhos públicos por `getPaths`.
-- Textos e links localizados são getters: não avalie traduções nem capture o
-  idioma no topo desses módulos. Os catálogos permanecem em `i18n/` junto da
-  página, e `seo.ts` pode ler `content` para evitar duplicação.
-- `seo.ts` e `markdown.ts` são módulos de suporte à página e
-  ficam ao lado de `index.tsx`, sem entrar na contagem que exige `helpers/`.
-  Não exporte componente padrão nem handlers HTTP nesses módulos.
+- Declare `route.info.markdown: true` na folha para publicar a representação
+  derivada do HTML assentado: o build gera um `.md` estático por idioma. Use
+  `'dynamic'` quando o conteúdo depender da requisição; a conversão acontece a
+  cada pedido. O SEO efetivo precisa permitir indexação.
+  Não crie produtores `markdown.ts`, manifestos ou conteúdo exclusivo de Markdown.
+- Páginas parametrizadas ficam fora do build e usam o matching nativo na
+  requisição. A enumeração finita de sitemap e llms.txt é um contrato separado.
+- Textos e links localizados são getters ou chamadas no componente: não capture
+  idioma no topo do módulo. Objetos usados pelo HTML podem permanecer como dados
+  de UI; não precisam implementar um contrato de publicação.
+- `seo.ts` fica ao lado de `index.tsx`, sem entrar na contagem de helpers.
+  Não exporte componente padrão nem handlers HTTP nesse módulo.
+- Markdown usa main semântico e filtros do conversor. Use `data-md-exclude`
+  para excluir conteúdo; CSS calculado não é interpretado. Preserve citações
+  contextuais em footer dentro de main.
+- Antes de publicar HTML convertido, exija estado de integridade do render
+  presente e sem erros; ausência de aviso do hook global não basta. Preserve
+  o sinal de cancelamento até `renderToStream` e o streaming do HTML normal.
 
 ## Parâmetros de função
 
@@ -349,9 +350,10 @@ release. Add a tool name to select part of the graph. For example, run
 
 - Os cabeçalhos de segurança e a Content-Security-Policy saem do middleware,
   com os valores em `src/middleware/securityHeaders/constants.ts`.
-  O `vercel.json` guarda o cache de `/images/` e só `nosniff` e
-  `Cross-Origin-Resource-Policy` para os estáticos, que não passam pela função;
-  não devolva a CSP nem os demais cabeçalhos a ele.
+  O `vercel.json` guarda o cache de `/images/`, o `Content-Type` dos `.md`
+  gerados no build e só `nosniff` e `Cross-Origin-Resource-Policy` para os
+  estáticos, que não passam pela função; não devolva a CSP nem os demais
+  cabeçalhos a ele.
 - O `script-src` usa o nonce da requisição com `'strict-dynamic'`. Não
   acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts para scripts.
 - O `style-src` é `'self'`, também sem `'unsafe-inline'`: um `<style>` ou um

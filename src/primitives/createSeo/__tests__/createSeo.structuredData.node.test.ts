@@ -10,11 +10,6 @@ import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
 
 import { createSeo } from '../index.ts'
 
-vi.mock(import('virtual:markdown-manifest'), () => ({
-  markdownPaths: {},
-  markdownIndex: []
-}))
-
 function Page() {
   createSeo({
     structuredData: () => ({ '@type': 'Thing', name: UNSAFE_JSON_LD_TEXT })

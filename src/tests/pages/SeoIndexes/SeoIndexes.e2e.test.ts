@@ -105,7 +105,8 @@ test.describe('índices gerados do manifesto de rotas', () => {
       `${siteUrl}/en/seo-sitemap-only`,
       `${siteUrl}/en/seo-article`,
       `${siteUrl}/en/structured-data-stream`,
-      `${siteUrl}/en/fragment-css`
+      `${siteUrl}/en/fragment-css`,
+      `${siteUrl}/en/markdown-optout`
     ])
     expect(new Set(llmsUrls)).toStrictEqual(
       new Set(

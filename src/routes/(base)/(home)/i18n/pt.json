@@ -2,8 +2,5 @@
   "home_title": "SolidJS Boilerplate para aplicações web",
   "home_description": "Comece seu próximo projeto com {framework}, {toolchain} e {language}. Renderização no servidor e tema claro, escuro ou do sistema já vêm configurados.",
   "home_seoTitle": "SolidJS Boilerplate | Aplicações web com SSR",
-  "home_featuresTitle": "O que esta base oferece",
-  "home_features": "Você já parte de páginas em português, inglês e espanhol, SEO definido por rota e componentes de interface prontos para adaptar. Testes de unidade, de componentes e de navegador acompanham o código, e as chamadas ao backend tratam erros sem expor detalhes do servidor.",
-  "home_usageTitle": "Quando usar",
-  "home_usage": "Use este projeto como ponto de partida para sites e aplicações com SolidJS, ou como referência para integrar SSR, tradução de páginas e testes automatizados. O repositório contém o código e os guias de desenvolvimento, arquitetura e SEO. Ao criar um produto a partir desta base, adapte o conteúdo, os dados públicos e as políticas às suas necessidades."
+  "home_features": "Você já parte de páginas em português, inglês e espanhol, SEO definido por rota e componentes de interface prontos para adaptar. Testes de unidade, de componentes e de navegador acompanham o código, e as chamadas ao backend tratam erros sem expor detalhes do servidor."
 }

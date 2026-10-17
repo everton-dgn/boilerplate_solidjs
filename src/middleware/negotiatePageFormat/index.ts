@@ -81,3 +81,13 @@ export function negotiatePageFormat(
   }
   return html.quality > 0 ? 'html' : undefined
 }
+
+export function acceptsMarkdown(accept: string | null): boolean {
+  if (accept === null) return true
+  return (
+    preference({
+      ranges: accept.split(RANGE_SEPARATOR).flatMap(range => parseRange(range)),
+      type: 'text/markdown'
+    }).quality > 0
+  )
+}
