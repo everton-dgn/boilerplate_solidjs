@@ -35,7 +35,6 @@ solid-env.d.ts
 !.env*
 .vitest/
 /.paraglide/
-/.markdown/
 /paraglide/
 /project.inlang/cache/
 /project.inlang/.gitignore

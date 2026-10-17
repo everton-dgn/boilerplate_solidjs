@@ -463,3 +463,30 @@ pacote publicado e instalado mudou esse comportamento.
 
 O acompanhamento ocorre nas atualizações de dependências; não há monitor
 automático configurado.
+
+## Integridade do SSR para Markdown
+
+A entrada mantém em `event.locals.ssrRenderState` somente getters para
+`hasErrors` e `hasCompleted`. O primeiro lê o estado monotônico nativo do
+render; o segundo registra `onCompleteAll`. O callback sozinho não comprova
+integridade: ele também pode ocorrer após falha de fragmento. O adaptador exige
+conclusão e ausência estrita de erros depois de aguardar o SSR, antes de
+publicar HTML convertido. Estado ausente ou inválido resulta em erro público 500
+sem cache. Redirects e respostas que não são páginas elegíveis preservam seu
+fluxo anterior.
+
+Os patches Bun de `solid-js` e `@solidjs/web` aplicam o delta de
+[solidjs/solid#4126](https://github.com/solidjs/solid/pull/4126) às versões
+fixadas no manifest e lock. Cobrem os runtimes padrão, de desenvolvimento e de
+observação, além das duas declarações públicas de web. A versão instalada não
+tem o catch de descarte presente na base upstream; esse comportamento adicional
+não foi transplantado. Erros de descarte que interrompem a conclusão continuam
+recusados pelo estado incompleto ou pelo catch do adaptador. A política
+existente de `configureServerErrors` permanece intacta.
+
+Remova os patches somente quando os pacotes publicados incluírem esse contrato e
+passarem as regressões de erro reutilizado entre requisições, falha de server
+function que escapa de Loading, recuperação local, serialização e cancelamento.
+A issue ou o PR fechado não substitui a verificação dos artefatos instalados. O
+sinal composto de timeout e desconexão chega ao `renderToStream`; o teste Node
+do adaptador verifica o descarte de uma raiz SSR pendente no cancelamento.

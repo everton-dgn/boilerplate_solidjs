@@ -17,7 +17,6 @@ export function isPagePath({ pathname, method }: PagePathOptions): boolean {
   if (
     isServerFunctionPath(pathname) ||
     /^\/(?:assets|images|favicon)(?:\/|$)/u.test(pathname) ||
-    pathname.endsWith('.md') ||
     pathname === '/favicon.ico'
   ) {
     return false

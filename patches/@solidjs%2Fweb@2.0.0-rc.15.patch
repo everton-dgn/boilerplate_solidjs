@@ -1,0 +1,254 @@
+diff --git a/dist/server.dev.js b/dist/server.dev.js
+index 5551ee8481cf2ab3ae9ef4013df710cc8cbb70da..b002cef3f2f9850c0d0853ba367d815653d8c963 100644
+--- a/dist/server.dev.js
++++ b/dist/server.dev.js
+@@ -1885,6 +1885,10 @@ function renderToStream(code, options = {}) {
+   if (requestEvent) setRequestErrorHook(requestEvent, options.onError);
+   let dispose;
+   let dead = false;
++  let hasErrors = false;
++  const recordRenderError = () => {
++    hasErrors = true;
++  };
+   let render;
+   let rootOwner;
+   let serializer;
+@@ -1943,6 +1947,7 @@ function renderToStream(code, options = {}) {
+       try {
+         serializer.close();
+       } catch (err) {
++        recordRenderError();
+         reportServerError(err, {
+           kind: "render",
+           handling: "serialize"
+@@ -1960,6 +1965,7 @@ function renderToStream(code, options = {}) {
+     } else if (!sink && onDisconnectedBeforeShell) onDisconnectedBeforeShell();
+   };
+   const failRender = err => {
++    recordRenderError();
+     reportServerError(err, {
+       kind: "render",
+       handling: "failed"
+@@ -2114,12 +2120,17 @@ function renderToStream(code, options = {}) {
+     },
+     ...options.sink
+   };
++  const onSerializerError = serializerErrorHook(options.onError);
+   serializer = (options.serializer || createHydrationSerializer)({
+     scopeId: options.renderId,
+     plugins: options.plugins,
+     onData: payload => sink.data(payload),
+     onDone,
+-    onError: serializerErrorHook(options.onError)
++    onError: err => {
++      recordRenderError();
++      if (onSerializerError === undefined) throw err;
++      onSerializerError(err);
++    }
+   });
+   let rootAssetsSerialized = false;
+   const serializeRootAssets = () => {
+@@ -2472,6 +2483,7 @@ function renderToStream(code, options = {}) {
+   applyAssetTracking(context, tracking, manifest, noScripts);
+   context.failRender = failRender;
+   context.errorPolicy = options.onError;
++  context.recordRenderError = recordRenderError;
+   context.flushed = () => firstFlushed;
+   context.trace = requestEvent ? traceForEvent(requestEvent) : traceFor(context, undefined);
+   render = timeDocument(context, context.trace, "stream", requestEvent);
+@@ -2491,6 +2503,7 @@ function renderToStream(code, options = {}) {
+     try {
+       res = resolveSSRNode(escape(code()));
+     } catch (err) {
++      recordRenderError();
+       reportServerError(err, {
+         kind: "render",
+         handling: "failed"
+@@ -2671,6 +2684,9 @@ function renderToStream(code, options = {}) {
+     return p;
+   };
+   return {
++    get hasErrors() {
++      return hasErrors;
++    },
+     then(onFulfilled, onRejected) {
+       const freezeHead = () => {
+         if (requestEvent && requestEvent.response) commitResponseStub(requestEvent.response, {
+diff --git a/dist/server.js b/dist/server.js
+index b251a2c7ecda213cd58193e51724a7f6c954a5ae..2344d2823eba32e9a68ff04e9fc9cb400b437230 100644
+--- a/dist/server.js
++++ b/dist/server.js
+@@ -1620,6 +1620,10 @@ function renderToStream(code, options = {}) {
+   if (requestEvent) setRequestErrorHook(requestEvent, options.onError);
+   let dispose;
+   let dead = false;
++  let hasErrors = false;
++  const recordRenderError = () => {
++    hasErrors = true;
++  };
+   let render;
+   let rootOwner;
+   let serializer;
+@@ -1667,6 +1671,7 @@ function renderToStream(code, options = {}) {
+       try {
+         serializer.close();
+       } catch (err) {
++        recordRenderError();
+         reportServerError(err, {
+           kind: "render",
+           handling: "serialize"
+@@ -1684,6 +1689,7 @@ function renderToStream(code, options = {}) {
+     } else if (!sink && onDisconnectedBeforeShell) onDisconnectedBeforeShell();
+   };
+   const failRender = err => {
++    recordRenderError();
+     reportServerError(err, {
+       kind: "render",
+       handling: "failed"
+@@ -1828,12 +1834,17 @@ function renderToStream(code, options = {}) {
+     },
+     ...options.sink
+   };
++  const onSerializerError = serializerErrorHook(options.onError);
+   serializer = (options.serializer || createHydrationSerializer)({
+     scopeId: options.renderId,
+     plugins: options.plugins,
+     onData: payload => sink.data(payload),
+     onDone,
+-    onError: serializerErrorHook(options.onError)
++    onError: err => {
++      recordRenderError();
++      if (onSerializerError === undefined) throw err;
++      onSerializerError(err);
++    }
+   });
+   let rootAssetsSerialized = false;
+   const serializeRootAssets = () => {
+@@ -2170,6 +2181,7 @@ function renderToStream(code, options = {}) {
+   applyAssetTracking(context, tracking, manifest, noScripts);
+   context.failRender = failRender;
+   context.errorPolicy = options.onError;
++  context.recordRenderError = recordRenderError;
+   context.flushed = () => firstFlushed;
+   context.trace = requestEvent ? traceForEvent(requestEvent) : traceFor(context, undefined);
+   render = timeDocument(context, context.trace);
+@@ -2189,6 +2201,7 @@ function renderToStream(code, options = {}) {
+     try {
+       res = resolveSSRNode(escape(code()));
+     } catch (err) {
++      recordRenderError();
+       reportServerError(err, {
+         kind: "render",
+         handling: "failed"
+@@ -2369,6 +2382,9 @@ function renderToStream(code, options = {}) {
+     return p;
+   };
+   return {
++    get hasErrors() {
++      return hasErrors;
++    },
+     then(onFulfilled, onRejected) {
+       const freezeHead = () => {
+         if (requestEvent && requestEvent.response) commitResponseStub(requestEvent.response, {
+diff --git a/dist/server.observe.js b/dist/server.observe.js
+index f5198885c360275845344c9871f8104f2df1d160..272b2410a4c4636c0f914ff15eff2f25f3290767 100644
+--- a/dist/server.observe.js
++++ b/dist/server.observe.js
+@@ -1716,6 +1716,10 @@ function renderToStream(code, options = {}) {
+   if (requestEvent) setRequestErrorHook(requestEvent, options.onError);
+   let dispose;
+   let dead = false;
++  let hasErrors = false;
++  const recordRenderError = () => {
++    hasErrors = true;
++  };
+   let render;
+   let rootOwner;
+   let serializer;
+@@ -1774,6 +1778,7 @@ function renderToStream(code, options = {}) {
+       try {
+         serializer.close();
+       } catch (err) {
++        recordRenderError();
+         reportServerError(err, {
+           kind: "render",
+           handling: "serialize"
+@@ -1791,6 +1796,7 @@ function renderToStream(code, options = {}) {
+     } else if (!sink && onDisconnectedBeforeShell) onDisconnectedBeforeShell();
+   };
+   const failRender = err => {
++    recordRenderError();
+     reportServerError(err, {
+       kind: "render",
+       handling: "failed"
+@@ -1945,12 +1951,17 @@ function renderToStream(code, options = {}) {
+     },
+     ...options.sink
+   };
++  const onSerializerError = serializerErrorHook(options.onError);
+   serializer = (options.serializer || createHydrationSerializer)({
+     scopeId: options.renderId,
+     plugins: options.plugins,
+     onData: payload => sink.data(payload),
+     onDone,
+-    onError: serializerErrorHook(options.onError)
++    onError: err => {
++      recordRenderError();
++      if (onSerializerError === undefined) throw err;
++      onSerializerError(err);
++    }
+   });
+   let rootAssetsSerialized = false;
+   const serializeRootAssets = () => {
+@@ -2303,6 +2314,7 @@ function renderToStream(code, options = {}) {
+   applyAssetTracking(context, tracking, manifest, noScripts);
+   context.failRender = failRender;
+   context.errorPolicy = options.onError;
++  context.recordRenderError = recordRenderError;
+   context.flushed = () => firstFlushed;
+   context.trace = requestEvent ? traceForEvent(requestEvent) : traceFor(context, undefined);
+   render = timeDocument(context, context.trace, "stream", requestEvent);
+@@ -2322,6 +2334,7 @@ function renderToStream(code, options = {}) {
+     try {
+       res = resolveSSRNode(escape(code()));
+     } catch (err) {
++      recordRenderError();
+       reportServerError(err, {
+         kind: "render",
+         handling: "failed"
+@@ -2502,6 +2515,9 @@ function renderToStream(code, options = {}) {
+     return p;
+   };
+   return {
++    get hasErrors() {
++      return hasErrors;
++    },
+     then(onFulfilled, onRejected) {
+       const freezeHead = () => {
+         if (requestEvent && requestEvent.response) commitResponseStub(requestEvent.response, {
+diff --git a/types/server-mock.d.ts b/types/server-mock.d.ts
+index 7dabe89ca60dd5ea7213b745d5a26b62974ea8f3..ff5334b961070e925373d997e186a583a6e47449 100644
+--- a/types/server-mock.d.ts
++++ b/types/server-mock.d.ts
+@@ -218,6 +218,8 @@ export declare function renderToStream<T>(fn: () => T, options?: {
+      */
+     signal?: AbortSignal;
+ }): {
++    /** Render-local error state. Read after completion; false does not imply completion. */
++    readonly hasErrors: boolean;
+     /**
+      * Awaiting the stream resolves with the complete HTML once every boundary
+      * settles — the fully-settled-string form of the render. Render errors
+diff --git a/types/server.d.ts b/types/server.d.ts
+index 290a2f63ede8191e2d36a1c6f1f8adf0da26f49b..e6f6a8593110122a9abf2d59241eacb177e7a23a 100644
+--- a/types/server.d.ts
++++ b/types/server.d.ts
+@@ -309,6 +309,8 @@ export declare function renderToStream<T>(fn: () => T, options?: {
+      */
+     signal?: AbortSignal;
+ }): {
++    /** Render-local error state. Read after completion; false does not imply completion. */
++    readonly hasErrors: boolean;
+     /**
+      * Awaiting the stream resolves with the complete HTML once every boundary
+      * settles — the fully-settled-string form of the render (`const html =
