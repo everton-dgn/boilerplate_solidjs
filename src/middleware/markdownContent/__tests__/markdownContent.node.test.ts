@@ -75,23 +75,21 @@ function pendingPage(cleanup: () => void) {
   )
 }
 
-describe('html-derived Markdown', () => {
-  beforeEach(() => {
-    vi.stubEnv('DEV', false)
-    vi.spyOn(Router, 'match').mockReturnValue([
-      {
-        path: '/about',
-        pattern: '/about',
-        match: '/about',
-        params: {},
-        info: { markdown: true }
-      }
-    ])
-  })
+function mockPublishedRoute() {
+  vi.stubEnv('DEV', false)
+  vi.spyOn(Router, 'match').mockReturnValue([
+    {
+      path: '/about',
+      pattern: '/about',
+      match: '/about',
+      params: {},
+      info: { markdown: true }
+    }
+  ])
+}
 
-  afterEach(() => {
-    vi.useRealTimers()
-  })
+describe('html-derived Markdown', () => {
+  beforeEach(mockPublishedRoute)
 
   it('converts settled HTML with a full document URL, semantic filters and contextual footer', async () => {
     const request = event({ path: '/en/docs/article.md?version=2' })
@@ -132,6 +130,76 @@ describe('html-derived Markdown', () => {
     expect(response).toBe(original)
     expect(request.renderMode).toBeUndefined()
   })
+})
+
+describe('markdown aliases and runtime publication', () => {
+  beforeEach(mockPublishedRoute)
+
+  it.each([
+    ['/index.md', '/'],
+    ['/pt/index.md', '/pt'],
+    ['/en/index.md', '/en'],
+    ['/es/index.md', '/es'],
+    ['/index/index.md', '/index'],
+    ['/index/index/index.md', '/index/index'],
+    ['/foo/index/index.md', '/foo/index'],
+    ['/pt/index/index.md', '/pt/index'],
+    ['/en/index/index/index.md', '/en/index/index'],
+    ['/es/foo/index/index.md', '/es/foo/index']
+  ])('decodes %s once without losing its query', async (alias, path) => {
+    const request = event({ path: `${alias}?version=2` })
+    const response = await markdownContent(request, () => html())
+    expect(request.request.url).toBe(`https://example.com${path}?version=2`)
+    expect(response.status).toBe(HTTP_OK)
+    expect(response.headers.get('content-type')).toBe(
+      'text/markdown; charset=utf-8'
+    )
+  })
+
+  it.each(['GET', 'HEAD'])(
+    'rejects a %s alias when the rendered response becomes noindex',
+    async method => {
+      const cancel = vi.fn<() => void>()
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('Private HTML'))
+        },
+        cancel
+      })
+      const original = new Response(body, {
+        headers: {
+          'content-type': 'text/html',
+          'x-robots-tag': 'nofollow, NoIndex',
+          'cache-control': 'public, max-age=3600'
+        }
+      })
+      const response = await markdownContent(
+        event({ path: '/en/about.md', method }),
+        () => Promise.resolve(original)
+      )
+      expect(response.status).toBe(HTTP_NOT_FOUND)
+      expect(response.headers.get('cache-control')).toBe('private, no-store')
+      expect(response.headers.get('content-type')).toBe(
+        'text/plain; charset=utf-8'
+      )
+      await expect(response.text()).resolves.toBe('')
+      expect(cancel).toHaveBeenCalledOnce()
+    }
+  )
+
+  it('preserves HTML fallback on the original URL with runtime noindex', async () => {
+    const original = await html('Private HTML')
+    original.headers.set('x-robots-tag', 'noindex')
+    const response = await markdownContent(event(), () =>
+      Promise.resolve(original)
+    )
+    expect(response).toBe(original)
+    await expect(response.text()).resolves.toBe('Private HTML')
+  })
+})
+
+describe('markdown negotiation and redirects', () => {
+  beforeEach(mockPublishedRoute)
 
   it.each([
     ['text/html;q=1,text/markdown;q=0.2', HTTP_OK],
@@ -207,23 +275,26 @@ describe('html-derived Markdown', () => {
     expect(response).toBe(original)
   })
 
-  it('converts a negotiated HTTP_NOT_FOUND and preserves its status', async () => {
-    vi.spyOn(Router, 'match').mockReturnValue([
-      {
-        path: '/*HTTP_NOT_FOUND',
-        pattern: '/*HTTP_NOT_FOUND',
-        match: '/missing',
-        params: {},
-        info: { seo: { noindex: true } }
-      }
-    ])
-    const response = await markdownContent(event({ path: '/en/missing' }), () =>
-      html('<main><h1>Not found</h1></main>', HTTP_NOT_FOUND)
-    )
-    expect(response.status).toBe(HTTP_NOT_FOUND)
-    expect(response.headers.get('x-robots-tag')).toBe('noindex')
-    await expect(response.text()).resolves.toContain('# Not found')
-  })
+  it.each(['/en/missing', '/en/missing.md'])(
+    'converts the real not-found page at %s and preserves its status',
+    async path => {
+      vi.spyOn(Router, 'match').mockReturnValue([
+        {
+          path: '/*HTTP_NOT_FOUND',
+          pattern: '/*HTTP_NOT_FOUND',
+          match: '/missing',
+          params: {},
+          info: { seo: { noindex: true } }
+        }
+      ])
+      const response = await markdownContent(event({ path }), () =>
+        html('<main><h1>Not found</h1></main>', HTTP_NOT_FOUND)
+      )
+      expect(response.status).toBe(HTTP_NOT_FOUND)
+      expect(response.headers.get('x-robots-tag')).toBe('noindex')
+      await expect(response.text()).resolves.toContain('# Not found')
+    }
+  )
 
   it.each([
     HTTP_UNAUTHORIZED,
@@ -247,18 +318,83 @@ describe('html-derived Markdown', () => {
     )
     expect(response.status).toBe(HTTP_REDIRECT)
     expect(response.headers.get('location')).toBe('/en/contact.md?x=1')
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
+    expect(response.headers.get('vary')).toBe('Accept')
   })
 
-  it('preserves external redirects', async () => {
+  it('preserves immutable external redirects with private negotiation headers', async () => {
     const original = Response.redirect(
       'https://external.example/page',
       HTTP_REDIRECT
     )
-    await expect(
-      markdownContent(event({ path: '/en/about.md' }), () =>
-        Promise.resolve(original)
+    const response = await markdownContent(
+      event({ path: '/en/about.md' }),
+      () => Promise.resolve(original)
+    )
+    expect(response.status).toBe(HTTP_REDIRECT)
+    expect(response.headers.get('location')).toBe(
+      'https://external.example/page'
+    )
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
+    expect(response.headers.get('vary')).toBe('Accept')
+  })
+
+  it.each([
+    ['https://external.example/page', 'Cookie', 'Cookie, Accept'],
+    ['/en/account', 'Accept-Language', 'Accept-Language, Accept'],
+    ['/en/private', 'Cookie', 'Cookie, Accept'],
+    ['/en/contact.md', 'Cookie, Accept', 'Cookie, Accept'],
+    ['/en/account', '*', '*'],
+    [undefined, '*', '*']
+  ])(
+    'preserves %s redirects without public caching or duplicate Vary',
+    async (location, vary, expectedVary) => {
+      vi.spyOn(Router, 'match').mockImplementation(href => [
+        {
+          path: '/about',
+          pattern: '/about',
+          match: '/about',
+          params: {},
+          info: {
+            markdown: !new URL(href).pathname.endsWith('/account'),
+            seo: { noindex: new URL(href).pathname.endsWith('/private') }
+          }
+        }
+      ])
+      const headers = new Headers({
+        vary,
+        'cache-control': 'public, max-age=3600'
+      })
+      if (location) headers.set('location', location)
+      const response = await markdownContent(
+        event({ path: '/en/about.md' }),
+        () =>
+          Promise.resolve(
+            new Response(null, {
+              status: HTTP_REDIRECT,
+              headers
+            })
+          )
       )
-    ).resolves.toBe(original)
+      expect(response.status).toBe(HTTP_REDIRECT)
+      expect(response.headers.get('location')).toBe(location ?? null)
+      expect(response.headers.get('cache-control')).toBe('private, no-store')
+      expect(response.headers.get('vary')).toBe(expectedVary)
+    }
+  )
+
+  it('rejects an unacceptable alias before rendering a redirect', async () => {
+    const next = vi.fn<() => Promise<Response>>(() =>
+      Promise.resolve(Response.redirect('https://external.example/page'))
+    )
+    const response = await markdownContent(
+      event({ path: '/en/about.md', accept: 'text/markdown;q=0' }),
+      next
+    )
+    expect(response.status).toBe(HTTP_NOT_ACCEPTABLE)
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
+    expect(response.headers.get('vary')).toContain('Accept')
+    expect(next).not.toHaveBeenCalled()
   })
 
   it('rejects malformed encoding with a public response', async () => {
@@ -270,18 +406,7 @@ describe('html-derived Markdown', () => {
 })
 
 describe('markdown resource bounds', () => {
-  beforeEach(() => {
-    vi.stubEnv('DEV', false)
-    vi.spyOn(Router, 'match').mockReturnValue([
-      {
-        path: '/about',
-        pattern: '/about',
-        match: '/about',
-        params: {},
-        info: { markdown: true }
-      }
-    ])
-  })
+  beforeEach(mockPublishedRoute)
   afterEach(() => {
     vi.useRealTimers()
   })

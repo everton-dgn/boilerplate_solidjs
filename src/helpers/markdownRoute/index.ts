@@ -16,5 +16,7 @@ export function isMarkdownRoute(
 
 export function markdownPath(pathname: string): string {
   const path = pathname.replace(/\/$/u, '')
-  return `${path}${delocalizePathname(pathname).replace(/\/$/u, '') ? '' : '/index'}.md`
+  const isIndex =
+    !delocalizePathname(pathname).replace(/\/$/u, '') || path.endsWith('/index')
+  return `${path}${isIndex ? '/index' : ''}.md`
 }

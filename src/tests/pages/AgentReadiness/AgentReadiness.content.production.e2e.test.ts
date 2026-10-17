@@ -7,7 +7,7 @@ import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 test.use({ headless: true })
 
 const HTTP_OK = 200
-const MIN_CONTENT_CHARACTERS = 100
+const MIN_CONTENT_CHARACTERS = 500
 const MOBILE_WIDTH = 375
 const DESKTOP_WIDTH = 1280
 const VIEWPORT_HEIGHT = 800

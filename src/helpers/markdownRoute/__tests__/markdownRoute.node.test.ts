@@ -21,6 +21,13 @@ describe('hTML-derived Markdown', () => {
     ['/', '/index.md'],
     ['/pt', '/pt/index.md'],
     ['/en/', '/en/index.md'],
+    ['/index', '/index/index.md'],
+    ['/index/index', '/index/index/index.md'],
+    ['/foo/index', '/foo/index/index.md'],
+    ['/pt/index', '/pt/index/index.md'],
+    ['/en/index/', '/en/index/index.md'],
+    ['/es/foo/index', '/es/foo/index/index.md'],
+    ['/pt/index/index', '/pt/index/index/index.md'],
     ['/es/about', '/es/about.md'],
     ['/pt/blog/article', '/pt/blog/article.md']
   ])('maps %s to %s', (path, expected) => {

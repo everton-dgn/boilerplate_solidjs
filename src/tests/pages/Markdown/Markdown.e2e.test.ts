@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
+import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 test.use({ headless: true })
 
@@ -134,6 +135,45 @@ test('matches unenumerated parameter values without a Markdown producer', async 
   expect(response.status()).toBe(HTTP_OK)
   expect(await response.text()).toContain(`# HTML Markdown contract: ${slug}`)
 })
+
+// oxlint-disable-next-line vitest/prefer-each -- Playwright não oferece test.each.
+for (const locale of LOCALES) {
+  test(`preserves the index slug and home Markdown aliases in ${locale}`, async ({
+    page,
+    request
+  }) => {
+    const pathname = `/${locale}/markdown-contract/index`
+    const markdownPath = `${pathname}/index.md`
+    const html = await request.get(pathname, {
+      headers: { accept: 'text/html' }
+    })
+    expect(html.status()).toBe(HTTP_OK)
+    expect(html.headers()['content-type']).toContain('text/html')
+    const alternate = await page.evaluate(
+      documentHtml =>
+        new DOMParser()
+          .parseFromString(documentHtml, 'text/html')
+          .querySelector('link[rel="alternate"][type="text/markdown"]')
+          ?.getAttribute('href'),
+      await html.text()
+    )
+    expect(alternate).toBe(`${readSiteOrigin()}${markdownPath}`)
+
+    const markdown = await request.get(`${markdownPath}?version=2`)
+    expect(markdown.status()).toBe(HTTP_OK)
+    expect(markdown.headers()['content-type']).toContain('text/markdown')
+    expect(markdown.headers()['content-language']).toBe(locale)
+    expect(await markdown.text()).toContain('# HTML Markdown contract: index')
+
+    const home = await request.get(`/${locale}/index.md`)
+    expect(home.status()).toBe(HTTP_OK)
+    expect(home.headers()['content-type']).toContain('text/markdown')
+    expect(home.headers()['content-language']).toBe(locale)
+    const homeBody = await home.text()
+    expect(homeBody).toContain('# SolidJS Boilerplate')
+    expect(homeBody).not.toContain('# HTML Markdown contract: index')
+  })
+}
 
 test('isolates simultaneous locale cookies in settled content', async ({
   request
