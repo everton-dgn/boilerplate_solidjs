@@ -36,7 +36,7 @@ release. Add a tool name to select part of the graph. For example, run
   [desenvolvimento](docs/development.md) serem resolvidas e verificadas.
   O runtime explícito do Nitro impede que executar o build em Bun troque
   silenciosamente o runtime da função Vercel.
-- O lint de CSS, o backend simulado de E2E e a automação de release executam
+- O Knip, o lint de CSS, o backend simulado de E2E e a automação de release executam
   em Bun. Valide a automação com `vp run test:release`, também executado no
   pre-push. No CI, essa suíte roda quando a automação ou suas dependências
   mudam; a publicação mantém as verificações reais sem repetir os testes.

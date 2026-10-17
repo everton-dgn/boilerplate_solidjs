@@ -68,12 +68,8 @@ const config = {
     'src/primitives/createLocalizedNavigate/index.ts!',
     'src/i18n/localizedRedirect/index.ts!',
     'env.ts!',
-    // Factory carregada por lazyPlugins no Vite; não é entrada de runtime.
-    'tooling/i18n/i18nPlugin/index.ts',
     // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.
-    'src/tests/fixtures/e2e/middleware/index.ts',
-    // Testes de tipo: checados pelo tsc, sem execução no Vitest.
-    'src/**/*.test-d.{ts,tsx}'
+    'src/tests/fixtures/e2e/middleware/index.ts'
   ],
   project: [
     'src/**/*.{ts,tsx}!',
@@ -81,9 +77,6 @@ const config = {
     '!src/tests/**!',
     '!src/**/*.test.{ts,tsx}!'
   ],
-  playwright: {
-    config: ['tooling/playwright.ts']
-  },
   // A config fica fora do caminho padrão e roda por tooling/css/check.ts.
   stylelint: {
     config: ['tooling/css/stylelint.config.mjs']
