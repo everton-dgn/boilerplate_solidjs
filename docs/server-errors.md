@@ -477,7 +477,8 @@ preservam seu fluxo anterior.
 
 O serializador padrão informa falhas de parse e de emissão ao render, inclusive
 sem um hook local. A primeira falha marca `hasErrors`, passa pela política de
-`configureServerErrors` e encerra o render sem chamar `onCompleteAll`. O
+`configureServerErrors` e encerra o render sem chamar `onCompleteAll`. Falhas
+síncronas também seguem esse caminho, sem relançar a exceção para o chamador. O
 descarte libera o owner e as fontes assíncronas pendentes. A entrada continua
 sem um `onError` local, preservando a sanitização e o log globais.
 
