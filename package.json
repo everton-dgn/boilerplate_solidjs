@@ -115,6 +115,7 @@
     "vitest@*": "catalog:"
   },
   "patchedDependencies": {
+    "@mdream/js@2.0.3": "patches/@mdream%2Fjs@2.0.3.patch",
     "@voidzero-dev/vite-plus-core@1.2.0": "patches/@voidzero-dev%2Fvite-plus-core@1.2.0.patch",
     "@solidjs/web@2.0.0-rc.15": "patches/@solidjs%2Fweb@2.0.0-rc.15.patch",
     "solid-js@2.0.0-rc.15": "patches/solid-js@2.0.0-rc.15.patch"

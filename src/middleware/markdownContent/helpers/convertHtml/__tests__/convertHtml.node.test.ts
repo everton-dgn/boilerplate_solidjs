@@ -126,4 +126,38 @@ describe('markdown conversion filters', () => {
     expect(markdown).not.toMatch(/^<h3>/mu)
     expect(markdown).not.toMatch(/^<mark>\s*$/mu)
   })
+
+  it('keeps emphasis delimiters around content after a removed icon', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Install. <strong><svg><path d="M0 0"/></svg> Warning:</strong> read the notes.</p><p>Line one<br>===</p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('Install. **Warning:** read the notes.')
+    expect(markdown).toContain('Line one  \n\\===')
+  })
+
+  it('keeps an empty heading in a list item apart from the next block', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><ul><li><h3></h3><p>Partner description</p></li></ul></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('- ###\n\n  Partner description')
+  })
+
+  it('labels an icon link with its accessible name', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Open the <a href="/cart" aria-label="Cart"><span aria-hidden="true">🛒</span></a> now.</p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('Open the [Cart](https://example.com/cart) now.')
+  })
 })

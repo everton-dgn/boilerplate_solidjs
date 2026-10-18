@@ -338,6 +338,16 @@ contextuais dentro de main permanecem. CSS calculado e conteúdo criado
 exclusivamente no navegador não são interpretados. Use marcação semântica para
 conteúdo que não deve aparecer.
 
+O patch Bun de `@mdream/js` corrige três defeitos do conversor que aparecem com
+esses filtros. Uma ênfase cujo início foi removido, como um ícone SVG, ficava
+com o espaço dentro do delimitador (`** Warning:**`), e uma linha só de `===` ou
+`--` depois de uma quebra virava sublinhado de título. Um título vazio num item
+de lista virava `\###`, colado ao bloco seguinte. Um link com `aria-label` cujo
+único conteúdo é removido, como um ícone com `aria-hidden="true"`, saía sem
+texto (`[](/cart)`). O patch altera só o `dist` do pacote. Remova-o quando uma
+versão publicada trouxer as três correções e os testes de regressão de
+`convertHtml` passarem sem ele.
+
 GET com `Accept: text/markdown` recebe Markdown diretamente, sem redirect para
 arquivo. A negociação respeita pesos e especificidade, com HTML em empate. O
 acesso explícito a `.md` exige somente que Markdown seja aceitável, mesmo quando
