@@ -7,7 +7,7 @@ import path from 'node:path'
 import { mock, type TestContext } from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 
-import { createServer } from 'vite-plus'
+import { createServer, type FSWatcher } from 'vite-plus'
 
 import { generateMessages } from '../../generateMessages/index.ts'
 import { writeProject } from '../../testProject/index.ts'
@@ -38,13 +38,23 @@ type ContainsOptions = { root: string; file: string; expected: RegExp }
 
 const RUNTIME_FILE = 'paraglide/runtime.js'
 const TIMEOUT_MS = 20_000
-const SETTLE_MS = 1500
 const CACHE_TEST_STABILITY_MS = 1000
 
 function payloadType(payload: unknown): unknown {
   return typeof payload === 'object' && payload !== null && 'type' in payload
     ? payload.type
     : undefined
+}
+
+// Resolve com o erro em vez de rejeitar: createServer pode falhar depois do
+// hook que inicia a espera, e ela não pode virar uma rejeição não tratada.
+async function scanResult(watcher: FSWatcher): Promise<unknown> {
+  try {
+    await once(watcher, 'ready', { signal: AbortSignal.timeout(TIMEOUT_MS) })
+    return null
+  } catch (error) {
+    return error
+  }
 }
 
 export const MESSAGES = { home_title: 'Title', home_body: 'Body' }
@@ -102,6 +112,7 @@ export async function startServer({
 }: StartOptions): Promise<DevServer> {
   const root = existing ?? (await mkdtemp(path.join(tmpdir(), 'i18n-plugin-')))
   const closers: Close[] = []
+  let scan: Promise<unknown> | undefined
   context.after(async () => {
     for (const close of closers.toReversed()) await close()
     if (!existing) await rm(root, { recursive: true, force: true })
@@ -137,7 +148,20 @@ export async function startServer({
     optimizeDeps: { noDiscovery: true, include: [] },
     plugins: [
       i18nPlugin(),
-      { name: 'test:shutdown-observer', closeBundle: onClosing }
+      {
+        name: 'test:lifecycle-observer',
+        // O `ready` do chokidar pode sair antes de createServer resolver.
+        // Até o primeiro configureServer o Vite+ só executa microtasks, e a
+        // varredura depende de I/O, então o evento ainda não saiu aqui. Se
+        // uma atualização mudar essa ordem, a espera estoura o TIMEOUT_MS.
+        configureServer: {
+          order: 'pre',
+          handler: devServer => {
+            scan = scanResult(devServer.watcher)
+          }
+        },
+        closeBundle: onClosing
+      }
     ]
   })
   closers.push(() => server.close())
@@ -149,7 +173,12 @@ export async function startServer({
   })
   await once(http, 'listening')
   // Deixa o watcher terminar a varredura inicial antes das mudanças.
-  await delay(SETTLE_MS)
+  const scanError = await scan
+  if (scanError !== null) {
+    throw new Error('The watcher did not finish the initial scan', {
+      cause: scanError
+    })
+  }
   const address = http.address()
   if (typeof address !== 'object' || address === null) {
     throw new Error('Missing test server address')
