@@ -82,13 +82,17 @@ substitui a pendente anterior, preservando a execução já em andamento.
 ## Integração com a Vercel
 
 O projeto `boilerplate-solidjs`, no escopo `verton-toffanettos-projects`, recebe
-deploys de produção pelo job `deploy` do CI. Ele depende de `check` e executa
-somente em push na `main`. O CI de PRs valida o código sem publicar na Vercel.
+deploys de produção pelo job `deploy` do CI. Ele depende de `check` e do E2E de
+produção e executa somente em push na `main`. O CI de PRs valida o código sem
+publicar na Vercel.
 
-No push para `main`, o job de E2E de produção carrega as configurações da Vercel
-e executa `vercel build --prod` uma vez. O Playwright testa esse output sem
-recompilar, recebendo apenas as variáveis públicas `VITE_*` daquele arquivo, sem
-as credenciais de backend. O job empacota somente `.vercel/output` em tar,
+No push para `main`, o job de E2E de produção consulta uma vez a versão `latest`
+do pacote `vercel` no registry do npm, aceita somente uma versão numérica
+`x.y.z` e usa essa mesma versão em `pull`, `build` e no `deploy`, que a recebe
+como output do job. Em seguida, carrega as configurações da Vercel e executa
+`vercel build --prod` uma vez. O Playwright testa esse output sem recompilar,
+recebendo apenas as variáveis públicas `VITE_*` daquele arquivo, sem as
+credenciais de backend. O job empacota somente `.vercel/output` em tar,
 preservando permissões e links, e compara o conteúdo e a listagem dos arquivos
 após os testes antes de enviá-lo ao GitHub Actions. O build recusa links que
 saiam do output e funções com `filePathMap`, pois essas referências exigiriam
@@ -206,9 +210,12 @@ locais em `.github/actions/`. Ao acrescentar uma dependência local da automaç�
 atualize essa lista e os testes do filtro. Mudanças somente na aplicação ou em
 guias fora da pasta de release não executam a suíte no CI.
 
-A seleção não pula o workflow nem o job `Quality`. `CI required` continua
-exigindo sucesso de todos os jobs. A recuperação manual também mantém as
-verificações reais de origem, commit e publicação; ela não repete os testes.
+A seleção não pula o workflow nem o job `Quality`. `CI required` exige sucesso
+de todos os jobs, exceto quando o push da `main` reaproveita a validação do PR,
+conforme o
+[guia de desenvolvimento](../../docs/development.md#reutilização-da-validação-do-pr-na-main).
+A recuperação manual também mantém as verificações reais de origem, commit e
+publicação; ela não repete os testes.
 
 Os testes de integração substituem `git` e `gh` por executáveis sintéticos e
 isolam o `PATH` dos subprocessos. Não usam credenciais reais nem criam releases

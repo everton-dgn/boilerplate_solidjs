@@ -1,0 +1,342 @@
+/* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
+import assert from 'node:assert/strict'
+import { execFile } from 'node:child_process'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { env } from 'node:process'
+import { test } from 'node:test'
+import { promisify } from 'node:util'
+
+const exec = promisify(execFile)
+const WORKFLOW = await readFile(
+  new URL('../../../.github/workflows/ci.yml', import.meta.url),
+  'utf8'
+)
+const LINES = WORKFLOW.split('\n')
+const RUN_INDENT_OFFSET = 2
+const NOT_FOUND = -1
+// pull e build no E2E de produção, deploy no job de deploy.
+const VERCEL_COMMAND_COUNT = 3
+
+type ScriptOptions = {
+  script: string
+  variables: Record<string, string>
+}
+type GateCase = {
+  variables: Record<string, string>
+  isAccepted: boolean
+}
+
+function stepScript(name: string): string {
+  const start = LINES.findIndex(line => line.trim() === `- name: ${name}`)
+  assert.ok(start !== NOT_FOUND, `Passo ausente: ${name}`)
+  const next = LINES.findIndex(
+    (line, index) => index > start && line.trim().startsWith('- name: ')
+  )
+  const run = LINES.findIndex(
+    (line, index) => index > start && line.trim() === 'run: |'
+  )
+  assert.ok(
+    run > start && (next === NOT_FOUND || run < next),
+    `Passo sem run: ${name}`
+  )
+  const indent = (LINES[run] ?? '').indexOf('run:')
+  const body: string[] = []
+  for (const line of LINES.slice(run + 1)) {
+    if (line.trim() && line.search(/\S/u) <= indent) break
+    body.push(line.slice(indent + RUN_INDENT_OFFSET))
+  }
+  return body.join('\n')
+}
+
+function jobBlock(id: string): string {
+  const start = LINES.indexOf(`  ${id}:`)
+  assert.ok(start !== NOT_FOUND, `Job ausente: ${id}`)
+  const end = LINES.findIndex(
+    (line, index) => index > start && /^ {2}\S/u.test(line)
+  )
+  return LINES.slice(start, end === NOT_FOUND ? undefined : end).join('\n')
+}
+
+async function runScript({ script, variables }: ScriptOptions) {
+  try {
+    await exec('bash', ['-e', '-c', script], {
+      env: { ...env, ...variables }
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+const reused = { PROOF_RESULT: 'success', REUSE: 'true', RUN_QUALITY: 'false' }
+const allPassed = {
+  QUALITY_RESULT: 'success',
+  TOOLING_RESULT: 'success',
+  FIXTURES_RESULT: 'success',
+  PRODUCTION_RESULT: 'success'
+}
+const allSkipped = {
+  QUALITY_RESULT: 'skipped',
+  TOOLING_RESULT: 'skipped',
+  FIXTURES_RESULT: 'skipped',
+  PRODUCTION_RESULT: 'success'
+}
+const pullRequest = { PROOF_RESULT: 'skipped', REUSE: '', RUN_QUALITY: '' }
+
+test('o gate aceita jobs pulados somente com prova válida', async () => {
+  const script = stepScript('Require all validation jobs')
+  const cases: GateCase[] = [
+    { variables: { ...pullRequest, ...allPassed }, isAccepted: true },
+    { variables: { ...reused, ...allSkipped }, isAccepted: true },
+    {
+      variables: {
+        ...reused,
+        ...allSkipped,
+        RUN_QUALITY: 'true',
+        QUALITY_RESULT: 'success'
+      },
+      isAccepted: true
+    },
+    { variables: { ...reused, ...allPassed }, isAccepted: true },
+    {
+      variables: { ...pullRequest, ...allPassed, TOOLING_RESULT: 'skipped' },
+      isAccepted: false
+    },
+    {
+      variables: { ...reused, ...allSkipped, RUN_QUALITY: 'true' },
+      isAccepted: false
+    },
+    {
+      variables: { ...reused, ...allSkipped, PRODUCTION_RESULT: 'skipped' },
+      isAccepted: false
+    },
+    {
+      variables: { ...reused, ...allSkipped, PRODUCTION_RESULT: 'failure' },
+      isAccepted: false
+    },
+    {
+      variables: { ...reused, ...allSkipped, TOOLING_RESULT: 'failure' },
+      isAccepted: false
+    },
+    {
+      variables: { ...reused, ...allSkipped, FIXTURES_RESULT: 'cancelled' },
+      isAccepted: false
+    },
+    {
+      variables: { ...reused, ...allSkipped, REUSE: 'false' },
+      isAccepted: false
+    },
+    {
+      variables: { ...reused, ...allSkipped, PROOF_RESULT: 'failure' },
+      isAccepted: false
+    },
+    {
+      variables: {
+        ...reused,
+        ...allPassed,
+        PROOF_RESULT: 'failure',
+        REUSE: ''
+      },
+      isAccepted: true
+    },
+    {
+      variables: { ...reused, ...allPassed, PRODUCTION_RESULT: 'cancelled' },
+      isAccepted: false
+    }
+  ]
+  for (const { variables, isAccepted } of cases) {
+    assert.equal(
+      await runScript({ script, variables }),
+      isAccepted,
+      JSON.stringify(variables)
+    )
+  }
+})
+
+test('o grafo mantém produção independente e os jobs reutilizáveis atrás do proof', () => {
+  assert.doesNotMatch(jobBlock('e2e-production'), /needs:/u)
+  assert.match(jobBlock('e2e-production'), /name: E2E \(production\)/u)
+  for (const [id, name] of [
+    ['quality', 'Quality'],
+    ['tooling', 'Tooling'],
+    ['e2e-fixtures', 'E2E (fixtures)']
+  ] as const) {
+    const block = jobBlock(id)
+    assert.ok(block.includes(`    name: ${name}\n    needs: proof\n`), id)
+    assert.ok(
+      block.includes(
+        `\${{ !cancelled() && (needs.proof.result != 'success' ||`
+      ),
+      id
+    )
+  }
+  const proof = jobBlock('proof')
+  assert.ok(
+    proof.includes(
+      "if: github.event_name == 'push' && github.ref == 'refs/heads/main'"
+    )
+  )
+  assert.ok(
+    proof.includes(
+      '    permissions:\n      actions: read\n      contents: read\n      pull-requests: read\n    outputs:'
+    )
+  )
+  assert.ok(
+    jobBlock('check').includes(
+      'needs: [proof, quality, tooling, e2e-fixtures, e2e-production]'
+    )
+  )
+  const deploy = jobBlock('deploy')
+  assert.ok(deploy.includes('needs: [check, e2e-production]'))
+  assert.ok(
+    deploy.includes(
+      "    if: github.event_name == 'push' && github.ref == 'refs/heads/main'\n"
+    )
+  )
+})
+
+test('o workflow publica a evidência e as chaves lidas pelo proof', () => {
+  const quality = jobBlock('quality')
+  assert.ok(
+    quality.includes(`name: ci-reuse-evidence-\${{ github.run_attempt }}`)
+  )
+  assert.ok(
+    WORKFLOW.includes(
+      `ci-validation-v2-\${{ runner.os }}-\${{ runner.arch }}-node-\${{\n            steps.toolchain.outputs.node }}-bun-\${{ steps.toolchain.outputs.bun\n            }}-\${{ hashFiles('bun.lock') }}-`
+    )
+  )
+})
+
+test('a evidência descreve o merge sintético testado', async context => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'ci-reuse-evidence-'))
+  context.after(() => rm(directory, { recursive: true, force: true }))
+  const repository = path.join(directory, 'repo')
+  async function git(...args: string[]) {
+    const result = await exec('git', ['-C', repository, ...args])
+    return result.stdout.trim()
+  }
+  await exec('git', ['init', '-q', '-b', 'main', repository])
+  await git('config', 'user.email', 'ci@example.com')
+  await git('config', 'user.name', 'CI')
+  await git('commit', '-q', '--allow-empty', '-m', 'base')
+  const base = await git('rev-parse', 'HEAD')
+  await git('switch', '-q', '-c', 'feature')
+  await writeFile(path.join(repository, 'file.txt'), 'head\n')
+  await git('add', 'file.txt')
+  await git('commit', '-q', '-m', 'head')
+  const head = await git('rev-parse', 'HEAD')
+  await git('switch', '-q', '--detach', base)
+  await git('merge', '-q', '--no-ff', '-m', 'merge', head)
+  const tested = await git('rev-parse', 'HEAD')
+  const tree = await git('rev-parse', 'HEAD^{tree}')
+  const variables = {
+    RUNNER_TEMP: directory,
+    GITHUB_REPOSITORY: 'owner/repo',
+    GITHUB_RUN_ID: '900',
+    GITHUB_RUN_ATTEMPT: '2',
+    GITHUB_EVENT_NAME: 'pull_request',
+    GITHUB_WORKFLOW_REF:
+      'owner/repo/.github/workflows/ci.yml@refs/pull/42/merge',
+    GITHUB_WORKFLOW_SHA: tested,
+    GITHUB_SHA: tested,
+    PULL_REQUEST: '42',
+    BASE_REF: 'main',
+    BASE_SHA: base,
+    HEAD_SHA: head
+  }
+  const script = `cd ${JSON.stringify(repository)}\n${stepScript('Record tested commit')}`
+  assert.equal(await runScript({ script, variables }), true)
+  const evidence: unknown = JSON.parse(
+    await readFile(
+      path.join(directory, 'ci-reuse-evidence/evidence.json'),
+      'utf8'
+    )
+  )
+  assert.deepEqual(evidence, {
+    version: 1,
+    repository: 'owner/repo',
+    run_id: 900,
+    run_attempt: 2,
+    event: 'pull_request',
+    workflow_ref: variables.GITHUB_WORKFLOW_REF,
+    workflow_sha: tested,
+    github_sha: tested,
+    pull_request: 42,
+    base_ref: 'main',
+    base_sha: base,
+    head_sha: head,
+    tested_sha: tested,
+    tested_tree: tree,
+    tested_parents: [base, head]
+  })
+})
+
+test('pull, build e deploy usam uma única versão estrita do Vercel CLI', async context => {
+  assert.doesNotMatch(WORKFLOW, /vercel@latest/u)
+  assert.equal(
+    WORKFLOW.split('vp dlx "vercel@$VERCEL_CLI_VERSION"').length - 1,
+    VERCEL_COMMAND_COUNT
+  )
+  assert.ok(
+    jobBlock('deploy').includes(
+      `VERCEL_CLI_VERSION: \${{ needs.e2e-production.outputs.vercel-version }}`
+    )
+  )
+  const directory = await mkdtemp(path.join(tmpdir(), 'ci-vercel-version-'))
+  context.after(() => rm(directory, { recursive: true, force: true }))
+  await writeFile(
+    path.join(directory, 'curl'),
+    '#!/bin/sh\ntest -n "$FAKE_RESPONSE" || exit 22\nprintf "%s" "$FAKE_RESPONSE"\n',
+    { mode: 0o755 }
+  )
+  const resolve = stepScript('Resolve Vercel CLI version')
+  const output = path.join(directory, 'output')
+  const cases = [
+    { response: '{"name":"vercel","version":"64.5.0"}', expected: '64.5.0' },
+    { response: '{"name":"vercel","version":"64.5.0-canary.1"}' },
+    { response: '{"name":"vercel","version":"latest"}' },
+    { response: '{"name":"vercel","version":"1.2"}' },
+    { response: '{"name":"vercel","version":"01.2.3"}' },
+    { response: '{"name":"other","version":"1.2.3"}' },
+    { response: '' }
+  ]
+  for (const { response, expected } of cases) {
+    await writeFile(output, '')
+    const isAccepted = await runScript({
+      script: resolve,
+      variables: {
+        FAKE_RESPONSE: response,
+        GITHUB_OUTPUT: output,
+        PATH: `${directory}:${env.PATH ?? ''}`
+      }
+    })
+    assert.equal(isAccepted, expected !== undefined, response)
+    assert.equal(
+      await readFile(output, 'utf8'),
+      expected ? `version=${expected}\n` : '',
+      response
+    )
+  }
+  const verify = stepScript('Verify deployment configuration')
+  const configured = {
+    VERCEL_ORG_ID: 'org',
+    VERCEL_PROJECT_ID: 'project',
+    VERCEL_TOKEN: 'token'
+  }
+  for (const [version, isAccepted] of [
+    ['64.5.0', true],
+    ['', false],
+    ['latest', false]
+  ] as const) {
+    assert.equal(
+      await runScript({
+        script: verify,
+        variables: { ...configured, VERCEL_CLI_VERSION: version }
+      }),
+      isAccepted,
+      version
+    )
+  }
+})
