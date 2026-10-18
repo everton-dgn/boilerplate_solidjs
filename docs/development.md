@@ -265,8 +265,8 @@ commit de versão e changelog, conforme o
 [guia de release](../tooling/release/README.md). O filtro de release condiciona
 somente um passo de `Quality`, mantendo o job e o agregador obrigatórios. Os
 testes da aplicação e os demais testes de tooling rodam em toda execução do CI;
-o cache do Vitest guarda transformações de módulos. Em `CI=true`, Vitest e o
-runner Node dos testes de tooling usam no máximo dois workers cada.
+o cache do Vitest guarda transformações de módulos. Em `CI=true`, o Vitest usa
+no máximo dois workers e o runner Node dos testes de tooling, no máximo três.
 
 ## Hooks de Git
 
