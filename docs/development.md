@@ -233,6 +233,11 @@ verificações. A reutilização do Vite Task entre runners é experimental: con
 os hits nos logs e compare o tempo economizado com o custo de transferir o
 cache.
 
+No CI, só `Quality` envia o cache de pacotes, e apenas quando a chave do
+lockfile não existe e o job termina com sucesso. `Tooling`, E2E e deploy passam
+`cache-save: false` à ação `setup-project` e só restauram. A automação de
+release usa o `setup-vp` diretamente e mantém o envio padrão.
+
 As tarefas de lint combinam os arquivos lidos automaticamente com entradas
 explícitas para CSS, ferramentas de CSS, `package.json`, `bun.lock` e
 `bunfig.toml`. Assim, a invalidação do lint de CSS não depende do rastreamento

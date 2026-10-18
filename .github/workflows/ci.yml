@@ -109,6 +109,8 @@ jobs:
 
       - name: Set up project
         uses: ./.github/actions/setup-project
+        with:
+          cache-save: false
 
       - name: Run tooling tests
         run: vpr test:tooling
@@ -134,6 +136,8 @@ jobs:
 
       - name: Set up project
         uses: ./.github/actions/setup-project
+        with:
+          cache-save: false
 
       - name: Build deployment artifact
         id: deployment-build
@@ -258,6 +262,8 @@ jobs:
 
       - name: Set up project
         uses: ./.github/actions/setup-project
+        with:
+          cache-save: false
 
       - name: Verify deployment configuration
         env:
