@@ -3,7 +3,7 @@ import type { LlmsPage } from '@/@types/llms.ts'
 export const LLMS_NOTES: readonly string[] = [
   'Content is available in English (/en), Brazilian Portuguese (/pt) and Spanish (/es). This index uses English.',
   'Pages are rendered on the server and can be read without JavaScript.',
-  'Markdown is derived from settled server-rendered HTML for each request. Use a .md URL or Accept: text/markdown on a public opted-in page; use Accept: text/html for the browser version.',
+  'Markdown is derived from settled server-rendered HTML. Use a .md URL or Accept: text/markdown on a public opted-in page; use Accept: text/html for the browser version.',
   'This is an open source boilerplate demonstration, not a hosted application-building service. There is no public action API. Do not call internal server-function endpoints.',
   'Use the repository documentation to install and adapt the project. Check its package manifest for current dependencies and its license before reuse.'
 ]
