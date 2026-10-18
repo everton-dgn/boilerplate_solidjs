@@ -32,58 +32,88 @@ type RenderOptions = {
   event: Event
   render: Next
   original: Request
+  url: URL
   isDirect: boolean
+  isPublished: boolean
   signal: AbortSignal
 }
+type TextOptions = {
+  status: number
+  body: string | null
+  headers: Record<string, string>
+}
+type Publication = { response: Response; isPublished: boolean }
+type RedirectOptions = { response: Response; url: URL; request: Request }
+type RouteRequest = { request: Request; url: URL; isPublished: boolean }
+
 const LAST_MATCH = -1
 const REDIRECT_START = 300
+const VARY_HEADERS = 'Accept, Cookie, Accept-Language'
 
-type RedirectOptions = { response: Response; url: URL }
-type RedirectContext = RedirectOptions & { request: Request }
-type RouteRequest = { request: Request; url: URL }
+function uncachedResponse(response: Response): Response {
+  response.headers.set('cache-control', 'private, no-store')
+  return applySecurityHeaders({ response, nonce: undefined })
+}
+
+function textResponse({ status, body, headers }: TextOptions): Response {
+  return uncachedResponse(
+    new Response(body, {
+      status,
+      headers: { 'content-type': 'text/plain; charset=utf-8', ...headers }
+    })
+  )
+}
+
+function publicResponse(status: number): Response {
+  return textResponse({
+    status,
+    body: status === HTTP_INTERNAL_SERVER_ERROR ? PUBLIC_ERROR_MESSAGE : null,
+    headers: { vary: VARY_HEADERS }
+  })
+}
 
 function unpublished(request: Request): Promise<Response> {
   return localizeRequest({
     request,
-    next: () => {
-      const body = request.method === 'HEAD' ? null : m.notFound_description()
-      const response = new Response(body, {
-        status: HTTP_NOT_FOUND,
-        headers: {
-          'content-type': 'text/plain; charset=utf-8',
-          'cache-control': 'private, no-store',
-          'x-robots-tag': 'noindex'
-        }
-      })
-      return Promise.resolve(
-        applySecurityHeaders({ response, nonce: undefined })
+    next: () =>
+      Promise.resolve(
+        textResponse({
+          status: HTTP_NOT_FOUND,
+          body: request.method === 'HEAD' ? null : m.notFound_description(),
+          headers: { 'x-robots-tag': 'noindex' }
+        })
       )
-    }
+  })
+}
+
+function notAcceptable(request: Request): Promise<Response> {
+  return localizeRequest({
+    request,
+    next: () =>
+      Promise.resolve(
+        textResponse({
+          status: HTTP_NOT_ACCEPTABLE,
+          body: request.method === 'HEAD' ? null : 'text/html\ntext/markdown\n',
+          headers: { vary: VARY_HEADERS }
+        })
+      )
   })
 }
 
 function isHtml(response: Response): boolean {
-  return (
-    response.headers
-      .get('content-type')
-      ?.split(';')[0]
-      ?.trim()
-      .toLowerCase() === 'text/html'
+  return /^\s*text\/html\s*(?:;|$)/iu.test(
+    response.headers.get('content-type') ?? ''
   )
 }
 
 function documentUrl(request: Request): URL {
   const url = new URL(request.url)
-  if (url.pathname.endsWith('/index/index.md')) {
-    url.pathname = url.pathname.slice(0, -'/index.md'.length)
-    return url
-  }
-  if (url.pathname.endsWith('.md')) {
-    url.pathname =
-      delocalizePathname(url.pathname) === '/index.md'
-        ? url.pathname.slice(0, -'/index.md'.length) || '/'
-        : url.pathname.slice(0, -'.md'.length)
-  }
+  if (!url.pathname.endsWith('.md')) return url
+  const page = url.pathname.slice(0, -'.md'.length)
+  const isIndex =
+    page.endsWith('/index/index') ||
+    delocalizePathname(url.pathname) === '/index.md'
+  url.pathname = isIndex ? page.slice(0, -'/index'.length) || '/' : page
   return url
 }
 
@@ -94,42 +124,24 @@ function isEligible(url: URL): boolean {
   )
 }
 
-function canPublish({ response, url }: RedirectOptions): boolean {
+function canPublish({ response, isPublished }: Publication): boolean {
   return (
-    isEligible(url) &&
-    !/noindex/iu.test(response.headers.get('x-robots-tag') ?? '')
+    isPublished && !/noindex/iu.test(response.headers.get('x-robots-tag') ?? '')
   )
 }
 
-function canConvert({ response, url }: RedirectOptions): boolean {
+function canConvert({ response, isPublished }: Publication): boolean {
   if (!isHtml(response)) return false
   if (response.status === HTTP_NOT_FOUND) return true
-  return response.status === HTTP_OK && canPublish({ response, url })
+  return response.status === HTTP_OK && canPublish({ response, isPublished })
 }
 
-function isUnpublished({ request, url }: RouteRequest): boolean {
+function isUnpublished({ request, url, isPublished }: RouteRequest): boolean {
   return (
     request.headers.has('authorization') ||
-    (!isEligible(url) &&
+    (!isPublished &&
       !Router.match(url.href).at(LAST_MATCH)?.pattern.includes('*'))
   )
-}
-
-function publicResponse(status: number): Response {
-  return applySecurityHeaders({
-    response: new Response(
-      status === HTTP_INTERNAL_SERVER_ERROR ? PUBLIC_ERROR_MESSAGE : null,
-      {
-        status,
-        headers: {
-          'content-type': 'text/plain; charset=utf-8',
-          'cache-control': 'private, no-store',
-          vary: 'Accept, Cookie, Accept-Language'
-        }
-      }
-    ),
-    nonce: undefined
-  })
 }
 
 // O prerender do Nitro identifica suas requisições com este header; o build
@@ -146,38 +158,12 @@ function listStaticMarkdown(): Response {
     .map(path => new URL(resolveSiteUrl(path)))
     .filter(url => isEligible(url))
     .map(url => markdownPath(url.pathname))
-  return applySecurityHeaders({
-    response: Response.json(paths, {
-      headers: { 'cache-control': 'private, no-store' }
-    }),
-    nonce: undefined
-  })
-}
-
-function notAcceptable(request: Request): Promise<Response> {
-  return localizeRequest({
-    request,
-    next: () => {
-      const response = publicResponse(HTTP_NOT_ACCEPTABLE)
-      const body =
-        request.method === 'HEAD' ? null : 'text/html\ntext/markdown\n'
-      return Promise.resolve(
-        new Response(body, {
-          status: response.status,
-          headers: response.headers
-        })
-      )
-    }
-  })
+  return uncachedResponse(Response.json(paths))
 }
 
 function varyAccept(response: Response): Response {
   const vary = response.headers.get('vary')
-  if (
-    !vary
-      ?.split(',')
-      .some(value => ['*', 'accept'].includes(value.trim().toLowerCase()))
-  ) {
+  if (!/(?:^|,)\s*(?:\*|accept)\s*(?:,|$)/iu.test(vary ?? '')) {
     response.headers.set('vary', vary ? `${vary}, Accept` : 'Accept')
   }
   return response
@@ -187,21 +173,15 @@ async function resolveRedirect({
   response,
   url,
   request
-}: RedirectContext): Promise<Response> {
+}: RedirectOptions): Promise<Response> {
   if (request.headers.has('x-nitro-prerender')) {
     // Nitro aceita redirects no prerender, mas o arquivo perde o status HTTP.
     await response.body?.cancel()
     return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
   }
-  const headers = new Headers(response.headers)
-  headers.set('cache-control', 'private, no-store')
-  const redirect = varyAccept(
-    new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers
-    })
-  )
+  // A resposta do render já saiu do securityHeaders; falta só o cache.
+  const redirect = varyAccept(new Response(response.body, response))
+  redirect.headers.set('cache-control', 'private, no-store')
   const location = response.headers.get('location')
   if (!location) return redirect
   const target = new URL(location, url)
@@ -226,23 +206,23 @@ async function resolveRedirect({
 async function renderMarkdown({
   event,
   render,
+  original,
+  url,
   isDirect,
+  isPublished,
   signal
 }: RenderOptions): Promise<Response> {
   const response = await render()
   signal.throwIfAborted()
-  const url = new URL(event.request.url)
   if (response.status >= REDIRECT_START && response.status < HTTP_BAD_REQUEST) {
     return isDirect
-      ? resolveRedirect({ response, url, request: event.request })
+      ? resolveRedirect({ response, url, request: original })
       : response
   }
-  const isNotFound = response.status === HTTP_NOT_FOUND
-
   if (
     isDirect &&
     response.status === HTTP_OK &&
-    !canPublish({ response, url })
+    !canPublish({ response, isPublished })
   ) {
     await response.body?.cancel()
     return publicResponse(HTTP_NOT_FOUND)
@@ -256,7 +236,7 @@ async function renderMarkdown({
     await response.body?.cancel()
     return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
   }
-  if (!canConvert({ response, url })) return response
+  if (!canConvert({ response, isPublished })) return response
   if (state?.hasCompleted !== true || state.hasErrors !== false) {
     await response.body?.cancel()
     return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
@@ -272,27 +252,23 @@ async function renderMarkdown({
     headers.delete(name)
   }
   headers.set('content-type', 'text/markdown; charset=utf-8')
-  headers.set('cache-control', 'private, no-store')
-  if (isNotFound) headers.set('x-robots-tag', 'noindex')
-  return applySecurityHeaders({
-    response: varyAccept(
-      new Response(markdown, {
-        status: response.status,
-        headers
-      })
-    ),
-    nonce: undefined
-  })
+  if (response.status === HTTP_NOT_FOUND) headers.set('x-robots-tag', 'noindex')
+  return uncachedResponse(
+    varyAccept(new Response(markdown, { status: response.status, headers }))
+  )
 }
 
 async function boundedRender(
   options: Omit<RenderOptions, 'signal'>
 ): Promise<Response> {
+  const { event, original, url } = options
   const controller = new AbortController()
-  const signal = AbortSignal.any([options.original.signal, controller.signal])
+  const signal = AbortSignal.any([original.signal, controller.signal])
   const timeout = setTimeout(() => controller.abort(), MARKDOWN_TIMEOUT_MS)
-  const { request } = options.event
-  options.event.request = new Request(request, { signal })
+  const headers = new Headers(original.headers)
+  headers.set('accept', 'text/html')
+  event.renderMode = 'async'
+  event.request = new Request(url, { method: 'GET', headers, signal })
   const aborted = Promise.withResolvers<Response>()
   const onAbort = () => {
     aborted.reject(new Error('Markdown request aborted'))
@@ -319,14 +295,10 @@ export async function markdownContent(
   const original = event.request
   if (!['GET', 'HEAD'].includes(original.method)) return render()
   if (isStaticListing(original)) return listStaticMarkdown()
-  const originalUrl = new URL(original.url)
+  const { pathname } = new URL(original.url)
+  if (!isPagePath({ pathname, method: original.method })) return render()
   const url = documentUrl(original)
-  if (
-    !isPagePath({ pathname: originalUrl.pathname, method: original.method })
-  ) {
-    return render()
-  }
-  const isDirect = originalUrl.pathname.endsWith('.md')
+  const isDirect = pathname.endsWith('.md')
   try {
     decodeURI(url.pathname)
   } catch {
@@ -336,10 +308,10 @@ export async function markdownContent(
     return publicResponse(HTTP_NOT_FOUND)
   }
   const format = negotiatePageFormat(original.headers.get('accept'))
-  if (isDirect && isUnpublished({ request: original, url })) {
+  const isPublished = isEligible(url)
+  if (isDirect && isUnpublished({ request: original, url, isPublished })) {
     return unpublished(original)
   }
-  const isPublished = isEligible(url)
   if (
     (isDirect && !acceptsMarkdown(original.headers.get('accept'))) ||
     (!isDirect && isPublished && !format)
@@ -351,15 +323,14 @@ export async function markdownContent(
     return isPublished ? varyAccept(response) : response
   }
   if (!isDirect && original.headers.has('authorization')) return render()
-  event.renderMode = 'async'
-  const headers = new Headers(original.headers)
-  headers.set('accept', 'text/html')
-  event.request = new Request(url, {
-    method: 'GET',
-    headers,
-    signal: original.signal
+  const response = await boundedRender({
+    event,
+    render,
+    original,
+    url,
+    isDirect,
+    isPublished
   })
-  const response = await boundedRender({ event, render, original, isDirect })
   if (original.method !== 'HEAD') return response
   await response.body?.cancel()
   return new Response(null, {

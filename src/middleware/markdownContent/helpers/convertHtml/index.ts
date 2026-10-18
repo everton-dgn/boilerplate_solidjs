@@ -95,49 +95,18 @@ export async function convertHtml({
   signal
 }: ConvertOptions): Promise<string> {
   signal.throwIfAborted()
-  const reader = response.body?.getReader()
-  if (!reader) return ''
-  const cancel = async () => {
-    try {
-      await reader.cancel()
-    } catch {
-      /* O stream pode já ter falhado. */
-    }
+  // No modo async o SSR já montou o documento inteiro antes de responder.
+  const html = await response.arrayBuffer()
+  signal.throwIfAborted()
+  if (html.byteLength > MAX_HTML_BYTES) {
+    throw new Error('Markdown document limit exceeded')
   }
-  const onAbort = () => {
-    void cancel()
-  }
-  signal.addEventListener('abort', onAbort, { once: true })
-  const decoder = new TextDecoder()
-  let html = ''
-  let bytes = 0
-  try {
-    for (
-      let chunk = await reader.read();
-      !chunk.done;
-      chunk = await reader.read()
-    ) {
-      signal.throwIfAborted()
-      const { value } = chunk
-      bytes += value.byteLength
-      if (bytes > MAX_HTML_BYTES) {
-        throw new Error('Markdown document limit exceeded')
-      }
-      html += decoder.decode(value, { stream: true })
-    }
-    signal.throwIfAborted()
-    html += decoder.decode()
-    return htmlToMarkdown(html, {
-      origin: url,
-      plugins: [
-        isolateMainPlugin(),
-        filterPlugin({ exclude: EXCLUDED_ELEMENTS }),
-        cleanupPlugin
-      ]
-    })
-  } finally {
-    signal.removeEventListener('abort', onAbort)
-    await cancel()
-    reader.releaseLock()
-  }
+  return htmlToMarkdown(new TextDecoder().decode(html), {
+    origin: url,
+    plugins: [
+      isolateMainPlugin(),
+      filterPlugin({ exclude: EXCLUDED_ELEMENTS }),
+      cleanupPlugin
+    ]
+  })
 }
