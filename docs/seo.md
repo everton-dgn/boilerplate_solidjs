@@ -62,9 +62,11 @@ export const seo = {
 Em `index.tsx`, importe `seo` e use `info: { seo }` na definição da rota, junto
 dos demais controles que a página declarar. Getters preservam o idioma da
 requisição; não copie os textos traduzidos para valores no topo do módulo. Os
-catálogos ficam em `i18n/{pt,en,es}.json` ao lado desses arquivos. Quando HTML e
-Markdown compartilham conteúdo público, o mesmo `seo.ts` também exporta
-`content` com `satisfies SitePage`, e os getters de `seo` podem ler esse objeto.
+catálogos ficam em `i18n/{pt,en,es}.json` ao lado desses arquivos. O mesmo
+`seo.ts` pode exportar `content` com os dados que o componente renderiza (as
+páginas que usam `SiteArticle` o tipam com `satisfies SitePage`), e os getters
+de `seo` podem ler esse objeto. É dado de UI: o Markdown não o lê, porque sai do
+HTML renderizado.
 
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
 JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (nó
@@ -181,12 +183,15 @@ incluindo herança e a rota de índice filha. O resolvedor fica colocalizado em
 
 ## Sitemap e rotas dinâmicas
 
-O `llms.txt` coleta páginas sem parâmetros e acrescenta os snapshots Markdown de
-caminhos dinâmicos enumerados no build que tenham `llms` habilitado. No sitemap,
-uma rota com parâmetro entra pelas entradas de `route.info.sitemap`: uma função,
-síncrona ou assíncrona, que devolve `{ path, lastmod? }` com caminhos absolutos
-do site, enumerados a partir da fonte de dados. O módulo da rota entra no bundle
-do cliente, então banco e SDK ficam numa server function chamada pela fonte,
+O `llms.txt` coleta do manifesto só páginas sem parâmetros, com `llms`
+habilitado e sem `noindex`, no idioma base. Se a folha declara `markdown: true`
+ou `'dynamic'`, o link aponta para o `.md` (`/en/about.md`); nas demais, para o
+HTML. Rotas com parâmetro ficam fora mesmo com `llms`, e as fontes de
+`route.info.sitemap` não alimentam esse índice. No sitemap, uma rota com
+parâmetro entra pelas entradas de `route.info.sitemap`: uma função, síncrona ou
+assíncrona, que devolve `{ path, lastmod? }` com caminhos absolutos do site,
+enumerados a partir da fonte de dados. O módulo da rota entra no bundle do
+cliente, então banco e SDK ficam numa server function chamada pela fonte,
 conforme o [contrato de erros no servidor](server-errors.md). A fonte roda a
 cada request do sitemap (o CDN reutiliza a resposta por uma hora) e é ignorada
 sob `noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito.
@@ -303,8 +308,12 @@ em [erros no servidor](server-errors.md#integridade-do-ssr-para-markdown).
 O prerender do build passa pelo mesmo adaptador. O módulo
 `tooling/markdownPrerender/` pede ao middleware a lista das páginas estáticas
 (`/_markdown/static.json`, respondida só com o header `x-nitro-prerender`),
-prerenderiza cada `.md` e não grava a lista. Uma página que falhe, ou uma lista
-inválida, interrompe o build. O resultado fica em `.vercel/output/static`.
+prerenderiza cada `.md` e não grava a lista. Uma página que falhe ou não seja
+gravada, ou uma lista inválida ou que não passe pelo prerender, interrompe o
+build. O Nitro só falha por rota com erro registrado; uma rejeição no fetch ou
+na gravação deixaria o arquivo de fora sem falhar, e por isso o módulo confere
+no fim que cada `.md` da lista foi gravado. O resultado fica em
+`.vercel/output/static`.
 
 `@mdream/js` recebe o caminho do documento sobre a origem pública
 (`VITE_SITE_URL`) para resolver links relativos; no prerender, a requisição é

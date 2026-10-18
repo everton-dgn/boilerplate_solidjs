@@ -2,13 +2,19 @@ import type { PrerenderRoute } from 'nitro/types'
 
 import { MARKDOWN_PRERENDER_PATH } from '../../src/middleware/markdownContent/constants.ts'
 
+type PrerenderResult = {
+  prerenderedRoutes: PrerenderRoute[]
+  failedRoutes: PrerenderRoute[]
+}
 type RoutesHook = (routes: Set<string>) => void
 type GenerateHook = (route: PrerenderRoute) => void
+type DoneHook = (result: PrerenderResult) => void
 type PrerenderNitro = {
   options: { prerender: { routes?: string[]; failOnError?: boolean } }
   hooks: {
     hook: ((name: 'prerender:routes', handler: RoutesHook) => unknown) &
-      ((name: 'prerender:generate', handler: GenerateHook) => unknown)
+      ((name: 'prerender:generate', handler: GenerateHook) => unknown) &
+      ((name: 'prerender:done', handler: DoneHook) => unknown)
   }
 }
 
@@ -31,6 +37,7 @@ function readPaths(contents: string | undefined): string[] | undefined {
 // inclusive na própria lista, interrompe o build.
 export function markdownPrerender(nitro: PrerenderNitro): void {
   let queue: Set<string> | undefined
+  let expected: string[] | undefined
   nitro.options.prerender.failOnError = true
   nitro.options.prerender.routes = [
     ...(nitro.options.prerender.routes ?? []),
@@ -48,6 +55,21 @@ export function markdownPrerender(nitro: PrerenderNitro): void {
       route.error = new Error('Invalid static Markdown list')
       return
     }
+    expected = paths
     for (const path of paths) queue.add(path)
+  })
+  // O Nitro só falha o build por rota com `error`. Uma exceção no fetch, na
+  // gravação ou no hook de geração, ou uma rota ignorada, termina sem arquivo e
+  // sem erro registrado.
+  nitro.hooks.hook('prerender:done', ({ prerenderedRoutes, failedRoutes }) => {
+    // Com `failOnError`, o Nitro interrompe o build em seguida e lista as rotas.
+    if (failedRoutes.length > 0 && nitro.options.prerender.failOnError) return
+    if (!expected) throw new Error('Static Markdown list was not prerendered')
+    // O Nitro registra a rota já decodificada.
+    const written = new Set(prerenderedRoutes.map(route => route.route))
+    const missing = expected.filter(path => !written.has(decodeURI(path)))
+    if (missing.length > 0) {
+      throw new Error(`Static Markdown not generated: ${missing.join(', ')}`)
+    }
   })
 }

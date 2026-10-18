@@ -311,6 +311,43 @@ describe('markdown aliases and runtime publication', () => {
     expect(response).toBe(original)
     await expect(response.text()).resolves.toBe('Private HTML')
   })
+
+  it.each(['GET', 'HEAD'])(
+    'answers a %s alias without opt-in with a localized 404 and no render',
+    async method => {
+      vi.spyOn(Router, 'match').mockReturnValue([
+        {
+          path: '/account',
+          pattern: '/account',
+          match: '/account',
+          params: {},
+          info: {}
+        }
+      ])
+      const next = vi.fn<() => Promise<Response>>(() => html())
+      const response = await markdownContent(
+        event({ method, path: '/pt/account.md' }),
+        next
+      )
+      expect(next).not.toHaveBeenCalled()
+      expect({
+        status: response.status,
+        type: response.headers.get('content-type'),
+        cache: response.headers.get('cache-control'),
+        robots: response.headers.get('x-robots-tag'),
+        language: response.headers.get('content-language')
+      }).toStrictEqual({
+        status: HTTP_NOT_FOUND,
+        type: 'text/plain; charset=utf-8',
+        cache: 'private, no-store',
+        robots: 'noindex',
+        language: 'pt'
+      })
+      await expect(response.text()).resolves.toBe(
+        method === 'HEAD' ? '' : 'A página solicitada não foi encontrada.'
+      )
+    }
+  )
 })
 
 describe('markdown negotiation and redirects', () => {
