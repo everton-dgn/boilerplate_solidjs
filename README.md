@@ -26,7 +26,7 @@ e Bun são definidas no [package.json](package.json) e gerenciadas pelo Vite+.
 git clone git@github.com:everton-dgn/boilerplate_solidjs.git
 cd boilerplate_solidjs
 vp install
-vp run dev
+vpr dev
 ```
 
 Abra o endereço exibido no terminal. O `.env` versionado contém a configuração
@@ -36,23 +36,23 @@ Veja [ambiente, runtimes e deploy](docs/development.md) para os detalhes.
 Para executar os testes de navegador e E2E, instale o Chromium uma vez:
 
 ```bash
-vp run test:browser:install
+vpr test:browser:install
 ```
 
 ## Comandos essenciais
 
-| Comando                      | Uso                                                        |
-| ---------------------------- | ---------------------------------------------------------- |
-| `vp run dev`                 | Iniciar o servidor de desenvolvimento                      |
-| `vp run build`               | Gerar o build de produção                                  |
-| `vp run start`               | Conferir o build localmente                                |
-| `vp run validate`            | Verificar formato, lint, tipos, cobertura, tooling e build |
-| `vp run test:e2e`            | Testar a aplicação com as fixtures E2E                     |
-| `vp run test:e2e:production` | Testar as rotas reais de produção                          |
+| Comando                   | Uso                                                        |
+| ------------------------- | ---------------------------------------------------------- |
+| `vpr dev`                 | Iniciar o servidor de desenvolvimento                      |
+| `vpr build`               | Gerar o build de produção                                  |
+| `vpr start`               | Conferir o build localmente                                |
+| `vpr validate`            | Verificar formato, lint, tipos, cobertura, tooling e build |
+| `vpr test:e2e`            | Testar a aplicação com as fixtures E2E                     |
+| `vpr test:e2e:production` | Testar as rotas reais de produção                          |
 
-Use `vp run dev` e `vp run build` para executar os scripts com Bun. Vitest,
-testes de tooling e SSR de produção permanecem em Node. Execute as duas suítes
-E2E em sequência, pois compartilham porta e artefatos de build. A
+Use `vpr dev` e `vpr build` para executar os scripts com Bun. Vitest, testes de
+tooling e SSR de produção permanecem em Node. Execute as duas suítes E2E em
+sequência, pois compartilham porta e artefatos de build. A
 [referência de desenvolvimento](docs/development.md#scripts) contém os demais
 scripts e as restrições de runtime.
 

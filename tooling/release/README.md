@@ -106,7 +106,7 @@ fora do tar.
 Depois da aprovação de todos os checks, o deploy publica esse output com
 `vercel deploy --prebuilt --prod`, sem outro build. PRs não usam credenciais da
 Vercel e mantêm os builds locais de teste. O script `build` chama o CLI local do
-Vite+ com Bun explicitamente; para executá-lo, use `vp run build`.
+Vite+ com Bun explicitamente; para executá-lo, use `vpr build`.
 
 O GitHub precisa destas configurações em Settings > Secrets and variables >
 Actions:
@@ -182,16 +182,16 @@ manual.
 ## Validação local e no CI
 
 ```sh
-vp run test
-vp run test:release
-vp run typecheck
+vpr test
+vpr test:release
+vpr typecheck
 actionlint .github/workflows/auto-release.yml
 ```
 
-`vp run test:release` executa apenas `tooling/release` em Bun, com isolamento
-entre arquivos e timeout de 60 segundos. A suíte com subprocessos mantém o
-limite de 30 segundos por teste. O comando roda em todo pre-push e faz parte de
-`vp run validate`. `vp run test:tooling` mantém os demais módulos em Node.
+`vpr test:release` executa apenas `tooling/release` em Bun, com isolamento entre
+arquivos e timeout de 60 segundos. A suíte com subprocessos mantém o limite de
+30 segundos por teste. O comando roda em todo pre-push e faz parte de
+`vpr validate`. `vpr test:tooling` mantém os demais módulos em Node.
 
 No CI, um passo do job `Quality` compara os commits e decide se roda essa suíte.
 PRs usam o ancestral comum da base com o SHA testado; pushes comparam `before`

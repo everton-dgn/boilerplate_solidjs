@@ -3,7 +3,7 @@ colors: true
 commit-msg:
   jobs:
     - name: commitlint
-      run: vp run commitlint --edit {1}
+      run: vpr commitlint --edit {1}
 
 pre-commit:
   skip:
@@ -12,7 +12,7 @@ pre-commit:
   jobs:
     - name: check
       glob: '*.{ts,tsx,mts,cts,js,mjs,cjs,json,css,md,yml,yaml,toml,html}'
-      run: vp run check:fix {staged_files}
+      run: vpr check:fix {staged_files}
       stage_fixed: true
 
     - name: secret-scan
@@ -23,27 +23,27 @@ pre-commit:
           echo "Sem Homebrew (Linux/Windows): baixe o binário para seu sistema e adicione ao PATH: https://github.com/mongodb/kingfisher/releases"
           exit 0
         fi
-        vp run scan:secrets --staged
+        vpr scan:secrets --staged
 
 pre-push:
   jobs:
     # Estes comandos restauram a mesma saída do Paraglide pelo cache do Vite
     # Task. Terminá-los antes dos testes evita restaurações concorrentes.
     - name: check-ci
-      run: vp run check:ci
+      run: vpr check:ci
 
     - name: typecheck-node
-      run: vp run typecheck:node
+      run: vpr typecheck:node
 
     - name: tests
       group:
         parallel: true
         jobs:
           - name: test
-            run: vp run test:ci
+            run: vpr test:ci
 
           - name: tooling
-            run: vp run test:tooling
+            run: vpr test:tooling
 
           - name: release
-            run: vp run test:release
+            run: vpr test:release

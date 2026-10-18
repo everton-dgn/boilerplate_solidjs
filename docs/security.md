@@ -68,9 +68,8 @@ falhas responde o 500 em texto, com o log fixo.
 
 Em desenvolvimento a CSP não é enviada: o HMR usa estilos inline, enquanto a
 política de produção permite apenas folhas externas. Os demais cabeçalhos valem.
-A CSP deve ser conferida no build, com `vp run start` ou
-`vp run test:e2e:production`. Todo script novo no `Document` precisa de
-`nonce={nonce}`.
+A CSP deve ser conferida no build, com `vpr start` ou `vpr test:e2e:production`.
+Todo script novo no `Document` precisa de `nonce={nonce}`.
 
 Componentes `lazy()` com CSS própria podem aparecer em um fragmento depois que o
 dado assíncrono de um `Loading` resolve. O runtime anuncia a folha com

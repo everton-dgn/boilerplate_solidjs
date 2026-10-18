@@ -11,9 +11,7 @@ const SHOULD_BUILD = env.TEST_PREBUILT !== 'true'
 if (!SHOULD_BUILD && !PRODUCTION_ROUTES) {
   throw new Error('TEST_PREBUILT requires production routes')
 }
-const BUILD_COMMAND = SHOULD_BUILD
-  ? `vp run build --mode ${BUILD_MODE} && `
-  : ''
+const BUILD_COMMAND = SHOULD_BUILD ? `vpr build --mode ${BUILD_MODE} && ` : ''
 // Resolver as variáveis públicas no mesmo modo do build mantém os testes e o
 // servidor coerentes sobre a URL pública; variáveis já definidas prevalecem.
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
@@ -95,7 +93,7 @@ const config = defineConfig({
           }
         ]),
     {
-      command: `${BUILD_COMMAND}mkdir -p test-results && vp run start --strictPort > ${SERVER_LOG} 2>&1`,
+      command: `${BUILD_COMMAND}mkdir -p test-results && vpr start --strictPort > ${SERVER_LOG} 2>&1`,
       cwd: '..',
       env: { HOST, PORT, NODE_ENV: 'production' },
       url: BASE_URL,
