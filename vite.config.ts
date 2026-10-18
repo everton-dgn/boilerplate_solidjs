@@ -44,7 +44,7 @@ const loadPluginModules = async () => {
     import('unplugin-icons/vite'),
     import('unplugin-icons/loaders'),
     import('./tooling/i18n/i18nPlugin/index.ts'),
-    import('./tooling/markdown/markdownPlugin/index.ts')
+    import('./tooling/markdownPrerender/index.ts')
   ])
   return {
     solid: solidModule.default,
@@ -53,7 +53,7 @@ const loadPluginModules = async () => {
     Icons: iconsModule.default,
     FileSystemIconLoader: loaders.FileSystemIconLoader,
     i18n: i18n.i18nPlugin,
-    markdown: markdown.markdownPlugin
+    markdownPrerender: markdown.markdownPrerender
   }
 }
 
@@ -75,7 +75,6 @@ const componentPlugins = () =>
     const modules = await loadPluginModules()
     return [
       modules.i18n(),
-      modules.markdown({ directory: 'src/routes', shouldGenerate: false }),
       icons(modules),
       modules.solid({ serverFunctions: true }),
       modules.fileRoutes({ types: 'src/@types/routes.d.ts', httpMethods: true })
@@ -88,10 +87,6 @@ const appPlugins = (mode: string) =>
     return [
       devAssetManifest(),
       modules.i18n(),
-      modules.markdown({
-        directory:
-          mode === 'e2e' ? 'src/tests/fixtures/e2e/routes' : 'src/routes'
-      }),
       icons(modules),
       modules.solid({
         start: {
@@ -115,6 +110,7 @@ const appPlugins = (mode: string) =>
       modules.nitro({
         serverEntry: false,
         preset: 'vercel',
+        modules: [modules.markdownPrerender],
         vercel: {
           functions: {
             runtime: `nodejs${packageJson.devEngines.runtime.version.split('.')[0]}.x`

@@ -17,6 +17,7 @@ const subjects: Record<string, readonly string[]> = {
   'src/tests/pages/SeoIndexes': ['SeoIndexes'],
   'src/tests/pages/AgentReadiness': ['AgentReadiness'],
   'src/tests/pages/I18n': ['I18n'],
+  'src/tests/pages/Markdown': ['Markdown'],
   'src/tests/pages/UiKit': ['UiKit'],
   'src/tests/pages/StructuredData': ['StructuredData'],
   'tooling/css/__tests__': ['cssPolicy', 'testFilename'],

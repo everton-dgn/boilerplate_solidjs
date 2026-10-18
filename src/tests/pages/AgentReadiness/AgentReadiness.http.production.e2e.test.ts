@@ -7,58 +7,46 @@ const HTTP_NOT_ACCEPTABLE = 406
 const MINIMUM_PAGE_LENGTH = 500
 const MINIMUM_ERROR_LENGTH = 20
 const LOCALES = [
-  { locale: 'pt', tag: 'pt-BR' },
-  { locale: 'en', tag: 'en-US' },
-  { locale: 'es', tag: 'es-ES' }
+  { locale: 'pt', tag: 'pt-BR', missing: 'Página não encontrada!' },
+  { locale: 'en', tag: 'en-US', missing: 'Page not found!' },
+  { locale: 'es', tag: 'es-ES', missing: '¡Página no encontrada!' }
 ]
 const PAGE_PATHS = ['', '/about', '/contact', '/privacy']
 
 // oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
-for (const { locale, tag } of LOCALES) {
+for (const { locale, tag, missing } of LOCALES) {
   // oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
   for (const path of PAGE_PATHS) {
     test(`negotiates HTML and Markdown at /${locale}${path}`, async ({
       request
     }) => {
       const pathname = `/${locale}${path}`
-      const redirect = await request.get(pathname, {
+      const negotiated = await request.get(pathname, {
         maxRedirects: 0,
         headers: { accept: 'text/markdown' }
       })
       const markdownPath = path ? `${pathname}.md` : `${pathname}/index.md`
-      expect(redirect.status()).toBe(HTTP_REDIRECT)
-      expect(redirect.headers().location).toBe(markdownPath)
-      expect(redirect.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
+      expect(negotiated.status()).toBe(HTTP_OK)
+      expect(negotiated.headers()['content-type']).toContain('text/markdown')
+      expect(negotiated.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
         'accept'
       )
-      expect(await redirect.body()).toHaveLength(0)
+      expect(await negotiated.text()).toContain('# ')
       const markdown = await request.get(markdownPath, {
         maxRedirects: 0,
         headers: {
           accept: 'text/markdown',
-          cookie: 'session=private; PARAGLIDE_LOCALE=es'
+          cookie: `session=private; locale=${locale === 'es' ? 'en' : 'es'}`
         }
       })
+      // O arquivo vem do build: a camada estática não grava idioma nem cookie.
       expect(markdown.status()).toBe(HTTP_OK)
-      expect(markdown.headers()['content-type']).toBe(
-        'text/markdown; charset=utf-8'
-      )
-      expect(markdown.headers()['content-language']).toBe(locale)
-      expect(markdown.headers()['cache-control']).toBe(
-        'public, max-age=0, must-revalidate'
-      )
       expect(markdown.headers()['set-cookie']).toBeUndefined()
-      expect(markdown.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
-        'accept'
-      )
-      expect(markdown.headers()['x-content-type-options']).toBe('nosniff')
-      expect(markdown.headers().vary?.toLowerCase() ?? '').not.toContain(
-        'cookie'
-      )
+      expect(markdown.headers()['cache-control']).not.toBe('private, no-store')
       const body = await markdown.text()
       expect(body.trim().length).toBeGreaterThanOrEqual(MINIMUM_PAGE_LENGTH)
-      expect(body).toMatch(/^# .+\n/u)
-      expect(body).toContain('\n## ')
+      expect(body).toMatch(/^# .+$/mu)
+      if (path) expect(body).toContain('\n## ')
       expect(body).not.toMatch(/<!doctype|<script/iu)
 
       const html = await request.get(pathname, {
@@ -80,7 +68,7 @@ for (const { locale, tag } of LOCALES) {
       expect(htmlBody).toContain(markdownPath)
 
       const head = await request.head(pathname, {
-        headers: { accept: 'text/markdown' }
+        headers: { accept: 'text/markdown', cookie: `locale=${locale}` }
       })
       expect(head.status()).toBe(HTTP_OK)
       expect(head.headers()['content-type']).toBe(
@@ -111,8 +99,8 @@ for (const { locale, tag } of LOCALES) {
     expect(response.headers()['x-robots-tag']).toBe('noindex')
     expect(response.headers()['cache-control']).toBe('private, no-store')
     const body = await response.text()
-    expect(body).toMatch(/^# 404 /u)
-    expect(body).toContain('[llms.txt](/llms.txt)')
+    expect(body).toContain(`# ${missing}`)
+    expect(body).toContain('404')
     expect(body.length).toBeGreaterThan(MINIMUM_ERROR_LENGTH)
     expect(body).not.toMatch(/<!doctype|<script/iu)
 
@@ -175,7 +163,7 @@ test('preserves language negotiation and Markdown across the root redirect', asy
     'accept'
   )
   expect(markdown.headers()['content-language']).toBe('pt')
-  expect(await markdown.text()).toMatch(/^# .+\n/u)
+  expect(await markdown.text()).toMatch(/^# .+$/mu)
   const html = await request.get('/', { headers: { accept: 'text/html' } })
   expect(html.status()).toBe(HTTP_OK)
   expect(html.headers()['content-type']).toContain('text/html')
@@ -193,7 +181,7 @@ test('serves a Markdown 404 after an unprefixed missing-page redirect', async ({
   expect(response.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
     'accept'
   )
-  expect(await response.text()).toContain('[llms.txt](/llms.txt)')
+  expect(await response.text()).toMatch(/^# .+$/mu)
 })
 
 // oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
@@ -290,7 +278,7 @@ for (const endpoint of [
   })
 }
 
-test('returns an uncached Markdown 404 for unpublished files without rendering a page', async ({
+test('localizes an uncached Markdown 404 for unknown URLs', async ({
   request
 }) => {
   const response = await request.get('/pt/login.md', {
@@ -307,11 +295,21 @@ test('returns an uncached Markdown 404 for unpublished files without rendering a
   )
   expect(response.headers()['content-language']).toBe('pt')
   expect(response.headers()['cache-control']).toBe('private, no-store')
-  expect(response.headers()['set-cookie']).toBeUndefined()
+  expect(response.headers()['set-cookie']).toBe(
+    'locale=pt; Path=/; Max-Age=34560000; SameSite=Lax'
+  )
+  expect(response.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
+    'cookie'
+  )
+  expect(response.headers()['x-robots-tag']).toBe('noindex')
   expect(response.headers().location).toBeUndefined()
-  expect(await response.text()).toContain('# 404 Página não encontrada')
-  const head = await request.head('/pt/login.md')
+  expect(await response.text()).toContain('# Página não encontrada!')
+  const head = await request.head('/pt/login.md', {
+    headers: { cookie: 'locale=pt' }
+  })
   expect(head.status()).toBe(HTTP_NOT_FOUND)
+  expect(head.headers()['content-language']).toBe('pt')
+  expect(head.headers()['set-cookie']).toBeUndefined()
   expect(await head.body()).toHaveLength(0)
 })
 

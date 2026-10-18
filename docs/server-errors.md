@@ -463,3 +463,52 @@ pacote publicado e instalado mudou esse comportamento.
 
 O acompanhamento ocorre nas atualizações de dependências; não há monitor
 automático configurado.
+
+## Integridade do SSR para Markdown
+
+A entrada mantém em `event.locals.ssrRenderState` somente getters para
+`hasErrors` e `hasCompleted`. O primeiro lê o estado monotônico nativo do
+render; o segundo registra `onCompleteAll`. O callback sozinho não comprova
+integridade: ele também pode ocorrer após falha de fragmento. O adaptador exige
+conclusão e ausência estrita de erros observados pelo render depois de aguardar
+o SSR, antes de publicar HTML convertido. Estado ausente ou inválido resulta em
+erro público 500 sem cache. Redirects e respostas que não são páginas elegíveis
+preservam seu fluxo anterior. As páginas estáticas passam por esse mesmo
+adaptador no prerender do build, e uma recusa ali interrompe o build.
+
+O serializador padrão informa falhas de parse e de emissão ao render, inclusive
+sem um hook local. A primeira falha marca `hasErrors`, passa pela política de
+`configureServerErrors` e encerra o render sem chamar `onCompleteAll`. Falhas
+síncronas também seguem esse caminho, sem relançar a exceção para o chamador. O
+descarte libera o owner e as fontes assíncronas pendentes. A entrada continua
+sem um `onError` local, preservando a sanitização e o log globais.
+
+Esse encerramento também vale para HTML em streaming. Uma falha ocorrida
+enquanto o shell é montado impede que ele seja enviado, e a resposta é um 500.
+Depois do shell, os bytes já enviados não podem ser recolhidos; a conexão
+termina com o conteúdo que já saiu. Markdown aguarda o render e recusa a
+publicação com erro público 500 e `cache-control: private, no-store`. Uma falha
+de serialização não depende do timeout do adaptador para encerrar a resposta.
+
+Serializadores personalizados mantêm seu contrato anterior de callbacks. O
+estado registra lançamentos síncronos nas escritas e falhas informadas ao hook
+local, quando fornecido. Erros suprimidos internamente não são observáveis.
+Qualquer adoção exige validar a relação entre conteúdo, conclusão e falhas.
+
+Os patches Bun de `solid-js` e `@solidjs/web` aplicam as mudanças de
+[solidjs/solid#4126](https://github.com/solidjs/solid/pull/4126) às versões
+fixadas no manifest e lock. Cobrem os runtimes padrão, de desenvolvimento e de
+observação, além das duas declarações públicas de web. O patch de web também
+contém a proteção upstream contra exceções durante o descarte do owner,
+inclusive na conclusão normal: a falha é informada à política global como falha
+do render e marca `hasErrors`, a limpeza prossegue e o Markdown recusa a
+publicação. Sem isso, um `onCleanup` que lança deixava uma rejeição não tratada
+e podia publicar o Markdown. O ajuste upstream do codec de frames
+(`createJSONSerializer`) fica fora dos patches, porque o projeto não usa frames.
+
+Remova os patches somente quando os pacotes publicados incluírem esse contrato e
+passarem as regressões de erro reutilizado entre requisições, falha de server
+function que escapa de Loading, recuperação local, serialização e cancelamento.
+A issue ou o PR fechado não substitui a verificação dos artefatos instalados. O
+sinal composto de timeout e desconexão chega ao `renderToStream`; o teste Node
+do adaptador verifica o descarte de uma raiz SSR pendente no cancelamento.

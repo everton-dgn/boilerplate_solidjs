@@ -5,7 +5,8 @@ import type { SitemapRouteInfo } from './sitemap.ts'
 
 declare module '@solidjs/router' {
   interface RouteInfo {
-    markdown?: boolean
+    // `true` gera o Markdown no build; `'dynamic'` converte a cada requisição.
+    markdown?: boolean | 'dynamic'
     seo?: SeoRouteInfo
     llms?: LlmsRouteInfo
     sitemap?: SitemapRouteInfo

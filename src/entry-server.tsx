@@ -5,13 +5,33 @@ import App from './App.tsx'
 import Document from './Document.tsx'
 
 export function render() {
-  const nonce = getRequestEvent()?.nonce ?? undefined
-  return renderToStream(
+  const event = getRequestEvent()
+  const nonce = event?.nonce ?? undefined
+  let hasCompleted = false
+  const stream = renderToStream(
     () => (
       <Document>
         <App />
       </Document>
     ),
-    { manifest, nonce }
+    {
+      manifest,
+      nonce,
+      signal: event?.request.signal,
+      onCompleteAll() {
+        hasCompleted = true
+      }
+    }
   )
+  if (event) {
+    event.locals.ssrRenderState = {
+      get hasErrors() {
+        return stream.hasErrors
+      },
+      get hasCompleted() {
+        return hasCompleted
+      }
+    }
+  }
+  return stream
 }

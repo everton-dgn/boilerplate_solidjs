@@ -249,11 +249,21 @@ test('isolates concurrent HTML and Markdown requests across all locales', async 
         formats[Math.floor(index / LANGUAGES.length) % formats.length]
       if (!language || !format) throw new Error('Missing test request')
       const response = await request.get(`/${language.locale}`, {
-        headers: { accept: format }
+        headers: {
+          accept: format,
+          cookie: `locale=${language.locale === 'es' ? 'en' : 'es'}`
+        }
       })
       expect(response.status()).toBe(HTTP_OK)
       expect(response.headers()['content-type']).toContain(format)
       expect(response.headers()['content-language']).toBe(language.locale)
+      expect(response.headers()['set-cookie']).toBe(
+        `locale=${language.locale}; Path=/; Max-Age=34560000; SameSite=Lax`
+      )
+      expect(response.headers()['cache-control']).toBe('private, no-store')
+      expect(response.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
+        'cookie'
+      )
       return { language, format, body: await response.text() }
     })
   )
@@ -261,7 +271,7 @@ test('isolates concurrent HTML and Markdown requests across all locales', async 
     if (format === 'text/html') {
       expect(body).toContain(`lang="${language.tag}"`)
     } else {
-      expect(body.split('\n')[0]).toBe(`# ${language.title}`)
+      expect(body.split('\n')).toContain(`# ${language.title}`)
     }
     expect(body).toContain(language.title)
     for (const other of LANGUAGES.filter(
