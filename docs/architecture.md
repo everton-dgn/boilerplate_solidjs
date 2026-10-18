@@ -105,6 +105,6 @@ substitui o contrato de [erros de servidor](server-errors.md).
 
 A implementação usa `defineRule` e `definePlugin` de `vite-plus/lint/plugins`,
 com `RuleTester` de `vite-plus/lint/plugins-dev`, sem dependência adicional.
-Execute os comandos a partir da raiz do projeto. `vp run check:ci` verifica o
-código atual; `vp run test:tooling` testa a política, seu registro no lint e as
+Execute os comandos a partir da raiz do projeto. `vpr check:ci` verifica o
+código atual; `vpr test:tooling` testa a política, seu registro no lint e as
 restrições de backend. Os dois comandos rodam no CI.
