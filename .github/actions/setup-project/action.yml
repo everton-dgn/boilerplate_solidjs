@@ -2,6 +2,12 @@ name: Set up project
 description:
   Install the declared toolchain and frozen dependencies with package caching.
 
+inputs:
+  cache-save:
+    description: Save the package cache after the job succeeds
+    required: false
+    default: 'true'
+
 outputs:
   node:
     description: Declared Node version
@@ -32,6 +38,7 @@ runs:
         version: ${{ steps.toolchain.outputs.vite-plus }}
         node-version: ${{ steps.toolchain.outputs.node }}
         cache: true
+        cache-save: ${{ inputs.cache-save }}
         cache-dependency-path: bun.lock
         run-install: false
 
