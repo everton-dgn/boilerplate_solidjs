@@ -16,7 +16,7 @@ As versões exatas vivem no `package.json`, não nesta página:
   automação de release, fixado em `packageManager`. O Vite+ seleciona essa
   versão para a instalação e para o comando `bun`.
 - Chromium do Playwright: usado pelos testes de navegador e E2E. Não é baixado
-  no `vp install`; instale uma vez com `vp run test:browser:install`.
+  no `vp install`; instale uma vez com `vpr test:browser:install`.
 
 No CI, os testes usam o Chrome já instalado no runner.
 
@@ -31,19 +31,18 @@ Para clonar e iniciar o projeto, siga os
 Para conferir o build de produção localmente, incluindo SSR e server functions:
 
 ```bash
-vp run build && vp run start
+vpr build && vpr start
 ```
 
 O preview usa o Vite+ com a integração do Nitro. O `.env` versionado contém os
 valores locais de `HOST` e `PORT`, usados tanto pelo dev quanto pelo preview, e
 `VITE_SITE_URL`, a URL pública obrigatória dos metadados de SEO. Ele também é
 carregado durante o build; variáveis já definidas no ambiente têm prioridade.
-Para escolher outra porta ou interface no preview, use
-`vp run start --port 3001` ou `vp run start --host 0.0.0.0`.
+Para escolher outra porta ou interface no preview, use `vpr start --port 3001`
+ou `vpr start --host 0.0.0.0`.
 
-`vp run start` é um alias do preview local. Em produção, configure as variáveis
-na plataforma de hospedagem; o comando `preview` é destinado à conferência
-local.
+`vpr start` é um alias do preview local. Em produção, configure as variáveis na
+plataforma de hospedagem; o comando `preview` é destinado à conferência local.
 
 ## Build e deploy
 
@@ -64,7 +63,7 @@ estão em
 Para gerar o artefato da Vercel:
 
 ```bash
-vp run build
+vpr build
 ```
 
 Esse comando gera `.vercel/output/`, incluindo estáticos e a função SSR com
@@ -132,43 +131,43 @@ cache.
 
 ## Scripts
 
-| Script                        | Descrição                                                   |
-| ----------------------------- | ----------------------------------------------------------- |
-| `vp run dev`                  | Servidor de desenvolvimento com HMR                         |
-| `vp run dev:phone`            | Expor o servidor de desenvolvimento na rede local           |
-| `vp run build`                | Build Nitro para Vercel em `.vercel/output/`                |
-| `vp run start`                | Pré-visualizar o build pelo Vite                            |
-| `vp run i18n:generate`        | Validar catálogos e gerar mensagens e tipos                 |
-| `vp run typecheck`            | Tipos da aplicação e das ferramentas Node                   |
-| `vp run typecheck:node`       | Tipos das ferramentas no ambiente Node                      |
-| `vp run lint`                 | CSS, lint e tipos com cache do Vite+                        |
-| `vp run lint:css`             | Verificar as regras de CSS                                  |
-| `vp run format`               | Formatar código com Oxfmt                                   |
-| `vp run check:ci`             | Formatação, lint e tipos da aplicação                       |
-| `vp run check:fix`            | Formatação + lint corrigindo o que for possível             |
-| `vp run test`                 | Todos os projetos de teste da aplicação                     |
-| `vp run test:tooling`         | Testes de tooling em Node, exceto release                   |
-| `vp run test:release`         | Testar a automação de release com Bun                       |
-| `vp run test:ui`              | Vitest UI com cobertura; use a URL impressa (traz o token)  |
-| `vp run test:ci`              | Rodar Vitest com cobertura e parar na primeira falha        |
-| `vp run test:coverage`        | Rodar Vitest com cobertura                                  |
-| `vp run test:unit`            | Só os projetos `node` e `dom` (happy-dom)                   |
-| `vp run test:watch`           | Testes em modo de observação                                |
-| `vp run test:shuffle`         | Testes em ordem aleatória, para achar dependência de ordem  |
-| `vp run test:browser`         | Só o projeto `browser` (Chromium headless)                  |
-| `vp run test:browser:install` | Baixar o Chromium do Playwright                             |
-| `vp run test:e2e`             | Testar a aplicação com fixtures E2E                         |
-| `vp run test:e2e:production`  | Testar as rotas reais de produção                           |
-| `vp run test:e2e:ui`          | Abrir a interface interativa dos E2E                        |
-| `vp run test:e2e:codegen`     | Abrir o gerador de testes do Playwright                     |
-| `vp run deps:update`          | Selecionar atualizações de dependências                     |
-| `vp run bun:update`           | Atualizar o Bun fixado e reinstalar dependências            |
-| `vp run detect:duplicates`    | Procurar código duplicado em `src`                          |
-| `vp run dead-code`            | Verificar código sem uso com Knip                           |
-| `vp run dead-code:fix`        | Aplicar as correções do Knip                                |
-| `vp run scan:secrets`         | Procurar segredos com Kingfisher (requer instalação)        |
-| `vp run validate`             | check:ci + typecheck:node + test:coverage + tooling + build |
-| `vp run commitlint`           | Validar mensagem de commit                                  |
+| Script                     | Descrição                                                   |
+| -------------------------- | ----------------------------------------------------------- |
+| `vpr dev`                  | Servidor de desenvolvimento com HMR                         |
+| `vpr dev:phone`            | Expor o servidor de desenvolvimento na rede local           |
+| `vpr build`                | Build Nitro para Vercel em `.vercel/output/`                |
+| `vpr start`                | Pré-visualizar o build pelo Vite                            |
+| `vpr i18n:generate`        | Validar catálogos e gerar mensagens e tipos                 |
+| `vpr typecheck`            | Tipos da aplicação e das ferramentas Node                   |
+| `vpr typecheck:node`       | Tipos das ferramentas no ambiente Node                      |
+| `vpr lint`                 | CSS, lint e tipos com cache do Vite+                        |
+| `vpr lint:css`             | Verificar as regras de CSS                                  |
+| `vpr format`               | Formatar código com Oxfmt                                   |
+| `vpr check:ci`             | Formatação, lint e tipos da aplicação                       |
+| `vpr check:fix`            | Formatação + lint corrigindo o que for possível             |
+| `vpr test`                 | Todos os projetos de teste da aplicação                     |
+| `vpr test:tooling`         | Testes de tooling em Node, exceto release                   |
+| `vpr test:release`         | Testar a automação de release com Bun                       |
+| `vpr test:ui`              | Vitest UI com cobertura; use a URL impressa (traz o token)  |
+| `vpr test:ci`              | Rodar Vitest com cobertura e parar na primeira falha        |
+| `vpr test:coverage`        | Rodar Vitest com cobertura                                  |
+| `vpr test:unit`            | Só os projetos `node` e `dom` (happy-dom)                   |
+| `vpr test:watch`           | Testes em modo de observação                                |
+| `vpr test:shuffle`         | Testes em ordem aleatória, para achar dependência de ordem  |
+| `vpr test:browser`         | Só o projeto `browser` (Chromium headless)                  |
+| `vpr test:browser:install` | Baixar o Chromium do Playwright                             |
+| `vpr test:e2e`             | Testar a aplicação com fixtures E2E                         |
+| `vpr test:e2e:production`  | Testar as rotas reais de produção                           |
+| `vpr test:e2e:ui`          | Abrir a interface interativa dos E2E                        |
+| `vpr test:e2e:codegen`     | Abrir o gerador de testes do Playwright                     |
+| `vpr deps:update`          | Selecionar atualizações de dependências                     |
+| `vpr bun:update`           | Atualizar o Bun fixado e reinstalar dependências            |
+| `vpr detect:duplicates`    | Procurar código duplicado em `src`                          |
+| `vpr dead-code`            | Verificar código sem uso com Knip                           |
+| `vpr dead-code:fix`        | Aplicar as correções do Knip                                |
+| `vpr scan:secrets`         | Procurar segredos com Kingfisher (requer instalação)        |
+| `vpr validate`             | check:ci + typecheck:node + test:coverage + tooling + build |
+| `vpr commitlint`           | Validar mensagem de commit                                  |
 
 ## Execução e cache
 
@@ -177,21 +176,22 @@ Node, o carregamento deste `vite.config.ts` pelo Jiti falha ao avaliar as
 factories de `lazyPlugins`. O carregador nativo do Bun aceita a configuração.
 
 Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
-comando embutido; `vp run <script>` executa um script do `package.json`. Os dois
+comando embutido; `vpr <script>` é o atalho oficial de `vp run <script>` e
+executa um script do `package.json` ou uma tarefa do `vite.config.ts`. Os dois
 podem divergir, então confira o `package.json` antes de rodar direto.
 
-`vp run lint`, `vp run lint:css`, `vp run check:ci` e `vp run dead-code` usam as
-tarefas com cache `lint-project`, `lint-css`, `check-project` e
-`dead-code-project` do `vite.config.ts`. `vp run typecheck` usa `typecheck-app`
-e `typecheck-node`, e `vp run typecheck:node` executa somente a segunda tarefa;
-`vp run test:tooling` usa a tarefa `test-tooling`, sem cache, porque os testes
-dependem de diretórios temporários que o cache não rastreia. O Vite+ reaproveita
-resultados bem-sucedidos quando os arquivos lidos, as listagens de diretórios,
-os argumentos e as variáveis de ambiente selecionadas continuam iguais. As
-tarefas de lint incluem `NODE_ENV` na chave do cache; `PATH` e `NODE_OPTIONS`
-chegam ao processo sem invalidar o resultado. O Vite também registra as
-variáveis que carrega. A configuração do servidor limita `loadEnv` aos prefixos
-`HOST` e `PORT`, para não registrar todo o ambiente.
+`vpr lint`, `vpr lint:css`, `vpr check:ci` e `vpr dead-code` usam as tarefas com
+cache `lint-project`, `lint-css`, `check-project` e `dead-code-project` do
+`vite.config.ts`. `vpr typecheck` usa `typecheck-app` e `typecheck-node`, e
+`vpr typecheck:node` executa somente a segunda tarefa; `vpr test:tooling` usa a
+tarefa `test-tooling`, sem cache, porque os testes dependem de diretórios
+temporários que o cache não rastreia. O Vite+ reaproveita resultados
+bem-sucedidos quando os arquivos lidos, as listagens de diretórios, os
+argumentos e as variáveis de ambiente selecionadas continuam iguais. As tarefas
+de lint incluem `NODE_ENV` na chave do cache; `PATH` e `NODE_OPTIONS` chegam ao
+processo sem invalidar o resultado. O Vite também registra as variáveis que
+carrega. A configuração do servidor limita `loadEnv` aos prefixos `HOST` e
+`PORT`, para não registrar todo o ambiente.
 
 O rastreamento automático registra os arquivos que o lint type-aware lê,
 inclusive os tipos em `node_modules`, mas não vê as leituras do `tsc` nativo.
@@ -205,10 +205,10 @@ resultado.
 
 O cache mantém `typeAware` e `typeCheck` ativos e identifica na saída quando
 reproduz um resultado anterior. Para executar tudo novamente, use
-`vp run --no-cache lint` ou `vp run --no-cache check:ci`. Para ignorar o cache
-das outras tarefas, use `vp run --no-cache typecheck`,
-`vp run --no-cache lint:css` ou `vp run --no-cache dead-code`. `check:fix`,
-build e as suítes do Vitest mantêm seus comandos próprios.
+`vpr --no-cache lint` ou `vpr --no-cache check:ci`. Para ignorar o cache das
+outras tarefas, use `vpr --no-cache typecheck`, `vpr --no-cache lint:css` ou
+`vpr --no-cache dead-code`. `check:fix`, build e as suítes do Vitest mantêm seus
+comandos próprios.
 
 ## Runtimes e CI
 
@@ -216,22 +216,22 @@ No CI e na automação de release, o `setup-vp` fornece o Node e o Bun declarado
 no projeto e reaproveita o cache de pacotes. `vp install --frozen-lockfile`
 instala com Bun sem permitir mudanças no lockfile. Os scripts `dev` e `build`
 chamam o CLI local do Vite+ explicitamente com Bun, porque o `vp` global e os
-filhos de `vp run` podem selecionar Node novamente. Use `vp run dev` e
-`vp run build` para executar esses scripts. Node continua nos testes da
-aplicação, nos testes de tooling e no SSR de produção: o `RuleTester` do Oxlint
-recusa Bun, e a suíte Vitest apresentou incompatibilidades no carregamento de
-módulos do Solid. O job `Quality` restaura `node_modules/.vite/task-cache`,
-`node_modules/.vitest-cache` e `.tsbuild`, com uma chave por execução e um
-prefixo de restauração restrito ao sistema operacional, arquitetura, Node, Bun e
-lockfile. Vite Task, Vitest e TypeScript conferem suas entradas antes de
-reaproveitar os dados. Depois dos testes com cobertura, o cache é enviado ao
-GitHub, inclusive quando uma verificação anterior falha. Vite Task só guarda
-resultados bem-sucedidos e Vitest guarda transformações, então uma falha não
-vira um resultado de teste reaproveitado. O workflow aguarda o upload antes de
-encerrar; falhas de cache não dispensam nem reprovam as verificações. Uma
-execução sem cache faz as mesmas verificações. A reutilização do Vite Task entre
-runners é experimental: confira os hits nos logs e compare o tempo economizado
-com o custo de transferir o cache.
+filhos de `vpr` podem selecionar Node novamente. Use `vpr dev` e `vpr build`
+para executar esses scripts. Node continua nos testes da aplicação, nos testes
+de tooling e no SSR de produção: o `RuleTester` do Oxlint recusa Bun, e a suíte
+Vitest apresentou incompatibilidades no carregamento de módulos do Solid. O job
+`Quality` restaura `node_modules/.vite/task-cache`, `node_modules/.vitest-cache`
+e `.tsbuild`, com uma chave por execução e um prefixo de restauração restrito ao
+sistema operacional, arquitetura, Node, Bun e lockfile. Vite Task, Vitest e
+TypeScript conferem suas entradas antes de reaproveitar os dados. Depois dos
+testes com cobertura, o cache é enviado ao GitHub, inclusive quando uma
+verificação anterior falha. Vite Task só guarda resultados bem-sucedidos e
+Vitest guarda transformações, então uma falha não vira um resultado de teste
+reaproveitado. O workflow aguarda o upload antes de encerrar; falhas de cache
+não dispensam nem reprovam as verificações. Uma execução sem cache faz as mesmas
+verificações. A reutilização do Vite Task entre runners é experimental: confira
+os hits nos logs e compare o tempo economizado com o custo de transferir o
+cache.
 
 As tarefas de lint combinam os arquivos lidos automaticamente com entradas
 explícitas para CSS, ferramentas de CSS, `package.json`, `bun.lock` e
@@ -240,9 +240,9 @@ de leituras do runtime em cada sistema operacional. A checagem de tipos também
 tem entradas explícitas para fontes, declarações e configurações do TypeScript.
 O Bun usa o linker isolado definido em `bunfig.toml`; somente os pacotes de
 `trustedDependencies` podem executar os scripts de instalação autorizados. Os
-comandos documentados usam `vp run`, e o Vite mantém seu carregamento de
-variáveis por modo. `env = false` no `bunfig.toml` também evita que `bun run`
-antecipe a leitura do `.env` antes de iniciar essas ferramentas.
+comandos documentados usam `vpr`, e o Vite mantém seu carregamento de variáveis
+por modo. `env = false` no `bunfig.toml` também evita que `bun run` antecipe a
+leitura do `.env` antes de iniciar essas ferramentas.
 
 O CI distribui as verificações entre quatro runners independentes: `Quality`,
 `Tooling`, E2E com fixtures e E2E de produção. `Quality` executa formatação,
@@ -296,10 +296,10 @@ os hooks.
   do Vitest embutido no Vite+. O CI lê a versão do Vite+ desse catálogo.
 - Commits devem seguir Conventional Commits.
 - O lint é type-aware e roda com `typeCheck: true`; erros de tipo aparecem no
-  `vp run lint` além do `vp run typecheck`.
-- O CI, o pre-push e `vp run validate` combinam `check:ci` com `typecheck:node`
+  `vpr lint` além do `vpr typecheck`.
+- O CI, o pre-push e `vpr validate` combinam `check:ci` com `typecheck:node`
   para verificar a aplicação uma vez e preservar a checagem das ferramentas sem
-  os tipos do DOM. `vp run typecheck` continua verificando os dois projetos.
+  os tipos do DOM. `vpr typecheck` continua verificando os dois projetos.
 - Use as versões de Node e Bun definidas em `package.json`. O `bun.lock` é o
   único lockfile do projeto.
 

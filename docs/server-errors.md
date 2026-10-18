@@ -401,19 +401,19 @@ com query, invalide a chave antes de `reset()`:
 Após alterar essa fronteira, execute:
 
 ```bash
-vp run test:tooling
-vp run test:unit
-vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError
-vp run typecheck
-vp run check:ci
+vpr test:tooling
+vpr test:unit
+vpr test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError
+vpr typecheck
+vpr check:ci
 ```
 
 O [CI](../.github/workflows/ci.yml) executa `test:tooling` e a suíte E2E
-completa; `vp run validate` e o `pre-push` rodam `test:tooling` localmente, o
-que inclui as duas políticas. Os testes da política verificam as regras no
-parser real e seu registro no lint completo, com casos recusados e permitidos
-para cada exceção. Consulte os resultados de cada execução nos logs da validação
-local e do CI.
+completa; `vpr validate` e o `pre-push` rodam `test:tooling` localmente, o que
+inclui as duas políticas. Os testes da política verificam as regras no parser
+real e seu registro no lint completo, com casos recusados e permitidos para cada
+exceção. Consulte os resultados de cada execução nos logs da validação local e
+do CI.
 
 ## Atualizar o Solid
 
@@ -444,8 +444,7 @@ pacote publicado e instalado mudou esse comportamento.
    vale também para as server functions chamadas diretamente durante ele.
    Confira se `src/entry-server.tsx` e o plugin continuam sem repassá-lo e se o
    módulo `configure` ainda carrega antes do primeiro dispatch.
-3. Rode
-   `vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError`
+3. Rode `vpr test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError`
    no build de produção. Os marcadores nos corpos brutos, os controles positivos
    e o teardown do log são a regressão da fronteira. Se o runtime mudar as
    mensagens que chegam ao navegador, meça antes de ajustar as tolerâncias de

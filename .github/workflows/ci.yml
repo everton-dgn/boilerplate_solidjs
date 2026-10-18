@@ -52,10 +52,10 @@ jobs:
       # Cria .tsbuild antes do lint também quando o cache está vazio, para
       # estabilizar a listagem da raiz que o Vite Task rastreia.
       - name: Check Node tooling types
-        run: vp run typecheck:node
+        run: vpr typecheck:node
 
       - name: Check formatting and lint
-        run: vp run check:ci
+        run: vpr check:ci
 
       - name: Detect release tooling changes
         id: release-tests
@@ -66,10 +66,10 @@ jobs:
 
       - name: Test release automation on Bun
         if: steps.release-tests.outputs.should_run == 'true'
-        run: vp run test:release
+        run: vpr test:release
 
       - name: Run tests with coverage
-        run: vp run test:ci
+        run: vpr test:ci
 
       - name: Save validation cache
         if:
@@ -109,7 +109,7 @@ jobs:
         uses: ./.github/actions/setup-project
 
       - name: Run tooling tests
-        run: vp run test:tooling
+        run: vpr test:tooling
 
   e2e:
     name: E2E (${{ matrix.suite }})
@@ -171,7 +171,7 @@ jobs:
 
       - name: Run end-to-end tests
         if: steps.deployment-build.outcome != 'success'
-        run: vp run ${{ matrix.script }}
+        run: vpr ${{ matrix.script }}
 
       - name: Test deployment artifact without rebuilding
         if: steps.deployment-build.outcome == 'success'
@@ -187,7 +187,7 @@ jobs:
           const publicVariables = Object.fromEntries(Object.entries(variables).filter(
             ([key]) => key.startsWith('VITE_') && process.env[key] === undefined
           ));
-          const result = spawnSync('vp', ['run', 'test:e2e:production'], {
+          const result = spawnSync('vpr', ['test:e2e:production'], {
             env: { ...process.env, ...publicVariables }, stdio: 'inherit'
           });
           if (result.error) throw result.error;

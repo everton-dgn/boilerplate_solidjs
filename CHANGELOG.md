@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 1.12.3 - 2026-10-18
+
+### Fixed
+
+- fail the build when a listed page is not written (1cc80df)
+- neutralize script links and drop undescribed images (e4508d0)
+- fail static prerenders on redirects (b04291a)
+- withhold failed shells and contain completion cleanup (de2a674)
+- contain hydration serialization failures (466438f)
+- address review protocol and failure handling (3869536)
+- preserve serializer behavior in Markdown render tracking (57a93b6)
+
 ## 1.12.2 - 2026-10-16
 
 ### Fixed
