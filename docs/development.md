@@ -238,11 +238,14 @@ lockfile não existe e o job termina com sucesso. `Tooling` e E2E passam
 `cache-save: false` à ação `setup-project` e só restauram. `Reuse proof` e
 deploy passam também `install-dependencies: false`: a ação prepara Vite+, Node e
 Bun do `package.json`, sem cache de pacotes nem `vp install`. O deploy só
-executa `vp dlx` sobre o artefato testado. Num run experimental, sem token nem
-deploy real, esse preparo levou 8 s contra 17 s do completo, cada um somado à
-primeira chamada do Vercel CLI, com as mesmas versões e sem `node_modules`. Foi
-uma única amostra; acompanhe o tempo do deploy real depois do merge. A automação
-de release usa o `setup-vp` diretamente e mantém o envio padrão.
+executa `vp dlx` sobre o artefato testado. Com `cache: false`, o `setup-vp` não
+restaura nem salva o cache, e `cache-save` e `cache-dependency-path` não têm
+efeito. Num run experimental, sem token nem deploy real, o preparo somado à
+primeira chamada `vercel --version` levou 8,1 s contra 18,6 s do preparo
+completo, cerca de 10 s a menos, com as mesmas versões de Node, Bun, Vite+ e
+Vercel CLI e sem `node_modules`. Foi uma única amostra, que mede só essa chamada
+do CLI; acompanhe o tempo do deploy real depois do merge. A automação de release
+usa o `setup-vp` diretamente e mantém o envio padrão.
 
 As tarefas de lint combinam os arquivos lidos automaticamente com entradas
 explícitas para CSS, ferramentas de CSS, `package.json`, `bun.lock` e
