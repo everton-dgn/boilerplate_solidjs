@@ -176,14 +176,25 @@ async function findPullRequest({
   return pr
 }
 
-async function assertSinglePullRequest({ repository, pr, ports }: PullContext) {
+async function assertSinglePullRequest({
+  repository,
+  merge,
+  pr,
+  ports
+}: PullContext) {
   const [owner] = repository.split('/')
   const head = encodeURIComponent(`${owner}:${pr.head.ref}`)
   const pulls = await ports.api<PullRequest[]>(
     `repos/${repository}/pulls?state=all&head=${head}&per_page=${PAGE_SIZE}`
   )
-  if (pulls.length !== 1 || pulls[0]?.number !== pr.number) {
-    reject('A branch do PR tem mais de um PR associado.')
+  // Nomes de branch são reutilizados; só PRs com o mesmo head testado contam.
+  const sameHead = pulls.filter(item => item.head.sha === merge.head)
+  if (
+    pulls.length === PAGE_SIZE ||
+    sameHead.length !== 1 ||
+    sameHead[0]?.number !== pr.number
+  ) {
+    reject('O head do PR tem mais de um PR associado.')
   }
 }
 

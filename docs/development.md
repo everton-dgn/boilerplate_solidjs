@@ -313,7 +313,11 @@ mesmo run. Checks sintetizados pela release não contam como prova.
 `Quality` também roda quando o merge altera `bun.lock`, `package.json` ou
 `bunfig.toml`, ou quando a `main` não tem as entradas de cache de pacotes e de
 validação para o lockfile e a toolchain atuais. Ele é o único job que grava
-esses caches, e chaves novas só surgem nesses casos.
+esses caches. A chave de pacotes e o prefixo de restauração da validação só
+mudam nesses casos; com o `Quality` dispensado, os PRs continuam restaurando a
+última entrada de validação da `main` com o mesmo prefixo, que envelhece
+conforme a árvore muda e pode reduzir os acertos do Vite Task e do Vitest até a
+próxima mudança de lockfile.
 
 O verificador e o workflow continuam sendo código revisado da `main`: um merge
 que altere `.github/` ou `tooling/ciReuse/` sempre executa o CI completo. A

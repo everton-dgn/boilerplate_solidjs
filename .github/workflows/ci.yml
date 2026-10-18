@@ -59,7 +59,7 @@ jobs:
         id: proof
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node tooling/ciReuse/prove-reuse.ts
+        run: vp exec node tooling/ciReuse/prove-reuse.ts
 
   quality:
     name: Quality

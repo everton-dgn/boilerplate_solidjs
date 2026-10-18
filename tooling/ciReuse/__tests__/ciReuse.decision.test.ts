@@ -361,10 +361,21 @@ test('rejeita PR ausente, ambíguo, de fork ou com outra base', async () => {
   }
 })
 
-test('rejeita branch com mais de um PR (empilhamento)', async () => {
+test('rejeita head com mais de um PR (empilhamento)', async () => {
   const world = createWorld()
   world.headPulls = [pullRequest(), { ...pullRequest(), number: 7 }]
   await assertFull({ world, reason: /mais de um PR/u })
+})
+
+test('aceita nome de branch reutilizado por PR antigo com outro head', async () => {
+  const world = createWorld()
+  const older = pullRequest()
+  world.headPulls = [
+    pullRequest(),
+    { ...older, number: 7, head: { ...older.head, sha: OTHER } }
+  ]
+  const decision = await decide(world)
+  assert.equal(decision.shouldReuse, true)
 })
 
 test('rejeita PR que mudou de base, inclusive na segunda página', async () => {
