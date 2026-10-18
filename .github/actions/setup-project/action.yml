@@ -1,8 +1,13 @@
 name: Set up project
 description:
-  Install the declared toolchain and frozen dependencies with package caching.
+  Install the declared toolchain and, by default, frozen dependencies with
+  package caching.
 
 inputs:
+  install-dependencies:
+    description: Install dependencies and restore the package cache
+    required: false
+    default: 'true'
   cache-save:
     description: Save the package cache after the job succeeds
     required: false
@@ -37,11 +42,12 @@ runs:
       with:
         version: ${{ steps.toolchain.outputs.vite-plus }}
         node-version: ${{ steps.toolchain.outputs.node }}
-        cache: true
+        cache: ${{ inputs.install-dependencies == 'true' }}
         cache-save: ${{ inputs.cache-save }}
         cache-dependency-path: bun.lock
         run-install: false
 
     - name: Install dependencies
+      if: inputs.install-dependencies == 'true'
       shell: bash
       run: vp install --frozen-lockfile

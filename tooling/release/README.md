@@ -100,12 +100,12 @@ publicar arquivos fora do artefato testado. O Nitro atual gera a função com su
 dependências dentro do output.
 
 O job `deploy` faz checkout do mesmo SHA, prepara a toolchain do `package.json`
-e baixa o artefato da mesma execução do CI. A verificação de integridade do
-download causa erro se o digest divergir. O nome inclui o SHA e o upload
-substitui apenas o artefato desse nome na execução atual, permitindo repetir
-jobs que falharam. A retenção é de um dia; após expirar, execute novamente o job
-que gera e testa o build. Arquivos de ambiente e `.vercel/project.json` ficam
-fora do tar.
+sem instalar dependências e baixa o artefato da mesma execução do CI. A
+verificação de integridade do download causa erro se o digest divergir. O nome
+inclui o SHA e o upload substitui apenas o artefato desse nome na execução
+atual, permitindo repetir jobs que falharam. A retenção é de um dia; após
+expirar, execute novamente o job que gera e testa o build. Arquivos de ambiente
+e `.vercel/project.json` ficam fora do tar.
 
 Depois da aprovação de todos os checks, o deploy publica esse output com
 `vercel deploy --prebuilt --prod`, sem outro build. PRs não usam credenciais da

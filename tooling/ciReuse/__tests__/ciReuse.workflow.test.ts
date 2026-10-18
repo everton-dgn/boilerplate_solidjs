@@ -14,6 +14,10 @@ const WORKFLOW = await readFile(
   'utf8'
 )
 const LINES = WORKFLOW.split('\n')
+const SETUP_ACTION = await readFile(
+  new URL('../../../.github/actions/setup-project/action.yml', import.meta.url),
+  'utf8'
+)
 const RUN_INDENT_OFFSET = 2
 const NOT_FOUND = -1
 // pull e build no E2E de produção, deploy no job de deploy.
@@ -339,4 +343,29 @@ test('pull, build e deploy usam uma única versão estrita do Vercel CLI', async
       version
     )
   }
+})
+
+test('só proof e deploy preparam as ferramentas sem instalar dependências', () => {
+  assert.match(
+    SETUP_ACTION,
+    /install-dependencies:\n {4}description: .+\n {4}required: false\n {4}default: 'true'/u
+  )
+  assert.match(
+    SETUP_ACTION,
+    /cache: \$\{\{ inputs\.install-dependencies == 'true' \}\}/u
+  )
+  assert.match(
+    SETUP_ACTION,
+    /- name: Install dependencies\n {6}if: inputs\.install-dependencies == 'true'/u
+  )
+  const toolchainOnly = ['proof', 'deploy'].map(id => jobBlock(id))
+  for (const block of toolchainOnly) {
+    assert.ok(
+      block.includes('install-dependencies: false\n          cache-save: false')
+    )
+  }
+  assert.equal(
+    WORKFLOW.split('install-dependencies: false').length - 1,
+    toolchainOnly.length
+  )
 })
