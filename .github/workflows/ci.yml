@@ -4,20 +4,63 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Validação completa manual, sem deploy.
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # O grupo manual não substitui um push pendente da main, que precisa do deploy.
+  group:
+    ci-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' &&
+    'manual-' || '' }}${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   LEFTHOOK: '0'
 
 jobs:
+  proof:
+    name: Reuse proof
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    outputs:
+      reuse: ${{ steps.proof.outputs.reuse }}
+      run-quality: ${{ steps.proof.outputs.run_quality }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-project
+        with:
+          install-dependencies: false
+          cache-save: false
+
+      - name: Verify the pull request validation of this tree
+        id: proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: vp exec node tooling/ciReuse/prove-reuse.ts
+
   quality:
     name: Quality
+    needs: proof
+    # Sem prova válida, inclusive em PRs e falhas do proof, roda normalmente.
+    if:
+      ${{ !cancelled() && (needs.proof.result != 'success' ||
+      needs.proof.outputs.reuse != 'true' || needs.proof.outputs.run-quality ==
+      'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -27,6 +70,51 @@ jobs:
           persist-credentials: false
           ref: ${{ github.sha }}
           fetch-depth: 0
+
+      - name: Record tested commit
+        if: github.event_name == 'pull_request'
+        env:
+          PULL_REQUEST: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          mkdir "$RUNNER_TEMP/ci-reuse-evidence"
+          tested_sha=$(git rev-parse HEAD)
+          tested_tree=$(git rev-parse 'HEAD^{tree}')
+          parents=$(git rev-list --parents -n 1 HEAD | cut -d' ' -f2-)
+          jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --argjson run_id "$GITHUB_RUN_ID" \
+            --argjson run_attempt "$GITHUB_RUN_ATTEMPT" \
+            --arg event "$GITHUB_EVENT_NAME" \
+            --arg workflow_ref "$GITHUB_WORKFLOW_REF" \
+            --arg workflow_sha "$GITHUB_WORKFLOW_SHA" \
+            --arg github_sha "$GITHUB_SHA" \
+            --argjson pull_request "$PULL_REQUEST" \
+            --arg base_ref "$BASE_REF" \
+            --arg base_sha "$BASE_SHA" \
+            --arg head_sha "$HEAD_SHA" \
+            --arg tested_sha "$tested_sha" \
+            --arg tested_tree "$tested_tree" \
+            --arg parents "$parents" \
+            '{version: 1, repository: $repository, run_id: $run_id,
+              run_attempt: $run_attempt, event: $event,
+              workflow_ref: $workflow_ref, workflow_sha: $workflow_sha,
+              github_sha: $github_sha, pull_request: $pull_request,
+              base_ref: $base_ref, base_sha: $base_sha, head_sha: $head_sha,
+              tested_sha: $tested_sha, tested_tree: $tested_tree,
+              tested_parents: ($parents | split(" "))}' \
+            > "$RUNNER_TEMP/ci-reuse-evidence/evidence.json"
+
+      - name: Upload tested commit evidence
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-reuse-evidence-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ci-reuse-evidence/evidence.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Set up project
         id: toolchain
@@ -89,13 +177,19 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-artifacts-quality-${{ github.run_attempt }}
-          path: .vitest/
+          path: |
+            .vitest/
+            test-results/browser-traces/
           if-no-files-found: ignore
           include-hidden-files: true
           retention-days: 14
 
   tooling:
     name: Tooling
+    needs: proof
+    if:
+      ${{ !cancelled() && (needs.proof.result != 'success' ||
+      needs.proof.outputs.reuse != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -107,22 +201,20 @@ jobs:
 
       - name: Set up project
         uses: ./.github/actions/setup-project
+        with:
+          cache-save: false
 
       - name: Run tooling tests
         run: vpr test:tooling
 
-  e2e:
-    name: E2E (${{ matrix.suite }})
+  e2e-fixtures:
+    name: E2E (fixtures)
+    needs: proof
+    if:
+      ${{ !cancelled() && (needs.proof.result != 'success' ||
+      needs.proof.outputs.reuse != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - suite: fixtures
-            script: test:e2e
-          - suite: production
-            script: test:e2e:production
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -132,23 +224,68 @@ jobs:
 
       - name: Set up project
         uses: ./.github/actions/setup-project
+        with:
+          cache-save: false
+
+      - name: Run end-to-end tests
+        run: vpr test:e2e
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-artifacts-fixtures-${{ github.run_attempt }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 14
+
+  # Sempre executa, sem depender do proof: o build testado alimenta o deploy.
+  e2e-production:
+    name: E2E (production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      vercel-version: ${{ steps.vercel-cli.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Set up project
+        uses: ./.github/actions/setup-project
+        with:
+          cache-save: false
+
+      # Uma única resolução de latest por run mantém pull, build e deploy na mesma versão.
+      - name: Resolve Vercel CLI version
+        id: vercel-cli
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -o pipefail
+          version=$(curl -fsS --retry 3 --max-time 20 https://registry.npmjs.org/vercel/latest | jq -er 'select(.name == "vercel") | .version')
+          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Unexpected Vercel CLI version'; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Build deployment artifact
         id: deployment-build
-        if:
-          github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-          matrix.suite == 'production'
+        if: steps.vercel-cli.outcome == 'success'
         env:
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_CLI_VERSION: ${{ steps.vercel-cli.outputs.version }}
           ENABLE_EXPERIMENTAL_COREPACK: '0'
         run: |
           test -n "$VERCEL_ORG_ID" || { echo 'Missing VERCEL_ORG_ID variable'; exit 1; }
           test -n "$VERCEL_PROJECT_ID" || { echo 'Missing VERCEL_PROJECT_ID variable'; exit 1; }
           test -n "$VERCEL_TOKEN" || { echo 'Missing VERCEL_TOKEN secret'; exit 1; }
-          vp dlx vercel@latest pull --yes --environment=production
-          vp dlx vercel@latest build --prod --yes
+          vp dlx "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=production
+          vp dlx "vercel@$VERCEL_CLI_VERSION" build --prod --yes
           vp exec node --input-type=module <<'NODE_ARTIFACT'
           import { lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
           import { basename, join, sep } from 'node:path';
@@ -171,7 +308,7 @@ jobs:
 
       - name: Run end-to-end tests
         if: steps.deployment-build.outcome != 'success'
-        run: vpr ${{ matrix.script }}
+        run: vpr test:e2e:production
 
       - name: Test deployment artifact without rebuilding
         if: steps.deployment-build.outcome == 'success'
@@ -211,7 +348,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: test-artifacts-${{ matrix.suite }}-${{ github.run_attempt }}
+          name: test-artifacts-production-${{ github.run_attempt }}
           path: |
             test-results/
             playwright-report/
@@ -221,23 +358,37 @@ jobs:
 
   check:
     name: CI required
-    needs: [quality, tooling, e2e]
+    needs: [proof, quality, tooling, e2e-fixtures, e2e-production]
+    # Sempre informa o resultado; cancelamentos chegam como cancelled e reprovam.
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
       - name: Require all validation jobs
         env:
+          PROOF_RESULT: ${{ needs.proof.result }}
+          REUSE: ${{ needs.proof.outputs.reuse }}
+          RUN_QUALITY: ${{ needs.proof.outputs.run-quality }}
           QUALITY_RESULT: ${{ needs.quality.result }}
           TOOLING_RESULT: ${{ needs.tooling.result }}
-          E2E_RESULT: ${{ needs.e2e.result }}
+          FIXTURES_RESULT: ${{ needs.e2e-fixtures.result }}
+          PRODUCTION_RESULT: ${{ needs.e2e-production.result }}
         run: |
-          test "$QUALITY_RESULT" = success
-          test "$TOOLING_RESULT" = success
-          test "$E2E_RESULT" = success
+          reused=false
+          if [ "$PROOF_RESULT" = success ] && [ "$REUSE" = true ]; then reused=true; fi
+          accept() {
+            [ "$2" = success ] && return 0
+            [ "$reused" = true ] && [ "$2" = skipped ] && [ "$3" != true ] && return 0
+            echo "$1 result: $2"
+            return 1
+          }
+          accept 'E2E (production)' "$PRODUCTION_RESULT" true
+          accept Quality "$QUALITY_RESULT" "$RUN_QUALITY"
+          accept Tooling "$TOOLING_RESULT" false
+          accept 'E2E (fixtures)' "$FIXTURES_RESULT" false
 
   deploy:
-    needs: check
+    needs: [check, e2e-production]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -247,25 +398,52 @@ jobs:
     env:
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_CLI_VERSION: ${{ needs.e2e-production.outputs.vercel-version }}
     steps:
+      # Sob o lock de produção: um run antigo que termina depois não publica por
+      # cima de um commit mais novo da main. Erro de API reprova o job.
+      - name: Check that this commit is still the head of main
+        id: freshness
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          [[ "$head" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid main head'; exit 1; }
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "Deploy skipped: main is at $head, this run validated $GITHUB_SHA." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo 'should-deploy=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo 'should-deploy=true' >> "$GITHUB_OUTPUT"
+
       - name: Checkout validated commit
+        if: steps.freshness.outputs.should-deploy == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Set up project
+      # O deploy só usa vp dlx com o artefato testado; dispensa node_modules.
+      - name: Set up toolchain
+        if: steps.freshness.outputs.should-deploy == 'true'
         uses: ./.github/actions/setup-project
+        with:
+          install-dependencies: false
+          cache-save: false
 
       - name: Verify deployment configuration
+        if: steps.freshness.outputs.should-deploy == 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           test -n "$VERCEL_ORG_ID" || { echo 'Missing VERCEL_ORG_ID variable'; exit 1; }
           test -n "$VERCEL_PROJECT_ID" || { echo 'Missing VERCEL_PROJECT_ID variable'; exit 1; }
           test -n "$VERCEL_TOKEN" || { echo 'Missing VERCEL_TOKEN secret'; exit 1; }
+          [[ "$VERCEL_CLI_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Missing resolved Vercel CLI version'; exit 1; }
 
       - name: Download tested deployment artifact
+        if: steps.freshness.outputs.should-deploy == 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: vercel-output-${{ github.sha }}
@@ -273,11 +451,13 @@ jobs:
           digest-mismatch: error
 
       - name: Restore tested deployment artifact
+        if: steps.freshness.outputs.should-deploy == 'true'
         run: |
           test ! -e .vercel/output
           tar -xpf "$RUNNER_TEMP/deployment-artifact/vercel-output.tar"
 
       - name: Deploy tested production artifact
+        if: steps.freshness.outputs.should-deploy == 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vp dlx vercel@latest deploy --prebuilt --prod --yes
+        run: vp dlx "vercel@$VERCEL_CLI_VERSION" deploy --prebuilt --prod --yes
