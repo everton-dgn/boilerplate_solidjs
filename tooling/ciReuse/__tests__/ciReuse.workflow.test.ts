@@ -463,38 +463,47 @@ test('os testes ignoram GIT_DIR e GIT_WORK_TREE herdados de hooks', async contex
   context.after(() => rm(directory, { recursive: true, force: true }))
   const victim = path.join(directory, 'victim')
   const worktree = path.join(directory, 'worktree')
-  const options = { env: ISOLATED_ENV }
-  await exec('git', ['init', '-q', '-b', 'main', victim], options)
-  await exec(
-    'git',
-    [...IDENTITY, '-C', victim, 'commit', '-q', '--allow-empty', '-m', 'init'],
-    options
-  )
-  await exec(
-    'git',
-    ['-C', victim, 'worktree', 'add', '-q', '-b', 'feat/x', worktree],
-    options
-  )
-  const gitDir = await exec(
-    'git',
-    ['-C', worktree, 'rev-parse', '--absolute-git-dir'],
-    options
-  )
-  const config = path.join(victim, '.git/config')
-  const before = await readFile(config, 'utf8')
-  await exec(
+  async function git(...args: string[]) {
+    const result = await exec('git', args, { env: ISOLATED_ENV })
+    return result.stdout
+  }
+  async function snapshot() {
+    const parts = [
+      await git('-C', victim, 'rev-parse', 'HEAD'),
+      await git('-C', worktree, 'rev-parse', 'HEAD'),
+      await git('-C', victim, 'for-each-ref'),
+      await git('-C', victim, 'ls-files', '--stage'),
+      await git('-C', worktree, 'ls-files', '--stage'),
+      await git('-C', victim, 'status', '--porcelain'),
+      await git('-C', worktree, 'status', '--porcelain'),
+      await readFile(path.join(victim, '.git/config'), 'utf8')
+    ]
+    return parts.join('\n--\n')
+  }
+  await git('init', '-q', '-b', 'main', victim)
+  await writeFile(path.join(victim, 'tracked.txt'), 'tracked\n')
+  await git('-C', victim, 'add', 'tracked.txt')
+  await git(...IDENTITY, '-C', victim, 'commit', '-q', '-m', 'init')
+  await git('-C', victim, 'worktree', 'add', '-q', '-b', 'feat/x', worktree)
+  const gitDir = await git('-C', worktree, 'rev-parse', '--absolute-git-dir')
+  const before = await snapshot()
+  // Com NODE_TEST_CONTEXT herdado, o runner aninhado só avisa e sai com 0.
+  const { NODE_TEST_CONTEXT: _runner, ...childEnv } = ISOLATED_ENV
+  const child = await exec(
     execPath,
-    ['--test', `--test-name-pattern=^${EVIDENCE_TEST}$`, import.meta.filename],
+    [
+      '--test',
+      '--test-reporter=tap',
+      `--test-name-pattern=^${EVIDENCE_TEST}$`,
+      import.meta.filename
+    ],
     {
       cwd: directory,
-      env: {
-        ...ISOLATED_ENV,
-        GIT_DIR: gitDir.stdout.trim(),
-        GIT_WORK_TREE: worktree
-      }
+      env: { ...childEnv, GIT_DIR: gitDir.trim(), GIT_WORK_TREE: worktree }
     }
   )
-  assert.equal(await readFile(config, 'utf8'), before)
-  await exec('git', ['-C', victim, 'status', '--short'], options)
-  await exec('git', ['-C', worktree, 'status', '--short'], options)
+  assert.match(child.stdout, new RegExp(`^ok 1 - ${EVIDENCE_TEST}$`, 'mu'))
+  assert.match(child.stdout, /^# tests 1$/mu)
+  assert.match(child.stdout, /^# pass 1$/mu)
+  assert.equal(await snapshot(), before)
 })
