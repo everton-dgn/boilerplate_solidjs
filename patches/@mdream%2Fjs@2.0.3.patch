@@ -578,7 +578,7 @@ index 013df47d5cef1945a6ef33d573cafb06336e0889..a14bb0c373376f85ea3f8081509671a3
  		tagOverrideHandlers: options.tagOverrideHandlers,
  		plainText: options.plainText
 diff --git a/dist/_chunks/parse.mjs b/dist/_chunks/parse.mjs
-index 2b2016de60248a023f1082c79c2a7d5ed540199b..bb428156fa5ed52fa411a6c6a3e1c3eabb32f2d2 100644
+index 2b2016de60248a023f1082c79c2a7d5ed540199b..2c0608794ecaf3d111163b32719165efa04f0539 100644
 --- a/dist/_chunks/parse.mjs
 +++ b/dist/_chunks/parse.mjs
 @@ -1,5 +1,5 @@
@@ -600,7 +600,17 @@ index 2b2016de60248a023f1082c79c2a7d5ed540199b..bb428156fa5ed52fa411a6c6a3e1c3ea
  const SCRIPT_DATA = 0;
  const SCRIPT_DATA_ESCAPED = 1;
  const SCRIPT_DATA_ESCAPED_DASH = 2;
-@@ -840,7 +845,11 @@ function processTextBuffer(textBuffer, state, handleEvent) {
+@@ -517,7 +522,8 @@ function parseHtml(html, options = {}) {
+ 		depthMap: /* @__PURE__ */ new Uint16Array(113),
+ 		depth: 0,
+ 		resolvedPlugins: options.resolvedPlugins || [],
+-		tagHandlers: options.tagHandlers
++		tagHandlers: options.tagHandlers,
++		outputEvent: (event) => events.push(event)
+ 	};
+ 	let remainingHtml = parseHtmlInternal(html, state, (event) => {
+ 		events.push(event);
+@@ -840,7 +846,11 @@ function processTextBuffer(textBuffer, state, handleEvent) {
  	}
  	const excludesTextNodes = (state.flattenedOpaqueDepth || 0) > 0 || state.flattenedRawExcludesText || state.currentNode?.tagHandler?.excludesTextNodes || state.currentNode?.excludedFromMarkdown;
  	const inPreTag = (state.depthMap[34] || 0) > 0;
@@ -613,7 +623,7 @@ index 2b2016de60248a023f1082c79c2a7d5ed540199b..bb428156fa5ed52fa411a6c6a3e1c3ea
  	let text = textBuffer;
  	if (text.length === 0) return;
  	const parentsToIncrement = traverseUpToFirstBlockNode(state.currentNode);
-@@ -852,6 +861,22 @@ function processTextBuffer(textBuffer, state, handleEvent) {
+@@ -852,6 +862,22 @@ function processTextBuffer(textBuffer, state, handleEvent) {
  		while (start < text.length && (inPreTag ? text.charCodeAt(start) === NEWLINE_CHAR || text.charCodeAt(start) === CARRIAGE_RETURN_CHAR : isWhitespace(text.charCodeAt(start)))) start++;
  		if (start > 0) text = text.substring(start);
  	}
@@ -636,7 +646,7 @@ index 2b2016de60248a023f1082c79c2a7d5ed540199b..bb428156fa5ed52fa411a6c6a3e1c3ea
  	if (state.hasEncodedHtmlEntity) {
  		text = decodeHTMLEntities(String(text), false, shouldProtectDecodedEntityReferences(state));
  		state.hasEncodedHtmlEntity = false;
-@@ -869,12 +894,38 @@ function processTextBuffer(textBuffer, state, handleEvent) {
+@@ -869,12 +895,38 @@ function processTextBuffer(textBuffer, state, handleEvent) {
  	if (inlineAtRoot) textNode.trimsAtLineStart = true;
  	state.endTagClosedNothing = false;
  	for (const parent of parentsToIncrement) parent.childTextNodeIndex = (parent.childTextNodeIndex || 0) + 1;
@@ -675,7 +685,7 @@ index 2b2016de60248a023f1082c79c2a7d5ed540199b..bb428156fa5ed52fa411a6c6a3e1c3ea
  function processClosingTag(htmlChunk, position, state, handleEvent) {
  	let i = position + 2;
  	const tagNameStart = i;
-@@ -1011,18 +1062,20 @@ function processClosingTag(htmlChunk, position, state, handleEvent) {
+@@ -1011,18 +1063,20 @@ function processClosingTag(htmlChunk, position, state, handleEvent) {
  }
  function closeNode(node, state, handleEvent) {
  	if (!node) return;
