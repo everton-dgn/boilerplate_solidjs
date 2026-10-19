@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.12.9 - 2026-10-19
+
+### Fixed
+
+- include direct parser link label fallback (485391a)
+- restore heading breaks after empty inline markers (2920d30)
+- preserve inline spaces and list heading boundaries (966850c)
+
 ## 1.12.8 - 2026-10-19
 
 ### Fixed
