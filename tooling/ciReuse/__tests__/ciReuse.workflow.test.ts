@@ -4,11 +4,18 @@ import { execFile } from 'node:child_process'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { env } from 'node:process'
+import { env, execPath } from 'node:process'
 import { test } from 'node:test'
 import { promisify } from 'node:util'
 
 const exec = promisify(execFile)
+// Hooks do Git exportam GIT_DIR e afins; os repositórios temporários não podem herdá-los.
+const ISOLATED_ENV = Object.fromEntries(
+  Object.entries(env).filter(([key]) => !key.startsWith('GIT_'))
+)
+// Identidade por comando: nenhum teste grava configuração de Git.
+const IDENTITY = ['-c', 'user.email=ci@example.com', '-c', 'user.name=CI']
+const EVIDENCE_TEST = 'a evidência descreve o merge sintético testado'
 const WORKFLOW = await readFile(
   new URL('../../../.github/workflows/ci.yml', import.meta.url),
   'utf8'
@@ -67,8 +74,10 @@ function jobBlock(id: string): string {
 
 async function runScript({ script, variables }: ScriptOptions) {
   try {
+    // Fora de qualquer repositório: um script sem cd não alcança o checkout.
     await exec('bash', ['-e', '-c', script], {
-      env: { ...env, ...variables }
+      cwd: tmpdir(),
+      env: { ...ISOLATED_ENV, ...variables }
     })
     return true
   } catch {
@@ -215,17 +224,19 @@ test('o workflow publica a evidência e as chaves lidas pelo proof', () => {
   )
 })
 
-test('a evidência descreve o merge sintético testado', async context => {
+test(EVIDENCE_TEST, async context => {
   const directory = await mkdtemp(path.join(tmpdir(), 'ci-reuse-evidence-'))
   context.after(() => rm(directory, { recursive: true, force: true }))
   const repository = path.join(directory, 'repo')
   async function git(...args: string[]) {
-    const result = await exec('git', ['-C', repository, ...args])
+    const result = await exec('git', [...IDENTITY, '-C', repository, ...args], {
+      env: ISOLATED_ENV
+    })
     return result.stdout.trim()
   }
-  await exec('git', ['init', '-q', '-b', 'main', repository])
-  await git('config', 'user.email', 'ci@example.com')
-  await git('config', 'user.name', 'CI')
+  await exec('git', ['init', '-q', '-b', 'main', repository], {
+    env: ISOLATED_ENV
+  })
   await git('commit', '-q', '--allow-empty', '-m', 'base')
   const base = await git('rev-parse', 'HEAD')
   await git('switch', '-q', '-c', 'feature')
@@ -445,4 +456,45 @@ test('a guarda publica só o head atual e falha em erro de API', async context =
       assert.match(await readFile(summary, 'utf8'), /Deploy skipped/u)
     }
   }
+})
+
+test('os testes ignoram GIT_DIR e GIT_WORK_TREE herdados de hooks', async context => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'ci-reuse-hostile-git-'))
+  context.after(() => rm(directory, { recursive: true, force: true }))
+  const victim = path.join(directory, 'victim')
+  const worktree = path.join(directory, 'worktree')
+  const options = { env: ISOLATED_ENV }
+  await exec('git', ['init', '-q', '-b', 'main', victim], options)
+  await exec(
+    'git',
+    [...IDENTITY, '-C', victim, 'commit', '-q', '--allow-empty', '-m', 'init'],
+    options
+  )
+  await exec(
+    'git',
+    ['-C', victim, 'worktree', 'add', '-q', '-b', 'feat/x', worktree],
+    options
+  )
+  const gitDir = await exec(
+    'git',
+    ['-C', worktree, 'rev-parse', '--absolute-git-dir'],
+    options
+  )
+  const config = path.join(victim, '.git/config')
+  const before = await readFile(config, 'utf8')
+  await exec(
+    execPath,
+    ['--test', `--test-name-pattern=^${EVIDENCE_TEST}$`, import.meta.filename],
+    {
+      cwd: directory,
+      env: {
+        ...ISOLATED_ENV,
+        GIT_DIR: gitDir.stdout.trim(),
+        GIT_WORK_TREE: worktree
+      }
+    }
+  )
+  assert.equal(await readFile(config, 'utf8'), before)
+  await exec('git', ['-C', victim, 'status', '--short'], options)
+  await exec('git', ['-C', worktree, 'status', '--short'], options)
 })
