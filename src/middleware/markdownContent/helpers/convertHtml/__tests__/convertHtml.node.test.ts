@@ -100,6 +100,18 @@ describe('markdown conversion filters', () => {
     )
   })
 
+  it('drops images without alt text inside emphasis', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Install it. <strong><img src="/warning.png" alt=""> Warning:</strong> read. <em><span><img src="/tip.png" alt=""></span> Tip</em> <del><img src="/old.png" alt="">Old</del></p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).not.toMatch(/\/(?:warning|tip|old)\.png/u)
+    expect(markdown).toContain('Install it. **Warning:** read. *Tip* ~~Old~~')
+  })
+
   it('drops unsafe links inside raw HTML regions', async () => {
     const markdown = await convertHtml({
       response: new Response(
@@ -115,12 +127,12 @@ describe('markdown conversion filters', () => {
   it('keeps images without alt text outside plain containers', async () => {
     const markdown = await convertHtml({
       response: new Response(
-        '<main><p>Install it. <strong><img src="/warning.png" alt=""> Warning:</strong> <em><span><img src="/tip.png" alt=""></span> Tip</em> <a href="/home"><img src="/logo.png" alt=""></a></p><p><mark><img src="/mark.png" alt=""><br>&lt;img src=x onerror=alert(1)&gt;</mark></p><a><img src="/cover.png" alt=""><h3>&lt;img src=x onerror=alert(1)&gt;</h3></a></main>'
+        '<main><p>Install it. <a href="/home"><img src="/logo.png" alt=""></a></p><p><mark><img src="/mark.png" alt=""><br>&lt;img src=x onerror=alert(1)&gt;</mark></p><a><img src="/cover.png" alt=""><h3>&lt;img src=x onerror=alert(1)&gt;</h3></a></main>'
       ),
       url: 'https://example.com/en/page',
       signal: new AbortController().signal
     })
-    for (const image of ['warning', 'tip', 'logo', 'mark', 'cover']) {
+    for (const image of ['logo', 'mark', 'cover']) {
       expect(markdown).toContain(`https://example.com/${image}.png`)
     }
     expect(markdown).not.toMatch(/^<h3>/mu)

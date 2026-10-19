@@ -329,14 +329,15 @@ valor pela origem pública. Em `details`, `summary`, `dl`, `dt`, `dd` e
 `address`, o próprio mdream emite o link como HTML e descarta esses destinos. O
 plugin também descarta, como `data-md-exclude`, imagens sem texto em `alt` nem
 `title` quando todos os ancestrais são contêineres comuns: seções, parágrafos,
-títulos, listas, tabelas, citações, figuras e `span`. Em links, ênfases,
-legendas e outros elementos com sintaxe ou HTML próprio, a imagem fica, porque a
-remoção poderia esvaziar o link, desfazer delimitadores ou levar HTML bruto ao
-início da linha. Imagens não usam `aria-label` nem `aria-labelledby`, que o
-`jsx-a11y/alt-text` aceita; use `alt=""` somente em imagens decorativas. Rodapés
-contextuais dentro de main permanecem. CSS calculado e conteúdo criado
-exclusivamente no navegador não são interpretados. Use marcação semântica para
-conteúdo que não deve aparecer.
+títulos, listas, tabelas, citações, figuras, `span` e as ênfases `strong`, `b`,
+`em`, `i`, `del` e `s`. As ênfases dependem do patch descrito abaixo, que tira o
+espaço de dentro do delimitador. Em links, `mark`, legendas e outros elementos
+com sintaxe ou HTML próprio, a imagem fica, porque a remoção poderia esvaziar o
+link ou levar HTML bruto ao início da linha. Imagens não usam `aria-label` nem
+`aria-labelledby`, que o `jsx-a11y/alt-text` aceita; use `alt=""` somente em
+imagens decorativas. Rodapés contextuais dentro de main permanecem. CSS
+calculado e conteúdo criado exclusivamente no navegador não são interpretados.
+Use marcação semântica para conteúdo que não deve aparecer.
 
 O patch Bun de `@mdream/js` corrige três defeitos do conversor que aparecem com
 esses filtros. Uma ênfase cujo início foi removido, como um ícone SVG, ficava
