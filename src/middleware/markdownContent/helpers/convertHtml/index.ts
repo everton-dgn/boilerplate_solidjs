@@ -19,15 +19,19 @@ const RAW_HTML_REGIONS = new Set([
   'summary'
 ])
 
-// Contêineres que o mdream converte sem sintaxe em volta do conteúdo. Em
-// qualquer outro ancestral, remover a imagem pode esvaziar um link, desfazer
-// delimitadores ou levar HTML bruto ao início da linha.
+// Contêineres em que remover a imagem não deixa marca na saída. As ênfases só
+// entram porque o patch do mdream move o espaço para fora do delimitador. Em
+// qualquer outro ancestral, a remoção pode esvaziar um link ou levar HTML bruto
+// ao início da linha.
 const PLAIN_CONTAINERS = new Set([
   'article',
   'aside',
+  'b',
   'blockquote',
   'body',
+  'del',
   'div',
+  'em',
   'figure',
   'footer',
   'h1',
@@ -38,13 +42,16 @@ const PLAIN_CONTAINERS = new Set([
   'h6',
   'header',
   'html',
+  'i',
   'li',
   'main',
   'ol',
   'p',
   'picture',
+  's',
   'section',
   'span',
+  'strong',
   'table',
   'tbody',
   'td',

@@ -100,6 +100,18 @@ describe('markdown conversion filters', () => {
     )
   })
 
+  it('drops images without alt text inside emphasis', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Install it. <strong><img src="/warning.png" alt=""> Warning:</strong> read. <em><span><img src="/tip.png" alt=""></span> Tip</em> <del><img src="/old.png" alt="">Old</del></p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).not.toMatch(/\/(?:warning|tip|old)\.png/u)
+    expect(markdown).toContain('Install it. **Warning:** read. *Tip* ~~Old~~')
+  })
+
   it('drops unsafe links inside raw HTML regions', async () => {
     const markdown = await convertHtml({
       response: new Response(
@@ -115,15 +127,95 @@ describe('markdown conversion filters', () => {
   it('keeps images without alt text outside plain containers', async () => {
     const markdown = await convertHtml({
       response: new Response(
-        '<main><p>Install it. <strong><img src="/warning.png" alt=""> Warning:</strong> <em><span><img src="/tip.png" alt=""></span> Tip</em> <a href="/home"><img src="/logo.png" alt=""></a></p><p><mark><img src="/mark.png" alt=""><br>&lt;img src=x onerror=alert(1)&gt;</mark></p><a><img src="/cover.png" alt=""><h3>&lt;img src=x onerror=alert(1)&gt;</h3></a></main>'
+        '<main><p>Install it. <a href="/home"><img src="/logo.png" alt=""></a></p><p><mark><img src="/mark.png" alt=""><br>&lt;img src=x onerror=alert(1)&gt;</mark></p><a><img src="/cover.png" alt=""><h3>&lt;img src=x onerror=alert(1)&gt;</h3></a></main>'
       ),
       url: 'https://example.com/en/page',
       signal: new AbortController().signal
     })
-    for (const image of ['warning', 'tip', 'logo', 'mark', 'cover']) {
+    for (const image of ['logo', 'mark', 'cover']) {
       expect(markdown).toContain(`https://example.com/${image}.png`)
     }
     expect(markdown).not.toMatch(/^<h3>/mu)
     expect(markdown).not.toMatch(/^<mark>\s*$/mu)
+  })
+
+  it('keeps emphasis delimiters around content after a removed icon', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Install. <strong><svg><path d="M0 0"/></svg> Warning:</strong> read the notes.</p><p>Line one<br>===</p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('Install. **Warning:** read the notes.')
+    expect(markdown).toContain('Line one  \n\\===')
+  })
+
+  it('keeps the space that opens emphasis before a removed icon', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Install it<strong> <svg><path d="M0 0"/></svg>now</strong> and read the notes.</p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('Install it **now** and read the notes.')
+  })
+
+  it('keeps the space that opens emphasis inside a wrapper', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Click<strong><span> <a href="/docs">here</a></span></strong> to start.</p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain(
+      'Click **[here](https://example.com/docs)** to start.'
+    )
+  })
+
+  it('keeps an empty heading in a list item apart from the next block', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><ul><li><h3></h3><p>Partner description</p></li></ul></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('- ###\n\n  Partner description')
+  })
+
+  it('starts a heading after inline text in a list item on its own block', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><ul><li>Intro<h3>Title</h3><p>Body</p></li></ul></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('- Intro\n\n  ### Title\n\n  Body')
+  })
+
+  it('labels an icon link with its accessible name', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Open the <a href="/cart" aria-label="Cart"><span aria-hidden="true">🛒</span></a> now.</p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('Open the [Cart](https://example.com/cart) now.')
+  })
+
+  it('moves the blank after a removed icon past the link', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Open the<a href="/cart" aria-label="Cart"><span aria-hidden="true">🛒</span> </a>now.</p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('Open the [Cart](https://example.com/cart) now.')
   })
 })
