@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.12.6 - 2026-10-18
+
+### Fixed
+
+- deploy after reused validation jobs (43870e7)
+
 ## 1.12.5 - 2026-10-18
 
 ### Fixed
