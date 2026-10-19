@@ -20,6 +20,8 @@ const SETUP_ACTION = await readFile(
 )
 const RUN_INDENT_OFFSET = 2
 const NOT_FOUND = -1
+const SHA_LENGTH = 40
+const LAST_INDEX = -1
 // pull e build no E2E de produção, deploy no job de deploy.
 const VERCEL_COMMAND_COUNT = 3
 
@@ -368,4 +370,79 @@ test('só proof e deploy preparam as ferramentas sem instalar dependências', ()
     WORKFLOW.split('install-dependencies: false').length - 1,
     toolchainOnly.length
   )
+})
+
+test('o deploy confere o head da main sob o lock antes de publicar', () => {
+  const deploy = jobBlock('deploy')
+  const steps = deploy.split('\n      - name: ').slice(1)
+  const [guard, ...rest] = steps
+  assert.ok(
+    deploy.indexOf('group: vercel-production') < deploy.indexOf('    steps:')
+  )
+  assert.ok(
+    guard?.startsWith('Check that this commit is still the head of main')
+  )
+  assert.ok(rest.length > 0)
+  for (const step of rest) {
+    assert.ok(
+      step.includes(
+        "\n        if: steps.freshness.outputs.should-deploy == 'true'\n"
+      ),
+      step.split('\n')[0]
+    )
+  }
+  assert.ok(rest.at(LAST_INDEX)?.includes('deploy --prebuilt --prod --yes'))
+})
+
+test('a guarda publica só o head atual e falha em erro de API', async context => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'ci-deploy-guard-'))
+  context.after(() => rm(directory, { recursive: true, force: true }))
+  await writeFile(
+    path.join(directory, 'gh'),
+    '#!/bin/sh\ntest "$FAKE_GH_STATUS" = 0 || exit 1\nprintf "%s\\n" "$FAKE_GH_OUTPUT"\n',
+    { mode: 0o755 }
+  )
+  const script = stepScript('Check that this commit is still the head of main')
+  const current = 'a'.repeat(SHA_LENGTH)
+  const output = path.join(directory, 'output')
+  const summary = path.join(directory, 'summary')
+  const cases = [
+    { status: '0', head: current, isAccepted: true, decision: 'true' },
+    {
+      status: '0',
+      head: 'b'.repeat(SHA_LENGTH),
+      isAccepted: true,
+      decision: 'false'
+    },
+    { status: '1', head: current, isAccepted: false, decision: undefined },
+    { status: '0', head: 'not-a-sha', isAccepted: false, decision: undefined },
+    { status: '0', head: '', isAccepted: false, decision: undefined }
+  ]
+  for (const { status, head, isAccepted, decision } of cases) {
+    await writeFile(output, '')
+    await writeFile(summary, '')
+    assert.equal(
+      await runScript({
+        script,
+        variables: {
+          FAKE_GH_STATUS: status,
+          FAKE_GH_OUTPUT: head,
+          GITHUB_SHA: current,
+          GITHUB_REPOSITORY: 'owner/repo',
+          GITHUB_OUTPUT: output,
+          GITHUB_STEP_SUMMARY: summary,
+          PATH: `${directory}:${env.PATH ?? ''}`
+        }
+      }),
+      isAccepted,
+      `${status} ${head}`
+    )
+    assert.equal(
+      await readFile(output, 'utf8'),
+      decision ? `should-deploy=${decision}\n` : ''
+    )
+    if (decision === 'false') {
+      assert.match(await readFile(summary, 'utf8'), /Deploy skipped/u)
+    }
+  }
 })
