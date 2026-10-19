@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.12.8 - 2026-10-19
+
+### Fixed
+
+- keep the space before emphasis that opens with a blank (d23466e)
+- sync the mdream patch with the upstream fixes (1327f66)
+- drop decorative images inside emphasis (696130f)
+- patch three mdream conversion defects (b9de002)
+
 ## 1.12.7 - 2026-10-18
 
 ### Fixed
