@@ -205,11 +205,20 @@ test('o grafo mantém produção independente e os jobs reutilizáveis atrás do
   )
   const deploy = jobBlock('deploy')
   assert.ok(deploy.includes('needs: [check, e2e-production]'))
-  assert.ok(
-    deploy.includes(
-      "    if: github.event_name == 'push' && github.ref == 'refs/heads/main'\n"
-    )
-  )
+  // Sem função de status, o success() implícito pula o deploy quando a prova
+  // dispensa jobs. A checagem estática não emula o scheduler do GitHub.
+  const condition = (
+    /^ {4}if:(?<value>.*(?:\n {6}.*)*)/mu.exec(deploy)?.groups?.value ?? ''
+  ).replaceAll(/\s+/gu, ' ')
+  for (const clause of [
+    '!cancelled()',
+    "needs.check.result == 'success'",
+    "needs.e2e-production.result == 'success'",
+    "github.event_name == 'push'",
+    "github.ref == 'refs/heads/main'"
+  ]) {
+    assert.ok(condition.includes(clause), clause)
+  }
 })
 
 test('o workflow publica a evidência e as chaves lidas pelo proof', () => {
