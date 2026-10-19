@@ -407,9 +407,9 @@ async function verify(options: DecideReuseOptions): Promise<Decision> {
   const artifact = await findEvidence(runContext)
   const tested = assertEvidence(runContext, await ports.readEvidence(artifact))
   await assertTestedCommit(runContext, tested)
-  const changesQuality = files.some(file => QUALITY_FILES.has(file))
+  const hasQualityChanges = files.some(file => QUALITY_FILES.has(file))
   const shouldRunQuality =
-    changesQuality || !(await hasMainCaches({ ...context, runner }))
+    hasQualityChanges || !(await hasMainCaches({ ...context, runner }))
   return {
     shouldReuse: true,
     shouldRunQuality,
