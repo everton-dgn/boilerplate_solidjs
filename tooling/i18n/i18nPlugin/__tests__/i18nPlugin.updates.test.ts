@@ -320,8 +320,9 @@ describe('i18n dev directory discovery', () => {
     })
 
     await rename(tree, consumer)
-    await waitFor(() => exists(output))
+    await waitFor(() => Promise.resolve(renames === 1))
     assert.equal(renames, 1)
+    await waitFor(() => exists(output))
     await rename(path.join(consumer, 'i18n'), path.join(consumer, 'staging'))
     await waitFor(async () => !(await exists(output)))
     assert.ok(!server.payloads().includes('error'))
