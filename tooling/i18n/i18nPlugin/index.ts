@@ -5,7 +5,7 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import type { Plugin, PluginOption, ViteDevServer } from 'vite-plus'
 
 import { prepareMessages } from '../prepareMessages/index.ts'
-import { isCatalogFile } from '../readCatalogs/index.ts'
+import { canContainCatalogs, isCatalogFile } from '../readCatalogs/index.ts'
 
 type ReportErrorOptions = { server: ViteDevServer; error: Error }
 type ProjectFileOptions = { root: string; file: string }
@@ -67,10 +67,19 @@ function catalogPreparation(): Plugin {
       isRunning = false
     }
   }
-  const schedule = () => {
+  const request = () => {
     requested += 1
     if (!isRunning) pendingPreparation = prepareRequested()
+  }
+  const schedule = () => {
+    request()
     return pendingPreparation
+  }
+  // O chokidar lê um diretório novo antes de observá-lo, e o que surge nesse
+  // intervalo não gera evento de arquivo. A preparação relê todos os
+  // catálogos do disco quando um diretório aparece ou some.
+  const reconcile = (directory: string) => {
+    if (canContainCatalogs({ root, file: directory })) request()
   }
   return {
     name: 'project:i18n-catalogs',
@@ -81,6 +90,8 @@ function catalogPreparation(): Plugin {
     },
     configureServer(devServer) {
       server = devServer
+      devServer.watcher.on('addDir', reconcile)
+      devServer.watcher.on('unlinkDir', reconcile)
       // Um catálogo inválido não pode continuar sendo servido a partir da
       // última compilação boa, inclusive num reload completo do navegador.
       devServer.middlewares.use((_request, response, next) => {
