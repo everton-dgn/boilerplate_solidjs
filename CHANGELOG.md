@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.12.7 - 2026-10-18
+
+### Fixed
+
+- reread catalogs when source directories appear or disappear (67b9965)
+
 ## 1.12.6 - 2026-10-18
 
 ### Fixed
