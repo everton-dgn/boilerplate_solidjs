@@ -1,6 +1,7 @@
 /* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 /* oxlint-disable vitest/prefer-each -- O runner nativo do Node.js não tem a API it.each. */
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import {
   mkdir,
   mkdtemp,
@@ -281,4 +282,48 @@ describe('i18n dev updates', () => {
       assert.notEqual(await server.status(), HTTP_ERROR)
     })
   }
+})
+
+describe('i18n dev directory discovery', () => {
+  it('discovers catalogs renamed into a new consumer before it is watched', async context => {
+    const server = await startServer({ context })
+    const outside = await mkdtemp(path.join(tmpdir(), 'i18n-consumer-'))
+    context.after(() => rm(outside, { recursive: true, force: true }))
+    const tree = path.join(outside, 'About')
+    const consumer = path.join(server.root, 'src/routes/About')
+    const output = path.join(server.root, 'paraglide/messages/about_title.js')
+    await mkdir(path.join(tree, 'staging'), { recursive: true })
+    for (const locale of LOCALES) {
+      await writeFile(
+        path.join(tree, 'staging', `${locale}.json`),
+        JSON.stringify({ about_title: 'About' })
+      )
+    }
+    const watch = fs.watch.bind(fs)
+    let renames = 0
+    // O chokidar lê o diretório novo e só depois o observa; a troca de nome
+    // entre os dois passos não gera evento de arquivo.
+    context.mock.method(fs, 'watch', (...args: Parameters<typeof fs.watch>) => {
+      const [target] = args
+      if (
+        renames === 0 &&
+        String(target).endsWith(path.join('src', 'routes', 'About'))
+      ) {
+        // oxlint-disable-next-line node/no-sync -- A troca precisa ocorrer antes de o watch existir.
+        fs.renameSync(
+          path.join(consumer, 'staging'),
+          path.join(consumer, 'i18n')
+        )
+        renames += 1
+      }
+      return watch(...args)
+    })
+
+    await rename(tree, consumer)
+    await waitFor(() => exists(output))
+    assert.equal(renames, 1)
+    await rename(path.join(consumer, 'i18n'), path.join(consumer, 'staging'))
+    await waitFor(async () => !(await exists(output)))
+    assert.ok(!server.payloads().includes('error'))
+  })
 })
