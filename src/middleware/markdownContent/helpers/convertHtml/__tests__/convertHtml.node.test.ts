@@ -162,10 +162,32 @@ describe('markdown conversion filters', () => {
     expect(markdown).toContain('- ###\n\n  Partner description')
   })
 
+  it('starts a heading after inline text in a list item on its own block', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><ul><li>Intro<h3>Title</h3><p>Body</p></li></ul></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('- Intro\n\n  ### Title\n\n  Body')
+  })
+
   it('labels an icon link with its accessible name', async () => {
     const markdown = await convertHtml({
       response: new Response(
         '<main><p>Open the <a href="/cart" aria-label="Cart"><span aria-hidden="true">🛒</span></a> now.</p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('Open the [Cart](https://example.com/cart) now.')
+  })
+
+  it('moves the blank after a removed icon past the link', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Open the<a href="/cart" aria-label="Cart"><span aria-hidden="true">🛒</span> </a>now.</p></main>'
       ),
       url: 'https://example.com/en/page',
       signal: new AbortController().signal
