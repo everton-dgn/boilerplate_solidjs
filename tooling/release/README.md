@@ -82,26 +82,34 @@ substitui a pendente anterior, preservando a execução já em andamento.
 ## Integração com a Vercel
 
 O projeto `boilerplate-solidjs`, no escopo `verton-toffanettos-projects`, recebe
-deploys de produção pelo job `deploy` do CI. Ele depende de `check` e executa
-somente em push na `main`. O CI de PRs valida o código sem publicar na Vercel.
+deploys de produção pelo job `deploy` do CI. Ele depende de `check` e do E2E de
+produção e executa somente em push na `main`. O CI de PRs valida o código sem
+publicar na Vercel.
 
-No push para `main`, o job de E2E de produção carrega as configurações da Vercel
-e executa `vercel build --prod` uma vez. O Playwright testa esse output sem
-recompilar, recebendo apenas as variáveis públicas `VITE_*` daquele arquivo, sem
-as credenciais de backend. O job empacota somente `.vercel/output` em tar,
+No push para `main`, o job de E2E de produção consulta uma vez a versão `latest`
+do pacote `vercel` no registry do npm, aceita somente uma versão numérica
+`x.y.z` e usa essa mesma versão em `pull`, `build` e no `deploy`, que a recebe
+como output do job. Em seguida, carrega as configurações da Vercel e executa
+`vercel build --prod` uma vez. O Playwright testa esse output sem recompilar,
+recebendo apenas as variáveis públicas `VITE_*` daquele arquivo, sem as
+credenciais de backend. O job empacota somente `.vercel/output` em tar,
 preservando permissões e links, e compara o conteúdo e a listagem dos arquivos
 após os testes antes de enviá-lo ao GitHub Actions. O build recusa links que
 saiam do output e funções com `filePathMap`, pois essas referências exigiriam
 publicar arquivos fora do artefato testado. O Nitro atual gera a função com suas
 dependências dentro do output.
 
-O job `deploy` faz checkout do mesmo SHA, prepara a toolchain do `package.json`
-e baixa o artefato da mesma execução do CI. A verificação de integridade do
-download causa erro se o digest divergir. O nome inclui o SHA e o upload
-substitui apenas o artefato desse nome na execução atual, permitindo repetir
-jobs que falharam. A retenção é de um dia; após expirar, execute novamente o job
-que gera e testa o build. Arquivos de ambiente e `.vercel/project.json` ficam
-fora do tar.
+O job `deploy` roda sob o grupo de concorrência `vercel-production`. Antes de
+qualquer preparo, consulta o head da `main` pela API e só publica se ele ainda
+for o SHA validado pelo run; um run mais antigo que termine depois de outro mais
+novo registra o motivo no resumo e não publica. Falha na consulta reprova o job.
+Em seguida, faz checkout do mesmo SHA, prepara a toolchain do `package.json` sem
+instalar dependências e baixa o artefato da mesma execução do CI. A verificação
+de integridade do download causa erro se o digest divergir. O nome inclui o SHA
+e o upload substitui apenas o artefato desse nome na execução atual, permitindo
+repetir jobs que falharam. A retenção é de um dia; após expirar, execute
+novamente o job que gera e testa o build. Arquivos de ambiente e
+`.vercel/project.json` ficam fora do tar.
 
 Depois da aprovação de todos os checks, o deploy publica esse output com
 `vercel deploy --prebuilt --prod`, sem outro build. PRs não usam credenciais da
@@ -206,9 +214,12 @@ locais em `.github/actions/`. Ao acrescentar uma dependência local da automaç�
 atualize essa lista e os testes do filtro. Mudanças somente na aplicação ou em
 guias fora da pasta de release não executam a suíte no CI.
 
-A seleção não pula o workflow nem o job `Quality`. `CI required` continua
-exigindo sucesso de todos os jobs. A recuperação manual também mantém as
-verificações reais de origem, commit e publicação; ela não repete os testes.
+A seleção não pula o workflow nem o job `Quality`. `CI required` exige sucesso
+de todos os jobs, exceto quando o push da `main` reaproveita a validação do PR,
+conforme o
+[guia de desenvolvimento](../../docs/development.md#reutilização-da-validação-do-pr-na-main).
+A recuperação manual também mantém as verificações reais de origem, commit e
+publicação; ela não repete os testes.
 
 Os testes de integração substituem `git` e `gh` por executáveis sintéticos e
 isolam o `PATH` dos subprocessos. Não usam credenciais reais nem criam releases
