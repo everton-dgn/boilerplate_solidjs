@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.12.4 - 2026-10-18
+
+### Fixed
+
+- publish only when the validated commit is still the head of main (1d8374f)
+- set up only the toolchain in the deploy and reuse proof jobs (10c39ea)
+- match reuse pull requests by tested head and run proof through vp (171502d)
+- reuse validated pull request checks on main pushes (37c2cff)
+- save the dependency cache only from Quality (3aa7d56)
+- upload Vitest browser traces from failed Quality runs (cee075d)
+
 ## 1.12.3 - 2026-10-18
 
 ### Fixed
