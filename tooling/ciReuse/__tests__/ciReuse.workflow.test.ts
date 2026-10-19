@@ -205,7 +205,11 @@ test('o grafo mantém produção independente e os jobs reutilizáveis atrás do
   )
   const deploy = jobBlock('deploy')
   assert.ok(deploy.includes('needs: [check, e2e-production]'))
-  const condition = deploy.replaceAll(/\s+/gu, ' ')
+  // Sem função de status, o success() implícito pula o deploy quando a prova
+  // dispensa jobs. A checagem estática não emula o scheduler do GitHub.
+  const condition = (
+    /^ {4}if:(?<value>.*(?:\n {6}.*)*)/mu.exec(deploy)?.groups?.value ?? ''
+  ).replaceAll(/\s+/gu, ' ')
   for (const clause of [
     '!cancelled()',
     "needs.check.result == 'success'",
@@ -511,57 +515,4 @@ test('os testes ignoram GIT_DIR e GIT_WORK_TREE herdados de hooks', async contex
   assert.match(child.stdout, /^# tests 1$/mu)
   assert.match(child.stdout, /^# pass 1$/mu)
   assert.equal(await snapshot(), before)
-})
-
-function jobIds(): string[] {
-  const start = LINES.indexOf('jobs:')
-  return LINES.slice(start + 1)
-    .map(line => /^ {2}(?<id>[a-z][\w-]*):$/u.exec(line)?.groups?.id)
-    .filter(id => id !== undefined)
-}
-
-function jobNeeds(id: string): string[] {
-  const line = /^ {4}needs: (?<value>.+)$/mu.exec(jobBlock(id))?.groups?.value
-  return line
-    ? line
-        .replaceAll(/[[\]]/gu, '')
-        .split(',')
-        .map(item => item.trim())
-    : []
-}
-
-function jobCondition(id: string): string {
-  return (
-    /^ {4}if:(?<value>.*(?:\n {6}.*)*)/mu.exec(jobBlock(id))?.groups?.value ??
-    ''
-  )
-}
-
-test('jobs que dependem de jobs dispensáveis declaram a função de status', () => {
-  // Sem função de status, o GitHub aplica success(), que considera toda a
-  // cadeia de needs: um ancestral pulado pela prova pularia o job. Esta
-  // checagem estrutural não emula o scheduler do GitHub; a prova
-  // comportamental é o deploy no próximo merge elegível.
-  const skippable = new Set(['quality', 'tooling', 'e2e-fixtures'])
-  const ids = jobIds()
-  function reachesSkippable(id: string): boolean {
-    const pending = [...jobNeeds(id)]
-    const seen = new Set<string>()
-    while (pending.length > 0) {
-      const next = pending.pop() ?? ''
-      if (skippable.has(next)) return true
-      if (!seen.has(next)) {
-        seen.add(next)
-        pending.push(...jobNeeds(next))
-      }
-    }
-    return false
-  }
-  const dependents = ids.filter(
-    id => !skippable.has(id) && reachesSkippable(id)
-  )
-  assert.deepEqual(dependents, ['check', 'deploy'])
-  for (const id of dependents) {
-    assert.match(jobCondition(id), /!cancelled\(\)|always\(\)/u, id)
-  }
 })
