@@ -336,6 +336,46 @@ repetir toda a validação de um commit, dispare o workflow manualmente
 (`workflow_dispatch`). Esse modo não publica na Vercel e usa outro grupo de
 concorrência, para não substituir um push pendente.
 
+### Como medir uma otimização da CI
+
+Separe consumo de runner e tempo de espera. O primeiro é a soma das durações dos
+jobs, calculadas entre `started_at` e `completed_at`, dividida por 60; jobs
+`skipped` não entram nessa soma. O tempo de espera vai da criação do run até a
+conclusão do último job. Jobs paralelos contam separadamente no consumo, mas
+seus tempos não devem ser somados para calcular a espera. Ao calcular o consumo
+diário, inclua tentativas refeitas e jobs que falharam ou foram cancelados
+depois de começar; considerar só o último run verde subestima o uso de runners.
+
+Para atribuir um ganho à mudança, compare base e candidato no mesmo runner, com
+instalações congeladas e a mesma suíte. O
+[benchmark controlado de tooling](https://github.com/everton-dgn/boilerplate_solidjs/actions/runs/39179789819)
+intercalou duas execuções da base `73f5eec` com duas do candidato `a3064b9`. As
+médias do comando de testes foram 132,8015 s e 92,578 s, uma redução de 40,2235
+s (30,3%), sem incluir instalação e preparação do job. O candidato combina a
+divisão das suítes, três workers no tooling e a espera pelo evento `ready` do
+watcher; o benchmark mede o efeito conjunto dessas mudanças. Essas medições
+cobrem os 114 testes anteriores à inclusão de `ciReuse`; não constituem uma
+comparação controlada da suíte ampliada. Os detalhes e a execução intermediária
+estão na [PR #85](https://github.com/everton-dgn/boilerplate_solidjs/pull/85).
+
+Para conferir o reaproveitamento após um merge, verifique o run de origem
+registrado por `Reuse proof`, os jobs dispensados e os resultados de
+`CI required` e `E2E (production)`. Confira também que o passo
+`Deploy tested production artifact` realmente executou. Um job de deploy que
+recusou um commit antigo pela guarda de freshness não publicou esse commit.
+
+O status global verde, sozinho, não comprova a publicação. No
+[run 39185269805](https://github.com/everton-dgn/boilerplate_solidjs/actions/runs/39185269805),
+a prova aprovou o reaproveitamento e o E2E de produção passou, mas o GitHub
+pulou o deploy por causa do `success()` implícito na cadeia de dependências.
+Essa execução não deve ser contada como economia do fluxo completo.
+
+Uma mudança no próprio workflow força o CI completo e inclui o custo da prova.
+Meça esse caminho separadamente dos merges elegíveis ao reaproveitamento. Ao
+projetar minutos por dia, informe a janela e a frequência observadas; não some a
+economia de um job mais rápido com a economia de dispensar esse mesmo job na
+mesma execução.
+
 ## Hooks de Git
 
 Instalados pelo Lefthook no `vp install`, autorizado em `trustedDependencies` do
