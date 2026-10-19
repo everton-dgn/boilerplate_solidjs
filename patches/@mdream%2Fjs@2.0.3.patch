@@ -1,5 +1,5 @@
 diff --git a/dist/_chunks/markdown-processor.mjs b/dist/_chunks/markdown-processor.mjs
-index f91c40ec99b427a048063e399debabee9ac97537..3c9689c634b341e2627a03c8e62d1aea0b6e56c6 100644
+index f91c40ec99b427a048063e399debabee9ac97537..e04f02e49e79907737e3753a6b7961023730234b 100644
 --- a/dist/_chunks/markdown-processor.mjs
 +++ b/dist/_chunks/markdown-processor.mjs
 @@ -41,7 +41,42 @@ const breakHandler = {
@@ -174,21 +174,27 @@ index f91c40ec99b427a048063e399debabee9ac97537..3c9689c634b341e2627a03c8e62d1aea
  function dropEmptyLinkText(buffer, openFragment, positions) {
  	for (let index = openFragment + 1; index < buffer.length; index++) if (hasNonWhitespace(buffer[index])) return false;
  	positions?.replace(openFragment, buffer.length, []);
-@@ -1681,6 +1764,31 @@ function createMarkdownProcessor(options = {}, createStream) {
+@@ -1492,6 +1575,8 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 	let inRawHtmlRegion = false;
+ 	const openMarkers = [];
+ 	let openMarkerCount = 0;
++	const openMarkerFollowsSpace = [];
++	let pendingSpaceFragment = -1;
+ 	let captionFrames;
+ 	let captionFrameCount = 0;
+ 	let captionBoundary = 0;
+@@ -1681,6 +1766,28 @@ function createMarkdownProcessor(options = {}, createStream) {
  			state.lastTextNode = void 0;
  		} else if (captionBreakRun !== 0 && captionFrameCount === 0) captionBoundary = 2;
  	}
-+	function hoistOpenerSpace(textNode) {
++	function hoistOpenerSpace() {
 +		const buffer = state.buffer;
 +		const depthMap = state.depthMap;
 +		let index = openMarkerCount - 1;
 +		let fragment = openMarkers[index] >> 3;
-+		if (fragment !== buffer.length - 1 || (openMarkers[index] & MARKER_TYPE_MASK) > 4 || depthMap[23] || depthMap[34] || depthMap[46] || depthMap[82] || depthMap[92]) return true;
++		if (fragment !== buffer.length - 1 || (openMarkers[index] & MARKER_TYPE_MASK) > 4 || depthMap[23] || depthMap[34] || depthMap[46] || depthMap[82] || depthMap[92]) return false;
 +		while (index > 0 && (openMarkers[index - 1] & MARKER_TYPE_MASK) <= 4 && openMarkers[index - 1] >> 3 === fragment - 1) fragment = openMarkers[--index] >> 3;
-+		let start = 1;
-+		while (textNode.value.charCodeAt(start) === 32) start++;
-+		textNode.value = textNode.value.slice(start);
-+		if (!textNode.value) return false;
++		if (buffer[fragment].charCodeAt(0) === 32) return true;
 +		let previous = fragment;
 +		let before = -1;
 +		while (before === -1 && --previous >= 0) {
@@ -206,15 +212,32 @@ index f91c40ec99b427a048063e399debabee9ac97537..3c9689c634b341e2627a03c8e62d1aea
  	function processTextNode(textNode, lastNode, lastChar) {
  		if (textNode.trimsAtLineStart) trimTextAtLineStart(textNode, state.buffer);
  		if (textNode.value) {
-@@ -1701,6 +1809,7 @@ function createMarkdownProcessor(options = {}, createStream) {
+@@ -1701,6 +1808,12 @@ function createMarkdownProcessor(options = {}, createStream) {
  			}
  			if (textNode.value === " " && (lastChar === " " || lastChar === "\n" || lastChar === "	" || lastChar === "\r")) return;
  			if (!ownsCaptionSpace && shouldAddSpacingBeforeText(lastChar, lastNode, textNode)) textNode.value = ` ${textNode.value}`;
-+			if (openMarkerCount && textNode.value.charCodeAt(0) === 32 && !hoistOpenerSpace(textNode)) return;
++			if (openMarkerCount && textNode.value.charCodeAt(0) === 32 && hoistOpenerSpace()) {
++				let start = 1;
++				while (textNode.value.charCodeAt(start) === 32) start++;
++				textNode.value = textNode.value.slice(start);
++				if (!textNode.value) return;
++			}
  			if ((state.depthMap[34] || 0) > 0 && (state.depthMap[25] || 0) > 0) {
  				const indent = state.listIndent;
  				let value = textNode.value.replace(/\n(?!\n|$)/g, `\n${indent}`);
-@@ -1786,6 +1895,7 @@ function createMarkdownProcessor(options = {}, createStream) {
+@@ -1742,6 +1855,11 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		const { type: eventType, node } = event;
+ 		state.depth = node.depth;
+ 		if (node.type === 1 ? node.excludedFromMarkdown : node.parent?.excludedFromMarkdown) return;
++		const blank = node.type === 2 && node.leadingBlank ? node.value : void 0;
++		if (blank !== void 0 && !hasNonWhitespace(blank)) {
++			if (blank && openMarkerCount && !node.excludedFromMarkdown && !state.pendingInlineWhitespace && !captionNeedsPreparation()) hoistOpenerSpace();
++			return;
++		}
+ 		if (state.tableRowOpenerPending && state.depthMap[28] <= 1) {
+ 			const tagId = node.type === 1 ? node.tagId : void 0;
+ 			const cellEvent = tagId === 32 || tagId === 31;
+@@ -1786,6 +1904,7 @@ function createMarkdownProcessor(options = {}, createStream) {
  				} else if (consumePendingPreChild(state, node, eventType, preparePendingPreFence)) return;
  			} else if (consumePendingPreChild(state, node, eventType, preparePendingPreFence)) return;
  		}
@@ -222,7 +245,7 @@ index f91c40ec99b427a048063e399debabee9ac97537..3c9689c634b341e2627a03c8e62d1aea
  		let lastBuffEntry = buff.at(-1);
  		let lastChar = lastBuffEntry?.charAt(lastBuffEntry.length - 1) || "";
  		if (!lastChar && buff.length > 1) {
-@@ -1794,6 +1904,7 @@ function createMarkdownProcessor(options = {}, createStream) {
+@@ -1794,6 +1913,7 @@ function createMarkdownProcessor(options = {}, createStream) {
  		}
  		if (node.type === 2 && eventType === 0) {
  			processTextNode(node, lastNode, lastChar);
@@ -230,7 +253,55 @@ index f91c40ec99b427a048063e399debabee9ac97537..3c9689c634b341e2627a03c8e62d1aea
  			return;
  		}
  		if (node.type !== 1) return;
-@@ -2132,7 +2243,7 @@ function createMarkdownProcessor(options = {}, createStream) {
+@@ -2015,8 +2135,18 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		if (eventType === 1 && openMarkerCount) {
+ 			const markerType = handlerOutput === void 0 ? 0 : INLINE_MARKER_TYPE[tagId];
+ 			if (markerType && (tagId !== 23 || !state.depthMap[34] && !isInsideRawHtmlBlock(state.depthMap)) && !handler?.literalExit) {
+-				const idx = dropEmptyMarker(buff, openMarkers[--openMarkerCount], markerType, state.outputPositions);
++				const slot = --openMarkerCount;
++				const marker = openMarkers[slot];
++				const hoisted = markerType <= 4 && buff[marker >> 3]?.charCodeAt(0) === 32;
++				let idx = dropEmptyMarker(buff, marker, markerType, state.outputPositions);
+ 				if (idx >= 0) {
++					if (openMarkerFollowsSpace[slot] && buff[idx - 1] === " ") {
++						idx--;
++						state.outputPositions?.replace(idx, buff.length, []);
++						buff.length = idx;
++						state.pendingInlineWhitespace = true;
++					}
++					if (hoisted) state.pendingInlineWhitespace = true;
+ 					resetRetractedCaptionFrames(captionFrames, captionFrameCount, idx);
+ 					state.lastContentCache = idx > 0 ? buff[idx - 1] : void 0;
+ 					return;
+@@ -2038,15 +2168,17 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		}
+ 		let newLines = Math.max(0, configuredNewLines - (measureFromOutputTail ? 0 : lastNewLines));
+ 		if (newLines > 0 && buff.length === 0 && !hasYieldedContent) newLines = 0;
++		pendingSpaceFragment = -1;
+ 		if (state.pendingInlineWhitespace) {
+ 			const firstOutput = output?.[0]?.[0] || "";
+ 			if (eventType === 0) {
+ 				if (!isInlineElement || tagId === 6 || newLines > 0 || firstOutput === "\n" || firstOutput === "\r") state.pendingInlineWhitespace = false;
+ 				else if (firstOutput) {
+-					if (lastChar && !" \n	\r".includes(lastChar) && !" \n	\r".includes(firstOutput)) {
++					if (lastChar && !" \n	\r".includes(lastChar) && !" \n	\r".includes(firstOutput) && !(openMarkerCount && hoistOpenerSpace())) {
+ 						state.buffer.push(" ");
+ 						state.lastContentCache = " ";
+ 						lastChar = " ";
++						pendingSpaceFragment = state.buffer.length - 1;
+ 					}
+ 					state.pendingInlineWhitespace = false;
+ 				}
+@@ -2127,12 +2259,14 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		}
+ 		if (eventType === 0 && handlerOutput !== void 0 && isInlineElement && !handler?.literalEnter) {
+ 			const markerType = INLINE_MARKER_TYPE[tagId];
+-			if (markerType && (tagId !== 23 || !state.depthMap[34] && !isInsideRawHtmlBlock(state.depthMap)) && buff[buff.length - 1] === handlerOutput) openMarkers[openMarkerCount++] = buff.length - 1 << 3 | markerType;
+-			else if (openMarkerCount && !(tagId === 26 && cleanEmptyLinkText) && hasNonWhitespace(handlerOutput)) {
++			if (markerType && (tagId !== 23 || !state.depthMap[34] && !isInsideRawHtmlBlock(state.depthMap)) && buff[buff.length - 1] === handlerOutput) {
++				openMarkerFollowsSpace[openMarkerCount] = pendingSpaceFragment === buff.length - 2;
++				openMarkers[openMarkerCount++] = buff.length - 1 << 3 | markerType;
++			} else if (openMarkerCount && !(tagId === 26 && cleanEmptyLinkText) && hasNonWhitespace(handlerOutput)) {
  				openMarkerCount = 0;
  				commitCaptionFrames();
  			}
@@ -252,10 +323,75 @@ index 013df47d5cef1945a6ef33d573cafb06336e0889..a14bb0c373376f85ea3f8081509671a3
  		tagOverrideHandlers: options.tagOverrideHandlers,
  		plainText: options.plainText
 diff --git a/dist/_chunks/parse.mjs b/dist/_chunks/parse.mjs
-index 2b2016de60248a023f1082c79c2a7d5ed540199b..e90a253b1833532b736df2354772f966e46e8281 100644
+index 2b2016de60248a023f1082c79c2a7d5ed540199b..f4fb594a47c418db3459d83a3091e716c7215812 100644
 --- a/dist/_chunks/parse.mjs
 +++ b/dist/_chunks/parse.mjs
-@@ -869,12 +869,32 @@ function processTextBuffer(textBuffer, state, handleEvent) {
+@@ -43,6 +43,17 @@ const UNKNOWN_TAG_HANDLER = {
+ 	isInline: true,
+ 	spacing: NO_SPACING
+ };
++const EMPHASIS_TAGS = /* @__PURE__ */ new Set([
++	14,
++	15,
++	91,
++	16,
++	17,
++	18,
++	110,
++	111,
++	90
++]);
+ const LT_CHAR = 60;
+ const GT_CHAR = 62;
+ const SLASH_CHAR = 47;
+@@ -72,6 +83,13 @@ function shouldProtectDecodedEntityReferences(state) {
+ 	const depthMap = state.depthMap;
+ 	return !state.plainText && !depthMap[4] && !depthMap[34] && !depthMap[23] && !isInsideRawHtmlBlock(depthMap);
+ }
++function isInsideEmphasis(node) {
++	for (; node; node = node.parent) {
++		if (EMPHASIS_TAGS.has(node.tagId ?? -1)) return true;
++		if (!(node.tagHandler?.isInline ?? node.tagId === -1)) return false;
++	}
++	return false;
++}
+ const SCRIPT_DATA = 0;
+ const SCRIPT_DATA_ESCAPED = 1;
+ const SCRIPT_DATA_ESCAPED_DASH = 2;
+@@ -840,7 +858,8 @@ function processTextBuffer(textBuffer, state, handleEvent) {
+ 	}
+ 	const excludesTextNodes = (state.flattenedOpaqueDepth || 0) > 0 || state.flattenedRawExcludesText || state.currentNode?.tagHandler?.excludesTextNodes || state.currentNode?.excludedFromMarkdown;
+ 	const inPreTag = (state.depthMap[34] || 0) > 0;
+-	if (!inPreTag && !containsNonWhitespace && !state.currentNode.childTextNodeIndex) return;
++	const isLeadingBlank = !inPreTag && !containsNonWhitespace && !state.currentNode.childTextNodeIndex;
++	if (isLeadingBlank && (state.plainText || !isInsideEmphasis(state.currentNode))) return;
+ 	let text = textBuffer;
+ 	if (text.length === 0) return;
+ 	const parentsToIncrement = traverseUpToFirstBlockNode(state.currentNode);
+@@ -852,6 +871,22 @@ function processTextBuffer(textBuffer, state, handleEvent) {
+ 		while (start < text.length && (inPreTag ? text.charCodeAt(start) === NEWLINE_CHAR || text.charCodeAt(start) === CARRIAGE_RETURN_CHAR : isWhitespace(text.charCodeAt(start)))) start++;
+ 		if (start > 0) text = text.substring(start);
+ 	}
++	if (isLeadingBlank) {
++		if (text) handleEvent({
++			type: 0,
++			node: {
++				type: 2,
++				value: text,
++				parent: state.currentNode,
++				index: state.currentNode.currentWalkIndex,
++				depth: state.depth,
++				containsWhitespace,
++				excludedFromMarkdown: excludesTextNodes,
++				leadingBlank: true
++			}
++		});
++		return;
++	}
+ 	if (state.hasEncodedHtmlEntity) {
+ 		text = decodeHTMLEntities(String(text), false, shouldProtectDecodedEntityReferences(state));
+ 		state.hasEncodedHtmlEntity = false;
+@@ -869,12 +904,32 @@ function processTextBuffer(textBuffer, state, handleEvent) {
  	if (inlineAtRoot) textNode.trimsAtLineStart = true;
  	state.endTagClosedNothing = false;
  	for (const parent of parentsToIncrement) parent.childTextNodeIndex = (parent.childTextNodeIndex || 0) + 1;
@@ -288,7 +424,7 @@ index 2b2016de60248a023f1082c79c2a7d5ed540199b..e90a253b1833532b736df2354772f966
  function processClosingTag(htmlChunk, position, state, handleEvent) {
  	let i = position + 2;
  	const tagNameStart = i;
-@@ -1011,18 +1031,20 @@ function processClosingTag(htmlChunk, position, state, handleEvent) {
+@@ -1011,18 +1066,20 @@ function processClosingTag(htmlChunk, position, state, handleEvent) {
  }
  function closeNode(node, state, handleEvent) {
  	if (!node) return;
@@ -387,7 +523,7 @@ index 544f97782e4c400cc2a27710141aa13bd6819512..5b88c77f6a65bd2dc0f79f0d13f3fc89
  	}
  	processEvent(event);
 diff --git a/dist/_chunks/types.d.mts b/dist/_chunks/types.d.mts
-index 9ed255b95e6a4e97dc6660cac3c84b62ca83ce1c..f578aa6c2291aac42b7d67bf2c95c66f61ed0484 100644
+index 9ed255b95e6a4e97dc6660cac3c84b62ca83ce1c..d9e0d1c9464ca5fcd0ecb89fb8c52c3240cecffe 100644
 --- a/dist/_chunks/types.d.mts
 +++ b/dist/_chunks/types.d.mts
 @@ -189,6 +189,10 @@ export interface ElementNode extends Node {
@@ -401,7 +537,7 @@ index 9ed255b95e6a4e97dc6660cac3c84b62ca83ce1c..f578aa6c2291aac42b7d67bf2c95c66f
  }
  export interface TextNode extends Node {
    /** Text content (for TEXT_NODE) */
-@@ -207,6 +211,10 @@ export interface TextNode extends Node {
+@@ -207,6 +211,16 @@ export interface TextNode extends Node {
     * the output is at the start of a line.
     */
    trimsAtLineStart?: boolean;
@@ -409,6 +545,12 @@ index 9ed255b95e6a4e97dc6660cac3c84b62ca83ce1c..f578aa6c2291aac42b7d67bf2c95c66f
 +  rewrittenBlank?: boolean;
 +  /** The title or aria-label written for a link with no visible text. */
 +  isLinkLabel?: boolean;
++  /**
++   * Whitespace that opens an inline element inside emphasis. While it stays
++   * whitespace it only parts the opener from the word before it, and is not
++   * written as text.
++   */
++  leadingBlank?: boolean;
  }
  /**
   * Base DOM node interface

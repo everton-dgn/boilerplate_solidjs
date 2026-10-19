@@ -151,6 +151,30 @@ describe('markdown conversion filters', () => {
     expect(markdown).toContain('Line one  \n\\===')
   })
 
+  it('keeps the space that opens emphasis before a removed icon', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Install it<strong> <svg><path d="M0 0"/></svg>now</strong> and read the notes.</p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain('Install it **now** and read the notes.')
+  })
+
+  it('keeps the space that opens emphasis inside a wrapper', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><p>Click<strong><span> <a href="/docs">here</a></span></strong> to start.</p></main>'
+      ),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain(
+      'Click **[here](https://example.com/docs)** to start.'
+    )
+  })
+
   it('keeps an empty heading in a list item apart from the next block', async () => {
     const markdown = await convertHtml({
       response: new Response(
