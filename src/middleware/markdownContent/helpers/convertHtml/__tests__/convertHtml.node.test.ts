@@ -219,3 +219,159 @@ describe('markdown conversion filters', () => {
     expect(markdown).toContain('Open the [Cart](https://example.com/cart) now.')
   })
 })
+
+describe('keeps word separators across inline wrappers', () => {
+  it.each([
+    ['<p>a<span> <span>b</span></span></p>', 'a b'],
+    ['<p>a<span> <strong>b</strong></span></p>', 'a **b**'],
+    ['<p>a<font> <b>x</b></font></p>', 'a **x**'],
+    ['<p>a<abbr> <span>b</span></abbr></p>', 'a b'],
+    ['<p>a<small> <span>b</span></small></p>', 'a b'],
+    ['<p>a<u> <span>b</span></u></p>', 'a<u> b</u>'],
+    ['<p>a<span><span> <span>b</span></span></span></p>', 'a b'],
+    ['<p>a<span>\n  <span>b</span></span>c</p>', 'a bc'],
+    ['<p>a<span> </span>b</p>', 'a b'],
+    ['<p>a<span> <strong></strong></span>b</p>', 'a b'],
+    ['<p>a<strong>x<span> <span>b</span></span></strong></p>', 'a**x b**'],
+    ['<p><strong>a<span> </span></strong>b</p>', '**a** b'],
+    [
+      '<p>a<span> <img src="/i.png" alt="i"></span></p>',
+      'a ![i](https://example.com/i.png)'
+    ],
+    ['<p>Total:<span> </span>&nbsp;<b>5</b></p>', 'Total:  **5**']
+  ])('converts %s', async (html, expected) => {
+    const markdown = await convertHtml({
+      response: new Response(`<main>${html}</main>`),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toBe(expected)
+  })
+})
+
+describe('preserves heading block boundaries and inline wrappers in list items', () => {
+  it.each([
+    [
+      '<ul><li><figure><figcaption><q><h3>T</h3></q>s</figcaption></figure></li></ul>',
+      '- *"### T"s*'
+    ],
+    [
+      '<ul><li><figure><figcaption><q><h3></h3></q>s</figcaption></figure></li></ul>',
+      '- *"### "s*'
+    ],
+    [
+      '<ul><li><figure><figcaption><a href="/l"></a><h3>T</h3></figcaption></figure></li></ul>',
+      '- *[](https://example.com/l)### T*'
+    ],
+    [
+      '<ul><li><figure><figcaption><del><h3>T</h3></del></figcaption></figure></li></ul>',
+      '- *~~### T~~*'
+    ],
+    [
+      '<ul><li>Intro <h3>Title</h3><p>Body</p></li></ul>',
+      '- Intro\n\n  ### Title\n\n  Body'
+    ],
+    [
+      '<ul><li>Intro\n    <h3>Title</h3><p>Body</p></li></ul>',
+      '- Intro\n\n  ### Title\n\n  Body'
+    ],
+    [
+      '<ol><li>a<ol><li>b<ol><li>Intro <h3>T</h3></li></ol></li></ol></li></ol>',
+      '1. a\n   1. b\n      1. Intro\n\n         ### T'
+    ],
+    ['<ul><li><h3></h3>Text</li></ul>', '- ###\n\n  Text'],
+    ['<ol><li><h1>T</h1>\nx</li><li>y</li></ol>', '1. # T\n\n   x\n2. y'],
+    [
+      '<ul><li>a<ul><li>b<ul><li><h3></h3>c</li></ul></li></ul></li></ul>',
+      '- a\n  - b\n    - ###\n\n      c'
+    ],
+    [
+      '<ul><li><h3>Title</h3><strong>Text</strong></li></ul>',
+      '- ### Title\n\n  **Text**'
+    ],
+    ['<ul><li><h3></h3><code>x</code></li></ul>', '- ###\n\n  `x`'],
+    ['<ul><li><h3>T</h3><em></em>x</li></ul>', '- ### T\n\n  x'],
+    ['<ul><li>x <h2></h2>  y</li></ul>', '- x\n\n  ##\n\n  y'],
+    [
+      '<blockquote><ul><li><h3>T</h3>x</li></ul></blockquote>',
+      '> - ### T\n>\n>   x'
+    ],
+    ['<ul><li><strong><h3>T</h3>more</strong></li></ul>', '- **### T more**'],
+    [
+      '<ul><li><u><h4>T</h4></u>more</li></ul>',
+      '- <u>\n\n  #### T</u>\n\n  more'
+    ],
+    [
+      '<ol><li><small><abbr><h2>Title</h2></abbr></small>Body text</li><li>b</li></ol>',
+      '1. ## Title\n\n   Body text\n2. b'
+    ],
+    [
+      '<ul><li><small><strong><h3>T</h3></strong>more</small></li></ul>',
+      '- **### T**more'
+    ],
+    ['<ol start="10"><li><h3>T</h3># x</li></ol>', '10. ### T\n\n    \\# x'],
+    [
+      '<ul><li>a<ul><li>T<br>- x</li></ul></li></ul>',
+      '- a\n  - T  \n    \\- x'
+    ],
+    [
+      '<ol start="10"><li><p>a</p><p>&gt; x</p></li><li>b</li></ol>',
+      '10. a\n\n    \\> x\n11. b'
+    ]
+  ])('converts %s', async (html, expected) => {
+    const markdown = await convertHtml({
+      response: new Response(`<main>${html}</main>`),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toBe(expected)
+  })
+})
+
+describe('preserves visible link text and spaces around accessible labels', () => {
+  it.each([
+    [
+      '<div><a href="/x" title="Title"><div>Text</div></a></div>',
+      '[Text](https://example.com/x "Title")'
+    ],
+    [
+      '<p>Go <a href="/cart" aria-label="Cart"><style>.i{}</style>&#32;</a></p>',
+      'Go [Cart](https://example.com/cart)'
+    ],
+    [
+      '<a href="/cart" aria-label="Cart"><svg></svg>&#32;</a>',
+      '[Cart](https://example.com/cart)'
+    ],
+    [
+      '<p><a href="/c" aria-label="Item"><svg></svg> </a>Next</p>',
+      '[Item](https://example.com/c) Next'
+    ],
+    [
+      '<p><a href="/c" aria-label="Item"><svg></svg>&#32;</a>Next</p>',
+      '[Item](https://example.com/c) Next'
+    ],
+    [
+      '<p><a href="/c" aria-label="Item">\n  <svg aria-hidden="true"></svg>\n</a>Next</p>',
+      '[Item](https://example.com/c) Next'
+    ],
+    [
+      '<p>Go<a href="/c" aria-label="Item"><style>.i{}</style> </a>now</p>',
+      'Go [Item](https://example.com/c) now'
+    ],
+    [
+      '<p>Go<a href="/c" aria-label="Item"><svg></svg> <svg></svg> </a>Next</p>',
+      'Go [Item](https://example.com/c) Next'
+    ],
+    [
+      '<p>Go <a href="/c" aria-label="A"><svg></svg> <!-- c --></a>Next</p>',
+      'Go [A](https://example.com/c) Next'
+    ]
+  ])('converts %s', async (html, expected) => {
+    const markdown = await convertHtml({
+      response: new Response(`<main>${html}</main>`),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toBe(expected)
+  })
+})
