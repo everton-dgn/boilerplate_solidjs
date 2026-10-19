@@ -375,3 +375,25 @@ describe('preserves visible link text and spaces around accessible labels', () =
     expect(markdown).toBe(expected)
   })
 })
+
+describe('restores heading breaks after discarded content', () => {
+  it.each([
+    ['<ul><li><h3>T</h3><a></a># x</li></ul>', '- ### T\n\n  \\# x'],
+    [
+      '<ul><li><h3>T</h3><span data-md-exclude>discarded</span># x</li></ul>',
+      '- ### T\n\n  \\# x'
+    ],
+    ['<ul><li><h3>T</h3><strong>&#32;</strong>x</li></ul>', '- ### T\n\n  x'],
+    [
+      '<blockquote><ul><li><h3>T</h3># x</li></ul></blockquote>',
+      '> - ### T\n>\n>   \\# x'
+    ]
+  ])('converts %s', async (html, expected) => {
+    const markdown = await convertHtml({
+      response: new Response(`<main>${html}</main>`),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toBe(expected)
+  })
+})
