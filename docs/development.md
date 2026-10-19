@@ -233,6 +233,20 @@ verificações. A reutilização do Vite Task entre runners é experimental: con
 os hits nos logs e compare o tempo economizado com o custo de transferir o
 cache.
 
+No CI, só `Quality` envia o cache de pacotes, e apenas quando a chave do
+lockfile não existe e o job termina com sucesso. `Tooling` e E2E passam
+`cache-save: false` à ação `setup-project` e só restauram. `Reuse proof` e
+deploy passam também `install-dependencies: false`: a ação prepara Vite+, Node e
+Bun do `package.json`, sem cache de pacotes nem `vp install`. O deploy só
+executa `vp dlx` sobre o artefato testado. Com `cache: false`, o `setup-vp` não
+restaura nem salva o cache, e `cache-save` e `cache-dependency-path` não têm
+efeito. Num run experimental, sem token nem deploy real, o preparo somado à
+primeira chamada `vercel --version` levou 8,1 s contra 18,6 s do preparo
+completo, cerca de 10 s a menos, com as mesmas versões de Node, Bun, Vite+ e
+Vercel CLI e sem `node_modules`. Foi uma única amostra, que mede só essa chamada
+do CLI; acompanhe o tempo do deploy real depois do merge. A automação de release
+usa o `setup-vp` diretamente e mantém o envio padrão.
+
 As tarefas de lint combinam os arquivos lidos automaticamente com entradas
 explícitas para CSS, ferramentas de CSS, `package.json`, `bun.lock` e
 `bunfig.toml`. Assim, a invalidação do lint de CSS não depende do rastreamento
@@ -245,21 +259,24 @@ por modo. `env = false` no `bunfig.toml` também evita que `bun run` antecipe a
 leitura do `.env` antes de iniciar essas ferramentas.
 
 O CI distribui as verificações entre quatro runners independentes: `Quality`,
-`Tooling`, E2E com fixtures e E2E de produção. `Quality` executa formatação,
-lint, tipos e cobertura, além dos testes de release em Bun quando houver
-mudanças relevantes. `Tooling` executa os demais testes de tooling em Node após
-a instalação, sem aguardar os checks de `Quality` nem compartilhar CPU com a
-cobertura. Os quatro jobs começam juntos, cada um com seu checkout, portas e
-artefatos de build isolados. A ação local `setup-project` compartilha a
-instalação entre os jobs e o deploy. Esse paralelismo reduz a espera, mas repete
-a preparação nos runners e pode aumentar o consumo de minutos do GitHub Actions.
-O build de produção aprovado nos E2E é transferido ao deploy na mesma execução
-do CI. Assim, tanto o PR quanto o push para `main` compilam duas aplicações: uma
-com fixtures e outra com as rotas reais. Os testes de tooling também compilam
-suas próprias fixtures menores.
+`Tooling`, E2E com fixtures e E2E de produção. No push da `main`, os três
+primeiros podem ser dispensados pela prova descrita abaixo. `Quality` executa
+formatação, lint, tipos e cobertura, além dos testes de release em Bun quando
+houver mudanças relevantes. `Tooling` executa os demais testes de tooling em
+Node após a instalação, sem aguardar os checks de `Quality` nem compartilhar CPU
+com a cobertura. Os quatro jobs rodam em paralelo, cada um com seu checkout,
+portas e artefatos de build isolados; no push da `main`, os três reutilizáveis
+começam depois do `Reuse proof`, e o E2E de produção não espera por ele. A ação
+local `setup-project` compartilha a instalação entre os jobs e o deploy. Esse
+paralelismo reduz a espera, mas repete a preparação nos runners e pode aumentar
+o consumo de minutos do GitHub Actions. O build de produção aprovado nos E2E é
+transferido ao deploy na mesma execução do CI. Assim, tanto o PR quanto o push
+para `main` compilam duas aplicações: uma com fixtures e outra com as rotas
+reais. Os testes de tooling também compilam suas próprias fixtures menores.
 
 `CI required` aguarda todos os jobs e só passa se todos tiverem sucesso; falhas,
-cancelamentos e jobs pulados impedem sua aprovação. O deploy depende desse
+cancelamentos e jobs pulados impedem sua aprovação. A única exceção são os jobs
+dispensados pela prova de reutilização da `main`. O deploy depende desse
 resultado. A release reaproveita o CI aprovado da `main` e confere apenas o
 commit de versão e changelog, conforme o
 [guia de release](../tooling/release/README.md). O filtro de release condiciona
@@ -267,6 +284,57 @@ somente um passo de `Quality`, mantendo o job e o agregador obrigatórios. Os
 testes da aplicação e os demais testes de tooling rodam em toda execução do CI;
 o cache do Vitest guarda transformações de módulos. Em `CI=true`, Vitest e o
 runner Node dos testes de tooling usam no máximo dois workers cada.
+
+### Reutilização da validação do PR na main
+
+O push da `main` é um merge commit criado pelo GitHub a partir de um PR
+atualizado com a base, exigido pela proteção da branch. Quando o run desse PR já
+testou a mesma árvore, o job `Reuse proof` dispensa `Quality`, `Tooling` e
+`E2E (fixtures)`. `E2E (production)`, o build do artefato e o deploy executam
+sempre, sem depender da prova.
+
+No PR, o `Quality` publica o artifact `ci-reuse-evidence-<tentativa>` com o SHA
+do merge sintético que o checkout testou, sua árvore e seus parents, o head e a
+base do evento, o número do PR, o run, a tentativa e o `workflow_ref`. No push,
+`tooling/ciReuse/prove-reuse.ts` roda no Node declarado no projeto, sem instalar
+dependências, e aprova a reutilização somente quando todas estas condições
+valem:
+
+- o commit da `main` tem exatamente dois parents e não altera `.github/` nem
+  `tooling/ciReuse/`. Assim, o run do PR executou o mesmo workflow e o mesmo
+  verificador que a `main`;
+- há um único PR integrado com esse merge commit, do próprio repositório, com
+  base `main`, base e head iguais aos parents, sem outro PR com o mesmo head
+  testado e sem mudança de base na timeline;
+- há um único run `pull_request` de `ci.yml` para o head, concluído com sucesso,
+  do mesmo repositório e branch;
+- na tentativa desse run, `Quality`, `Tooling` e `E2E (fixtures)` existem, são
+  da mesma tentativa e terminaram com sucesso. Re-run parcial que não repita os
+  três jobs não serve como prova;
+- a evidência da mesma tentativa pertence ao run e ao head, descreve o run, o PR
+  e a base `main`, e o commit sintético consultado na API do GitHub tem os
+  mesmos parents e a mesma árvore do merge da `main`.
+
+Qualquer ausência, ambiguidade, timeout, erro de API ou PR anterior à evidência
+resulta em CI completo. O gate aceita `skipped` somente com a prova aprovada no
+mesmo run. Checks sintetizados pela release não contam como prova.
+
+`Quality` também roda quando o merge altera `bun.lock`, `package.json` ou
+`bunfig.toml`, ou quando a `main` não tem as entradas de cache de pacotes e de
+validação para o lockfile e a toolchain atuais. Ele é o único job que grava
+esses caches. A chave de pacotes e o prefixo de restauração da validação só
+mudam nesses casos; com o `Quality` dispensado, os PRs continuam restaurando a
+última entrada de validação da `main` com o mesmo prefixo, que envelhece
+conforme a árvore muda e pode reduzir os acertos do Vite Task e do Vitest até a
+próxima mudança de lockfile.
+
+O verificador e o workflow continuam sendo código revisado da `main`: um merge
+que altere `.github/` ou `tooling/ciReuse/` sempre executa o CI completo. A
+reutilização também dispensa a segunda execução que, às vezes, reprovava na
+`main` um teste instável que tinha passado no PR com a mesma árvore. Para
+repetir toda a validação de um commit, dispare o workflow manualmente
+(`workflow_dispatch`). Esse modo não publica na Vercel e usa outro grupo de
+concorrência, para não substituir um push pendente.
 
 ## Hooks de Git
 
