@@ -190,8 +190,10 @@ Os relatórios HTML ficam em `playwright-report/e2e/` e
 `playwright-report/production/`. Os traces de falhas ficam em
 `test-results/e2e/` e `test-results/e2e-production/`, respectivamente. Os testes
 do Vitest Browser Mode guardam traces de falhas em
-`test-results/browser-traces/`. Esses artefatos são ignorados pelo Git. Os E2E
-têm comando separado e não fazem parte de `vpr test` ou `vpr validate`.
+`test-results/browser-traces/` e os screenshots de falha em
+`.vitest/attachments/`. Quando o job `Quality` falha, o CI envia os dois
+diretórios como artefato. Esses artefatos são ignorados pelo Git. Os E2E têm
+comando separado e não fazem parte de `vpr test` ou `vpr validate`.
 
 ## Conferência em dispositivo físico
 

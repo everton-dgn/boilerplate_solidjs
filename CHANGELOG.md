@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+## 1.12.7 - 2026-10-18
+
+### Fixed
+
+- reread catalogs when source directories appear or disappear (67b9965)
+
+## 1.12.6 - 2026-10-18
+
+### Fixed
+
+- deploy after reused validation jobs (43870e7)
+
+## 1.12.5 - 2026-10-18
+
+### Fixed
+
+- run tooling tests with three workers (19fd90e)
+
+## 1.12.4 - 2026-10-18
+
+### Fixed
+
+- publish only when the validated commit is still the head of main (1d8374f)
+- set up only the toolchain in the deploy and reuse proof jobs (10c39ea)
+- match reuse pull requests by tested head and run proof through vp (171502d)
+- reuse validated pull request checks on main pushes (37c2cff)
+- save the dependency cache only from Quality (3aa7d56)
+- upload Vitest browser traces from failed Quality runs (cee075d)
+
 ## 1.12.3 - 2026-10-18
 
 ### Fixed

@@ -21,8 +21,9 @@ const CSS_CACHE_INPUTS = [
   'bunfig.toml'
 ]
 const CI_TEST_WORKERS = 2
+const TOOLING_CI_TEST_WORKERS = 3
 const TOOLING_TEST_CONCURRENCY = env.CI
-  ? ` --test-concurrency=${CI_TEST_WORKERS}`
+  ? ` --test-concurrency=${TOOLING_CI_TEST_WORKERS}`
   : ''
 
 // Os plugins do Vite só são importados quando o Vite roda de fato. vp lint,

@@ -231,3 +231,11 @@ export function isCatalogFile({ root, file }: CatalogFileOptions): boolean {
   const relative = path.relative(root, file).split(path.sep).join('/')
   return CATALOG_PATH.test(relative) && !EXCLUDED_PATH.test(relative)
 }
+
+export function canContainCatalogs({
+  root,
+  file
+}: CatalogFileOptions): boolean {
+  const relative = `${path.relative(root, file).split(path.sep).join('/')}/`
+  return relative.startsWith('src/') && !EXCLUDED_PATH.test(relative)
+}
