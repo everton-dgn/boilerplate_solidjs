@@ -304,8 +304,8 @@ valem:
   `tooling/ciReuse/`. Assim, o run do PR executou o mesmo workflow e o mesmo
   verificador que a `main`;
 - há um único PR integrado com esse merge commit, do próprio repositório, com
-  base `main`, base e head iguais aos parents, sem outro PR na mesma branch e
-  sem mudança de base na timeline;
+  base `main`, base e head iguais aos parents, sem outro PR com o mesmo head
+  testado e sem mudança de base na timeline;
 - há um único run `pull_request` de `ci.yml` para o head, concluído com sucesso,
   do mesmo repositório e branch;
 - na tentativa desse run, `Quality`, `Tooling` e `E2E (fixtures)` existem, são
