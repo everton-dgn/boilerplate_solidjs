@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.12.5 - 2026-10-18
+
+### Fixed
+
+- run tooling tests with three workers (19fd90e)
+
 ## 1.12.4 - 2026-10-18
 
 ### Fixed
