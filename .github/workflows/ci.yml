@@ -389,7 +389,12 @@ jobs:
 
   deploy:
     needs: [check, e2e-production]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # O success() implícito considera toda a cadeia de needs e pularia o deploy
+    # quando a prova dispensa jobs; check já exige o resultado de cada um.
+    if:
+      ${{ !cancelled() && needs.check.result == 'success' &&
+      needs.e2e-production.result == 'success' && github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     concurrency:
