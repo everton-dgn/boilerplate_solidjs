@@ -12,6 +12,10 @@ const STATIC_OUTPUT = new URL(
   import.meta.url
 )
 const VERCEL_CONFIG = new URL('../../../../vercel.json', import.meta.url)
+const BUILD_CONFIG = new URL(
+  '../../../../.vercel/output/config.json',
+  import.meta.url
+)
 
 const headerSchema = v.object({ key: v.string(), value: v.string() })
 const ruleSchema = v.object({
@@ -19,8 +23,51 @@ const ruleSchema = v.object({
   headers: v.array(headerSchema)
 })
 const configSchema = v.object({ headers: v.array(ruleSchema) })
+const buildRouteSchema = v.object({
+  src: v.optional(v.string()),
+  dest: v.optional(v.string()),
+  handle: v.optional(v.string()),
+  continue: v.optional(v.boolean())
+})
+const buildConfigSchema = v.object({ routes: v.array(buildRouteSchema) })
 
 test.use({ headless: true })
+
+test('routes HTML home pages before static Markdown directory indexes', async () => {
+  const config = v.parse(
+    buildConfigSchema,
+    JSON.parse(await readFile(BUILD_CONFIG, 'utf8'))
+  )
+  const filesystem = config.routes.findIndex(
+    route => route.handle === 'filesystem'
+  )
+  expect(filesystem).toBeGreaterThanOrEqual(0)
+  const firstPhase = config.routes.findIndex(
+    route => route.handle !== undefined
+  )
+  const routes = config.routes.slice(0, firstPhase)
+  for (const locale of LOCALES) {
+    for (const pathname of [`/${locale}`, `/${locale}/`]) {
+      const route = routes.find(
+        candidate =>
+          candidate.src !== undefined &&
+          !candidate.continue &&
+          new RegExp(candidate.src, 'u').test(pathname)
+      )
+      expect(route?.dest, pathname).toBe('/__server')
+    }
+    const markdown = `/${locale}/index.md`
+    expect(
+      routes.some(
+        route =>
+          route.src !== undefined &&
+          !route.continue &&
+          new RegExp(route.src, 'u').test(markdown)
+      ),
+      markdown
+    ).toBe(false)
+  }
+})
 
 test('declares the headers of the static Markdown files', async () => {
   const config = v.parse(

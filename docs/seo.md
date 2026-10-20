@@ -315,6 +315,13 @@ na gravação deixaria o arquivo de fora sem falhar, e por isso o módulo confer
 no fim que cada `.md` da lista foi gravado. O resultado fica em
 `.vercel/output/static`.
 
+Na Vercel, um `index.md` estático também pode atender à URL do diretório. O
+módulo registra as páginas correspondentes antes da consulta aos estáticos,
+encaminhando-as ao SSR com e sem barra final. Assim, `/pt` continua negociando
+HTML ou Markdown, enquanto `/pt/index.md` mantém o arquivo estático. O E2E de
+produção verifica essa precedência no `config.json` do artefato gerado,
+inclusive depois de `vercel build`.
+
 `@mdream/js` recebe o caminho do documento sobre a origem pública
 (`VITE_SITE_URL`) para resolver links relativos; no prerender, a requisição é
 local. Seus seletores isolam o conteúdo principal e removem navegação,

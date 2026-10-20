@@ -1,4 +1,4 @@
-import type { PrerenderRoute } from 'nitro/types'
+import type { NitroConfig, PrerenderRoute } from 'nitro/types'
 
 import { MARKDOWN_PRERENDER_PATH } from '../../src/middleware/markdownContent/constants.ts'
 
@@ -9,16 +9,26 @@ type PrerenderResult = {
 type RoutesHook = (routes: Set<string>) => void
 type GenerateHook = (route: PrerenderRoute) => void
 type DoneHook = (result: PrerenderResult) => void
+type PrerenderOptions = {
+  routes?: string[]
+  failOnError?: boolean
+}
+type Options = {
+  prerender: PrerenderOptions
+  vercel?: NitroConfig['vercel']
+}
 type PrerenderNitro = {
-  options: { prerender: { routes?: string[]; failOnError?: boolean } }
+  options: Options
   hooks: {
     hook: ((name: 'prerender:routes', handler: RoutesHook) => unknown) &
       ((name: 'prerender:generate', handler: GenerateHook) => unknown) &
       ((name: 'prerender:done', handler: DoneHook) => unknown)
   }
 }
+type RoutingOptions = { options: Options; paths: string[] }
 
 const MARKDOWN_FILE = /^\/[^?#]+\.md$/u
+const INDEX_FILE = '/index.md'
 
 function readPaths(contents: string | undefined): string[] | undefined {
   try {
@@ -30,6 +40,25 @@ function readPaths(contents: string | undefined): string[] | undefined {
   } catch {
     return undefined
   }
+}
+
+function protectDirectoryPages({ options, paths }: RoutingOptions): void {
+  const routes = paths
+    .filter(path => path.endsWith(INDEX_FILE))
+    .map(path => {
+      const directory = decodeURI(path.slice(0, -INDEX_FILE.length))
+      const pattern = directory.replaceAll(
+        /[.*+?^${}()|[\]\\]/gu,
+        String.raw`\$&`
+      )
+      return { src: directory ? `^${pattern}/?$` : '^/$', dest: '/__server' }
+    })
+  if (routes.length === 0) return
+  options.vercel ??= {}
+  options.vercel.config ??= { version: 3 }
+  const { config } = options.vercel
+  // A Vercel também usa index.md como índice de diretório, antes do SSR.
+  config.routes = [...routes, ...(config.routes ?? [])]
 }
 
 // O build pede ao middleware a lista de páginas estáticas e prerenderiza cada
@@ -56,6 +85,7 @@ export function markdownPrerender(nitro: PrerenderNitro): void {
       return
     }
     expected = paths
+    protectDirectoryPages({ options: nitro.options, paths })
     for (const path of paths) queue.add(path)
   })
   // O Nitro só falha o build por rota com `error`. Uma exceção no fetch, na
