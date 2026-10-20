@@ -315,12 +315,23 @@ na gravação deixaria o arquivo de fora sem falhar, e por isso o módulo confer
 no fim que cada `.md` da lista foi gravado. O resultado fica em
 `.vercel/output/static`.
 
-Na Vercel, um `index.md` estático também pode atender à URL do diretório. O
-módulo registra as páginas correspondentes antes da consulta aos estáticos,
-encaminhando-as ao SSR com e sem barra final. Assim, `/pt` continua negociando
-HTML ou Markdown, enquanto `/pt/index.md` mantém o arquivo estático. O E2E de
-produção verifica essa precedência no `config.json` do artefato gerado,
-inclusive depois de `vercel build`.
+Na Vercel, um `index.md` estático também pode atender à URL do diretório. Depois
+que o preset do Nitro gera o `config.json`, o módulo antecipa suas regras da
+fase de filesystem, restringindo as cópias às páginas com `index.md`, com e sem
+barra final. Headers com `continue: true`, redirects e proxies anteriores
+continuam na mesma ordem. As regras preservam destinos, capturas e condições
+nativos, inclusive ISR, `functionRules` e skew protection. O módulo não define
+um destino SSR próprio nem altera `vercel.config`; um artefato sem regras de
+filesystem interrompe o build. Uma regra inicial sem destino nem status que
+encerre o roteamento numa página protegida também interrompe o build. Isso
+inclui os headers de `routeRules` do Nitro quando atingem essas páginas: use o
+middleware, ou uma regra explícita em `vercel.config.routes` com
+`continue: true`. O módulo não força a continuação, pois isso mudaria a
+prioridade de headers e redirects. Assim, `/pt` continua negociando HTML ou
+Markdown, enquanto `/pt/index.md` mantém o arquivo estático. Os testes de
+tooling exercitam o preset real sem configuração prévia e com regras adicionais.
+O E2E de produção confere a precedência no artefato final, inclusive depois de
+`vercel build`.
 
 `@mdream/js` recebe o caminho do documento sobre a origem pública
 (`VITE_SITE_URL`) para resolver links relativos; no prerender, a requisição é
