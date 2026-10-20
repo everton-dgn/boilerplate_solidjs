@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.12.10 - 2026-10-20
+
+### Fixed
+
+- preserve encoded paths and route precedence (ee1e3fd)
+- keep directory pages on SSR in Vercel (264b067)
+
 ## 1.12.9 - 2026-10-19
 
 ### Fixed
