@@ -15,8 +15,8 @@ funcionamento nativo de botões. Escolha o ambiente que cobre o comportamento e
 evite repetir o mesmo cenário em outro nível.
 
 Os testes em `tooling/**/__tests__/` usam a API `node:test`. O comando
-`vpr test:tooling` executa os módulos em Node, exceto `tooling/release/`, que
-roda em Bun com `vpr test:release`, o mesmo runtime da publicação. Ambos os
+`vp run test:tooling` executa os módulos em Node, exceto `tooling/release/`, que
+roda em Bun com `vp run test:release`, o mesmo runtime da publicação. Ambos os
 comandos rodam em `validate` e no `pre-push`, fora dos comandos do Vitest:
 teste, cobertura, UI e watch. No CI, a suíte Node roda sempre; os testes de
 release rodam somente quando a automação ou suas dependências mudam, conforme o
@@ -34,7 +34,7 @@ arquivo:
 | `*.browser.test.{ts,tsx}` | Chromium real | Interação, layout e APIs de browser         |
 
 Testes só de tipos (`expectTypeOf`) usam `Nome[.qualificador].test-d.ts`. Nenhum
-projeto do Vitest inclui esse sufixo, e o `vpr typecheck` verifica esses
+projeto do Vitest inclui esse sufixo, e o `vp run typecheck` verifica esses
 arquivos. Rodar um deles no Vitest falharia no `expect.requireAssertions`,
 porque `expectTypeOf` não conta como asserção em runtime.
 
@@ -80,10 +80,10 @@ export padrão e a cadeia montada por `createMiddleware`.
 
 ## Testes da aplicação completa
 
-`vpr test:e2e` executa os testes em `src/tests/pages/**/*.e2e.test.ts`, exceto
-os arquivos `*.production.e2e.test.ts`, com Chromium. O Playwright gera o build
-e inicia o servidor de produção em `http://127.0.0.1:4317`, encerrando-o ao
-terminar. A porta precisa estar livre. Os cenários cobrem a página inicial,
+`vp run test:e2e` executa os testes em `src/tests/pages/**/*.e2e.test.ts`,
+exceto os arquivos `*.production.e2e.test.ts`, com Chromium. O Playwright gera o
+build e inicia o servidor de produção em `http://127.0.0.1:4317`, encerrando-o
+ao terminar. A porta precisa estar livre. Os cenários cobrem a página inicial,
 hidratação do seletor de tema, teclado, persistência e sincronização entre abas,
 cores sem JavaScript, layout e resposta 404 com navegação de volta ao início.
 Também cobrem a confidencialidade de erros do servidor: HTTP 500 de um backend
@@ -124,12 +124,12 @@ verificam a CSP nos caminhos de streaming.
 O build E2E usa `--mode e2e` com otimizações de produção e acrescenta a página
 de teste pelo diretório `src/tests/fixtures/e2e/routes/`. O backend simulado
 escuta somente em `127.0.0.1:4318` e é iniciado e encerrado pelo Playwright. O
-build normal (`vpr build`) usa apenas `src/routes/` e não inclui essa página nem
-o backend simulado. As portas 4317 e 4318 precisam estar livres.
+build normal (`vp run build`) usa apenas `src/routes/` e não inclui essa página
+nem o backend simulado. As portas 4317 e 4318 precisam estar livres.
 
-`vpr test:e2e:production` executa os arquivos `*.production.e2e.test.ts` contra
-um build normal, com a árvore real de `src/routes/`. Essa suíte verifica por
-HTTP que `/robots.txt`, `/llms.txt` e `/sitemap.xml` respondem sem
+`vp run test:e2e:production` executa os arquivos `*.production.e2e.test.ts`
+contra um build normal, com a árvore real de `src/routes/`. Essa suíte verifica
+por HTTP que `/robots.txt`, `/llms.txt` e `/sitemap.xml` respondem sem
 redirecionamento, com conteúdo e headers esperados, e que os helpers locais não
 viram endpoints públicos. Também verifica a ausência de uma rota das fixtures e
 que a Home recebe os cabeçalhos de segurança do middleware real, já que o build
@@ -175,16 +175,17 @@ mesma execução do CI e publica o build testado, sem recompilar.
 
 PRs, inclusive de forks, mantêm os builds locais sem credenciais da Vercel. Os
 comandos locais também continuam compilando por padrão. Para conferir um build
-de produção já gerado, use `TEST_PREBUILT=true vpr test:e2e:production`. O modo
-exige rotas de produção; usá-lo com a suíte de fixtures causa erro. Os testes de
-`tooling/__tests__/playwright.test.ts` executam os comandos de startup com um
-CLI simulado e verificam a quantidade de builds em cada modo.
+de produção já gerado, use `TEST_PREBUILT=true vp run test:e2e:production`. O
+modo exige rotas de produção; usá-lo com a suíte de fixtures causa erro. Os
+testes de `tooling/__tests__/playwright.test.ts` executam os comandos de startup
+com um CLI simulado e verificam a quantidade de builds em cada modo.
 
-Use `vpr test:e2e:ui` para abrir a interface interativa do Playwright. Com
-`CI=true`, os E2E usam dois workers; localmente, mantêm o paralelismo padrão. O
-grupo que confere a contagem de logs do middleware continua em ordem dentro de
-um worker. Para comparar tempos ou investigar uma falha de concorrência, use
-`CI=true vpr test:e2e --workers=1` e `CI=true vpr test:e2e --workers=2`.
+Use `vp exec playwright test --config tooling/playwright.ts --ui` para abrir a
+interface interativa do Playwright. Com `CI=true`, os E2E usam dois workers;
+localmente, mantêm o paralelismo padrão. O grupo que confere a contagem de logs
+do middleware continua em ordem dentro de um worker. Para comparar tempos ou
+investigar uma falha de concorrência, use `CI=true vp run test:e2e --workers=1`
+e `CI=true vp run test:e2e --workers=2`.
 
 Os relatórios HTML ficam em `playwright-report/e2e/` e
 `playwright-report/production/`. Os traces de falhas ficam em
@@ -193,10 +194,10 @@ do Vitest Browser Mode guardam traces de falhas em
 `test-results/browser-traces/` e os screenshots de falha em
 `.vitest/attachments/`. Quando o job `Quality` falha, o CI envia os dois
 diretórios como artefato. Esses artefatos são ignorados pelo Git. Os E2E têm
-comando separado e não fazem parte de `vpr test` ou `vpr validate`.
+comando separado e não fazem parte de `vp run test` ou `vp run validate`.
 
 ## Conferência em dispositivo físico
 
-Para conferir a interface em um celular na mesma rede, execute `vpr dev:phone` e
-abra a URL de rede exibida pelo Vite. Esse comando disponibiliza o servidor de
-desenvolvimento nas interfaces de rede da máquina.
+Para conferir a interface em um celular na mesma rede, execute
+`vp run dev:phone` e abra a URL de rede exibida pelo Vite. Esse comando
+disponibiliza o servidor de desenvolvimento nas interfaces de rede da máquina.

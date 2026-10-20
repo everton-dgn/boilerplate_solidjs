@@ -40,7 +40,7 @@ it('builds local suites once and only previews an existing production build', as
   const directory = await mkdtemp(path.join(tmpdir(), 'playwright-build-'))
   context.after(() => rm(directory, { recursive: true, force: true }))
   await writeFile(
-    path.join(directory, 'vpr'),
+    path.join(directory, 'vp'),
     '#!/bin/sh\nprintf "%s\\n" "$*" >> "$COMMAND_LOG"\n',
     { mode: 0o755 }
   )
@@ -48,17 +48,17 @@ it('builds local suites once and only previews an existing production build', as
     {
       production: 'false',
       prebuilt: 'false',
-      expected: ['build --mode e2e', 'start --strictPort']
+      expected: ['run build --mode e2e', 'run start --strictPort']
     },
     {
       production: 'true',
       prebuilt: 'false',
-      expected: ['build --mode production', 'start --strictPort']
+      expected: ['run build --mode production', 'run start --strictPort']
     },
     {
       production: 'true',
       prebuilt: 'true',
-      expected: ['start --strictPort']
+      expected: ['run start --strictPort']
     }
   ]) {
     const { stdout } = await exec(
@@ -125,11 +125,11 @@ it('passes only public build variables to production tests and propagates their 
       'VITE_EXISTING=file-value'
     ].join('\n')
   )
-  const cli = path.join(directory, 'vpr')
+  const cli = path.join(directory, 'vp')
   await writeFile(
     cli,
     `#!/bin/sh
-test "$*" = 'test:e2e:production' || exit 1
+test "$*" = 'run test:e2e:production' || exit 1
 exec "$TEST_NODE" --input-type=module -e 'process.stdout.write(JSON.stringify({private: process.env.PRIVATE_TEST_TOKEN, public: process.env.VITE_FROM_FILE, existing: process.env.VITE_EXISTING}))'
 `,
     { mode: 0o755 }

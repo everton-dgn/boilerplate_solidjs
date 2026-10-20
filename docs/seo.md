@@ -393,8 +393,8 @@ As respostas convertidas na requisição recebem `text/markdown; charset=utf-8`,
 passar pela função: o `vercel.json` define `Content-Type`, `nosniff` e
 `Cross-Origin-Resource-Policy`, e o cache segue o padrão da Vercel para
 estáticos. Eles não gravam cookie de idioma nem `Content-Language`; o idioma vem
-da URL. O preview local (`vpr start`) não aplica o `vercel.json` e serve `.md`
-como `application/octet-stream`.
+da URL. O preview local (`vp run start`) não aplica o `vercel.json` e serve
+`.md` como `application/octet-stream`.
 
 Os limites ficam em `src/middleware/markdownContent/constants.ts`: espera de SSR
 cancelável e tamanho máximo do HTML antes da conversão síncrona. Timeout e
@@ -413,11 +413,12 @@ como fictício pela descrição. Os dois objetos ficam em
 ao adaptar o boilerplate para outro produto. Revise o aviso quando adicionar
 serviços ou coleta de dados.
 
-Valide com `vpr check:ci`, `vpr typecheck:node`, `vpr test:tooling` e os testes
-Node de `src/middleware/` e de SEO. Execute `vpr test:e2e:production` para
-conferir a árvore real e `vpr test:e2e` para exercitar também as fixtures e
-falhas do servidor. As suítes `AgentReadiness` cobrem conteúdo sem JavaScript,
-idiomas, negociação, HEAD, 404 e navegação em larguras de celular e desktop.
+Valide com `vp run check:ci`, `vp run typecheck:node`, `vp run test:tooling` e
+os testes Node de `src/middleware/` e de SEO. Execute
+`vp run test:e2e:production` para conferir a árvore real e `vp run test:e2e`
+para exercitar também as fixtures e falhas do servidor. As suítes
+`AgentReadiness` cobrem conteúdo sem JavaScript, idiomas, negociação, HEAD, 404
+e navegação em larguras de celular e desktop.
 
 A home mantém pelo menos 500 caracteres de conteúdo visível nos três idiomas,
 também no HTML inicial. Esse limite atende ao critério de conteúdo do Is

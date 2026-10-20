@@ -69,11 +69,12 @@ uma vez e seguir o sistema também quando JavaScript está desabilitado.
 
 ## Regras de CSS
 
-Execute `vpr lint:css` para verificar todos os arquivos CSS de `src/`. O comando
-faz parte de `vpr lint` e `vpr check:ci`. O pre-push e o CI executam essa
-verificação. O pre-commit usa `vpr check:fix`, que gera o i18n e chama
-`vp check --fix` nos arquivos staged, sem executar o lint de CSS. `vp lint` e
-`vp check` chamados diretamente continuam sendo os comandos internos do Vite+.
+Execute `vp run lint:css` para verificar todos os arquivos CSS de `src/`. O
+comando faz parte de `vp run lint` e `vp run check:ci`. O pre-push e o CI
+executam essa verificação. O pre-commit usa `vp run check:fix`, que gera o i18n
+e chama `vp check --fix` nos arquivos staged, sem executar o lint de CSS.
+`vp lint` e `vp check` chamados diretamente continuam sendo os comandos internos
+do Vite+.
 
 - Classes de todo o projeto usam snake_case, como `.home_link` e `.sr_only`.
   Nomes de uma palavra, como `.btn` e `.page`, continuam válidos.
@@ -128,7 +129,7 @@ arquivos CSS referenciados por imports e reexportações em JS/TS. O comando
 `lint:css` reutiliza essa validação para todos os arquivos CSS em `src/`,
 inclusive aqueles sem imports em JS/TS.
 
-`vpr test:tooling` verifica o comportamento dos verificadores com casos em
+`vp run test:tooling` verifica o comportamento dos verificadores com casos em
 memória e roda nos hooks e no CI. O lint do CSS real continua automático, e suas
 violações bloqueiam a validação até serem corrigidas.
 
