@@ -1,8 +1,12 @@
 /* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
-import { it } from 'node:test'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { after, it } from 'node:test'
 
-import type { NitroConfig, PrerenderRoute } from 'nitro/types'
+import type { PrerenderRoute } from 'nitro/types'
+import * as v from 'valibot'
 
 import { MARKDOWN_PRERENDER_PATH } from '../../../src/middleware/markdownContent/constants.ts'
 import { markdownPrerender } from '../index.ts'
@@ -15,31 +19,41 @@ type Handlers = {
   'prerender:routes'?: (routes: Set<string>) => void
   'prerender:generate'?: (route: PrerenderRoute) => void
   'prerender:done'?: (result: PrerenderResult) => void
+  compiled?: () => Promise<void>
 }
 type Prerender = { routes?: string[]; failOnError?: boolean }
-type Options = {
+type Config = v.InferOutput<typeof ConfigSchema>
+type Setup = {
   prerender: Prerender
-  vercel: NonNullable<NitroConfig['vercel']>
+  handlers: Handlers
+  config: Config
+  finish: () => Promise<v.InferOutput<typeof ConfigSchema>>
 }
-type Setup = { prerender: Prerender; handlers: Handlers; options: Options }
 type Listing = { handlers: Handlers; paths: string[] }
 
 const NOT_FOUND = -1
+const VERCEL_CONFIG_VERSION = 3
+const RouteSchema = v.looseObject({
+  src: v.optional(v.string()),
+  dest: v.optional(v.string()),
+  handle: v.optional(v.string())
+})
+const ConfigSchema = v.looseObject({
+  version: v.literal(VERCEL_CONFIG_VERSION),
+  routes: v.array(RouteSchema)
+})
 
-function setup(): Setup {
+async function setup(): Promise<Setup> {
+  const dir = await mkdtemp(path.join(tmpdir(), 'markdown-routing-'))
+  after(() => rm(dir, { recursive: true, force: true }))
   const prerender: Prerender = { routes: ['/existing'] }
   const handlers: Handlers = {}
-  const options: Options = {
-    prerender,
-    vercel: {
-      config: {
-        version: 3,
-        routes: [{ handle: 'filesystem' }]
-      }
-    }
+  const config: Config = {
+    version: 3,
+    routes: [{ handle: 'filesystem' }, { src: '/(.*)', dest: '/__server' }]
   }
   markdownPrerender({
-    options,
+    options: { prerender, output: { dir } },
     hooks: {
       hook<Name extends keyof Handlers>(
         name: Name,
@@ -49,7 +63,17 @@ function setup(): Setup {
       }
     }
   })
-  return { prerender, handlers, options }
+  return {
+    prerender,
+    handlers,
+    config,
+    async finish() {
+      const file = path.join(dir, 'config.json')
+      await writeFile(file, JSON.stringify(config))
+      await handlers.compiled?.()
+      return v.parse(ConfigSchema, JSON.parse(await readFile(file, 'utf8')))
+    }
+  }
 }
 
 function prerenderList({ handlers, paths }: Listing): void {
@@ -67,16 +91,16 @@ function written(routes: string[]): PrerenderResult {
   }
 }
 
-it('registra a lista estática e falha o build em erro de prerender', () => {
-  const { prerender } = setup()
+it('registra a lista estática e falha o build em erro de prerender', async () => {
+  const { prerender } = await setup()
   assert.deepEqual(prerender, {
     routes: ['/existing', MARKDOWN_PRERENDER_PATH],
     failOnError: true
   })
 })
 
-it('enfileira os arquivos listados sem gravar a lista', () => {
-  const { handlers } = setup()
+it('enfileira os arquivos listados sem gravar a lista', async () => {
+  const { handlers } = await setup()
   const routes = new Set<string>()
   handlers['prerender:routes']?.(routes)
   const route: PrerenderRoute = {
@@ -89,18 +113,19 @@ it('enfileira os arquivos listados sem gravar a lista', () => {
   assert.equal(route.error, undefined)
 })
 
-it('encaminha páginas com index.md ao SSR antes do filesystem da Vercel', () => {
-  const { handlers, options } = setup()
+it('encaminha páginas com index.md ao SSR antes do filesystem da Vercel', async () => {
+  const { handlers, finish } = await setup()
   prerenderList({
     handlers,
     paths: ['/pt/index.md', '/en/index.md', '/es/index.md', '/pt/about.md']
   })
-  const routes = options.vercel.config?.routes ?? []
+  const { routes } = await finish()
   const filesystem = routes.findIndex(route => 'handle' in route)
   for (const locale of ['pt', 'en', 'es']) {
     for (const pathname of [`/${locale}`, `/${locale}/`]) {
       const index = routes.findIndex(
-        route => 'src' in route && new RegExp(route.src, 'u').test(pathname)
+        route =>
+          route.src !== undefined && new RegExp(route.src, 'u').test(pathname)
       )
       assert.ok(index !== NOT_FOUND && index < filesystem, pathname)
       const route = routes[index]
@@ -116,31 +141,36 @@ it('encaminha páginas com index.md ao SSR antes do filesystem da Vercel', () =>
     '/ptx'
   ]) {
     assert.equal(
-      routes.some(
-        route => 'src' in route && new RegExp(route.src, 'u').test(pathname)
-      ),
+      routes
+        .slice(0, filesystem)
+        .some(
+          route =>
+            route.src !== undefined && new RegExp(route.src, 'u').test(pathname)
+        ),
       false,
       pathname
     )
   }
 })
 
-it('protege a raiz sem aceitar duas barras', () => {
-  const { handlers, options } = setup()
+it('protege a raiz sem aceitar duas barras', async () => {
+  const { handlers, finish } = await setup()
   prerenderList({ handlers, paths: ['/index.md'] })
-  const route = options.vercel.config?.routes?.[0]
-  assert.ok(route && 'src' in route)
+  const { routes } = await finish()
+  const [route] = routes
+  assert.ok(route?.src)
   const pattern = new RegExp(route.src, 'u')
   assert.equal(pattern.test('/'), true)
   assert.equal(pattern.test('//'), false)
   assert.equal(pattern.test('/index.md'), false)
 })
 
-it('protege índices aninhados sem tratar o caminho como expressão regular', () => {
-  const { handlers, options } = setup()
+it('protege índices aninhados sem tratar o caminho como expressão regular', async () => {
+  const { handlers, finish } = await setup()
   prerenderList({ handlers, paths: ['/pt/v1.0/index/index.md'] })
-  const route = options.vercel.config?.routes?.[0]
-  assert.ok(route && 'src' in route)
+  const { routes } = await finish()
+  const [route] = routes
+  assert.ok(route?.src)
   const pattern = new RegExp(route.src, 'u')
   assert.equal(pattern.test('/pt/v1.0/index'), true)
   assert.equal(pattern.test('/pt/v1.0/index/'), true)
@@ -148,12 +178,13 @@ it('protege índices aninhados sem tratar o caminho como expressão regular', ()
   assert.equal(pattern.test('/pt/v1.0/index/index.md'), false)
 })
 
-it('preserva a codificação das URLs ao proteger diretórios', () => {
+it('preserva a codificação das URLs ao proteger diretórios', async () => {
   for (const pathname of ['/pt/caf%C3%A9', '/pt/my%20page', '/pt/50%25']) {
-    const { handlers, options } = setup()
+    const { handlers, finish } = await setup()
     prerenderList({ handlers, paths: [`${pathname}/index.md`] })
-    const route = options.vercel.config?.routes?.[0]
-    assert.ok(route && 'src' in route)
+    const { routes } = await finish()
+    const [route] = routes
+    assert.ok(route?.src)
     const pattern = new RegExp(route.src, 'u')
     assert.equal(pattern.test(pathname), true, pathname)
     assert.equal(pattern.test(`${pathname}/`), true, pathname)
@@ -161,11 +192,9 @@ it('preserva a codificação das URLs ao proteger diretórios', () => {
   }
 })
 
-it('preserva cabeçalhos, redirects e rewrites anteriores ao filesystem', () => {
+it('preserva cabeçalhos, redirects e rewrites anteriores ao filesystem', async () => {
   const filesystemIndex = 3
-  const { handlers, options } = setup()
-  const { config } = options.vercel
-  assert.ok(config)
+  const { handlers, config, finish } = await setup()
   config.routes = [
     { src: '^/pt$', headers: { 'x-page': 'home' }, continue: true },
     { src: '^/en$', status: 307, headers: { Location: '/pt' } },
@@ -175,50 +204,89 @@ it('preserva cabeçalhos, redirects e rewrites anteriores ao filesystem', () => 
   ]
   const existing = [...config.routes]
   prerenderList({ handlers, paths: ['/pt/index.md'] })
-  assert.deepEqual(config.routes, [
-    ...existing.slice(0, filesystemIndex),
-    { src: '^/pt/?$', dest: '/__server' },
-    ...existing.slice(filesystemIndex)
-  ])
+  const { routes } = await finish()
+  assert.deepEqual(
+    routes.slice(0, filesystemIndex),
+    existing.slice(0, filesystemIndex)
+  )
+  assert.deepEqual(
+    routes.slice(filesystemIndex + 1),
+    existing.slice(filesystemIndex)
+  )
+  const guard = routes[filesystemIndex]
+  assert.ok(guard?.src)
+  assert.equal(guard.dest, '/__server')
+  assert.match('/pt', new RegExp(guard.src, 'u'))
+  assert.deepEqual(config.routes, existing)
 })
 
-it('acrescenta a proteção após regras existentes sem fase explícita', () => {
-  const { handlers, options } = setup()
-  const { config } = options.vercel
-  assert.ok(config)
+it('recusa um artefato sem fase de filesystem em vez de inventar um destino', async () => {
+  const { handlers, config, finish } = await setup()
   config.routes = [
     { src: '^/pt$', headers: { 'x-page': 'home' }, continue: true }
   ]
-  const existing = [...config.routes]
   prerenderList({ handlers, paths: ['/pt/index.md'] })
-  assert.deepEqual(config.routes, [
-    ...existing,
-    { src: '^/pt/?$', dest: '/__server' }
-  ])
+  await assert.rejects(finish, {
+    message: 'Vercel output has no filesystem routes for Markdown pages'
+  })
 })
 
-it('mantém a proteção na fase inicial quando há uma fase de erro', () => {
-  const { handlers, options } = setup()
-  const { config } = options.vercel
-  assert.ok(config)
+it('mantém a proteção na fase inicial quando há uma fase de erro', async () => {
+  const firstPhase = 2
+  const { handlers, config, finish } = await setup()
   config.routes = [
     { src: '^/pt$', headers: { 'x-page': 'home' }, continue: true },
     { handle: 'error' },
     { src: '/(.*)', dest: '/404', status: 404 },
-    { handle: 'filesystem' }
+    { handle: 'filesystem' },
+    { src: '/(.*)', dest: '/__server' }
   ]
   const existing = [...config.routes]
   prerenderList({ handlers, paths: ['/pt/index.md'] })
-  assert.deepEqual(config.routes, [
-    existing[0],
-    { src: '^/pt/?$', dest: '/__server' },
-    ...existing.slice(1)
-  ])
+  const { routes } = await finish()
+  assert.deepEqual(routes[0], existing[0])
+  assert.equal(routes[1]?.dest, '/__server')
+  assert.deepEqual(routes.slice(firstPhase), existing.slice(1))
 })
 
-it('marca erro quando a lista não traz só arquivos .md', () => {
+it('preserva capturas e condições da rota nativa sem copiar a fase de erro', async () => {
+  const { handlers, config, finish } = await setup()
+  const native = {
+    src: '/(?<section>pt)/(.*)',
+    dest: '/worker?section=$section&rest=$2',
+    methods: ['GET'],
+    has: [{ type: 'header', key: 'x-route', value: 'yes' }],
+    missing: [{ type: 'cookie', key: 'disabled' }],
+    caseSensitive: true
+  } satisfies NonNullable<Config['routes']>[number]
+  config.routes = [
+    { handle: 'filesystem' },
+    native,
+    { handle: 'error' },
+    { src: '/(.*)', dest: '/error', status: 500 }
+  ]
+  prerenderList({ handlers, paths: ['/pt/docs/index.md'] })
+  const { routes } = await finish()
+  const [guard] = routes
+  assert.ok(guard?.src)
+  assert.deepEqual({ ...guard, src: native.src }, native)
+  assert.deepEqual(routes.slice(1), config.routes)
+  const match = new RegExp(guard.src, 'u').exec('/pt/docs')
+  assert.deepEqual(match?.slice(1), ['pt', 'docs'])
+  assert.equal(match.groups?.section, 'pt')
+  assert.equal(new RegExp(guard.src, 'u').test('/pt/docs/index.md'), false)
+})
+
+it('preserva o artefato inteiro quando não há index.md na lista', async () => {
+  const { handlers, config, finish } = await setup()
+  config.framework = { version: 'test' }
+  prerenderList({ handlers, paths: ['/pt/about.md'] })
+  assert.deepEqual(await finish(), config)
+})
+
+it('marca erro quando a lista não traz só arquivos .md', async () => {
   for (const contents of ['not json', '["/en/about"]', '{}']) {
-    const { handlers } = setup()
+    const { handlers } = await setup()
     const routes = new Set<string>()
     handlers['prerender:routes']?.(routes)
     const route: PrerenderRoute = { route: MARKDOWN_PRERENDER_PATH, contents }
@@ -229,32 +297,32 @@ it('marca erro quando a lista não traz só arquivos .md', () => {
   }
 })
 
-it('não altera as demais rotas do prerender', () => {
-  const { handlers } = setup()
+it('não altera as demais rotas do prerender', async () => {
+  const { handlers } = await setup()
   handlers['prerender:routes']?.(new Set())
   const route: PrerenderRoute = { route: '/en/about.md', contents: '# About' }
   handlers['prerender:generate']?.(route)
   assert.deepEqual(route, { route: '/en/about.md', contents: '# About' })
 })
 
-it('falha o build quando a lista não passa pelo prerender', () => {
-  const { handlers } = setup()
+it('falha o build quando a lista não passa pelo prerender', async () => {
+  const { handlers } = await setup()
   handlers['prerender:routes']?.(new Set())
   assert.throws(() => handlers['prerender:done']?.(written([])), {
     message: 'Static Markdown list was not prerendered'
   })
 })
 
-it('falha o build quando um .md listado não foi gravado', () => {
-  const { handlers } = setup()
+it('falha o build quando um .md listado não foi gravado', async () => {
+  const { handlers } = await setup()
   prerenderList({ handlers, paths: ['/en/about.md', '/pt/index.md'] })
   assert.throws(() => handlers['prerender:done']?.(written(['/en/about.md'])), {
     message: 'Static Markdown not generated: /pt/index.md'
   })
 })
 
-it('aceita os .md gravados com o caminho decodificado pelo Nitro', () => {
-  const { handlers } = setup()
+it('aceita os .md gravados com o caminho decodificado pelo Nitro', async () => {
+  const { handlers } = await setup()
   prerenderList({ handlers, paths: ['/en/about.md', '/pt/caf%C3%A9.md'] })
   assert.ok(handlers['prerender:done'])
   assert.doesNotThrow(() =>
@@ -262,8 +330,8 @@ it('aceita os .md gravados com o caminho decodificado pelo Nitro', () => {
   )
 })
 
-it('deixa o failOnError do Nitro relatar as rotas com erro', () => {
-  const { prerender, handlers } = setup()
+it('deixa o failOnError do Nitro relatar as rotas com erro', async () => {
+  const { prerender, handlers } = await setup()
   prerenderList({ handlers, paths: ['/en/about.md'] })
   const result: PrerenderResult = {
     prerenderedRoutes: [],
