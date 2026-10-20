@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.12.11 - 2026-10-20
+
+### Fixed
+
+- preserve native Vercel routing (65c0c2a)
+
 ## 1.12.10 - 2026-10-20
 
 ### Fixed
