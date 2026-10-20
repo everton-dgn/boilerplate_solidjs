@@ -148,6 +148,74 @@ it('protege índices aninhados sem tratar o caminho como expressão regular', ()
   assert.equal(pattern.test('/pt/v1.0/index/index.md'), false)
 })
 
+it('preserva a codificação das URLs ao proteger diretórios', () => {
+  for (const pathname of ['/pt/caf%C3%A9', '/pt/my%20page', '/pt/50%25']) {
+    const { handlers, options } = setup()
+    prerenderList({ handlers, paths: [`${pathname}/index.md`] })
+    const route = options.vercel.config?.routes?.[0]
+    assert.ok(route && 'src' in route)
+    const pattern = new RegExp(route.src, 'u')
+    assert.equal(pattern.test(pathname), true, pathname)
+    assert.equal(pattern.test(`${pathname}/`), true, pathname)
+    assert.equal(pattern.test(`${pathname}/index.md`), false, pathname)
+  }
+})
+
+it('preserva cabeçalhos, redirects e rewrites anteriores ao filesystem', () => {
+  const filesystemIndex = 3
+  const { handlers, options } = setup()
+  const { config } = options.vercel
+  assert.ok(config)
+  config.routes = [
+    { src: '^/pt$', headers: { 'x-page': 'home' }, continue: true },
+    { src: '^/en$', status: 307, headers: { Location: '/pt' } },
+    { src: '^/es$', dest: '/maintenance.html' },
+    { handle: 'filesystem' },
+    { src: '/(.*)', dest: '/__server' }
+  ]
+  const existing = [...config.routes]
+  prerenderList({ handlers, paths: ['/pt/index.md'] })
+  assert.deepEqual(config.routes, [
+    ...existing.slice(0, filesystemIndex),
+    { src: '^/pt/?$', dest: '/__server' },
+    ...existing.slice(filesystemIndex)
+  ])
+})
+
+it('acrescenta a proteção após regras existentes sem fase explícita', () => {
+  const { handlers, options } = setup()
+  const { config } = options.vercel
+  assert.ok(config)
+  config.routes = [
+    { src: '^/pt$', headers: { 'x-page': 'home' }, continue: true }
+  ]
+  const existing = [...config.routes]
+  prerenderList({ handlers, paths: ['/pt/index.md'] })
+  assert.deepEqual(config.routes, [
+    ...existing,
+    { src: '^/pt/?$', dest: '/__server' }
+  ])
+})
+
+it('mantém a proteção na fase inicial quando há uma fase de erro', () => {
+  const { handlers, options } = setup()
+  const { config } = options.vercel
+  assert.ok(config)
+  config.routes = [
+    { src: '^/pt$', headers: { 'x-page': 'home' }, continue: true },
+    { handle: 'error' },
+    { src: '/(.*)', dest: '/404', status: 404 },
+    { handle: 'filesystem' }
+  ]
+  const existing = [...config.routes]
+  prerenderList({ handlers, paths: ['/pt/index.md'] })
+  assert.deepEqual(config.routes, [
+    existing[0],
+    { src: '^/pt/?$', dest: '/__server' },
+    ...existing.slice(1)
+  ])
+})
+
 it('marca erro quando a lista não traz só arquivos .md', () => {
   for (const contents of ['not json', '["/en/about"]', '{}']) {
     const { handlers } = setup()

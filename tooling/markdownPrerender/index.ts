@@ -29,6 +29,7 @@ type RoutingOptions = { options: Options; paths: string[] }
 
 const MARKDOWN_FILE = /^\/[^?#]+\.md$/u
 const INDEX_FILE = '/index.md'
+const NOT_FOUND = -1
 
 function readPaths(contents: string | undefined): string[] | undefined {
   try {
@@ -46,7 +47,7 @@ function protectDirectoryPages({ options, paths }: RoutingOptions): void {
   const routes = paths
     .filter(path => path.endsWith(INDEX_FILE))
     .map(path => {
-      const directory = decodeURI(path.slice(0, -INDEX_FILE.length))
+      const directory = path.slice(0, -INDEX_FILE.length)
       const pattern = directory.replaceAll(
         /[.*+?^${}()|[\]\\]/gu,
         String.raw`\$&`
@@ -57,8 +58,14 @@ function protectDirectoryPages({ options, paths }: RoutingOptions): void {
   options.vercel ??= {}
   options.vercel.config ??= { version: 3 }
   const { config } = options.vercel
-  // A Vercel também usa index.md como índice de diretório, antes do SSR.
-  config.routes = [...routes, ...(config.routes ?? [])]
+  config.routes ??= []
+  // A proteção precisa ficar na fase inicial, antes de filesystem ou error.
+  const boundary = config.routes.findIndex(route => 'handle' in route)
+  config.routes.splice(
+    boundary === NOT_FOUND ? config.routes.length : boundary,
+    0,
+    ...routes
+  )
 }
 
 // O build pede ao middleware a lista de páginas estáticas e prerenderiza cada
