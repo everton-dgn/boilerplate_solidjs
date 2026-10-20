@@ -8,7 +8,7 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 
 ## Built-in Commands vs Scripts
 
-`vp <name>` runs a built-in command. `vpr <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vpr dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vpr <name>` when the project defines a script or task with that name.
+`vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name. Run interactive commands directly, such as `vp update --interactive --latest`, because the task runner can close the selection without input.
 
 ## Tool Versions
 
@@ -21,14 +21,14 @@ release. Add a tool name to select part of the graph. For example, run
 
 - [ ] Run `vp install` after pulling remote changes and before getting started.
 - [ ] Run `vp check` and `vp test` to format, lint, type check and test changes.
-- [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `vpr <script>`.
+- [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `vp run <script>`.
 - [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
 
 <!--VITE PLUS END-->
 
 ## Runtime dos comandos
 
-- Use `vpr dev` e `vpr build`: os scripts chamam o CLI local do Vite+
+- Use `vp run dev` e `vp run build`: os scripts chamam o CLI local do Vite+
   com Bun explicitamente. Os comandos embutidos `vp dev` e `vp build` seguem
   a seleção de Node do CLI global.
 - Preserve Node no Vitest, nos testes de tooling fora de `tooling/release/` e
@@ -37,7 +37,7 @@ release. Add a tool name to select part of the graph. For example, run
   O runtime explícito do Nitro impede que executar o build em Bun troque
   silenciosamente o runtime da função Vercel.
 - O Knip, o lint de CSS, o backend simulado de E2E e a automação de release executam
-  em Bun. Valide a automação com `vpr test:release`, também executado no
+  em Bun. Valide a automação com `vp run test:release`, também executado no
   pre-push. No CI, essa suíte roda quando a automação ou suas dependências
   mudam; a publicação mantém as verificações reais sem repetir os testes.
 
@@ -98,7 +98,7 @@ release. Add a tool name to select part of the graph. For example, run
   os caminhos tipados sem idioma. Endpoints e assets ficam sem prefixo.
 - Preserve `AsyncLocalStorage`, o corpo original das server functions, a
   navegação de documento na troca de idioma e a tolerância a cookies bloqueados.
-- Rode `vpr i18n:generate` para conferir paridade, duplicatas e parâmetros.
+- Rode `vp run i18n:generate` para conferir paridade, duplicatas e parâmetros.
   Mudanças de integração exigem typecheck, tooling, testes e os E2E de i18n.
   A divisão é por página e mensagem; cada módulo inclui os três idiomas usados.
 
@@ -258,8 +258,8 @@ release. Add a tool name to select part of the graph. For example, run
   exportar os helpers.
 - A regra `project/no-export-list` (`tooling/noExportList/index.ts`,
   registrada no plugin de `tooling/css-modules-plugin.ts`) aplica a
-  convenção. Valide com `vpr check:ci` e, ao mudar a regra, com
-  `vpr test:tooling`.
+  convenção. Valide com `vp run check:ci` e, ao mudar a regra, com
+  `vp run test:tooling`.
 
 ## Funções que retornam Promise
 
@@ -325,7 +325,7 @@ release. Add a tool name to select part of the graph. For example, run
 - Use nesting para estados e media queries de cada classe. As classes de
   variantes e tamanhos ficam no nível superior, fora da classe base.
 - Importe CSS Modules como `S`. O Stylelint exige snake_case em `src/**/*.css`;
-  valide mudanças com `vpr lint:css` e `vpr test:tooling`.
+  valide mudanças com `vp run lint:css` e `vp run test:tooling`.
 
 ## Dependências entre camadas
 
@@ -343,7 +343,7 @@ release. Add a tool name to select part of the graph. For example, run
   com imports dinâmicos ou comentários de disable.
 - Ao criar camada ou alias, atualize a regra e seus testes. Use as APIs de
   `vite-plus/lint/plugins` e `vite-plus/lint/plugins-dev`, sem instalar outra
-  cópia de Oxlint. Rode `vpr test:tooling` e `vpr check:ci`. Consulte a
+  cópia de Oxlint. Rode `vp run test:tooling` e `vp run check:ci`. Consulte a
   matriz e os limites em [arquitetura](docs/architecture.md#dependências-entre-camadas).
 
 ## Cabeçalhos de segurança e CSP
@@ -376,7 +376,7 @@ release. Add a tool name to select part of the graph. For example, run
   estilizada e ausência de violações de CSP, inclusive com a CSS em cache.
 - Em desenvolvimento a CSP não é enviada: o HMR usa estilos inline, que a
   política de produção bloqueia. Confira mudanças de CSP com
-  `vpr test:e2e:production`.
+  `vp run test:e2e:production`.
 
 ## Erros no servidor e chamadas de backend
 
@@ -420,8 +420,8 @@ release. Add a tool name to select part of the graph. For example, run
   Revise fontes de import calculadas, templates dos outros pacotes e demais
   limites do guia; não contorne o contrato com disable. Fixtures seguem
   protegidas; as exceções de backend cobrem só testes e declarações de tipos.
-- Após mudar essa fronteira, rode `vpr test:tooling`, os testes Node
-  pertinentes e `vpr test:e2e src/tests/pages/BackendError
+- Após mudar essa fronteira, rode `vp run test:tooling`, os testes Node
+  pertinentes e `vp run test:e2e src/tests/pages/BackendError
   src/tests/pages/OutsideError`. Preserve no CI
   a verificação do corpo completo em SSR inicial, streaming e chamada HTTP.
 - Em atualizações do Solid/plugin, siga o roteiro do guia. O wrapper fica
