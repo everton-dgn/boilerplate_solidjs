@@ -1,7 +1,7 @@
 import { m } from '@paraglide/messages.js'
 import { getLocale } from '@paraglide/runtime.js'
 import {
-  action,
+  formAction,
   query,
   useLocation,
   useNavigate,
@@ -15,9 +15,12 @@ import { createLocalizedNavigate } from '@/primitives/createLocalizedNavigate/in
 import { redirectLocale } from '../../i18n/redirectLocale/index.ts'
 import { redirectRelative } from '../../i18n/redirectRelative/index.ts'
 
-const submitRedirect = action(redirectLocale, 'i18n-locale-redirect-action')
+const submitRedirect = formAction(redirectLocale, 'i18n-locale-redirect-action')
 const readRedirect = query(redirectLocale, 'i18n-locale-redirect-query')
-const submitRelative = action(redirectRelative, 'i18n-relative-redirect-action')
+const submitRelative = formAction(
+  redirectRelative,
+  'i18n-relative-redirect-action'
+)
 
 export const route = {
   info: { seo: { noindex: true } }

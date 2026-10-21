@@ -7,7 +7,7 @@
       "dependencies": {
         "@inlang/paraglide-js": "2.29.1",
         "@mdream/js": "2.0.3",
-        "@solidjs/router": "2.0.0-next.40",
+        "@solidjs/router": "2.0.0-next.41",
         "@solidjs/web": "2.0.0-rc.16",
         "filesystem-routing": "0.4.0",
         "solid-js": "2.0.0-rc.16",
@@ -541,7 +541,7 @@
 
     "@solidjs/compiler-win32-x64-msvc": ["@solidjs/compiler-win32-x64-msvc@2.0.0-rc.16", "", { "os": "win32", "cpu": "x64" }, "sha512-EruXUf1LlFl/Wz1API7+EgKrrjwGWnvc5LsRBOIDZeL4lijVxFUWuhu2If+Mwi6zFDojIImJau9o155n+3tfKw=="],
 
-    "@solidjs/router": ["@solidjs/router@2.0.0-next.40", "", { "peerDependencies": { "@solidjs/web": "^2.0.0-rc.15", "filesystem-routing": ">=0.4.0", "solid-js": "^2.0.0-rc.15" }, "optionalPeers": ["filesystem-routing"] }, "sha512-aBxaV3GHxBn2F3i3rIe3JaEztiLWtZhRC6UI8qJGenaT2GSh6jSF3LTuLvXY5KoMjBgoxzl7Uu4XQ034yII6vg=="],
+    "@solidjs/router": ["@solidjs/router@2.0.0-next.41", "", { "peerDependencies": { "@solidjs/web": "^2.0.0-rc.15", "filesystem-routing": ">=0.4.0", "solid-js": "^2.0.0-rc.15" }, "optionalPeers": ["filesystem-routing"] }, "sha512-wCnhq37p4dpTYuy2Zz8nlf9Si/t4cMXUiMY0r7MxzHSH2c4jUiSrA8LkSdif6swwAIT/dOP7Pbv4hM1qY5ZOuA=="],
 
     "@solidjs/signals": ["@solidjs/signals@2.0.0-rc.16", "", {}, "sha512-WPMb8FuAVKyzF6sIgZn/c89V69VS3R4DtCnOoaS1ZXy5Uos9K/8yrclyQkG6kqkN3ubtPiPnaPfdjt/jfsi4qQ=="],
 
