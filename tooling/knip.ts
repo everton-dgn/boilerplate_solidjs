@@ -84,6 +84,9 @@ const config = {
   stylelint: {
     config: ['tooling/css/stylelint.config.mjs']
   },
+  // O plugin trata todo arquivo de src/routes como entrada e esconderia
+  // helpers colocalizados sem uso; discoverRouteModules seleciona só as rotas.
+  'filesystem-routing': false,
   // O Kingfisher é externo; o vp do script start vem de uma devDependency.
   ignoreBinaries: ['kingfisher', 'vp!'],
   treatConfigHintsAsErrors: true
