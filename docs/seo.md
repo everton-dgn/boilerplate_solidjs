@@ -370,7 +370,11 @@ marcadores literais escapados na coluna do conteúdo; wrappers de ênfase e
 legendas mantêm seus delimitadores juntos. Links preservam o texto visível
 dentro de blocos e usam o nome acessível após ícones removidos, sem perder o
 espaço final nem mover para fora o espaço entre dois ícones. O patch altera só o
-`dist` do pacote. Remova-o quando uma versão publicada cobrir esses
+`dist` do pacote e corresponde aos PRs
+[harlan-zw/mdream#385](https://github.com/harlan-zw/mdream/pull/385) (espaços e
+sublinhado de título), [#386](https://github.com/harlan-zw/mdream/pull/386)
+(títulos em listas) e [#390](https://github.com/harlan-zw/mdream/pull/390)
+(nomes de links). Remova-o quando uma versão publicada cobrir esses
 comportamentos e os testes de regressão de `convertHtml` passarem sem ele.
 
 GET com `Accept: text/markdown` recebe Markdown diretamente, sem redirect para

@@ -495,20 +495,29 @@ estado registra lançamentos síncronos nas escritas e falhas informadas ao hook
 local, quando fornecido. Erros suprimidos internamente não são observáveis.
 Qualquer adoção exige validar a relação entre conteúdo, conclusão e falhas.
 
-Os patches Bun de `solid-js` e `@solidjs/web` aplicam as mudanças de
-[solidjs/solid#4126](https://github.com/solidjs/solid/pull/4126) às versões
-fixadas no manifest e lock. Cobrem os runtimes padrão, de desenvolvimento e de
-observação, além das duas declarações públicas de web. O patch de web também
-contém a proteção upstream contra exceções durante o descarte do owner,
-inclusive na conclusão normal: a falha é informada à política global como falha
-do render e marca `hasErrors`, a limpeza prossegue e o Markdown recusa a
-publicação. Sem isso, um `onCleanup` que lança deixava uma rejeição não tratada
-e podia publicar o Markdown. O ajuste upstream do codec de frames
-(`createJSONSerializer`) fica fora dos patches, porque o projeto não usa frames.
+Os patches Bun de `solid-js` e `@solidjs/web` aplicam às versões fixadas no
+manifest e lock as mudanças propostas em
+[solidjs/solid#4126](https://github.com/solidjs/solid/pull/4126). O upstream
+fechou esse PR sem merge e adotou
+[solidjs/solid#4130](https://github.com/solidjs/solid/pull/4130): o hook
+`onError` passa a receber cada erro uma vez por tipo em cada requisição, e uma
+falha de server function contida por um boundary chega como `kind: "render"`. O
+getter `hasErrors` não será publicado. Os patches cobrem os runtimes padrão, de
+desenvolvimento e de observação, além das duas declarações públicas de web. O
+patch de web também contém a proteção upstream contra exceções durante o
+descarte do owner, inclusive na conclusão normal: a falha é informada à política
+global como falha do render e marca `hasErrors`, a limpeza prossegue e o
+Markdown recusa a publicação. Sem isso, um `onCleanup` que lança deixava uma
+rejeição não tratada e podia publicar o Markdown. O ajuste upstream do codec de
+frames (`createJSONSerializer`) fica fora dos patches, porque o projeto não usa
+frames.
 
-Remova os patches somente quando os pacotes publicados incluírem esse contrato e
-passarem as regressões de erro reutilizado entre requisições, falha de server
-function que escapa de Loading, recuperação local, serialização e cancelamento.
-A issue ou o PR fechado não substitui a verificação dos artefatos instalados. O
-sinal composto de timeout e desconexão chega ao `renderToStream`; o teste Node
-do adaptador verifica o descarte de uma raiz SSR pendente no cancelamento.
+Como esse contrato não será publicado, a remoção dos patches depende de trocar o
+sinal de integridade do Markdown pelo hook do #4130 ou por outra API publicada,
+e de a troca passar as regressões de erro reutilizado entre requisições, falha
+de server function que escapa de Loading, recuperação local, serialização e
+cancelamento. A versão seguinte já publicada mudou as escritas do serializador,
+e o patch de web não aplica nela sem ser reescrito. A issue ou o PR fechado não
+substitui a verificação dos artefatos instalados. O sinal composto de timeout e
+desconexão chega ao `renderToStream`; o teste Node do adaptador verifica o
+descarte de uma raiz SSR pendente no cancelamento.
