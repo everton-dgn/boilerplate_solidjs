@@ -470,19 +470,19 @@ automático configurado.
 A entrada grava em `event.locals.ssrRenderState` um estado com `hasErrors` e
 `hasCompleted` antes de chamar `renderToStream`. O hook de
 `configureServerErrors` marca `hasErrors` quando recebe uma falha com
-`kind: "render"` que não seja sinal de controle, e `onCompleteAll` marca
-`hasCompleted`. Um `redirect()` ou `respond()` lançado no render não conta como
-falha. Desde o [solidjs/solid#4130](https://github.com/solidjs/solid/pull/4130),
-o hook recebe cada erro uma vez por tipo em cada requisição. Uma falha de server
-function contida por um boundary chega primeiro como `server-function` e depois
-como `render`, e só o segundo aviso marca o estado. O callback sozinho não
-comprova integridade: ele também pode ocorrer após falha de fragmento. O
-adaptador exige conclusão e ausência estrita de erros observados pelo render
-depois de aguardar o SSR, antes de publicar HTML convertido. Estado ausente ou
-inválido resulta em erro público 500 sem cache. Redirects e respostas que não
-são páginas elegíveis preservam seu fluxo anterior. As páginas estáticas passam
-por esse mesmo adaptador no prerender do build, e uma recusa ali interrompe o
-build.
+`kind: "render"`, e `onCompleteAll` marca `hasCompleted`. Sinais de controle
+também marcam: um `redirect()` ou `respond()` lançado no render e capturado por
+um `<Errored>` aninhado vira fallback com HTML 200. Desde o
+[solidjs/solid#4130](https://github.com/solidjs/solid/pull/4130), o hook recebe
+cada erro uma vez por tipo em cada requisição. Uma falha de server function
+contida por um boundary chega primeiro como `server-function` e depois como
+`render`, e só o segundo aviso marca o estado. O callback sozinho não comprova
+integridade: ele também pode ocorrer após falha de fragmento. O adaptador exige
+conclusão e ausência estrita de erros observados pelo render depois de aguardar
+o SSR, antes de publicar HTML convertido. Estado ausente ou inválido resulta em
+erro público 500 sem cache. Redirects e respostas que não são páginas elegíveis
+preservam seu fluxo anterior. As páginas estáticas passam por esse mesmo
+adaptador no prerender do build, e uma recusa ali interrompe o build.
 
 Como o hook é a fonte desse sinal, ele fica instalado também em desenvolvimento.
 Nesse modo ele marca o estado e registra o log filtrado, mas devolve

@@ -4,6 +4,7 @@ import {
   createComponent,
   createRequestEvent,
   createSSRResponse,
+  redirect,
   renderToStream,
   ssr
 } from '@solidjs/web'
@@ -18,6 +19,7 @@ import {
 import { sharedConfig } from 'solid-js/internal'
 
 import { Router } from '@/router.ts'
+import { throwValue } from '@/tests/helpers/failureValues/index.ts'
 import { readLog } from '@/tests/helpers/readLog/index.ts'
 
 import { markdownContent } from '../index.ts'
@@ -37,7 +39,13 @@ type ProbeOptions = {
   scenario?: Scenario
   shouldRecover?: boolean
   shouldThrowCleanup?: boolean
-  shouldFailInBoundary?: boolean
+  boundaryFailure?: unknown
+}
+type ContainedCase = {
+  name: string
+  failure: unknown
+  hookLogs: string[][]
+  leaks: string[]
 }
 
 const PRIVATE_MARKER = 'PRIVATE_SERIALIZATION_FAILURE'
@@ -47,6 +55,22 @@ const DEADLINE_MS = 1000
 const HTTP_OK = 200
 const HTTP_SERVER_ERROR = 500
 const CLEANUP_ERROR_LOG_COUNT = 2
+const CONTAINED_DIAGNOSTIC = '[SSR_RENDER_ERROR_CONTAINED]'
+// Um redirect() capturado por um <Errored> aninhado também vira fallback.
+const CONTAINED_CASES: ContainedCase[] = [
+  {
+    name: 'an Error',
+    failure: new Error(PRIVATE_MARKER),
+    hookLogs: [[LOG_MESSAGE, 'Error']],
+    leaks: [PRIVATE_MARKER]
+  },
+  {
+    name: 'a redirect',
+    failure: redirect('/elsewhere'),
+    hookLogs: [],
+    leaks: []
+  }
+]
 
 async function recover(failure: Error): Promise<string> {
   try {
@@ -76,7 +100,7 @@ function makeProbe({
   scenario,
   shouldRecover = false,
   shouldThrowCleanup = scenario?.shouldThrowCleanup ?? false,
-  shouldFailInBoundary = false
+  boundaryFailure
 }: ProbeOptions) {
   const controller = new AbortController()
   const event: Event = createRequestEvent(
@@ -121,13 +145,13 @@ function makeProbe({
         scenario.timing === 'defer'
       )
     }
-    if (shouldFailInBoundary) {
+    if (boundaryFailure !== undefined) {
       return ssr(
         ['<main>', '</main>'],
         createComponent(Errored, {
           fallback: 'Contained fallback',
           get children(): string {
-            throw failure
+            return throwValue(boundaryFailure)
           }
         })
       )
@@ -353,40 +377,38 @@ describe('markdown with the installed SSR serializer', () => {
     }
   })
 
-  it('refuses an HTML 200 whose render fell back to <Errored>', async () => {
-    const probe = makeProbe({ shouldFailInBoundary: true })
-    try {
-      const response = await boundedResponse(probe)
-      expect({
-        status: response.status,
-        cacheControl: response.headers.get('cache-control'),
-        hasErrors: probe.hasErrors,
-        completed: probe.completed.mock.calls.length
-      }).toStrictEqual({
-        status: HTTP_SERVER_ERROR,
-        cacheControl: 'private, no-store',
-        hasErrors: true,
-        completed: 1
-      })
-      expect(probe.html).toContain('Contained fallback')
-      await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
-      // O Vitest resolve o runtime de desenvolvimento do Solid, cujo
-      // diagnóstico do <Errored> imprime a mensagem original antes do hook; o
-      // de produção não o emite.
-      expect(readLog(console.error)).toStrictEqual({
-        heads: [
-          [
-            expect.stringContaining('[SSR_RENDER_ERROR_CONTAINED]'),
-            expect.any(String)
-          ],
-          [LOG_MESSAGE, 'Error']
-        ],
-        leaks: [PRIVATE_MARKER]
-      })
-    } finally {
-      probe.controller.abort()
+  it.each(CONTAINED_CASES)(
+    'refuses an HTML 200 whose <Errored> caught $name',
+    async ({ failure, hookLogs, leaks }) => {
+      const probe = makeProbe({ boundaryFailure: failure })
+      try {
+        const response = await boundedResponse(probe)
+        expect({
+          status: response.status,
+          cacheControl: response.headers.get('cache-control'),
+          hasErrors: probe.hasErrors,
+          completed: probe.completed.mock.calls.length,
+          hasFallback: probe.html.includes('Contained fallback')
+        }).toStrictEqual({
+          status: HTTP_SERVER_ERROR,
+          cacheControl: 'private, no-store',
+          hasErrors: true,
+          completed: 1,
+          hasFallback: true
+        })
+        await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+        // O Vitest resolve o runtime de desenvolvimento do Solid, cujo
+        // diagnóstico do <Errored> imprime a mensagem original antes do hook; o
+        // de produção não o emite.
+        const log = readLog(console.error)
+        expect(log.heads[0]?.[0]).toContain(CONTAINED_DIAGNOSTIC)
+        expect(log.heads.slice(1)).toStrictEqual(hookLogs)
+        expect(log.leaks).toStrictEqual(leaks)
+      } finally {
+        probe.controller.abort()
+      }
     }
-  })
+  )
 
   it.each([false, true])(
     'preserves successful content (recovery: %s)',

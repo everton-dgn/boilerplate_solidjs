@@ -37,6 +37,7 @@ function isControlSignal(value: unknown): boolean {
 // síncrona, seu retorno vai ao cliente sem nova sanitização e um lançamento
 // aqui faria o runtime registrar o erro do hook.
 function mapServerError(error: unknown): Error | undefined {
+  if (isControlSignal(error)) return undefined
   if (!isPublicError(error)) {
     logServerFailure({ source: 'server-error', error })
   }
@@ -54,9 +55,8 @@ function handleServerError(
   error: unknown,
   context: ServerErrorContext
 ): Error | undefined {
-  // Marcar um redirect ou respond() lançado no render faria o Markdown
-  // recusá-lo como falha.
-  if (isControlSignal(error)) return undefined
+  // Sinais de controle também marcam: um redirect() ou respond() lançado no
+  // render e capturado por um <Errored> aninhado vira fallback com HTML 200.
   const state = context.event?.locals.ssrRenderState
   if (context.kind === 'render' && state) state.hasErrors = true
   return mapServerError(error)

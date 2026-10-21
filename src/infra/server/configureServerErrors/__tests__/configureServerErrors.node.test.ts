@@ -220,17 +220,17 @@ describe('registro central da política de erros', () => {
     expect(state.hasErrors).toBe(true)
   })
 
-  it('não marca o estado do render com sinais de controle', () => {
-    const { event, state } = renderProbe()
-
+  it('marca o estado do render também com sinais de controle', () => {
     for (const control of [
       redirect('/'),
-      respond({ ok: true }, { status: HTTP_NOT_FOUND }),
-      new NotReadyError(Promise.resolve('pronto'))
+      respond({ ok: true }, { status: HTTP_NOT_FOUND })
     ]) {
+      const { event, state } = renderProbe()
+
       expect(onError(control, { ...site, event })).toBeUndefined()
+      expect(state.hasErrors).toBe(true)
     }
-    expect(state.hasErrors).toBe(false)
+    expect(console.error).not.toHaveBeenCalled()
   })
 
   it('instala o hook em desenvolvimento sem trocar o erro original', async () => {

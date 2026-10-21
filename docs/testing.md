@@ -142,8 +142,8 @@ elegibilidade compartilhada tem regressão para herança de noindex com override
 explícito do filho. As fixtures E2E exercitam páginas parametrizadas, resolução
 assíncrona e isolamento de idiomas. O teste de serialização do Markdown roda o
 render real com o hook instalado e cobre falhas de serialização, `onCleanup` que
-lança e fallback de `<Errored>` com HTML 200; os E2E de streaming do Markdown
-cobrem renders com falha no servidor.
+lança e fallback de `<Errored>` com HTML 200, inclusive por um `redirect()`; os
+E2E de streaming do Markdown cobrem renders com falha no servidor.
 
 Essas verificações cobrem o build e o preview local. Cache e regras de domínio
 da Vercel continuam exigindo conferência no site publicado.
