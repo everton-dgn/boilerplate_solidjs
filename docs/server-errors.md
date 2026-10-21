@@ -292,6 +292,11 @@ exigem uma integração própria.
   `configureServerErrors` pela raiz `@solidjs/web` também fica restrito a esse
   módulo, inclusive em `publicErrors`: cada chamada substitui o hook global de
   erros do servidor.
+- Reserva `observeRenderFailures`, de
+  [renderIntegrity](../src/infra/server/renderIntegrity/index.ts), a
+  `configureServerErrors`, inclusive por alias, namespace e reexport: depois
+  dessa chamada o estado do render nasce sem erros, e só o registro instala o
+  hook que o marca.
 - Reserva o objeto global `console` a `logServerFailure`, inclusive aliases e
   desestruturação direta. Nesse arquivo, use somente `console.error`
   diretamente; acessos por `globalThis.console`, `window.console`,
@@ -305,8 +310,10 @@ Os testes de regressão exigem que `no-restricted-imports` também recuse
 de restrições por `importNames` para esse carregamento. Por isso,
 [backend/static-solid-imports](../tooling/backendPolicy/plugin.ts) exige imports
 estáticos de `@solidjs/web` e seus subcaminhos, inclusive em `publicErrors` e
-`configureServerErrors`. A regra verifica strings e templates sem interpolação;
-as APIs públicas desse pacote continuam disponíveis por import estático.
+`configureServerErrors`; `backend/static-render-integrity-imports` faz o mesmo
+com `renderIntegrity`, porque a restrição por nome não alcança `import()`. A
+regra verifica strings e templates sem interpolação; as APIs públicas desse
+pacote continuam disponíveis por import estático.
 
 Imports nomeados com alias, reexports e acessos diretos por namespace também são
 verificados. Bibliotecas visuais, métodos locais chamados `fetch` e parâmetros

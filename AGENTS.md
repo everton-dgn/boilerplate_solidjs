@@ -423,10 +423,10 @@ release. Add a tool name to select part of the graph. For example, run
   o argumento único da linha filtrada coberto pelos testes: uma string que
   começa pela mensagem fixa da origem.
 - Preserve as restrições de lint em `tooling/backendPolicy`: o módulo inteiro
-  de configuração do servidor e o hook `configureServerErrors` de
-  `@solidjs/web` pertencem a `configureServerErrors`. Use imports
-  estáticos de `@solidjs/web` e seus subcaminhos, inclusive nos módulos
-  privilegiados. SDKs novos exigem restrição por pacote e exceção por adapter.
+  de configuração do servidor, o hook `configureServerErrors` de
+  `@solidjs/web` e `observeRenderFailures` de `renderIntegrity` pertencem a
+  `configureServerErrors`. Use imports estáticos de `@solidjs/web`, de seus
+  subcaminhos e de `renderIntegrity`, inclusive nos módulos privilegiados. SDKs novos exigem restrição por pacote e exceção por adapter.
   Revise fontes de import calculadas, templates dos outros pacotes e demais
   limites do guia; não contorne o contrato com disable. Fixtures seguem
   protegidas; as exceções de backend cobrem só testes e declarações de tipos.
