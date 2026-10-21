@@ -210,10 +210,10 @@ Limites conhecidos:
 ## Como adicionar uma chamada
 
 Use `requestJson` dentro de uma server function, com um schema que selecione os
-campos públicos. A
-[fixture readBackend](../src/tests/fixtures/e2e/backend-error/readBackend/index.ts)
-é a chamada de referência e, como as demais fixtures que usam o transporte, só
-entra no build E2E:
+campos públicos. O bloco abaixo é a forma simplificada da
+[fixture readBackend](../src/tests/fixtures/e2e/backend-error/readBackend/index.ts),
+a chamada de referência; a fixture acrescenta os cenários de falha que o E2E
+provoca e, como as demais fixtures que usam o transporte, só entra no build E2E:
 
 ```ts
 import * as v from 'valibot'
@@ -246,8 +246,13 @@ lint, com exceção apenas para o adapter e teste da proteção.
 
 As fontes do sitemap (`route.info.sitemap`) seguem a mesma regra: a função
 declarada na rota chama uma server function, que faz a leitura protegida e
-devolve só `path` e `lastmod`. A rota do sitemap responde 503 sem corpo a
-qualquer falha; ela não registra o erro original.
+devolve só `path` e `lastmod`. A fonte recebe um `AbortSignal` que aborta no
+prazo de 10 s, na desconexão do cliente e ao fim da leitura das fontes;
+repasse-o à leitura (por exemplo, em `init.signal` do `requestJson`) para
+cancelá-la. A rota do sitemap responde 503 sem corpo a qualquer falha e registra
+pela origem `sitemap` a linha fixa
+`[sitemap] Unexpected failure; private details omitted`, com a classe e os
+frames descritos em [Log de falhas](#log-de-falhas), sem a mensagem do erro.
 
 Nunca copie `error.message`, `cause`, propriedades, corpo upstream ou issues do
 validador para a saída. Para uma falha pública, use `createPublicError()`.
@@ -351,13 +356,15 @@ leitura falha. A recuperação por recarga está descrita abaixo.
 ## Validação e recuperação
 
 O [E2E de backend](../src/tests/pages/BackendError/BackendError.e2e.test.ts)
-executa 23 casos no build de produção: cinco cenários (HTTP 500, exceção após
-leitura, `Error` dentro do resultado, erro público e sucesso) em SSR inicial,
-streaming e chamada HTTP; quatro recargas, incluindo SSR sem JavaScript; um
-teste de isolamento do bundle; e três sinais de controle em server functions
-chamadas no SSR: um `redirect()` lançado, um envelope devolvido e um envelope
-lançado. O envelope lançado chega ao hook como controle, mas o router lança o
-valor dele no render e o documento vira 500, com ou sem o hook.
+roda no build de produção: cinco cenários (HTTP 500, exceção após leitura,
+`Error` dentro do resultado, erro público e sucesso) em SSR inicial, streaming e
+chamada HTTP; uma recarga por cenário de navegação, incluindo SSR sem
+JavaScript; um teste de isolamento do bundle; três sinais de controle em server
+functions chamadas no SSR (um `redirect()` lançado, um envelope devolvido e um
+envelope lançado); e a regressão de `content-type` descrita abaixo, com um
+envelope devolvido e outro lançado por `query()`. O envelope lançado chega ao
+hook como controle, mas o router lança o valor dele no render e o documento vira
+500, com ou sem o hook.
 
 Quando uma `query()` lida no SSR devolve ou lança um envelope de `respond()`, o
 `handleResponse` do router copia para a resposta da página só os headers que não

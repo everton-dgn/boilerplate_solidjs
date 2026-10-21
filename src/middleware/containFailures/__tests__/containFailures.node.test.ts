@@ -359,7 +359,7 @@ describe('accept de uma navegação', () => {
 
 // As respostas da contenção não voltam pelo securityHeaders; a CSP e o nonce
 // são gravados aqui.
-describe('cSP nas respostas da contenção', () => {
+describe('CSP nas respostas da contenção', () => {
   beforeEach(() => {
     // A contenção e a CSP só valem nos builds de produção; o Vitest roda com DEV.
     vi.stubEnv('DEV', false)

@@ -8,6 +8,8 @@ import {
 } from '@paraglide/runtime.js'
 import { parseCookieHeader, serializeCookie } from '@solidjs/web'
 
+import { appendVary } from '../../helpers/appendVary/index.ts'
+
 type PersistLocaleOptions = {
   request: Request
   response: Response
@@ -19,11 +21,7 @@ export function persistLocale({
   response,
   locale
 }: PersistLocaleOptions): Response {
-  const vary = response.headers.get('vary')
-  const fields = vary?.split(',').map(field => field.trim().toLowerCase()) ?? []
-  if (!fields.includes('*') && !fields.includes('cookie')) {
-    response.headers.set('vary', vary ? `${vary}, Cookie` : 'Cookie')
-  }
+  appendVary({ response, field: 'Cookie' })
   if (parseCookieHeader(request.headers.get('cookie'))[cookieName] === locale) {
     return response
   }

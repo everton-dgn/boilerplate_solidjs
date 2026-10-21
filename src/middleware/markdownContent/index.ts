@@ -5,16 +5,20 @@ import { pageRoutes } from 'virtual:file-routes'
 import {
   HTTP_BAD_REQUEST,
   HTTP_INTERNAL_SERVER_ERROR,
+  HTTP_MULTIPLE_CHOICES,
   HTTP_NOT_ACCEPTABLE,
   HTTP_NOT_FOUND,
   HTTP_OK
 } from '@/constants/http.ts'
+import { LAST_MATCH } from '@/constants/router.ts'
 import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { delocalizePathname } from '@/i18n/urls/index.ts'
 import { PUBLIC_ERROR_MESSAGE } from '@/infra/server/publicErrors/index.ts'
 import { Router } from '@/router.ts'
 
+import { appendVary } from '../helpers/appendVary/index.ts'
+import { isHtmlResponse } from '../helpers/isHtmlResponse/index.ts'
 import { localizeRequest } from '../localizeRequest/index.ts'
 import {
   acceptsMarkdown,
@@ -46,8 +50,6 @@ type Publication = { response: Response; isPublished: boolean }
 type RedirectOptions = { response: Response; url: URL; request: Request }
 type RouteRequest = { request: Request; url: URL; isPublished: boolean }
 
-const LAST_MATCH = -1
-const REDIRECT_START = 300
 const VARY_HEADERS = 'Accept, Cookie, Accept-Language'
 
 function uncachedResponse(response: Response): Response {
@@ -100,12 +102,6 @@ function notAcceptable(request: Request): Promise<Response> {
   })
 }
 
-function isHtml(response: Response): boolean {
-  return /^\s*text\/html\s*(?:;|$)/iu.test(
-    response.headers.get('content-type') ?? ''
-  )
-}
-
 function documentUrl(request: Request): URL {
   const url = new URL(request.url)
   if (!url.pathname.endsWith('.md')) return url
@@ -131,7 +127,7 @@ function canPublish({ response, isPublished }: Publication): boolean {
 }
 
 function canConvert({ response, isPublished }: Publication): boolean {
-  if (!isHtml(response)) return false
+  if (!isHtmlResponse(response)) return false
   if (response.status === HTTP_NOT_FOUND) return true
   return response.status === HTTP_OK && canPublish({ response, isPublished })
 }
@@ -145,7 +141,8 @@ function isUnpublished({ request, url, isPublished }: RouteRequest): boolean {
 }
 
 // O prerender do Nitro identifica suas requisições com este header; o build
-// grava cada caminho listado como arquivo `.md` estático.
+// grava cada caminho listado como arquivo `.md` estático. Qualquer cliente pode
+// enviá-lo: o header não autentica nada, e a lista precisa continuar pública.
 function isStaticListing(request: Request): boolean {
   return (
     request.headers.has('x-nitro-prerender') &&
@@ -161,26 +158,22 @@ function listStaticMarkdown(): Response {
   return uncachedResponse(Response.json(paths))
 }
 
-function varyAccept(response: Response): Response {
-  const vary = response.headers.get('vary')
-  if (!/(?:^|,)\s*(?:\*|accept)\s*(?:,|$)/iu.test(vary ?? '')) {
-    response.headers.set('vary', vary ? `${vary}, Accept` : 'Accept')
-  }
-  return response
-}
-
 async function resolveRedirect({
   response,
   url,
   request
 }: RedirectOptions): Promise<Response> {
+  // Nitro aceita redirects no prerender, mas o arquivo perde o status HTTP. Um
+  // cliente comum que envie o header só troca o redirect por 500 público.
   if (request.headers.has('x-nitro-prerender')) {
-    // Nitro aceita redirects no prerender, mas o arquivo perde o status HTTP.
     await response.body?.cancel()
     return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
   }
   // A resposta do render já saiu do securityHeaders; falta só o cache.
-  const redirect = varyAccept(new Response(response.body, response))
+  const redirect = appendVary({
+    response: new Response(response.body, response),
+    field: 'Accept'
+  })
   redirect.headers.set('cache-control', 'private, no-store')
   const location = response.headers.get('location')
   if (!location) return redirect
@@ -214,7 +207,10 @@ async function renderMarkdown({
 }: RenderOptions): Promise<Response> {
   const response = await render()
   signal.throwIfAborted()
-  if (response.status >= REDIRECT_START && response.status < HTTP_BAD_REQUEST) {
+  if (
+    response.status >= HTTP_MULTIPLE_CHOICES &&
+    response.status < HTTP_BAD_REQUEST
+  ) {
     return isDirect
       ? resolveRedirect({ response, url, request: original })
       : response
@@ -229,7 +225,7 @@ async function renderMarkdown({
   }
   const state = event.locals.ssrRenderState
   if (
-    isHtml(response) &&
+    isHtmlResponse(response) &&
     response.status === HTTP_INTERNAL_SERVER_ERROR &&
     state?.hasErrors === true
   ) {
@@ -254,7 +250,10 @@ async function renderMarkdown({
   headers.set('content-type', 'text/markdown; charset=utf-8')
   if (response.status === HTTP_NOT_FOUND) headers.set('x-robots-tag', 'noindex')
   return uncachedResponse(
-    varyAccept(new Response(markdown, { status: response.status, headers }))
+    appendVary({
+      response: new Response(markdown, { status: response.status, headers }),
+      field: 'Accept'
+    })
   )
 }
 
@@ -320,7 +319,7 @@ export async function markdownContent(
   }
   if (!isDirect && format !== 'markdown') {
     const response = await render()
-    return isPublished ? varyAccept(response) : response
+    return isPublished ? appendVary({ response, field: 'Accept' }) : response
   }
   if (!isDirect && original.headers.has('authorization')) return render()
   const response = await boundedRender({

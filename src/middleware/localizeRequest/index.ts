@@ -60,10 +60,12 @@ export async function localizeRequest({
     : { request, pageBase: request.url }
   if (event) event.locals.localizedPageBase = localized.pageBase
   const localeRequest = localized.request
-  const decision = await shouldRedirect({ request: localeRequest })
   // Também atende HEAD, crawlers e clientes HTTP sem Sec-Fetch-Dest. A
   // decisão usa URL > cookie > Accept-Language > idioma base.
-  if (!isServerFunction && decision.shouldRedirect && decision.redirectUrl) {
+  const decision = isServerFunction
+    ? undefined
+    : await shouldRedirect({ request: localeRequest })
+  if (decision?.shouldRedirect && decision.redirectUrl) {
     return persistLocale({
       request,
       locale: decision.locale,

@@ -6,7 +6,7 @@ import { buildRobotsText } from './buildRobotsText/index.ts'
 import { ROBOTS_GROUPS } from './constants.ts'
 
 const renderRobotsText = memoizeOnce({
-  enabled: import.meta.env.PROD,
+  isEnabled: import.meta.env.PROD,
   render: () =>
     buildRobotsText({
       groups: ROBOTS_GROUPS,

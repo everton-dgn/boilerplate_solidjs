@@ -6,14 +6,17 @@ import { containFailures } from './containFailures/index.ts'
 import { localizeRequest } from './localizeRequest/index.ts'
 import { markdownContent } from './markdownContent/index.ts'
 import { requestContext } from './requestContext/index.ts'
+import { restrictPageMethods } from './restrictPageMethods/index.ts'
 import { securityHeaders } from './securityHeaders/index.ts'
 import type { Middleware } from './types.ts'
 
-// API recebe o contexto e os cabeçalhos antes da negociação das páginas.
+// API recebe o contexto e os cabeçalhos antes da negociação das páginas. A
+// restrição de métodos vem depois da API, que pode tratar POST numa página.
 const requestMiddleware: Middleware[] = [
   securityHeaders,
   requestContext,
-  createAPIHandler(routes)
+  createAPIHandler(routes),
+  restrictPageMethods
 ]
 
 export function createMiddleware(extra: Middleware[] = []): StartMiddleware {

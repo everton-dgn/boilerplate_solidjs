@@ -25,12 +25,14 @@ layout para as páginas, incluindo Home e 404.
 Rotas de API são módulos de `src/routes` que exportam `GET`, `POST` ou outro
 método HTTP em vez de `export default`. O `createAPIHandler` em
 `src/middleware/index.ts` responde a essas requisições antes do SSR e deixa
-passar as demais. O caminho relativo a `src/routes` vira a URL sem a extensão, o
-segmento `index` e os grupos entre parênteses. Assim,
-`(seo)/sitemap.xml/index.ts` atende `/sitemap.xml`; colchetes continuam
-indicando parâmetros dinâmicos. Uma rota pode devolver `Response.redirect()`:
-como os headers dessa resposta são imutáveis, o middleware grava os cabeçalhos
-de segurança numa cópia.
+passar as demais. Depois dele, `restrictPageMethods` responde 405, com
+`Allow: GET, HEAD`, a métodos de escrita em caminhos de página sem handler: o
+render trataria o pedido como um GET no idioma base. O caminho relativo a
+`src/routes` vira a URL sem a extensão, o segmento `index` e os grupos entre
+parênteses. Assim, `(seo)/sitemap.xml/index.ts` atende `/sitemap.xml`; colchetes
+continuam indicando parâmetros dinâmicos. Uma rota pode devolver
+`Response.redirect()`: como os headers dessa resposta são imutáveis, o
+middleware grava os cabeçalhos de segurança numa cópia.
 
 O middleware `requestContext` cria um UUID por requisição e o guarda em
 `locals.requestId`, disponível no evento de requisição do Solid.

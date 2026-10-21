@@ -11,7 +11,7 @@ type Visited = {
 
 type VisitedFlat = readonly [path: string, parentState: string]
 
-type VisitedDynamic = readonly [path: string, dynamic: boolean]
+type VisitedDynamic = readonly [path: string, isDynamic: boolean]
 
 type Visit<State> = WalkStaticRoutesOptions<State>['visit']
 
@@ -81,11 +81,11 @@ describe('travessia das rotas estáticas', () => {
       route: { path: '/about', page: true, children: [] },
       path: '/about',
       parentState: null,
-      dynamic: false
+      isDynamic: false
     })
   })
 
-  it('com dynamic, visita ramos com parâmetro e marca também os descendentes', () => {
+  it('com shouldVisitDynamic, visita ramos com parâmetro e marca também os descendentes', () => {
     const visited: VisitedDynamic[] = []
     walkStaticRoutes<null>({
       routes: [
@@ -94,9 +94,9 @@ describe('travessia das rotas estáticas', () => {
         { path: '/about', page: true, children: [{ path: '/:tab' }] }
       ],
       initialState: null,
-      dynamic: true,
-      visit: ({ path, dynamic }) => {
-        visited.push([path, dynamic])
+      shouldVisitDynamic: true,
+      visit: ({ path, isDynamic }) => {
+        visited.push([path, isDynamic])
         return null
       }
     })

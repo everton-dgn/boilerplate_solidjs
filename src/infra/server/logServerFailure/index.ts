@@ -5,6 +5,7 @@ type FailureSource =
   | 'server-error'
   | 'middleware'
   | 'error-page'
+  | 'sitemap'
 type FailureLog = {
   source: FailureSource
   error?: unknown
@@ -18,7 +19,8 @@ const MESSAGES = {
     '[server-operation] Unexpected failure; private details omitted',
   'server-error': '[server-error] Unexpected failure; private details omitted',
   middleware: '[middleware] Unexpected failure; private details omitted',
-  'error-page': '[error-page] Unexpected failure; private details omitted'
+  'error-page': '[error-page] Unexpected failure; private details omitted',
+  sitemap: '[sitemap] Unexpected failure; private details omitted'
 } as const satisfies Record<FailureSource, string>
 
 const MAX_FRAMES = 10

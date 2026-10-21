@@ -9,7 +9,7 @@ const EXPECTED_SITEMAP_URLS = LOCALES.flatMap(locale =>
 )
 const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
-const CACHE_CONTROL = 'public, max-age=0, s-maxage=3600'
+const CACHE_CONTROL = 'public, max-age=0, s-maxage=3600, stale-if-error=86400'
 // Respostas com s-maxage não levam o nonce da requisição para o cache.
 const NO_SCRIPTS = "script-src 'none'"
 // Grupo dos robôs de treinamento de IA: começa em GPTBot e termina bloqueando tudo.

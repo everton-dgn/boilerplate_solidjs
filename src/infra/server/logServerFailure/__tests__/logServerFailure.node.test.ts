@@ -124,7 +124,8 @@ describe('linha fixa do log de falhas', () => {
       '[server-error] Unexpected failure; private details omitted'
     ],
     ['middleware', MESSAGE],
-    ['error-page', '[error-page] Unexpected failure; private details omitted']
+    ['error-page', '[error-page] Unexpected failure; private details omitted'],
+    ['sitemap', '[sitemap] Unexpected failure; private details omitted']
   ] as const)('registra %s só com a linha fixa sem erro', (source, message) => {
     logServerFailure({ source })
     expect(console.error).toHaveBeenCalledExactlyOnceWith(message)
@@ -534,6 +535,27 @@ describe('limites da leitura do stack', () => {
     ],
     ['o U+202E, que inverte a direção do texto', '    at /PRIVATE‮gnp.js:1:1']
   ])('descarta um frame com %s no local', (_label, line) => {
+    logServerFailure({
+      source: 'middleware',
+      error: withStack([line, PLAIN_FRAME])
+    })
+
+    expect(loggedLines()).toStrictEqual([MESSAGE, 'Error', PLAIN_FRAME])
+  })
+
+  // Parênteses no local deixariam um frame com função terminar antes da hora;
+  // por isso arquivos em pastas de grupo de rotas saem do log.
+  it.each([
+    [
+      'em pasta de grupo de rotas',
+      '    at GET (/app/src/routes/(seo)/sitemap.xml/index.ts:1:1)'
+    ],
+    ['sem função', '    at /a(b):1:1'],
+    [
+      'em file:// com grupo de rotas',
+      '    at file:///app/src/routes/(seo)/x.ts:1:1'
+    ]
+  ])('descarta um frame com parênteses no local %s', (_label, line) => {
     logServerFailure({
       source: 'middleware',
       error: withStack([line, PLAIN_FRAME])

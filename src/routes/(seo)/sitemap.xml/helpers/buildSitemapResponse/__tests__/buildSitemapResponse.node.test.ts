@@ -1,7 +1,13 @@
+import { locales } from '@paraglide/runtime.js'
+
 import type { SitemapEntry, SitemapRouteInfo } from '@/@types/sitemap.ts'
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
+import { readLog } from '@/tests/helpers/readLog/index.ts'
 
-import { SITEMAP_SOURCES_TIMEOUT_MS } from '../../../constants.ts'
+import {
+  SITEMAP_SOURCES_TIMEOUT_MS,
+  SITEMAP_URL_LIMIT
+} from '../../../constants.ts'
 import type { SitemapManifest } from '../../../types.ts'
 import { buildSitemap } from '../../buildSitemap/index.ts'
 import { buildSitemapResponse } from '../index.ts'
@@ -14,6 +20,9 @@ const LARGE_SITEMAP_TIMEOUT_MS = 30_000
 const BASE_PATH_LENGTH = 100
 const BASE_ENTRY_COUNT = 4000
 const URL_COPIES = 15
+const SITEMAP_LOG = '[sitemap] Unexpected failure; private details omitted'
+// Maior quantidade de entradas cujas URLs localizadas cabem no limite.
+const ENTRIES_AT_URL_LIMIT = Math.floor(SITEMAP_URL_LIMIT / locales.length)
 
 function baseEntries(): SitemapEntry[] {
   return Array.from({ length: BASE_ENTRY_COUNT }, (_, index) => ({
@@ -54,6 +63,23 @@ function manifest(sources: readonly SitemapRouteInfo[]): SitemapManifest {
   return { entries: [{ path: '/' }, { path: '/docs' }], sources }
 }
 
+function pathEntries(count: number): SitemapEntry[] {
+  return Array.from({ length: count }, (_, index) => ({
+    path: `/page-${index}`
+  }))
+}
+
+// Sinal de uma requisição que continua aberta.
+function openSignal(): AbortSignal {
+  return new AbortController().signal
+}
+
+function locationsOf(xml: string): (string | undefined)[] {
+  return [...xml.matchAll(/<loc>(?<url>[^<]+)<\/loc>/gu)].map(
+    match => match.groups?.url
+  )
+}
+
 type Outcome = readonly [
   status: number,
   cacheControl: string | null,
@@ -81,6 +107,8 @@ async function readOutcome(response: Response): Promise<Outcome> {
 }
 
 describe('resposta do sitemap', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+
   afterEach(() => {
     vi.useRealTimers()
   })
@@ -91,6 +119,7 @@ describe('resposta do sitemap', () => {
     async () => {
       const response = await buildSitemapResponse({
         siteUrl: SITE_URL,
+        signal: openSignal(),
         manifest: {
           entries: entriesAtByteSize(SITEMAP_BYTE_LIMIT),
           sources: []
@@ -110,6 +139,7 @@ describe('resposta do sitemap', () => {
     async () => {
       const response = await buildSitemapResponse({
         siteUrl: SITE_URL,
+        signal: openSignal(),
         manifest: {
           entries: entriesAtByteSize(SITEMAP_BYTE_LIMIT + URL_COPIES),
           sources: []
@@ -122,6 +152,7 @@ describe('resposta do sitemap', () => {
   it('publica as páginas estáticas e depois as entradas das fontes, na ordem', async () => {
     const response = await buildSitemapResponse({
       siteUrl: SITE_URL,
+      signal: openSignal(),
       manifest: manifest([
         () => [{ path: '/blog/a', lastmod: '2026-09-01' }],
         () => Promise.resolve([{ path: '/blog/b/' }])
@@ -133,10 +164,7 @@ describe('resposta do sitemap', () => {
       'application/xml; charset=utf-8'
     )
     expect(response.headers.get('cache-control')).toBe(SITE_CACHE_CONTROL)
-    const xml = await response.text()
-    const locations = [...xml.matchAll(/<loc>(?<url>[^<]+)<\/loc>/gu)].map(
-      match => match.groups?.url
-    )
+    const locations = locationsOf(await response.text())
     expect(locations).toStrictEqual([
       'https://example.com/pt',
       'https://example.com/en',
@@ -156,6 +184,7 @@ describe('resposta do sitemap', () => {
   it('publica só path e lastmod da fonte e mantém a página estática em caminho repetido', async () => {
     const response = await buildSitemapResponse({
       siteUrl: SITE_URL,
+      signal: openSignal(),
       manifest: manifest([
         () => [
           { path: '/docs', lastmod: '2026-09-21' },
@@ -177,6 +206,7 @@ describe('resposta do sitemap', () => {
   it('monta o sitemap sem fontes', async () => {
     const response = await buildSitemapResponse({
       siteUrl: SITE_URL,
+      signal: openSignal(),
       manifest: manifest([])
     })
 
@@ -186,21 +216,30 @@ describe('resposta do sitemap', () => {
     )
   })
 
-  it('responde 503 sem corpo e sem cache quando uma fonte rejeita', async () => {
+  it('responde 503 sem corpo e sem cache e registra só a linha fixa quando uma fonte rejeita', async () => {
     const response = await buildSitemapResponse({
       siteUrl: SITE_URL,
+      signal: openSignal(),
       manifest: manifest([
         () => [{ path: '/blog/a' }],
-        () => Promise.reject(new Error('banco indisponível'))
+        () =>
+          Promise.reject(
+            new Error('PRIVATE_DATABASE', { cause: 'PRIVATE_CAUSE' })
+          )
       ])
     })
 
     await expect(readOutcome(response)).resolves.toStrictEqual(UNAVAILABLE)
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[SITEMAP_LOG, 'Error']],
+      leaks: []
+    })
   })
 
   it('responde 503 quando uma fonte devolve um caminho fora do site', async () => {
     const response = await buildSitemapResponse({
       siteUrl: SITE_URL,
+      signal: openSignal(),
       manifest: manifest([() => [{ path: 'https://evil.test/x' }]])
     })
 
@@ -210,6 +249,7 @@ describe('resposta do sitemap', () => {
   it('responde 503 quando uma fonte devolve uma entrada fora do contrato', async () => {
     const response = await buildSitemapResponse({
       siteUrl: SITE_URL,
+      signal: openSignal(),
       manifest: manifest([
         () => [corrupt({ entry: { path: '/ok' }, path: 42 })]
       ])
@@ -217,15 +257,147 @@ describe('resposta do sitemap', () => {
 
     await expect(readOutcome(response)).resolves.toStrictEqual(UNAVAILABLE)
   })
+})
 
-  it('responde 503 quando as fontes estouram o prazo', async () => {
+describe('prazo e cancelamento das fontes do sitemap', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('responde 503 e aborta o sinal das fontes quando elas estouram o prazo', async () => {
     vi.useFakeTimers()
+    const signals: AbortSignal[] = []
     const pending = buildSitemapResponse({
       siteUrl: SITE_URL,
-      manifest: manifest([() => Promise.withResolvers<never[]>().promise])
+      signal: openSignal(),
+      manifest: manifest([
+        signal => {
+          signals.push(signal)
+          return Promise.withResolvers<never[]>().promise
+        }
+      ])
     })
-    await vi.advanceTimersByTimeAsync(SITEMAP_SOURCES_TIMEOUT_MS)
+    await vi.advanceTimersByTimeAsync(SITEMAP_SOURCES_TIMEOUT_MS - 1)
+    expect(signals.map(signal => signal.aborted)).toStrictEqual([false])
+    await vi.advanceTimersByTimeAsync(1)
 
     await expect(readOutcome(await pending)).resolves.toStrictEqual(UNAVAILABLE)
+    expect(signals.map(signal => signal.aborted)).toStrictEqual([true])
+    expect(readLog(console.error).heads).toStrictEqual([[SITEMAP_LOG, 'Error']])
   })
+
+  it('aborta o sinal das fontes quando o cliente desconecta', async () => {
+    const request = new AbortController()
+    const { promise: received, resolve } = Promise.withResolvers<AbortSignal>()
+    const pending = buildSitemapResponse({
+      siteUrl: SITE_URL,
+      signal: request.signal,
+      manifest: manifest([
+        signal => {
+          resolve(signal)
+          return Promise.withResolvers<never[]>().promise
+        }
+      ])
+    })
+    const signal = await received
+    expect(signal.aborted).toBe(false)
+    request.abort()
+
+    await expect(readOutcome(await pending)).resolves.toStrictEqual(UNAVAILABLE)
+    expect(signal.aborted).toBe(true)
+  })
+
+  it('não chama as fontes quando a requisição já foi abortada', async () => {
+    const source = vi.fn<SitemapRouteInfo>(() => [])
+    const response = await buildSitemapResponse({
+      siteUrl: SITE_URL,
+      signal: AbortSignal.abort(),
+      manifest: manifest([source])
+    })
+
+    await expect(readOutcome(response)).resolves.toStrictEqual(UNAVAILABLE)
+    expect(source).not.toHaveBeenCalled()
+  })
+
+  it('aborta as fontes pendentes quando outra fonte falha', async () => {
+    const { promise: received, resolve } = Promise.withResolvers<AbortSignal>()
+    const response = await buildSitemapResponse({
+      siteUrl: SITE_URL,
+      signal: openSignal(),
+      manifest: manifest([
+        signal => {
+          resolve(signal)
+          return Promise.withResolvers<never[]>().promise
+        },
+        () => Promise.reject(new Error('PRIVATE_SOURCE'))
+      ])
+    })
+
+    await expect(readOutcome(response)).resolves.toStrictEqual(UNAVAILABLE)
+    await expect(received).resolves.toHaveProperty('aborted', true)
+  })
+})
+
+describe('limite de URLs e duplicatas do sitemap', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+
+  it(
+    'aceita o limite de URLs depois de gerar uma URL por idioma',
+    { timeout: LARGE_SITEMAP_TIMEOUT_MS },
+    async () => {
+      const response = await buildSitemapResponse({
+        siteUrl: SITE_URL,
+        signal: openSignal(),
+        manifest: { entries: pathEntries(ENTRIES_AT_URL_LIMIT), sources: [] }
+      })
+
+      expect(response.status).toBe(HTTP_OK)
+      expect(locationsOf(await response.text())).toHaveLength(
+        ENTRIES_AT_URL_LIMIT * locales.length
+      )
+    }
+  )
+
+  it(
+    'responde 503 uma entrada acima do limite de URLs depois da localização',
+    { timeout: LARGE_SITEMAP_TIMEOUT_MS },
+    async () => {
+      const response = await buildSitemapResponse({
+        siteUrl: SITE_URL,
+        signal: openSignal(),
+        manifest: {
+          entries: pathEntries(ENTRIES_AT_URL_LIMIT + 1),
+          sources: []
+        }
+      })
+
+      await expect(readOutcome(response)).resolves.toStrictEqual(UNAVAILABLE)
+    }
+  )
+
+  it.each([
+    ['/b', '/a/../b', 'https://example.com/pt/b'],
+    ['/caf%C3%A9', '/café', 'https://example.com/pt/caf%C3%A9'],
+    ['/blog/x', '/pt/blog/x', 'https://example.com/pt/blog/x']
+  ])(
+    'publica uma vez a URL de %s e da fonte %s, com o lastmod da página estática',
+    async (staticPath, sourcePath, url) => {
+      const response = await buildSitemapResponse({
+        siteUrl: SITE_URL,
+        signal: openSignal(),
+        manifest: {
+          entries: [{ path: staticPath, lastmod: '2026-09-01' }],
+          sources: [() => [{ path: sourcePath, lastmod: '2026-09-21' }]]
+        }
+      })
+      const xml = await response.text()
+
+      expect(locationsOf(xml)).toStrictEqual(
+        locales.map(locale => url.replace('/pt', `/${locale}`))
+      )
+      expect(xml).not.toContain('2026-09-21')
+    }
+  )
 })

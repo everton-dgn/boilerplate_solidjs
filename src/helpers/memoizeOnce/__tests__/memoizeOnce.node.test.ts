@@ -7,7 +7,7 @@ const RENDERS_WITHOUT_CACHE = 2
 describe('memoização única do texto', () => {
   it('renderiza uma vez e reutiliza o texto', () => {
     const render = vi.fn<Render>(() => 'text')
-    const memoized = memoizeOnce({ render, enabled: true })
+    const memoized = memoizeOnce({ render, isEnabled: true })
 
     expect(memoized()).toBe('text')
     expect(memoized()).toBe('text')
@@ -16,7 +16,7 @@ describe('memoização única do texto', () => {
 
   it('guarda também um texto vazio', () => {
     const render = vi.fn<Render>(() => '')
-    const memoized = memoizeOnce({ render, enabled: true })
+    const memoized = memoizeOnce({ render, isEnabled: true })
 
     expect(memoized()).toBe('')
     expect(memoized()).toBe('')
@@ -27,10 +27,10 @@ describe('memoização única do texto', () => {
     const manifest = { entries: [] }
     const memoizedObject = memoizeOnce({
       render: () => manifest,
-      enabled: true
+      isEnabled: true
     })
     const render = vi.fn<() => string | undefined>()
-    const memoizedUndefined = memoizeOnce({ render, enabled: true })
+    const memoizedUndefined = memoizeOnce({ render, isEnabled: true })
 
     expect(memoizedObject()).toBe(memoizedObject())
     expect(memoizedObject()).toBe(manifest)
@@ -46,7 +46,7 @@ describe('memoização única do texto', () => {
         throw new Error('manifesto indisponível')
       })
       .mockReturnValue('text')
-    const memoized = memoizeOnce({ render, enabled: true })
+    const memoized = memoizeOnce({ render, isEnabled: true })
 
     expect(() => memoized()).toThrow('manifesto indisponível')
     expect(memoized()).toBe('text')
@@ -55,7 +55,7 @@ describe('memoização única do texto', () => {
 
   it('desabilitado, devolve o render original sem cache', () => {
     const render = vi.fn<Render>(() => 'text')
-    const memoized = memoizeOnce({ render, enabled: false })
+    const memoized = memoizeOnce({ render, isEnabled: false })
 
     expect(memoized).toBe(render)
     memoized()
