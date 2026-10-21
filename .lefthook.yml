@@ -35,13 +35,16 @@ pre-push:
     - name: typecheck-node
       run: vp run typecheck:node
 
-    - name: tests
+    # O Vitest tem janelas curtas (timeout por teste e waitFor). Rodá-lo sem
+    # disputar a CPU com o tooling evita estouros sem falha de lógica; o tooling
+    # e o release usam timeouts de 60 s e seguem em paralelo.
+    - name: test
+      run: vp run test:ci
+
+    - name: tooling-and-release
       group:
         parallel: true
         jobs:
-          - name: test
-            run: vp run test:ci
-
           - name: tooling
             run: vp run test:tooling
 
