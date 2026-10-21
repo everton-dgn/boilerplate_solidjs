@@ -412,14 +412,16 @@ release. Add a tool name to select part of the graph. For example, run
   página de erro do app pelo `ServerFailureGate` de `App.tsx`. Um fallback visual não
   protege o payload.
   O log grava a mensagem fixa da origem e, para um `Error`, só a classe e os
-  frames filtrados, sem mensagem, `cause` nem propriedades.
+  frames filtrados, sem mensagem, `cause` nem propriedades. Em desenvolvimento
+  o hook pede também o erro original, numa segunda chamada; em produção o log
+  ignora o pedido.
 - Não registre erro original, headers, cookies, argumentos, corpos ou
   credenciais. Logs detalhados exigem remoção de dados sensíveis definida antes;
   a de `logServerFailure` está em "Log de falhas", no guia.
   O lint reserva `console` a `logServerFailure`, onde se usa `console.error`
   diretamente. Acessos como `globalThis.console` continuam proibidos. Preserve
-  o argumento único coberto pelos testes: uma string que começa pela mensagem
-  fixa da origem.
+  o argumento único da linha filtrada coberto pelos testes: uma string que
+  começa pela mensagem fixa da origem.
 - Preserve as restrições de lint em `tooling/backendPolicy`: o módulo inteiro
   de configuração do servidor e o hook `configureServerErrors` de
   `@solidjs/web` pertencem a `configureServerErrors`. Use imports

@@ -217,6 +217,57 @@ describe('falhas do destino de log', () => {
   })
 })
 
+describe('erro original em desenvolvimento', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+
+  it('imprime o erro depois da linha fixa quando pedido em desenvolvimento', () => {
+    vi.stubEnv('DEV', true)
+    const error = new Error('PRIVATE')
+
+    logServerFailure({ source: 'middleware', error, shouldPrintOriginal: true })
+
+    expect(readLog(console.error).heads[0]).toStrictEqual([MESSAGE, 'Error'])
+    expect(vi.mocked(console.error).mock.calls.slice(1)).toStrictEqual([
+      [error]
+    ])
+  })
+
+  it.each([
+    ['fora de desenvolvimento', false, true],
+    ['sem pedido do chamador', true, false]
+  ])('não imprime o erro original %s', (_label, isDevelopment, shouldPrint) => {
+    vi.stubEnv('DEV', isDevelopment)
+
+    logServerFailure({
+      source: 'middleware',
+      error: new Error('PRIVATE'),
+      shouldPrintOriginal: shouldPrint
+    })
+
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[MESSAGE, 'Error']],
+      leaks: []
+    })
+  })
+
+  it('contém a falha ao imprimir o erro original', () => {
+    vi.stubEnv('DEV', true)
+    vi.mocked(console.error)
+      .mockImplementationOnce(vi.fn())
+      .mockImplementationOnce(() => {
+        throw new Error('PRIVATE_DESTINATION')
+      })
+
+    expect(() =>
+      logServerFailure({
+        source: 'middleware',
+        error: new Error('PRIVATE'),
+        shouldPrintOriginal: true
+      })
+    ).not.toThrow()
+  })
+})
+
 describe('classe e frames do log de falhas', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 

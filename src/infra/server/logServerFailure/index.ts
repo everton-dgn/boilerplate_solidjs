@@ -5,7 +5,11 @@ type FailureSource =
   | 'server-error'
   | 'middleware'
   | 'error-page'
-type FailureLog = { source: FailureSource; error?: unknown }
+type FailureLog = {
+  source: FailureSource
+  error?: unknown
+  shouldPrintOriginal?: boolean
+}
 type NameCheck = { error: Error; name: string }
 
 // Linha fixa por origem: nunca inclua mensagem, cause ou propriedades do erro.
@@ -98,7 +102,11 @@ function errorDetails(error: unknown): string[] {
   }
 }
 
-export function logServerFailure({ source, error }: FailureLog): void {
+export function logServerFailure({
+  source,
+  error,
+  shouldPrintOriginal = false
+}: FailureLog): void {
   try {
     console.error([MESSAGES[source], ...errorDetails(error)].join('\n'))
   } catch {
@@ -108,5 +116,13 @@ export function logServerFailure({ source, error }: FailureLog): void {
     } catch {
       // Sem destino de log disponível.
     }
+  }
+  // O erro original só sai no servidor de desenvolvimento, mesmo que um
+  // chamador o peça em produção.
+  if (!shouldPrintOriginal || !import.meta.env.DEV) return
+  try {
+    console.error(error)
+  } catch {
+    // A formatação do erro também pode lançar (getter ou Proxy).
   }
 }

@@ -43,11 +43,16 @@ function isControlSignal(value: unknown): boolean {
 function mapServerError(error: unknown): Error | undefined {
   if (isControlSignal(error)) return undefined
   if (!isPublicError(error)) {
-    logServerFailure({ source: 'server-error', error })
+    // Com um hook instalado, o runtime deixa de imprimir o erro; em
+    // desenvolvimento o log devolve o original ao terminal.
+    logServerFailure({
+      source: 'server-error',
+      error,
+      shouldPrintOriginal: isDevelopment
+    })
   }
   // Em desenvolvimento o runtime envia o erro original, e o erro público
-  // esconderia o diagnóstico. O log acima substitui o que o runtime deixa de
-  // imprimir quando há um hook instalado.
+  // esconderia o diagnóstico.
   if (isDevelopment) return undefined
   // Descarta também campos adicionados a um erro público depois da criação.
   return createPublicError()

@@ -235,19 +235,22 @@ describe('registro central da política de erros', () => {
     expect(console.error).not.toHaveBeenCalled()
   })
 
-  it('instala o hook em desenvolvimento sem trocar o erro original', async () => {
+  it('instala o hook em desenvolvimento e imprime o erro original', async () => {
     vi.stubEnv('DEV', true)
     await loadRegistration()
     const { event, state } = await renderProbe()
+    const failure = new Error('PRIVATE')
 
-    expect(
-      registeredHook()(new Error('PRIVATE'), { ...site, event })
-    ).toBeUndefined()
+    expect(registeredHook()(failure, { ...site, event })).toBeUndefined()
     expect(state.hasErrors).toBe(true)
-    expect(readLog(console.error)).toStrictEqual({
-      heads: [[LOG_MESSAGE, 'Error']],
-      leaks: []
-    })
+    // O log filtrado vem primeiro; o original volta ao terminal só em dev.
+    expect(readLog(console.error).heads[0]).toStrictEqual([
+      LOG_MESSAGE,
+      'Error'
+    ])
+    expect(vi.mocked(console.error).mock.calls.slice(1)).toStrictEqual([
+      [failure]
+    ])
     expect(configureServerFunctionsServer).toHaveBeenCalledOnce()
   })
 })

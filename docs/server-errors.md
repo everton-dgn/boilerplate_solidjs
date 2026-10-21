@@ -65,8 +65,8 @@ Limites do hook:
   de qualquer hook. O mesmo corpo leva "Internal Server Error" para a fonte e a
   mensagem pública para o boundary.
 - Em desenvolvimento o hook devolve `undefined`, para que o runtime envie o erro
-  original ao navegador. Ele só registra o log filtrado e marca o estado usado
-  pelo Markdown.
+  original ao navegador. Ele registra o log filtrado seguido do erro original e
+  marca o estado usado pelo Markdown.
 - Valores primitivos lançados não têm veredito por objeto; o hook roda e
   registra o log a cada vez que o runtime os encontra.
 
@@ -184,6 +184,13 @@ sem inspecionar o erro novamente. A falha dessa segunda tentativa é descartada.
 O logger é síncrono e não propaga falhas de inspeção, montagem ou acesso ao
 destino. Os consumidores mantêm a resposta pública mesmo sem log disponível. Se
 o destino escrever e depois lançar, a mensagem fixa pode aparecer duas vezes.
+
+No servidor de desenvolvimento, o hook de `configureServerErrors` passa
+`shouldPrintOriginal: true`, e o logger imprime o erro original numa segunda
+chamada de `console.error`, depois da linha filtrada. Com o hook instalado, o
+runtime deixa de imprimir essas falhas, e sem esse pedido a mensagem só chegaria
+ao navegador. O logger confere `import.meta.env.DEV` por conta própria e ignora
+o pedido em produção. Uma falha ao formatar o erro original é descartada.
 
 Limites conhecidos:
 
@@ -490,16 +497,17 @@ adaptador no prerender do build, e uma recusa ali interrompe o build.
 Como o hook é a fonte desse sinal, ele fica instalado também em desenvolvimento.
 Nesse modo ele marca o estado e registra o log filtrado, mas devolve
 `undefined`, e o runtime continua enviando o erro original ao navegador. Com um
-hook instalado, o runtime deixa de chamar `console.error` com o erro recebido, e
-o terminal mostra só a linha fixa e a classe registradas por `logServerFailure`.
-Os diagnósticos de desenvolvimento do Solid continuam imprimindo a mensagem
-original, como o de um erro contido por `<Errored>`. A entrada continua sem um
-`onError` local: ele teria precedência sobre o hook global, desviaria a
-sanitização e o log e deixaria o estado sem marcação, e o Markdown publicaria
-com `hasErrors: false`. O registro do hook chama `observeRenderFailures()`; até
-lá a fábrica cria o estado com `hasErrors` indefinido, e o Markdown recusa a
-página. Sem o `serverFunctions.configure` do Vite, que carrega o registro, todo
-`.md` responde 500 e o prerender interrompe o build.
+hook instalado, o runtime deixa de chamar `console.error` com o erro recebido; o
+hook devolve o original ao terminal por `logServerFailure`, depois da linha
+filtrada, como descrito em [Log de falhas](#log-de-falhas). Os diagnósticos de
+desenvolvimento do Solid também imprimem a mensagem, como o de um erro contido
+por `<Errored>`. A entrada continua sem um `onError` local: ele teria
+precedência sobre o hook global, desviaria a sanitização e o log e deixaria o
+estado sem marcação, e o Markdown publicaria com `hasErrors: false`. O registro
+do hook chama `observeRenderFailures()`; até lá a fábrica cria o estado com
+`hasErrors` indefinido, e o Markdown recusa a página. Sem o
+`serverFunctions.configure` do Vite, que carrega o registro, todo `.md` responde
+500 e o prerender interrompe o build.
 
 O hook encontra o estado pelo evento que o runtime associa à falha. Os dois
 pontos do patch passam o evento da requisição; os demais, como o fallback de
