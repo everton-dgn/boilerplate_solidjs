@@ -5,6 +5,7 @@ import {
   PageFileSystemRouter,
   type RouteManifestEntry
 } from 'filesystem-routing'
+import { DEFAULT_EXTENSIONS } from 'filesystem-routing/vite'
 import type { KnipConfig } from 'knip'
 
 type DiscoverRouteModulesOptions = {
@@ -35,7 +36,8 @@ async function discoverRouteModules({
 }: DiscoverRouteModulesOptions) {
   const router = new PageFileSystemRouter({
     dir: `${import.meta.dirname}/../${directory}`,
-    extensions: ['js', 'jsx', 'ts', 'tsx'],
+    // O fileRoutes do vite.config.ts usa esta mesma lista padrão.
+    extensions: DEFAULT_EXTENSIONS,
     httpMethods: true
   })
   const routes = await router.getRoutes()
