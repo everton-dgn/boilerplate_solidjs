@@ -496,11 +496,12 @@ sanitização e o log e deixaria o estado sem marcação, e o Markdown publicari
 com `hasErrors: false`. O mesmo aconteceria sem o `serverFunctions.configure` do
 Vite, que registra o hook; os E2E de streaming do Markdown falham nesse caso.
 
-O hook encontra o estado pelo evento que o runtime associa à falha, lido do
-`AsyncLocalStorage` da requisição. Uma falha informada fora desse contexto não
-marcaria o estado, e o Markdown publicaria o HTML. Os testes de serialização
-cobrem o fallback de `<Errored>`, o `onCleanup` que lança e as falhas do
-serializador com o contexto presente.
+O hook encontra o estado pelo evento que o runtime associa à falha. Os dois
+pontos do patch passam o evento da requisição; os demais, como o fallback de
+`<Errored>`, o leem do `AsyncLocalStorage`. Uma falha informada fora desse
+contexto não marcaria o estado, e o Markdown publicaria o HTML. Os testes de
+serialização cobrem o fallback de `<Errored>`, o `onCleanup` que lança e as
+falhas do serializador com o contexto presente.
 
 O serializador padrão informa falhas de parse e de emissão ao hook, inclusive
 sem um hook local. A primeira falha marca `hasErrors`, passa pela política de
@@ -528,8 +529,12 @@ síncrona deixava o render pendente, e uma assíncrona virava rejeição não
 tratada. Segundo, ele contém exceções de `onCleanup` no descarte da conclusão
 normal e as informa como falha do render; o runtime protege esse descarte só no
 abandono. Sem isso, um `onCleanup` que lança deixava uma rejeição não tratada e
-podia publicar o Markdown. A chave do patch inclui a versão do pacote, então
-cada atualização de `@solidjs/web` exige regenerá-lo com `bun patch`.
+podia publicar o Markdown. Os dois pontos passam ao hook o evento da requisição.
+Com um `onError` local, o patch também encerra o render numa falha do
+serializador padrão, enquanto o runtime só informaria o callback. A chave do
+patch inclui a versão do pacote, então cada atualização de `@solidjs/web` exige
+regenerá-lo com `bun patch`; confira se o arquivo gerado não inclui o
+`.bun-tag-*` vazio do diretório de edição.
 
 Remova o patch quando um pacote publicado cobrir essas duas lacunas e passar as
 regressões de erro reutilizado entre requisições, falha de server function que

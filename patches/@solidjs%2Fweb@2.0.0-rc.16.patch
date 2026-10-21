@@ -1,5 +1,5 @@
 diff --git a/dist/server.dev.js b/dist/server.dev.js
-index bd13800ee8fbf5c2ca0db9af9d665296fea52b8b..52c920fc5b6211d79f58f7216173a3de0a62652a 100644
+index bd13800ee8fbf5c2ca0db9af9d665296fea52b8b..2fdd5d1f1a66389f22b30c2f816f67866b53cb2c 100644
 --- a/dist/server.dev.js
 +++ b/dist/server.dev.js
 @@ -1885,6 +1885,7 @@ function renderToStream(code, options = {}) {
@@ -19,7 +19,7 @@ index bd13800ee8fbf5c2ca0db9af9d665296fea52b8b..52c920fc5b6211d79f58f7216173a3de
      writeTasks();
      lastBlockingSize = blockingPromises.size;
      doShell();
-@@ -2139,9 +2140,20 @@ function renderToStream(code, options = {}) {
+@@ -2139,9 +2140,21 @@ function renderToStream(code, options = {}) {
    serializer = (options.serializer || createHydrationSerializer)({
      scopeId: options.renderId,
      plugins: options.plugins,
@@ -34,7 +34,8 @@ index bd13800ee8fbf5c2ca0db9af9d665296fea52b8b..52c920fc5b6211d79f58f7216173a3de
 +      serializationFailed = true;
 +      reportServerError(err, {
 +        kind: "render",
-+        handling: "serialize"
++        handling: "serialize",
++        event: requestEvent
 +      }, null, options.onError, errorScope);
 +      if (!options.onError && ambientServerErrorHook() === undefined) console.error(err);
 +      queue(abandon);
@@ -42,7 +43,7 @@ index bd13800ee8fbf5c2ca0db9af9d665296fea52b8b..52c920fc5b6211d79f58f7216173a3de
    });
    let rootAssetsSerialized = false;
    const serializeRootAssets = () => {
-@@ -2512,7 +2524,15 @@ function renderToStream(code, options = {}) {
+@@ -2512,7 +2525,16 @@ function renderToStream(code, options = {}) {
          context.trace = undefined;
          if (onAbort) signal.removeEventListener("abort", onAbort);
          if (endEdges) endEdges();
@@ -52,14 +53,15 @@ index bd13800ee8fbf5c2ca0db9af9d665296fea52b8b..52c920fc5b6211d79f58f7216173a3de
 +        } catch (err) {
 +          reportServerError(err, {
 +            kind: "render",
-+            handling: "failed"
++            handling: "failed",
++            event: requestEvent
 +          }, null, options.onError, errorScope);
 +          if (!options.onError && ambientServerErrorHook() === undefined) console.error(err);
 +        }
        };
        rootOwner = claimRenderRoot(context);
        if (requestEvent) claimEventRender(requestEvent, context);
-@@ -2603,6 +2623,7 @@ function renderToStream(code, options = {}) {
+@@ -2603,6 +2625,7 @@ function renderToStream(code, options = {}) {
      }
      serializeRootAssets();
      flushStubBatch();
@@ -68,7 +70,7 @@ index bd13800ee8fbf5c2ca0db9af9d665296fea52b8b..52c920fc5b6211d79f58f7216173a3de
      if (render) render.shell();
      sink.shell(resolveSSRSelectValues(html), {
 diff --git a/dist/server.js b/dist/server.js
-index a294a4817454e452530de3e4aef8b0c042cfa91d..db784047c5241a3189863ad24629ec3612c0f25c 100644
+index a294a4817454e452530de3e4aef8b0c042cfa91d..80edcaf9a169364e892a1504ed7dc422ef39ac3e 100644
 --- a/dist/server.js
 +++ b/dist/server.js
 @@ -1620,6 +1620,7 @@ function renderToStream(code, options = {}) {
@@ -88,7 +90,7 @@ index a294a4817454e452530de3e4aef8b0c042cfa91d..db784047c5241a3189863ad24629ec36
      writeTasks();
      lastBlockingSize = blockingPromises.size;
      doShell();
-@@ -1853,9 +1854,20 @@ function renderToStream(code, options = {}) {
+@@ -1853,9 +1854,21 @@ function renderToStream(code, options = {}) {
    serializer = (options.serializer || createHydrationSerializer)({
      scopeId: options.renderId,
      plugins: options.plugins,
@@ -103,7 +105,8 @@ index a294a4817454e452530de3e4aef8b0c042cfa91d..db784047c5241a3189863ad24629ec36
 +      serializationFailed = true;
 +      reportServerError(err, {
 +        kind: "render",
-+        handling: "serialize"
++        handling: "serialize",
++        event: requestEvent
 +      }, null, options.onError, errorScope);
 +      if (!options.onError && ambientServerErrorHook() === undefined) console.error(err);
 +      queue(abandon);
@@ -111,7 +114,7 @@ index a294a4817454e452530de3e4aef8b0c042cfa91d..db784047c5241a3189863ad24629ec36
    });
    let rootAssetsSerialized = false;
    const serializeRootAssets = () => {
-@@ -2210,7 +2222,15 @@ function renderToStream(code, options = {}) {
+@@ -2210,7 +2223,16 @@ function renderToStream(code, options = {}) {
          context.trace = undefined;
          if (onAbort) signal.removeEventListener("abort", onAbort);
          if (endEdges) endEdges();
@@ -121,14 +124,15 @@ index a294a4817454e452530de3e4aef8b0c042cfa91d..db784047c5241a3189863ad24629ec36
 +        } catch (err) {
 +          reportServerError(err, {
 +            kind: "render",
-+            handling: "failed"
++            handling: "failed",
++            event: requestEvent
 +          }, null, options.onError, errorScope);
 +          if (!options.onError && ambientServerErrorHook() === undefined) console.error(err);
 +        }
        };
        rootOwner = claimRenderRoot(context);
        if (requestEvent) claimEventRender(requestEvent, context);
-@@ -2301,6 +2321,7 @@ function renderToStream(code, options = {}) {
+@@ -2301,6 +2323,7 @@ function renderToStream(code, options = {}) {
      }
      serializeRootAssets();
      flushStubBatch();
@@ -137,7 +141,7 @@ index a294a4817454e452530de3e4aef8b0c042cfa91d..db784047c5241a3189863ad24629ec36
      if (render) render.shell();
      sink.shell(resolveSSRSelectValues(html), {
 diff --git a/dist/server.observe.js b/dist/server.observe.js
-index 559c39809fcaea9f2fe00d59c69cf0222cfda8c7..a8a75e5aac73ff38c76ab3fb295b395ab4efa5e4 100644
+index 559c39809fcaea9f2fe00d59c69cf0222cfda8c7..4d072db82485bf2c2894b2d4fc1799ac750c42d8 100644
 --- a/dist/server.observe.js
 +++ b/dist/server.observe.js
 @@ -1716,6 +1716,7 @@ function renderToStream(code, options = {}) {
@@ -157,7 +161,7 @@ index 559c39809fcaea9f2fe00d59c69cf0222cfda8c7..a8a75e5aac73ff38c76ab3fb295b395a
      writeTasks();
      lastBlockingSize = blockingPromises.size;
      doShell();
-@@ -1970,9 +1971,20 @@ function renderToStream(code, options = {}) {
+@@ -1970,9 +1971,21 @@ function renderToStream(code, options = {}) {
    serializer = (options.serializer || createHydrationSerializer)({
      scopeId: options.renderId,
      plugins: options.plugins,
@@ -172,7 +176,8 @@ index 559c39809fcaea9f2fe00d59c69cf0222cfda8c7..a8a75e5aac73ff38c76ab3fb295b395a
 +      serializationFailed = true;
 +      reportServerError(err, {
 +        kind: "render",
-+        handling: "serialize"
++        handling: "serialize",
++        event: requestEvent
 +      }, null, options.onError, errorScope);
 +      if (!options.onError && ambientServerErrorHook() === undefined) console.error(err);
 +      queue(abandon);
@@ -180,7 +185,7 @@ index 559c39809fcaea9f2fe00d59c69cf0222cfda8c7..a8a75e5aac73ff38c76ab3fb295b395a
    });
    let rootAssetsSerialized = false;
    const serializeRootAssets = () => {
-@@ -2343,7 +2355,15 @@ function renderToStream(code, options = {}) {
+@@ -2343,7 +2356,16 @@ function renderToStream(code, options = {}) {
          context.trace = undefined;
          if (onAbort) signal.removeEventListener("abort", onAbort);
          if (endEdges) endEdges();
@@ -190,14 +195,15 @@ index 559c39809fcaea9f2fe00d59c69cf0222cfda8c7..a8a75e5aac73ff38c76ab3fb295b395a
 +        } catch (err) {
 +          reportServerError(err, {
 +            kind: "render",
-+            handling: "failed"
++            handling: "failed",
++            event: requestEvent
 +          }, null, options.onError, errorScope);
 +          if (!options.onError && ambientServerErrorHook() === undefined) console.error(err);
 +        }
        };
        rootOwner = claimRenderRoot(context);
        if (requestEvent) claimEventRender(requestEvent, context);
-@@ -2434,6 +2454,7 @@ function renderToStream(code, options = {}) {
+@@ -2434,6 +2456,7 @@ function renderToStream(code, options = {}) {
      }
      serializeRootAssets();
      flushStubBatch();
