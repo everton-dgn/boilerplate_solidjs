@@ -4,6 +4,7 @@ import {
   redirect,
   respond,
   type RequestEvent,
+  type RequestEventLocals,
   type ServerErrorHook
 } from '@solidjs/web'
 import {
@@ -39,7 +40,7 @@ type PublicErrors = {
   isPublicError: typeof isPublicError
 }
 
-type RenderState = { hasErrors: boolean; hasCompleted: boolean }
+type RenderState = NonNullable<RequestEventLocals['ssrRenderState']>
 type RenderProbe = { event: RequestEvent; state: RenderState }
 
 // O wrapper ignora o contexto da invocação; o registro só precisa de run.
@@ -70,10 +71,13 @@ function registeredHook(): ServerErrorHook {
   return hook
 }
 
-// Mesmo formato que a entrada grava antes do render.
-function renderProbe(): RenderProbe {
+// O registro é recarregado com resetModules; o estado precisa vir da mesma
+// instância de renderIntegrity que o hook marca.
+async function renderProbe(): Promise<RenderProbe> {
+  const { createRenderIntegrity } =
+    await import('@/infra/server/renderIntegrity/index.ts')
   const event = createRequestEvent(new Request('http://localhost/'))
-  const state = { hasErrors: false, hasCompleted: false }
+  const { state } = createRenderIntegrity()
   event.locals.ssrRenderState = state
   return { event, state }
 }
@@ -207,8 +211,8 @@ describe('registro central da política de erros', () => {
     })
   })
 
-  it('marca o estado do render só nas falhas de render', () => {
-    const { event, state } = renderProbe()
+  it('marca o estado do render só nas falhas de render', async () => {
+    const { event, state } = await renderProbe()
 
     onError(new Error('PRIVATE'), {
       kind: 'server-function',
@@ -220,23 +224,21 @@ describe('registro central da política de erros', () => {
     expect(state.hasErrors).toBe(true)
   })
 
-  it('marca o estado do render também com sinais de controle', () => {
-    for (const control of [
-      redirect('/'),
-      respond({ ok: true }, { status: HTTP_NOT_FOUND })
-    ]) {
-      const { event, state } = renderProbe()
+  it.each([
+    ['um redirect()', redirect('/')],
+    ['um respond()', respond({ ok: true }, { status: HTTP_NOT_FOUND })]
+  ])('marca o estado do render também com %s', async (_name, control) => {
+    const { event, state } = await renderProbe()
 
-      expect(onError(control, { ...site, event })).toBeUndefined()
-      expect(state.hasErrors).toBe(true)
-    }
+    expect(onError(control, { ...site, event })).toBeUndefined()
+    expect(state.hasErrors).toBe(true)
     expect(console.error).not.toHaveBeenCalled()
   })
 
   it('instala o hook em desenvolvimento sem trocar o erro original', async () => {
     vi.stubEnv('DEV', true)
     await loadRegistration()
-    const { event, state } = renderProbe()
+    const { event, state } = await renderProbe()
 
     expect(
       registeredHook()(new Error('PRIVATE'), { ...site, event })

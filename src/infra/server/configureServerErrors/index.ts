@@ -11,6 +11,10 @@ import { isControlResponse } from '../isControlResponse/index.ts'
 import { logServerFailure } from '../logServerFailure/index.ts'
 import { protectServerOperation } from '../protectServerOperation/index.ts'
 import { createPublicError, isPublicError } from '../publicErrors/index.ts'
+import {
+  markRenderFailure,
+  observeRenderFailures
+} from '../renderIntegrity/index.ts'
 
 const isDevelopment = import.meta.env.DEV
 
@@ -57,9 +61,9 @@ function handleServerError(
 ): Error | undefined {
   // Sinais de controle também marcam: um redirect() ou respond() lançado no
   // render e capturado por um <Errored> aninhado vira fallback com HTML 200.
-  const state = context.event?.locals.ssrRenderState
-  if (context.kind === 'render' && state) state.hasErrors = true
+  if (context.kind === 'render') markRenderFailure(context.event)
   return mapServerError(error)
 }
 
 configureServerErrors({ onError: handleServerError })
+observeRenderFailures()

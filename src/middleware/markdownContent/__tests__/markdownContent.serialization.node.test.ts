@@ -18,6 +18,7 @@ import {
 } from 'solid-js'
 import { sharedConfig } from 'solid-js/internal'
 
+import { createRenderIntegrity } from '@/infra/server/renderIntegrity/index.ts'
 import { Router } from '@/router.ts'
 import { throwValue } from '@/tests/helpers/failureValues/index.ts'
 import { readLog } from '@/tests/helpers/readLog/index.ts'
@@ -129,8 +130,8 @@ function makeProbe({
     deserialize: () => token
   }
   const completed = vi.fn<() => void>()
-  // Mesmo formato que a entrada grava; o hook global marca hasErrors.
-  const state = { hasErrors: false, hasCompleted: false }
+  // Mesma fábrica da entrada; o hook global marca hasErrors.
+  const { state, complete } = createRenderIntegrity()
   let render: ReturnType<typeof renderToStream> | undefined
   let html = ''
 
@@ -178,7 +179,7 @@ function makeProbe({
       plugins: [plugin],
       onCompleteAll() {
         completed()
-        state.hasCompleted = true
+        complete()
       }
     })
     html = await render

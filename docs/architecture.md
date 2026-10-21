@@ -50,11 +50,12 @@ consumidos pelo CSS. `helpers/` contém funções puras compartilhadas; um módu
 usado por uma única rota fica ao lado dela em `routes/`, sem export default nem
 handler HTTP, e por isso não vira rota. `infra/adapters/` isola as APIs do
 navegador, e `infra/server/` concentra o transporte de backend, a proteção das
-operações e a criação de erros públicos. Os módulos de servidor usam
-`server-only`; consulte o [contrato de erros no servidor](server-errors.md). O
-prefixo `make` identifica utilitários sem estado reativo próprio, como
-`makeThemeChannel`, que devolve seu descarte. O prefixo `create` identifica
-primitives com estado ou efeitos reativos, como `createTheme`.
+operações, a criação de erros públicos e o estado de integridade do render. Os
+módulos de servidor usam `server-only`; consulte o
+[contrato de erros no servidor](server-errors.md). O prefixo `make` identifica
+utilitários sem estado reativo próprio, como `makeThemeChannel`, que devolve seu
+descarte. O prefixo `create` identifica primitives com estado ou efeitos
+reativos, como `createTheme`.
 
 Imports de CSS Modules usam o nome `S`, por exemplo,
 `import S from './styles.module.css'`. A regra local

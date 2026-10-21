@@ -467,12 +467,15 @@ automático configurado.
 
 ## Integridade do SSR para Markdown
 
-A entrada grava em `event.locals.ssrRenderState` um estado com `hasErrors` e
-`hasCompleted` antes de chamar `renderToStream`. O hook de
-`configureServerErrors` marca `hasErrors` quando recebe uma falha com
-`kind: "render"`, e `onCompleteAll` marca `hasCompleted`. Sinais de controle
-também marcam: um `redirect()` ou `respond()` lançado no render e capturado por
-um `<Errored>` aninhado vira fallback com HTML 200. Desde o
+A entrada cria o estado com `createRenderIntegrity()`, de
+[renderIntegrity](../src/infra/server/renderIntegrity/index.ts), e o grava em
+`event.locals.ssrRenderState` antes de chamar `renderToStream`. O estado é
+somente leitura: o hook de `configureServerErrors` marca `hasErrors` por
+`markRenderFailure` quando recebe uma falha com `kind: "render"`, e
+`onCompleteAll` marca `hasCompleted` pela função `complete` da mesma fábrica. Um
+estado criado fora dela não é marcado. Sinais de controle também marcam: um
+`redirect()` ou `respond()` lançado no render e capturado por um `<Errored>`
+aninhado vira fallback com HTML 200. Desde o
 [solidjs/solid#4130](https://github.com/solidjs/solid/pull/4130), o hook recebe
 cada erro uma vez por tipo em cada requisição. Uma falha de server function
 contida por um boundary chega primeiro como `server-function` e depois como
@@ -493,8 +496,10 @@ Os diagnósticos de desenvolvimento do Solid continuam imprimindo a mensagem
 original, como o de um erro contido por `<Errored>`. A entrada continua sem um
 `onError` local: ele teria precedência sobre o hook global, desviaria a
 sanitização e o log e deixaria o estado sem marcação, e o Markdown publicaria
-com `hasErrors: false`. O mesmo aconteceria sem o `serverFunctions.configure` do
-Vite, que registra o hook; os E2E de streaming do Markdown falham nesse caso.
+com `hasErrors: false`. O registro do hook chama `observeRenderFailures()`; até
+lá a fábrica cria o estado com `hasErrors` indefinido, e o Markdown recusa a
+página. Sem o `serverFunctions.configure` do Vite, que carrega o registro, todo
+`.md` responde 500 e o prerender interrompe o build.
 
 O hook encontra o estado pelo evento que o runtime associa à falha. Os dois
 pontos do patch passam o evento da requisição; os demais, como o fallback de
