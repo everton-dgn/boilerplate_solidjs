@@ -493,7 +493,8 @@ Os diagnósticos de desenvolvimento do Solid continuam imprimindo a mensagem
 original, como o de um erro contido por `<Errored>`. A entrada continua sem um
 `onError` local: ele teria precedência sobre o hook global, desviaria a
 sanitização e o log e deixaria o estado sem marcação, e o Markdown publicaria
-com `hasErrors: false`.
+com `hasErrors: false`. O mesmo aconteceria sem o `serverFunctions.configure` do
+Vite, que registra o hook; os E2E de streaming do Markdown falham nesse caso.
 
 O hook encontra o estado pelo evento que o runtime associa à falha, lido do
 `AsyncLocalStorage` da requisição. Uma falha informada fora desse contexto não

@@ -370,12 +370,19 @@ describe('markdown with the installed SSR serializer', () => {
       })
       expect(probe.html).toContain('Contained fallback')
       await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
-      // O Vitest resolve o runtime de desenvolvimento do Solid, que também
-      // imprime o diagnóstico do <Errored>; o de produção não o emite.
-      expect(readLog(console.error).heads).toContainEqual([
-        LOG_MESSAGE,
-        'Error'
-      ])
+      // O Vitest resolve o runtime de desenvolvimento do Solid, cujo
+      // diagnóstico do <Errored> imprime a mensagem original antes do hook; o
+      // de produção não o emite.
+      expect(readLog(console.error)).toStrictEqual({
+        heads: [
+          [
+            expect.stringContaining('[SSR_RENDER_ERROR_CONTAINED]'),
+            expect.any(String)
+          ],
+          [LOG_MESSAGE, 'Error']
+        ],
+        leaks: [PRIVATE_MARKER]
+      })
     } finally {
       probe.controller.abort()
     }
