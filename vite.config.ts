@@ -218,8 +218,9 @@ export default defineConfig(({ mode }) => {
           }
         },
         // O rastreamento automático não vê as leituras do tsc nativo, então as
-        // entradas ficam explícitas. O bun.lock representa os tipos instalados.
-        // Com noEmit, o tsc só grava o .tsbuildinfo em .tsbuild/, que é cache
+        // entradas ficam explícitas. O bun.lock representa os tipos instalados,
+        // mas guarda só o caminho dos patches, então o conteúdo deles entra à
+        // parte. Com noEmit, o tsc só grava o .tsbuildinfo em .tsbuild/, que é cache
         // próprio dele, então nada precisa ser restaurado.
         'typecheck-app': {
           command: 'tsc --project tsconfig.json',
@@ -233,7 +234,8 @@ export default defineConfig(({ mode }) => {
               'vite.config.ts',
               'tooling/**/*.ts',
               'package.json',
-              'bun.lock'
+              'bun.lock',
+              'patches/**'
             ],
             output: []
           }
@@ -252,7 +254,8 @@ export default defineConfig(({ mode }) => {
               'project.inlang/paraglide.config.ts',
               'project.inlang/settings.json',
               'package.json',
-              'bun.lock'
+              'bun.lock',
+              'patches/**'
             ],
             output: []
           }
@@ -283,11 +286,9 @@ export default defineConfig(({ mode }) => {
     test: {
       pool: 'threads',
       maxWorkers: env.CI ? CI_TEST_WORKERS : undefined,
-      isolate: true,
       css: false,
       globals: true,
       passWithNoTests: false,
-      clearMocks: true,
       restoreMocks: true,
       unstubGlobals: true,
       unstubEnvs: true,
