@@ -219,7 +219,8 @@ export default defineConfig(({ mode }) => {
         },
         // O rastreamento automático não vê as leituras do tsc nativo, então as
         // entradas ficam explícitas. O bun.lock representa os tipos instalados.
-        // Com noEmit, nada precisa ser restaurado.
+        // Com noEmit, o tsc só grava o .tsbuildinfo em .tsbuild/, que é cache
+        // próprio dele, então nada precisa ser restaurado.
         'typecheck-app': {
           command: 'tsc --project tsconfig.json',
           cache: {
