@@ -40,6 +40,12 @@ release. Add a tool name to select part of the graph. For example, run
   em Bun. Valide a automação com `vp run test:release`, também executado no
   pre-push. No CI, essa suíte roda quando a automação ou suas dependências
   mudam; a publicação mantém as verificações reais sem repetir os testes.
+- `vp run` entrega aos scripts um stdin não bloqueante enquanto o bloco `run`
+  do `vite.config.ts` usar constantes
+  ([vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155)).
+  Prompts interativos fecham sem esperar entrada; rode-os diretamente ou com
+  `bun run <script>`. Detalhes em
+  [desenvolvimento](docs/development.md#execução-e-cache).
 
 ## Documentação de dependências
 

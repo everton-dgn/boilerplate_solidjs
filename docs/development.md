@@ -183,11 +183,16 @@ tarefa do `vite.config.ts`. Os dois podem divergir, então confira o
 
 Execute comandos interativos diretamente. Para selecionar atualizações, use
 `vp update --interactive --latest`; `vp outdated` apenas lista as versões
-disponíveis. O runner de tarefas pode encerrar o seletor com zero pacotes
-selecionados antes de receber entrada do terminal. A tabela acima também mantém
-Vitest em observação, interfaces de teste e o gerador do Playwright fora desse
-runner. Os scripts correspondentes continuam disponíveis para compatibilidade,
-mas não são o caminho recomendado para interação.
+disponíveis. Observado no macOS: sob `vp run`, o script recebe o stdin em modo
+não bloqueante quando o bloco `run` deste `vite.config.ts` usa constantes, como
+`CSS_CACHE_INPUTS`. Uma leitura bloqueante falha na hora com `EAGAIN`, e o
+seletor do `vp update` fecha com zero pacotes selecionados antes de receber
+entrada. `bun run <script>` não tem o problema. O defeito está registrado em
+[vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155); retire
+esta orientação quando `vp run deps:update` voltar a esperar a seleção. A tabela
+acima também mantém Vitest em observação, interfaces de teste e o gerador do
+Playwright fora desse runner. Os scripts correspondentes continuam disponíveis
+para compatibilidade, mas não são o caminho recomendado para interação.
 
 `vp run lint`, `vp run lint:css`, `vp run check:ci` e `vp run dead-code` usam as
 tarefas com cache `lint-project`, `lint-css`, `check-project` e
