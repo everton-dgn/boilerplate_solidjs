@@ -39,7 +39,8 @@ valores locais de `HOST` e `PORT`, usados tanto pelo dev quanto pelo preview, e
 `VITE_SITE_URL`, a URL pública obrigatória dos metadados de SEO. Ele também é
 carregado durante o build; variáveis já definidas no ambiente têm prioridade.
 Para escolher outra porta ou interface no preview, use
-`vp run start --port 3001` ou `vp run start --host 0.0.0.0`.
+`vp run start --port 3001` ou `vp run start --host 0.0.0.0`. No servidor de
+desenvolvimento a flag `--port` não muda a porta; use `PORT=3001 vp run dev`.
 
 `vp run start` é um alias do preview local. Em produção, configure as variáveis
 na plataforma de hospedagem; o comando `preview` é destinado à conferência
@@ -427,8 +428,8 @@ os hooks.
 
 ## Referências externas
 
-- SolidJS: https://docs.solidjs.com
-- Solid Router: https://docs.solidjs.com/solid-router
+- SolidJS: https://v2.solidjs.com
+- Solid Router: https://v2.solidjs.com/routing/solid-router
 - Vite+: https://viteplus.dev/guide/
 - Vite: https://vite.dev
 - Vitest: https://vitest.dev
