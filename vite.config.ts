@@ -245,6 +245,11 @@ export default defineConfig(({ mode }) => {
               'tsconfig.node.json',
               'vite.config.ts',
               'tooling/**/*.ts',
+              // O tooling importa módulos de src, e o tsconfig inclui a
+              // configuração do Paraglide, que importa o settings.json.
+              'src/**',
+              'project.inlang/paraglide.config.ts',
+              'project.inlang/settings.json',
               'package.json',
               'bun.lock'
             ],
