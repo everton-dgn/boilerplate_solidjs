@@ -17,6 +17,7 @@ import type {
   createPublicError,
   isPublicError
 } from '@/infra/server/publicErrors/index.ts'
+import type { createRenderIntegrity } from '@/infra/server/renderIntegrity/index.ts'
 import {
   hostileValue,
   throwValue
@@ -42,6 +43,7 @@ type PublicErrors = {
 
 type RenderState = NonNullable<RequestEventLocals['ssrRenderState']>
 type RenderProbe = { event: RequestEvent; state: RenderState }
+type CreateRenderIntegrity = typeof createRenderIntegrity
 
 // O wrapper ignora o contexto da invocação; o registro só precisa de run.
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ServerFunctionEvent não é construível fora do runtime do Solid.
@@ -71,13 +73,11 @@ function registeredHook(): ServerErrorHook {
   return hook
 }
 
-// O registro é recarregado com resetModules; o estado precisa vir da mesma
-// instância de renderIntegrity que o hook marca.
-async function renderProbe(): Promise<RenderProbe> {
-  const { createRenderIntegrity } =
-    await import('@/infra/server/renderIntegrity/index.ts')
+// O registro é recarregado com resetModules; a fábrica precisa ser a da mesma
+// carga do hook que marca o estado.
+function renderProbe(createIntegrity: CreateRenderIntegrity): RenderProbe {
   const event = createRequestEvent(new Request('http://localhost/'))
-  const { state } = createRenderIntegrity()
+  const { state } = createIntegrity()
   event.locals.ssrRenderState = state
   return { event, state }
 }
@@ -96,6 +96,7 @@ describe('registro central da política de erros', () => {
   // O registro é recarregado com resetModules; o módulo de erros públicos
   // precisa ser a mesma instância que o hook usa.
   let publicErrors: PublicErrors
+  let createIntegrity: CreateRenderIntegrity
 
   beforeAll(async () => {
     vi.stubEnv('DEV', false)
@@ -109,6 +110,8 @@ describe('registro central da política de erros', () => {
     wrap = registered.wrapInvocation
     onError = registeredHook()
     publicErrors = await import('@/infra/server/publicErrors/index.ts')
+    ;({ createRenderIntegrity: createIntegrity } =
+      await import('@/infra/server/renderIntegrity/index.ts'))
   })
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 
@@ -211,8 +214,8 @@ describe('registro central da política de erros', () => {
     })
   })
 
-  it('marca o estado do render só nas falhas de render', async () => {
-    const { event, state } = await renderProbe()
+  it('marca o estado do render só nas falhas de render', () => {
+    const { event, state } = renderProbe(createIntegrity)
 
     onError(new Error('PRIVATE'), {
       kind: 'server-function',
@@ -227,8 +230,8 @@ describe('registro central da política de erros', () => {
   it.each([
     ['um redirect()', redirect('/')],
     ['um respond()', respond({ ok: true }, { status: HTTP_NOT_FOUND })]
-  ])('marca o estado do render também com %s', async (_name, control) => {
-    const { event, state } = await renderProbe()
+  ])('marca o estado do render também com %s', (_name, control) => {
+    const { event, state } = renderProbe(createIntegrity)
 
     expect(onError(control, { ...site, event })).toBeUndefined()
     expect(state.hasErrors).toBe(true)
@@ -238,7 +241,9 @@ describe('registro central da política de erros', () => {
   it('instala o hook em desenvolvimento e imprime o erro original', async () => {
     vi.stubEnv('DEV', true)
     await loadRegistration()
-    const { event, state } = await renderProbe()
+    const { createRenderIntegrity: createFresh } =
+      await import('@/infra/server/renderIntegrity/index.ts')
+    const { event, state } = renderProbe(createFresh)
     const failure = new Error('PRIVATE')
 
     expect(registeredHook()(failure, { ...site, event })).toBeUndefined()
