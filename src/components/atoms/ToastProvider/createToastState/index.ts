@@ -7,14 +7,20 @@ type TimerEntry = {
   remaining: number
   started: number
   timer?: ReturnType<typeof setTimeout>
-  hovered: boolean
-  focused: boolean
+  isHovered: boolean
+  isFocused: boolean
 }
+
+type PauseReason = 'hover' | 'focus'
 
 type PauseOptions = {
   id: string
-  reason: 'hovered' | 'focused'
-  paused: boolean
+  reason: PauseReason
+  isPaused: boolean
+}
+
+type ToastStateOptions = {
+  beforeRemove: (id: string) => void
 }
 
 type ToastState = {
@@ -28,6 +34,7 @@ type ToastState = {
 const DEFAULT_DURATION = 5000
 const ANNOUNCEMENT_DELAY = 150
 const MAX_TOASTS = 5
+const PAUSE_FLAGS = { hover: 'isHovered', focus: 'isFocused' } as const
 
 type DurationOptions = { duration?: number; variant: ToastVariant }
 
@@ -38,7 +45,9 @@ function getDuration({ duration, variant }: DurationOptions) {
   return variant === 'loading' ? 0 : DEFAULT_DURATION
 }
 
-export function createToastState(): ToastState {
+export function createToastState({
+  beforeRemove
+}: ToastStateOptions): ToastState {
   const [toasts, setToasts] = createSignal<ToastEntry[]>([])
   const [polite, setPolite] = createSignal<ToastEntry | undefined>()
   const [assertive, setAssertive] = createSignal<ToastEntry | undefined>()
@@ -47,7 +56,7 @@ export function createToastState(): ToastState {
   const lastAnnouncement = new Map<'polite' | 'assertive', ToastEntry>()
   let announcementTimer: ReturnType<typeof setTimeout> | undefined
   let sequence = 0
-  let disposed = false
+  let isDisposed = false
   let hidden = false
 
   function publish() {
@@ -65,9 +74,10 @@ export function createToastState(): ToastState {
   }
 
   function dismiss(id: string) {
-    if (disposed) return
+    if (isDisposed) return
     const entry = entries.get(id)
     if (!entry) return
+    beforeRemove(id)
     stop(entry)
     entries.delete(id)
     for (const [channel, toast] of pending) {
@@ -78,10 +88,10 @@ export function createToastState(): ToastState {
 
   function start(entry: TimerEntry) {
     if (
-      disposed ||
+      isDisposed ||
       hidden ||
-      entry.hovered ||
-      entry.focused ||
+      entry.isHovered ||
+      entry.isFocused ||
       entry.remaining === 0
     ) {
       return
@@ -102,6 +112,9 @@ export function createToastState(): ToastState {
     ) {
       if (channel === 'assertive') setAssertive(undefined)
       else setPolite(undefined)
+      // Com a região limpa, o lote precisa publicar mesmo que volte ao texto
+      // do último anúncio.
+      lastAnnouncement.delete(channel)
     }
     // Um lote anuncia somente a última mudança de cada prioridade.
     for (const [priority, current] of pending) {
@@ -132,10 +145,12 @@ export function createToastState(): ToastState {
     show(options) {
       sequence += 1
       const id = `toast-${sequence}`
-      if (disposed) return id
+      if (isDisposed) return id
       if (entries.size >= MAX_TOASTS) {
-        const oldest = entries.keys().next().value
-        if (oldest !== undefined) dismiss(oldest)
+        const queue = [...entries.values()]
+        const oldest =
+          queue.find(entry => !entry.isHovered && !entry.isFocused) ?? queue[0]
+        if (oldest) dismiss(oldest.toast.id)
       }
       const variant = options.variant ?? 'info'
       const toast = { id, message: options.message, variant }
@@ -143,8 +158,8 @@ export function createToastState(): ToastState {
         toast,
         remaining: getDuration({ duration: options.duration, variant }),
         started: 0,
-        hovered: false,
-        focused: false
+        isHovered: false,
+        isFocused: false
       }
       entries.set(id, entry)
       start(entry)
@@ -153,7 +168,7 @@ export function createToastState(): ToastState {
       return id
     },
     update(options) {
-      if (disposed) return
+      if (isDisposed) return
       const entry = entries.get(options.id)
       if (!entry) return
       const previous = entry.toast
@@ -179,11 +194,12 @@ export function createToastState(): ToastState {
     dismiss
   }
 
-  function pause({ id, reason, paused }: PauseOptions) {
+  function pause({ id, reason, isPaused }: PauseOptions) {
     const entry = entries.get(id)
-    if (!entry || entry[reason] === paused) return
+    const flag = PAUSE_FLAGS[reason]
+    if (!entry || entry[flag] === isPaused) return
     stop(entry)
-    entry[reason] = paused
+    entry[flag] = isPaused
     start(entry)
   }
 
@@ -203,7 +219,7 @@ export function createToastState(): ToastState {
   })
 
   onCleanup(() => {
-    disposed = true
+    isDisposed = true
     clearTimeout(announcementTimer)
     for (const entry of entries.values()) stop(entry)
     entries.clear()

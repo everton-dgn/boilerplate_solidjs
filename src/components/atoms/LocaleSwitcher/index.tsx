@@ -18,28 +18,30 @@ import S from './styles.module.css'
 
 export function LocaleSwitcher() {
   const location = useLocation()
-  const languages = locales.map(locale => ({
-    value: locale,
-    label: LOCALE_NAMES[locale],
-    icon: (
-      <span class={S.code} aria-hidden="true">
-        {locale.toUpperCase()}
-      </span>
-    )
-  }))
   return (
     <>
       <DropdownMenu<Locale>
+        class="js_only"
         label={m.localeSwitcher_label()}
         value={getLocale()}
         onChange={locale => setLocale(locale)}
-        items={languages}
+        items={locales.map(locale => ({
+          value: locale,
+          label: LOCALE_NAMES[locale],
+          icon: (
+            <span class={S.code} aria-hidden="true">
+              {locale.toUpperCase()}
+            </span>
+          )
+        }))}
         trigger={props => (
           <Button
             {...props}
             variant="ghost"
             size="icon"
-            aria-label={m.localeSwitcher_select()}
+            aria-label={m.localeSwitcher_select({
+              code: getLocale().toUpperCase()
+            })}
           >
             {getLocale().toUpperCase()}
           </Button>
@@ -48,20 +50,18 @@ export function LocaleSwitcher() {
       <NoHydration>
         <noscript>
           <nav class={S.fallback} aria-label={m.localeSwitcher_label()}>
-            <For each={languages}>
-              {language => (
+            <For each={locales}>
+              {locale => (
                 <a
                   href={localizeHref({
                     href: `${location.pathname}${location.search}`,
-                    locale: language.value
+                    locale
                   })}
-                  lang={language.value}
-                  hreflang={language.value}
-                  aria-current={
-                    language.value === getLocale() ? 'page' : undefined
-                  }
+                  lang={locale}
+                  hreflang={locale}
+                  aria-current={locale === getLocale() ? 'page' : undefined}
                 >
-                  {language.label}
+                  {LOCALE_NAMES[locale]}
                 </a>
               )}
             </For>

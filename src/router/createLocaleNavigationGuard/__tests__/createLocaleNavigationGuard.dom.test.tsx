@@ -4,6 +4,7 @@ import {
   useLocation,
   useNavigate
 } from '@solidjs/router'
+import { flush } from 'solid-js'
 
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
@@ -21,6 +22,7 @@ describe('locale navigation guard', () => {
       .mockImplementation(() => {
         /* Permanece no documento do teste. */
       })
+    const history = memoryHistory('/en/start')
     let navigate: ReturnType<typeof useNavigate> | undefined
     function Page() {
       navigate = useNavigate()
@@ -28,7 +30,7 @@ describe('locale navigation guard', () => {
       return <output>{location.pathname}</output>
     }
     const Router = createRouter({
-      history: memoryHistory('/en/start'),
+      history,
       routes: [{ path: '*all', component: Page }]
     })
     const host = renderComponent(
@@ -45,14 +47,20 @@ describe('locale navigation guard', () => {
     await expect.poll(() => host.textContent).toBe('/en/start')
     assert(navigate)
     navigate('/es/destination?q=1#part', { replace: true })
+    flush()
     expect(replace).toHaveBeenCalledWith(
       `${globalThis.location.origin}/es/destination?q=1#part`
     )
     navigate('/pt/destination?q=2#part')
+    flush()
     expect(assign).toHaveBeenCalledWith(
       `${globalThis.location.origin}/pt/destination?q=2#part`
     )
     expect(host.textContent).toBe('/en/start')
+    navigate('/en/next')
+    await expect.poll(() => host.textContent).toBe('/en/next')
+    history.back()
+    await expect.poll(() => host.textContent).toBe('/en/start')
   })
 
   it('keeps same-locale navigation, state and back/forward in the Router', async () => {

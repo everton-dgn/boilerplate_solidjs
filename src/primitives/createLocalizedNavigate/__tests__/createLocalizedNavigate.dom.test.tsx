@@ -41,12 +41,13 @@ describe('createLocalizedNavigate contracts', () => {
   })
 
   it('navigates in the Router with query/hash, relative URLs, and state', async () => {
+    const history = memoryHistory('/en/docs')
     let navigate: ReturnType<typeof createLocalizedNavigate> | undefined
     function Page() {
       navigate = createLocalizedNavigate()
       const location = useLocation()
       return (
-        <output>
+        <output data-state={JSON.stringify(location.state)}>
           {location.pathname}
           {location.search}
           {location.hash}
@@ -54,15 +55,17 @@ describe('createLocalizedNavigate contracts', () => {
       )
     }
     const Router = createRouter({
-      history: memoryHistory('/en/docs/start'),
+      history,
       routes: [{ path: '*all', component: Page }]
     })
     const host = renderComponent(
       () => <Router>{props => props.children}</Router>,
       { providers: false }
     )
-    await expect.poll(() => host.textContent).toBe('/en/docs/start')
+    await expect.poll(() => host.textContent).toBe('/en/docs')
     assert(navigate)
+    navigate({ href: '/docs/start' })
+    await expect.poll(() => host.textContent).toBe('/en/docs/start')
     navigate({
       href: '../next?q=1#part',
       locale: 'en',
@@ -70,6 +73,11 @@ describe('createLocalizedNavigate contracts', () => {
       replace: true
     })
     await expect.poll(() => host.textContent).toBe('/en/next?q=1#part')
+    expect(host.querySelector('output')?.dataset.state).toBe(
+      '{"source":"test"}'
+    )
+    history.back()
+    await expect.poll(() => host.textContent).toBe('/en/docs')
     navigate({ href: '/es/final', locale: 'en' })
     await expect.poll(() => host.textContent).toBe('/en/final')
   })

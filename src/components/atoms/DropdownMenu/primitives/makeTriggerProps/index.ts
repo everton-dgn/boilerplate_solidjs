@@ -1,4 +1,4 @@
-import { DROPDOWN_FIRST_INDEX, DROPDOWN_LAST_INDEX } from '../../constants.ts'
+import { DROPDOWN_FIRST_INDEX, DROPDOWN_OPEN_INDEX } from '../../constants.ts'
 import type {
   DropdownMenuState,
   DropdownMenuTriggerProps
@@ -26,20 +26,20 @@ export function makeTriggerProps({
     type: 'button',
     'aria-haspopup': 'menu',
     get 'aria-expanded'() {
-      return menu.open() ? 'true' : 'false'
+      return menu.isOpen() ? 'true' : 'false'
     },
     get 'aria-controls'() {
-      return menu.open() ? ids.content : undefined
+      return menu.isOpen() ? ids.content : undefined
     },
     onClick: () => {
-      if (menu.open()) menu.close(false)
+      if (menu.isOpen()) menu.close(false)
       else menu.openAt(DROPDOWN_FIRST_INDEX)
     },
     onKeyDown: event => {
-      if (event.key === 'ArrowDown') menu.openAt(DROPDOWN_FIRST_INDEX)
-      else if (event.key === 'ArrowUp') menu.openAt(DROPDOWN_LAST_INDEX)
-      else return
+      const index = DROPDOWN_OPEN_INDEX[event.key]
+      if (index === undefined) return
 
+      menu.openAt(index)
       event.preventDefault()
     }
   }

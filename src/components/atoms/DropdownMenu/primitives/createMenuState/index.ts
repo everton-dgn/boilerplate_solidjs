@@ -13,13 +13,12 @@ export function queryMenuItems(
 
 export function createMenuState(): DropdownMenuState {
   const id = createUniqueId()
-  const [open, setOpen] = createSignal(false)
+  const [isOpen, setIsOpen] = createSignal(false)
   const refs: DropdownMenuRefs = {}
-  let pointer = false
 
-  const close = (restoreFocus: boolean) => {
-    setOpen(false)
-    if (restoreFocus) refs.trigger?.focus()
+  const close = (shouldRestoreFocus: boolean) => {
+    setIsOpen(false)
+    if (shouldRestoreFocus) refs.trigger?.focus()
   }
 
   const focusAt = (index: number) => {
@@ -36,19 +35,14 @@ export function createMenuState(): DropdownMenuState {
 
   return {
     id,
-    open,
+    isOpen,
     refs,
     close,
-    closeAfterSelect: () => close(!pointer),
     focusAt,
     openAt: (index: number) => {
-      pointer = false
-      setOpen(true)
+      setIsOpen(true)
       flush()
       focusAt(index)
-    },
-    setPointer: (value: boolean) => {
-      pointer = value
     }
   }
 }

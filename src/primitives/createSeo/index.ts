@@ -2,7 +2,7 @@ import { getLocale, locales } from '@paraglide/runtime.js'
 import { useLocation, useRouteMatches } from '@solidjs/router'
 import { type HeadTag, useHead } from '@solidjs/web'
 import type { Thing } from 'schema-dts'
-import { type Accessor, createUniqueId } from 'solid-js'
+import { type Accessor, createMemo, createUniqueId } from 'solid-js'
 
 import { SITE } from '@/constants/site.ts'
 import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
@@ -46,11 +46,13 @@ const ROBOTS_NOINDEX = 'noindex'
 function publishRouteSeo(): void {
   const location = useLocation()
   const matches = useRouteMatches()
-  const seo = () =>
+  const seo = createMemo(() =>
     resolveRouteSeo(matches().map(match => match.route.info?.seo))
-  const canonical = () =>
+  )
+  const canonical = createMemo(() =>
     resolveSiteUrl(localizeHref({ href: location.pathname }))
-  const image = () => resolveSiteUrl(seo().image.path)
+  )
+  const image = createMemo(() => resolveSiteUrl(seo().image.path))
   const markdownHref = () =>
     isMarkdownRoute(matches().map(match => match.route.info))
       ? markdownPath(localizeHref({ href: location.pathname }))
@@ -89,95 +91,101 @@ function publishRouteSeo(): void {
     return tags
   }
 
-  const indexableTags = (): HeadTag[] => [
-    {
-      tag: 'meta',
-      props: {
-        property: 'og:locale',
-        content: SITE.locale.replaceAll('-', '_')
-      }
-    },
-    ...locales
-      .filter(locale => locale !== getLocale())
-      .map(locale => ({
-        tag: 'meta' as const,
-        key: `og:locale:alternate:${locale}`,
+  const indexableTags = (): HeadTag[] => {
+    const markdown = markdownHref()
+    return [
+      {
+        tag: 'meta',
         props: {
-          property: 'og:locale:alternate',
-          content: LOCALE_TAGS[locale].replaceAll('-', '_')
+          property: 'og:locale',
+          content: SITE.locale.replaceAll('-', '_')
         }
-      })),
-    { tag: 'meta', props: { property: 'og:site_name', content: SITE.title } },
-    {
-      tag: 'meta',
-      props: { name: 'twitter:card', content: 'summary_large_image' }
-    },
-    { tag: 'meta', props: { name: 'twitter:site', content: SITE.twitter } },
-    {
-      tag: 'meta',
-      props: { name: 'twitter:creator', content: SITE.author.twitter }
-    },
-    { tag: 'meta', props: { property: 'og:type', content: seo().type } },
-    { tag: 'meta', props: { property: 'og:title', content: seo().title } },
-    {
-      tag: 'meta',
-      props: { property: 'og:description', content: seo().description }
-    },
-    { tag: 'meta', props: { name: 'twitter:title', content: seo().title } },
-    {
-      tag: 'meta',
-      props: { name: 'twitter:description', content: seo().description }
-    },
-    { tag: 'link', props: { rel: 'canonical', href: canonical() } },
-    ...(markdownHref()
-      ? [
-          {
-            tag: 'link' as const,
-            key: 'markdown-alternate',
-            props: {
-              rel: 'alternate',
-              type: 'text/markdown',
-              href: resolveSiteUrl(markdownHref() ?? '')
-            }
+      },
+      ...locales
+        .filter(locale => locale !== getLocale())
+        .map(locale => ({
+          tag: 'meta' as const,
+          key: `og:locale:alternate:${locale}`,
+          props: {
+            property: 'og:locale:alternate',
+            content: LOCALE_TAGS[locale].replaceAll('-', '_')
           }
-        ]
-      : []),
-    ...buildLocaleAlternates({
-      href: location.pathname,
-      siteUrl: SITE.url
-    }).map(({ hreflang, href }) => ({
-      tag: 'link' as const,
-      props: { rel: 'alternate', hreflang, href }
-    })),
-    { tag: 'meta', props: { property: 'og:url', content: canonical() } },
-    { tag: 'meta', props: { property: 'og:image', content: image() } },
-    {
-      tag: 'meta',
-      props: { property: 'og:image:width', content: String(seo().image.width) }
-    },
-    {
-      tag: 'meta',
-      props: {
-        property: 'og:image:height',
-        content: String(seo().image.height)
+        })),
+      { tag: 'meta', props: { property: 'og:site_name', content: SITE.title } },
+      {
+        tag: 'meta',
+        props: { name: 'twitter:card', content: 'summary_large_image' }
+      },
+      { tag: 'meta', props: { name: 'twitter:site', content: SITE.twitter } },
+      {
+        tag: 'meta',
+        props: { name: 'twitter:creator', content: SITE.author.twitter }
+      },
+      { tag: 'meta', props: { property: 'og:type', content: seo().type } },
+      { tag: 'meta', props: { property: 'og:title', content: seo().title } },
+      {
+        tag: 'meta',
+        props: { property: 'og:description', content: seo().description }
+      },
+      { tag: 'meta', props: { name: 'twitter:title', content: seo().title } },
+      {
+        tag: 'meta',
+        props: { name: 'twitter:description', content: seo().description }
+      },
+      { tag: 'link', props: { rel: 'canonical', href: canonical() } },
+      ...(markdown
+        ? [
+            {
+              tag: 'link' as const,
+              key: 'markdown-alternate',
+              props: {
+                rel: 'alternate',
+                type: 'text/markdown',
+                href: resolveSiteUrl(markdown)
+              }
+            }
+          ]
+        : []),
+      ...buildLocaleAlternates({
+        href: location.pathname,
+        siteUrl: SITE.url
+      }).map(({ hreflang, href }) => ({
+        tag: 'link' as const,
+        props: { rel: 'alternate', hreflang, href }
+      })),
+      { tag: 'meta', props: { property: 'og:url', content: canonical() } },
+      { tag: 'meta', props: { property: 'og:image', content: image() } },
+      {
+        tag: 'meta',
+        props: {
+          property: 'og:image:width',
+          content: String(seo().image.width)
+        }
+      },
+      {
+        tag: 'meta',
+        props: {
+          property: 'og:image:height',
+          content: String(seo().image.height)
+        }
+      },
+      {
+        tag: 'meta',
+        props: { property: 'og:image:alt', content: seo().image.alt }
+      },
+      { tag: 'meta', props: { name: 'twitter:image', content: image() } },
+      {
+        tag: 'meta',
+        props: { name: 'twitter:image:alt', content: seo().image.alt }
+      },
+      ...articleTags(),
+      {
+        tag: 'script',
+        key: 'structured-data',
+        props: { type: 'application/ld+json', children: structuredData() }
       }
-    },
-    {
-      tag: 'meta',
-      props: { property: 'og:image:alt', content: seo().image.alt }
-    },
-    { tag: 'meta', props: { name: 'twitter:image', content: image() } },
-    {
-      tag: 'meta',
-      props: { name: 'twitter:image:alt', content: seo().image.alt }
-    },
-    ...articleTags(),
-    {
-      tag: 'script',
-      key: 'structured-data',
-      props: { type: 'application/ld+json', children: structuredData() }
-    }
-  ]
+    ]
+  }
 
   useHead(() =>
     seo().noindex ? baseTags() : [...baseTags(), ...indexableTags()]

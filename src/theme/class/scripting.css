@@ -1,0 +1,5 @@
+/* O script do head marca o documento. Sem JavaScript, os controles que
+   dependem dele ficariam inertes; os fallbacks em noscript os substituem. */
+:root:not([data-js]) .js_only {
+  display: none;
+}

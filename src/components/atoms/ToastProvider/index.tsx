@@ -38,7 +38,24 @@ function announcement(toast: ToastEntry | undefined) {
 }
 
 export function ToastProvider(props: ParentProps) {
-  const state = createToastState()
+  const items = new Map<string, HTMLLIElement>()
+  let focusOrigin: HTMLElement | undefined
+
+  // Sem este desvio, remover o item focado deixa o foco no body.
+  function releaseFocus(id: string) {
+    const item = items.get(id)
+    items.delete(id)
+    if (!item?.contains(document.activeElement)) return
+    const neighbor = item.nextElementSibling ?? item.previousElementSibling
+    const close = neighbor?.querySelector('button')
+    if (close) {
+      close.focus()
+      return
+    }
+    if (focusOrigin?.isConnected) focusOrigin.focus()
+  }
+
+  const state = createToastState({ beforeRemove: releaseFocus })
 
   return (
     <ToastContext value={state.api}>
@@ -54,7 +71,17 @@ export function ToastProvider(props: ParentProps) {
       >
         {announcement(state.assertive())}
       </div>
-      <section class={S.viewport} aria-label={m.toast_notifications()}>
+      <section
+        class={S.viewport}
+        aria-label={m.toast_notifications()}
+        onFocusIn={event => {
+          const origin = event.relatedTarget
+          if (origin instanceof Node && event.currentTarget.contains(origin)) {
+            return
+          }
+          focusOrigin = origin instanceof HTMLElement ? origin : undefined
+        }}
+      >
         <ol class={S.list}>
           <For each={state.toasts()} keyed={toast => toast.id}>
             {toast => {
@@ -62,26 +89,29 @@ export function ToastProvider(props: ParentProps) {
               const Icon = dynamicComponent(() => icons[toast().variant])
               return (
                 <li
+                  ref={element => {
+                    items.set(id, element)
+                  }}
                   class={[S.toast, S[`variant_${toast().variant}`]]}
                   onPointerEnter={() =>
                     state.pause({
                       id,
-                      reason: 'hovered',
-                      paused: true
+                      reason: 'hover',
+                      isPaused: true
                     })
                   }
                   onPointerLeave={() =>
                     state.pause({
                       id,
-                      reason: 'hovered',
-                      paused: false
+                      reason: 'hover',
+                      isPaused: false
                     })
                   }
                   onFocusIn={() =>
                     state.pause({
                       id,
-                      reason: 'focused',
-                      paused: true
+                      reason: 'focus',
+                      isPaused: true
                     })
                   }
                   onFocusOut={event => {
@@ -91,8 +121,8 @@ export function ToastProvider(props: ParentProps) {
                     ) {
                       state.pause({
                         id,
-                        reason: 'focused',
-                        paused: false
+                        reason: 'focus',
+                        isPaused: false
                       })
                     }
                   }}
