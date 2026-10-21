@@ -8,7 +8,7 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 
 ## Built-in Commands vs Scripts
 
-`vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name. Run interactive commands directly, such as `vp update --interactive --latest`, because the task runner can close the selection without input.
+`vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name.
 
 ## Tool Versions
 
@@ -43,8 +43,8 @@ release. Add a tool name to select part of the graph. For example, run
 - `vp run` entrega aos scripts um stdin não bloqueante enquanto o bloco `run`
   do `vite.config.ts` usar constantes
   ([vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155)).
-  Prompts interativos fecham sem esperar entrada; rode-os diretamente ou com
-  `bun run <script>`. Detalhes em
+  Prompts interativos fecham sem esperar entrada; rode-os diretamente, como
+  `vp update --interactive --latest`, ou com `bun run <script>`. Detalhes em
   [desenvolvimento](docs/development.md#execução-e-cache).
 
 ## Documentação de dependências
