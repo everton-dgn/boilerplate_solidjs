@@ -40,7 +40,7 @@
     "dead-code": "vp run i18n:generate && vp run dead-code-project",
     "dead-code:fix": "knip-bun --config tooling/knip.ts --fix --format",
     "scan:secrets": "kingfisher scan . --git-history none --no-validate --redact --exclude node_modules --exclude dist --exclude dist-ssr --exclude .nitro --exclude .output --exclude .vercel --exclude .tsbuild --exclude playwright-report --exclude test-results --exclude coverage --exclude .vitest",
-    "validate": "vp run check:ci && vp run typecheck:node && vp run test:coverage && vp run test:tooling && vp run test:release && vp run build",
+    "validate": "vp run check:ci && vp run typecheck:node && vp run dead-code && vp run test:coverage && vp run test:tooling && vp run test:release && vp run build",
     "commitlint": "commitlint"
   },
   "dependencies": {

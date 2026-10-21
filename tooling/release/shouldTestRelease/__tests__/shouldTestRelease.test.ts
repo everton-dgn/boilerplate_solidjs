@@ -36,6 +36,7 @@ describe('release test selection', () => {
       'tooling/release/shouldTestRelease/index.ts',
       'tooling/release/__tests__/versioning.test.ts',
       'tooling/fmt.ts',
+      '.commitlintrc',
       'package.json',
       'bun.lock',
       'bunfig.toml',

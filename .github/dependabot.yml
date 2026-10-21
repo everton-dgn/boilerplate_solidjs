@@ -7,6 +7,7 @@ updates:
     labels:
       - dependencies
       - ci
+    # ci(deps) não gera release; chore(deps) geraria um patch a cada bump de action.
     commit-message:
-      prefix: chore
+      prefix: ci
       include: scope

@@ -6,8 +6,8 @@ import { describe, it } from 'node:test'
 
 import { RuleTester } from 'vite-plus/lint/plugins-dev'
 
-import plugin from '../../css-modules-plugin.ts'
-import { testFilenameError } from '../../test-filename.ts'
+import plugin from '../css-modules-plugin.ts'
+import { testFilenameError } from '../test-filename.ts'
 
 describe('test filename policy', () => {
   const validTestPaths = [
@@ -24,12 +24,16 @@ describe('test filename policy', () => {
     'src/tests/pages/StructuredData/StructuredData.streaming.e2e.test.ts',
     'tooling/release/__tests__/automatic-release.test.ts',
     'tooling/css/__tests__/cssPolicy.test.ts',
-    'tooling/css/__tests__/testFilename.test.ts',
+    'tooling/__tests__/test-filename.test.ts',
     'src/components/NewWidget/__tests__/NewWidget.focus.dom.test.tsx',
-    'src/primitives/createSeo/__tests__/createSeo.test-d.ts'
+    'src/primitives/createSeo/__tests__/createSeo.test-d.ts',
+    'src/routes/(seo)/llms.txt/__tests__/llms.txt.node.test.ts',
+    'src/routes/(seo)/sitemap.xml/__tests__/sitemap.xml.locales.node.test.ts'
   ]
 
   const invalidTestPaths = [
+    'src/routes/(seo)/llms.txt/__tests__/llms.node.test.ts',
+    'src/routes/(seo)/llms.txt/__tests__/llms.txt.test.ts',
     'src/components/DropdownMenu/__tests__/dropdown-menu.browser.test.tsx',
     'src/components/DropdownMenu/__tests__/dropdownMenu.browser.test.tsx',
     'src/components/DropdownMenu/__tests__/ThemeToggle.browser.test.tsx',
@@ -53,6 +57,7 @@ describe('test filename policy', () => {
     'src/components/Button/__tests__/index.ts',
     'tooling/release/__tests__/automaticRelease.test.ts',
     'tooling/css/__tests__/audit.test.ts',
+    'tooling/css/__tests__/testFilename.test.ts',
     'src/primitives/createSeo/__tests__/seo.test-d.ts',
     'src/tests/pages/Home/Home.test-d.ts',
     'tooling/release/__tests__/versioning.test-d.ts',
@@ -94,7 +99,7 @@ describe('test filename policy', () => {
   it('reports on Program, including an empty test, with the configured plugin', () => {
     const rule = plugin.rules['test-filename']
     assert.ok(rule)
-    new RuleTester({ cwd: path.resolve(import.meta.dirname, '../../..') }).run(
+    new RuleTester({ cwd: path.resolve(import.meta.dirname, '../..') }).run(
       'test-filename',
       rule,
       {

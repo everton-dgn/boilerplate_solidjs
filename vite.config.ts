@@ -20,6 +20,20 @@ const CSS_CACHE_INPUTS = [
   'bun.lock',
   'bunfig.toml'
 ]
+// O lint e o check dependem da tarefa lint-css, que cuida do CSS. As entradas
+// explícitas cobrem as declarações que o lint e o formatador ignoram, as
+// configurações do TS e as dependências instaladas.
+const PROJECT_CHECK_INPUTS = [
+  { auto: true },
+  'src/**',
+  'paraglide/**',
+  'tooling/**',
+  '*.ts',
+  'tsconfig*.json',
+  'package.json',
+  'bun.lock',
+  'bunfig.toml'
+]
 const CI_TEST_WORKERS = 2
 const TOOLING_CI_TEST_WORKERS = 3
 const TOOLING_TEST_CONCURRENCY = env.CI
@@ -186,36 +200,14 @@ export default defineConfig(({ mode }) => {
           }
         },
         'lint-project': {
-          command: 'bun tooling/css/check.ts && vp lint',
-          cache: {
-            env: ['NODE_ENV'],
-            input: [
-              { auto: true },
-              ...CSS_CACHE_INPUTS,
-              'src/**',
-              'paraglide/**',
-              'tooling/**',
-              '*.ts',
-              'tsconfig*.json'
-            ]
-          }
+          command: 'vp lint',
+          dependsOn: ['lint-css'],
+          cache: { env: ['NODE_ENV'], input: PROJECT_CHECK_INPUTS }
         },
         'check-project': {
-          command: 'bun tooling/css/check.ts && vp check',
-          cache: {
-            env: ['NODE_ENV'],
-            // A checagem nativa de tipos também precisa das declarações que
-            // o lint e o formatador ignoram, além das configurações do TS.
-            input: [
-              { auto: true },
-              ...CSS_CACHE_INPUTS,
-              'src/**',
-              'paraglide/**',
-              'tooling/**',
-              '*.ts',
-              'tsconfig*.json'
-            ]
-          }
+          command: 'vp check',
+          dependsOn: ['lint-css'],
+          cache: { env: ['NODE_ENV'], input: PROJECT_CHECK_INPUTS }
         },
         // O rastreamento automático não vê as leituras do tsc nativo, então as
         // entradas ficam explícitas. De src entram só as extensões que o tsc lê;
@@ -317,7 +309,6 @@ export default defineConfig(({ mode }) => {
         include: ['src/**/*.{ts,tsx}'],
         exclude: [
           'src/**/*.d.ts',
-          'paraglide/**',
           'src/**/{constants,types,@types}/**',
           'src/**/{constants,types}.{ts,tsx}',
           'src/**/*.test.{ts,tsx}',

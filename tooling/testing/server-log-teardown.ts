@@ -2,9 +2,10 @@ import { readFile } from 'node:fs/promises'
 import { env } from 'node:process'
 import { stripVTControlCharacters } from 'node:util'
 
-// Prefixo comum dos marcadores sintéticos do backend de erro. Qualquer
-// ocorrência no log do servidor indica que um erro original foi registrado.
-const PRIVATE_PREFIX = 'PRIVATE_BACKEND_'
+// Formato comum dos marcadores sintéticos dos E2E, como PRIVATE_BACKEND_ e
+// PRIVATE_MARKDOWN_. Qualquer ocorrência no log do servidor indica que um erro
+// ou cabeçalho original foi registrado.
+const PRIVATE_MARKER = /PRIVATE_[A-Z0-9_]+/u
 
 export default async function checkServerLog(): Promise<void> {
   const file = env.SERVER_LOG_FILE
@@ -17,7 +18,7 @@ export default async function checkServerLog(): Promise<void> {
   if (!log.includes(host)) {
     throw new Error(`Server log does not show the preview startup: ${file}`)
   }
-  if (log.includes(PRIVATE_PREFIX)) {
+  if (PRIVATE_MARKER.test(log)) {
     throw new Error(`Server log contains a private marker: ${file}`)
   }
 }

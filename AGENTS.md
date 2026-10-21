@@ -40,6 +40,12 @@ release. Add a tool name to select part of the graph. For example, run
   em Bun. Valide a automação com `vp run test:release`, também executado no
   pre-push. No CI, essa suíte roda quando a automação ou suas dependências
   mudam; a publicação mantém as verificações reais sem repetir os testes.
+  Só o job de plano da release instala dependências e importa o Vite+
+  (`tooling/release/plan-release.ts`); os jobs com escrita usam apenas Git,
+  `gh` e módulos `node:`.
+- Para validar mudanças, use `vp run check:ci` e `vp run test`, não os
+  comandos embutidos `vp check` e `vp test` citados acima: eles pulam o
+  `i18n:generate` e o lint de CSS.
 - `vp run` entrega aos scripts um stdin não bloqueante enquanto o bloco `run`
   do `vite.config.ts` usar constantes
   ([vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155)).

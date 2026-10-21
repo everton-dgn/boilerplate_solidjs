@@ -7,7 +7,9 @@ type Options = {
   runGit?: (args: string[]) => Promise<string>
 }
 
+// O .commitlintrc entra porque os testes de versionamento executam o commitlint.
 const relevantFiles = new Set([
+  '.commitlintrc',
   'package.json',
   'bun.lock',
   'bunfig.toml',

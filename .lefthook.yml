@@ -26,6 +26,8 @@ pre-commit:
         vp run scan:secrets --staged
 
 pre-push:
+  # Sem piped, o Lefthook continua os jobs seguintes depois de uma falha.
+  piped: true
   jobs:
     # Estes comandos restauram a mesma saída do Paraglide pelo cache do Vite
     # Task. Terminá-los antes dos testes evita restaurações concorrentes.

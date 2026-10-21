@@ -6,32 +6,29 @@ type Change = {
   sha: string
 }
 
+type PlanInput = {
+  currentVersion: string
+  baselineTag: string | undefined
+  commits: Commit[]
+  changelog: string
+  date: string
+}
+
 const SHORT_SHA_LENGTH = 7
 const versionPattern = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u
 
-function hasBreakingFooter(lines: string[]): boolean {
+// O rodapé deveria vir depois de uma linha em branco, mas commits criados fora
+// do hook podem omiti-la; qualquer linha do corpo fora de cercas conta.
+function hasBreakingChange(lines: string[]): boolean {
   let fence = ''
-  let footer = false
-  for (const [index, line] of lines.entries()) {
+  for (const line of lines.slice(1)) {
     const marker = /^\s*(?<fence>`{3,}|~{3,})/u.exec(line)?.groups?.fence
     if (marker) {
-      if (!fence) fence = marker
-      else if (marker.startsWith(fence) && line.trim() === marker) {
-        fence = ''
-      }
+      const isClosing = marker.startsWith(fence) && line.trim() === marker
+      fence = fence && isClosing ? '' : fence || marker
       continue
     }
-    if (fence) continue
-    if (
-      index > 0 &&
-      lines[index - 1]?.trim() === '' &&
-      /^(?:BREAKING CHANGE|[A-Za-z][A-Za-z-]*)(?::\s+| #)\S/u.test(line)
-    ) {
-      footer = true
-    }
-    if (footer && /^BREAKING(?: CHANGE|-CHANGE):\s+\S/u.test(line)) {
-      return true
-    }
+    if (!fence && /^BREAKING[ -]CHANGE:\s+\S/u.test(line)) return true
   }
   return false
 }
@@ -45,7 +42,7 @@ function parseCommit(commit: Commit): Change | undefined {
   const groups = match?.groups
   if (!groups?.summary) return undefined
   const common = { summary: groups.summary, sha: commit.sha }
-  if (groups.breaking || hasBreakingFooter(commit.message.split(/\r?\n/u))) {
+  if (groups.breaking || hasBreakingChange(commit.message.split(/\r?\n/u))) {
     return { ...common, bump: 'major', section: 'Changed' }
   }
   if (groups.type === 'feat') {
@@ -89,13 +86,7 @@ export function parseVersion(version: string): number[] {
   return version.split('.').map(Number)
 }
 
-export function planRelease(input: {
-  currentVersion: string
-  baselineTag: string | undefined
-  commits: Commit[]
-  changelog: string
-  date: string
-}): ReleasePlan | undefined {
+export function planRelease(input: PlanInput): ReleasePlan | undefined {
   const [major = 0, minor = 0, patch = 0] = parseVersion(input.currentVersion)
   if (input.baselineTag) {
     if (input.baselineTag !== `v${input.currentVersion}`) {
