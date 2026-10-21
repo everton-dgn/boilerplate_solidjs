@@ -211,7 +211,9 @@ variáveis que carrega. A configuração do servidor limita `loadEnv` aos prefix
 O rastreamento automático registra os arquivos que o lint type-aware lê,
 inclusive os tipos em `node_modules`, mas não vê as leituras do `tsc` nativo.
 Por isso `typecheck-app` e `typecheck-node` declaram as entradas explicitamente,
-incluindo fontes, configurações, `package.json` e `bun.lock`. O lockfile
+incluindo fontes, configurações, `package.json` e `bun.lock`. De `src/` entram
+só os arquivos `.ts`, `.tsx` e `.json`, que o `tsc` lê; CSS, imagens e fontes
+chegam por declarações de módulo e não invalidam a checagem. O lockfile
 representa as dependências que `vp install --frozen-lockfile` instala. O Knip
 combina rastreamento automático com entradas explícitas de fontes, ferramentas e
 dependências, incluindo a descoberta de novas rotas. Ao criar uma tarefa com

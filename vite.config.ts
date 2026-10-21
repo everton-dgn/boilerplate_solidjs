@@ -218,15 +218,19 @@ export default defineConfig(({ mode }) => {
           }
         },
         // O rastreamento automático não vê as leituras do tsc nativo, então as
-        // entradas ficam explícitas. O bun.lock representa os tipos instalados,
-        // mas guarda só o caminho dos patches, então o conteúdo deles entra à
-        // parte. Com noEmit, o tsc só grava o .tsbuildinfo em .tsbuild/, que é cache
-        // próprio dele, então nada precisa ser restaurado.
+        // entradas ficam explícitas. De src entram só as extensões que o tsc lê;
+        // CSS, imagens e fontes chegam por declarações de módulo. O bun.lock
+        // representa os tipos instalados, mas guarda só o caminho dos patches,
+        // então o conteúdo deles entra à parte. Com noEmit, o tsc só grava o
+        // .tsbuildinfo em .tsbuild/, que é cache próprio dele, então nada precisa
+        // ser restaurado.
         'typecheck-app': {
           command: 'tsc --project tsconfig.json',
           cache: {
             input: [
-              'src/**',
+              'src/**/*.ts',
+              'src/**/*.tsx',
+              'src/**/*.json',
               'paraglide/**',
               'env.ts',
               'solid-env.d.ts',
@@ -250,7 +254,9 @@ export default defineConfig(({ mode }) => {
               'tooling/**/*.ts',
               // O tooling importa módulos de src, e o tsconfig inclui a
               // configuração do Paraglide, que importa o settings.json.
-              'src/**',
+              'src/**/*.ts',
+              'src/**/*.tsx',
+              'src/**/*.json',
               'project.inlang/paraglide.config.ts',
               'project.inlang/settings.json',
               'package.json',
