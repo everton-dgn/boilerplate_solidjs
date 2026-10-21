@@ -549,7 +549,10 @@ patch inclui a versão do pacote, então cada atualização de `@solidjs/web` ex
 regenerá-lo com `bun patch`; confira se o arquivo gerado não inclui o
 `.bun-tag-*` vazio do diretório de edição.
 
-Remova o patch quando um pacote publicado cobrir essas duas lacunas e passar as
+As duas lacunas, e o laço de cleanups do core que para no primeiro que lança,
+estão relatados em
+[solidjs/solid#4193](https://github.com/solidjs/solid/issues/4193). Remova o
+patch quando um pacote publicado cobrir essas duas lacunas e passar as
 regressões de erro reutilizado entre requisições, falha de server function que
 escapa de Loading, recuperação local, serialização, cleanup que lança e
 cancelamento. A issue ou o PR fechado não substitui a verificação dos artefatos
