@@ -1,20 +1,20 @@
-import type { RouteDefinition } from '@solidjs/router'
+import { useSearchParams, type RouteDefinition } from '@solidjs/router'
 import { createMemo, createSignal, Loading } from 'solid-js'
 
 import { createSeo } from '@/primitives/createSeo/index.ts'
 import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
 
-const DATA_DELAY_MS = 150
+import { waitFixtureGate } from '../../outside-error/waitFixtureGate/index.ts'
 
-function loadProductName(): Promise<string> {
-  // oxlint-disable-next-line promise/avoid-new -- Adapta o timer da fixture para suspender o SSR.
-  return new Promise(resolve => {
-    setTimeout(() => resolve('Produto em streaming'), DATA_DELAY_MS)
+type ProductDetailsProps = { id: string }
+
+// O gate, liberado pelo teste depois do shell, publica o JSON-LD do produto
+// como atualização tardia do head.
+function ProductDetails(props: ProductDetailsProps) {
+  const name = createMemo(async () => {
+    await waitFixtureGate({ id: props.id, real: false })
+    return 'Produto em streaming'
   })
-}
-
-function ProductDetails() {
-  const name = createMemo(loadProductName)
   createSeo({
     structuredData: () => ({
       '@type': 'Product',
@@ -45,11 +45,12 @@ export const route = {
 } satisfies RouteDefinition
 
 export default function StructuredDataStreamPage() {
+  const [params] = useSearchParams()
   return (
     <main>
       <h1>Dados estruturados em streaming</h1>
       <Loading fallback={<p>Carregando produto...</p>}>
-        <ProductDetails />
+        <ProductDetails id={String(params.id)} />
       </Loading>
     </main>
   )

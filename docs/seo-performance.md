@@ -1,5 +1,7 @@
 # Desempenho da coleta de SEO
 
+[Voltar ao README](../README.md)
+
 ## Escopo histórico
 
 Os números abaixo medem uma versão intermediária em que `info.llms` era um
@@ -121,27 +123,20 @@ verifica comportamento de buscadores ou agentes externos.
 
 ## Evidências e reprodução local
 
-Os artefatos desta execução estão em `/tmp/seo-benchmark-OaLmjx`:
+Os artefatos desta execução ficaram num diretório temporário da máquina da
+medição, fora do repositório, e não existem mais. Eles não são versionados, e os
+números acima são o único registro preservado. A execução usava:
 
-- `baseline/`: cópia dos helpers anteriores à alteração.
-- `measure.mjs`: carrega o código real e mede uma versão e um cenário.
-- `run.mjs`: executa os 20 pares alternados de cada cenário.
-- `final-environment.json`: ambiente e parâmetros.
-- `final-results.jsonl`: 280 registros, com tempos, erros, contagens e tamanhos.
+- uma cópia dos helpers anteriores à alteração, como linha de base;
+- um script que carregava o código real e media uma versão e um cenário;
+- um script que executava os 20 pares alternados de cada cenário;
+- um arquivo com o ambiente e os parâmetros;
+- um JSONL com os 280 registros, com tempos, erros, contagens e tamanhos.
 
-O piloto `results.jsonl` foi interrompido antes da versão final e não participa
-dos resultados acima. Para repetir no mesmo checkout, preservando os resultados
-existentes, escolha um prefixo novo. O script carrega o checkout atual e ainda
-importa `collectStaticPages` e a assinatura antiga de `buildLlmsText`; sem
-adaptá-lo a `collectLlmsPages` e ao array `pages`, uma nova execução falha ao
-carregar os módulos antes de medir:
-
-```sh
-node /tmp/seo-benchmark-OaLmjx/run.mjs nova-medicao
-```
-
-Os scripts usam os caminhos absolutos desta máquina e os artefatos temporários
-podem ser removidos pelo sistema. Para reproduzir em outro ambiente, preserve o
-snapshot, os scripts e os dados, ajuste os caminhos e instale as dependências
-declaradas pelo projeto. Estes números são uma observação local, sem limite de
-desempenho imposto à CI.
+Um piloto interrompido antes da versão final não participa dos resultados. Para
+repetir a medição, recrie esses scripts fora do repositório: copie os helpers da
+revisão de base para a linha de base, importe `collectLlmsPages` e a assinatura
+atual de `buildLlmsText`, que recebe o array `pages`, e alterne a ordem entre
+base e candidato em processos Node novos, como descrito no método acima. Instale
+as dependências declaradas pelo projeto e grave os resultados num arquivo novo.
+Estes números são uma observação local, sem limite de desempenho imposto à CI.

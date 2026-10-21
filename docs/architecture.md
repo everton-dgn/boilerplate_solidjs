@@ -15,12 +15,12 @@ adicionar uma página.
 
 O arquivo `src/routes/(base).tsx` define o layout compartilhado com `Topbar` e
 renderiza `props.children` com `RouteSectionProps`. Sua pasta `(base)/` contém
-`(home)/index.tsx` e `[...404]/index.tsx`. Os grupos entre parênteses não
-aparecem na URL. O router usa o caminho sem idioma para matching; a Home
-responde em `/pt`, `/en` e `/es`, e o fallback mantém a barra de navegação.
-`App.tsx` mantém o provider, o SEO e a boundary global, que também captura
-falhas no layout. As fixtures E2E têm sua própria árvore e reexportam esse
-layout para as páginas, incluindo Home e 404.
+`(home)/index.tsx`, `about/index.tsx`, `contact/index.tsx`, `privacy/index.tsx`
+e `[...404]/index.tsx`. Os grupos entre parênteses não aparecem na URL. O router
+usa o caminho sem idioma para matching; a Home responde em `/pt`, `/en` e `/es`,
+e o fallback mantém a barra de navegação. `App.tsx` mantém o provider, o SEO e a
+boundary global, que também captura falhas no layout. As fixtures E2E têm sua
+própria árvore e reexportam esse layout para as páginas, incluindo Home e 404.
 
 Rotas de API são módulos de `src/routes` que exportam `GET`, `POST` ou outro
 método HTTP em vez de `export default`. O `createAPIHandler` em

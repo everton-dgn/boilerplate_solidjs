@@ -30,7 +30,7 @@ type Timing = 'sync' | 'async' | 'defer'
 type Scenario = {
   phase: FailurePhase
   timing: Timing
-  shouldThrowCleanup?: boolean
+  shouldThrowCleanup: boolean
 }
 type RenderOptions = NonNullable<Parameters<typeof renderToStream>[1]>
 type SerializerPlugin = NonNullable<RenderOptions['plugins']>[number]
@@ -254,12 +254,12 @@ describe('markdown with the installed SSR serializer', () => {
   })
 
   it.each<Scenario>([
-    { phase: 'parse', timing: 'sync' },
-    { phase: 'parse', timing: 'async' },
-    { phase: 'parse', timing: 'defer' },
-    { phase: 'serialize', timing: 'sync' },
-    { phase: 'serialize', timing: 'async' },
-    { phase: 'serialize', timing: 'defer' },
+    { phase: 'parse', timing: 'sync', shouldThrowCleanup: false },
+    { phase: 'parse', timing: 'async', shouldThrowCleanup: false },
+    { phase: 'parse', timing: 'defer', shouldThrowCleanup: false },
+    { phase: 'serialize', timing: 'sync', shouldThrowCleanup: false },
+    { phase: 'serialize', timing: 'async', shouldThrowCleanup: false },
+    { phase: 'serialize', timing: 'defer', shouldThrowCleanup: false },
     { phase: 'serialize', timing: 'sync', shouldThrowCleanup: true }
   ])(
     'contains $phase/$timing failures ($shouldThrowCleanup)',

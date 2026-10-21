@@ -13,8 +13,11 @@ Twitter, com dimensões e texto alternativo) e um
 no cliente. As tags sociais que não variam por rota (`og:locale`,
 `og:site_name`, `twitter:card`, `twitter:site` e `twitter:creator`) também saem
 do `createSeo`, para acompanhar a regra de `noindex` abaixo; em `Document.tsx`
-fica só `author`. Não repita no `Document.tsx` uma tag que o `createSeo`
-publica, porque o crawler lê a primeira ocorrência.
+ficam só `author` e um `<title>` com `SITE.title`. Esse título é a exceção: o
+runtime substitui no lugar o primeiro `<title>` do shell pelo que o `createSeo`
+publica com `useHead`, e o documento sai com um único `<title>`, conferido nos
+E2E de SEO. Não repita no `Document.tsx` outra tag que o `createSeo` publica,
+porque o crawler lê a primeira ocorrência.
 
 Cada página mantém seus metadados em `seo.ts`, ao lado de `index.tsx`, e importa
 o objeto `seo` para `route.info.seo`. O contrato aceita `title`, `description`,
@@ -167,7 +170,7 @@ O `llms.txt` coleta os mesmos metadados pelo manifesto, sem renderizar páginas
 nem executar preloads, e publica só as páginas que declaram `route.info.llms`. O
 arquivo é um índice curado para modelos de linguagem, não um sitemap: em sites
 grandes, selecione as páginas que explicam o produto e agrupe-as. `llms: true`
-inclui a página; sem seção herdada, ela entra na seção padrão `Páginas`.
+inclui a página; sem seção herdada, ela entra na seção padrão `Pages`.
 `{ section: 'Guias' }` cria ou reutiliza uma seção com esse nome, na ordem em
 que aparece no manifesto; `{ optional: true }` move a página para a seção
 `Optional`, que o formato reserva ao conteúdo que o modelo pode pular, e uma

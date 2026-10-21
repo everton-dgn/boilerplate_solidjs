@@ -54,7 +54,7 @@ function failLog(): never {
 }
 
 function mockProductionLog(): void {
-  // A contenção só vale nos builds de produção; o Vitest roda com DEV.
+  // A contenção e a CSP só valem nos builds de produção; o Vitest roda com DEV.
   vi.stubEnv('DEV', false)
   vi.spyOn(console, 'error').mockImplementation(vi.fn())
 }
@@ -183,20 +183,6 @@ describe('página de erro do middleware', () => {
     })
   })
 
-  it('cai no 500 em texto quando a página de erro falha', async () => {
-    const event = pageEvent()
-    const render = vi
-      .fn<() => Promise<Response>>()
-      .mockRejectedValue(new Error('PRIVATE_RENDER'))
-
-    const response = await provideRequestEvent(event, () =>
-      failingWith(new Error('PRIVATE'))(event.request, render)
-    )
-
-    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
-  })
-
   it('não renderiza de novo quando a falha vem depois do render', async () => {
     const event = pageEvent()
     const render = renderPage()
@@ -261,16 +247,18 @@ describe('página de erro do middleware', () => {
     }
   )
 
-  it('registra a linha fixa e o erro do render quando a página de erro falha', async () => {
+  it('cai no 500 em texto e registra a linha fixa e o erro do render quando a página de erro falha', async () => {
     const event = pageEvent()
     const render = vi
       .fn<() => Promise<Response>>()
       .mockRejectedValue(new TypeError('PRIVATE_RENDER'))
 
-    await provideRequestEvent(event, () =>
+    const response = await provideRequestEvent(event, () =>
       failingWith(new Error('PRIVATE'))(event.request, render)
     )
 
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
     expect(readLog(console.error)).toStrictEqual({
       heads: [
         [LOG_MESSAGE, 'Error'],
@@ -329,10 +317,7 @@ describe('página de erro do middleware', () => {
 // O critério de HTML segue o do plugin: os pedidos que recebem a página quando
 // nada falha recebem a página de erro.
 describe('accept de uma navegação', () => {
-  beforeEach(() => {
-    vi.stubEnv('DEV', false)
-    vi.spyOn(console, 'error').mockImplementation(vi.fn())
-  })
+  beforeEach(mockProductionLog)
 
   it.each([
     ['com accept */*', { accept: '*/*' }, true],
@@ -360,11 +345,7 @@ describe('accept de uma navegação', () => {
 // As respostas da contenção não voltam pelo securityHeaders; a CSP e o nonce
 // são gravados aqui.
 describe('CSP nas respostas da contenção', () => {
-  beforeEach(() => {
-    // A contenção e a CSP só valem nos builds de produção; o Vitest roda com DEV.
-    vi.stubEnv('DEV', false)
-    vi.spyOn(console, 'error').mockImplementation(vi.fn())
-  })
+  beforeEach(mockProductionLog)
 
   it('bloqueia scripts no 500 em texto fora de uma requisição', async () => {
     const response = await failingWith(new Error('PRIVATE'))(

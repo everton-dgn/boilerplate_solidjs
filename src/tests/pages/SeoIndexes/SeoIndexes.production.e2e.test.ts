@@ -15,6 +15,25 @@ const NO_SCRIPTS = "script-src 'none'"
 // Grupo dos robôs de treinamento de IA: começa em GPTBot e termina bloqueando tudo.
 const AI_BOTS_GROUP =
   /\nUser-agent: GPTBot\n(?:User-agent: [^\n]+\n)*Disallow: \/\n/u
+// Pastas e módulos colocalizados em src/routes/(seo)/, exceto os endpoints.
+const LOCAL_MODULES = [
+  '/llms.txt/constants',
+  '/llms.txt/helpers',
+  '/llms.txt/helpers/buildLlmsResponse',
+  '/llms.txt/helpers/buildLlmsText',
+  '/llms.txt/helpers/collectLlmsPages',
+  '/llms.txt/helpers/resolveRouteLlms',
+  '/robots.txt/buildRobotsText',
+  '/robots.txt/constants',
+  '/robots.txt/types',
+  '/sitemap.xml/constants',
+  '/sitemap.xml/helpers',
+  '/sitemap.xml/helpers/buildSitemap',
+  '/sitemap.xml/helpers/buildSitemapResponse',
+  '/sitemap.xml/helpers/collectSitemapEntries',
+  '/sitemap.xml/helpers/normalizeSitemapEntries',
+  '/sitemap.xml/types'
+]
 
 test.describe('índices na árvore real de produção', () => {
   test('serve sitemap.xml sem redirecionamento', async ({ request }) => {
@@ -73,7 +92,6 @@ test.describe('índices na árvore real de produção', () => {
     const markdown = await response.text()
     expect(markdown).toMatch(/^# .+\n/u)
     const useCases = markdown.split('## When to use\n\n')[1]?.split('\n## ')[0]
-    expect(useCases).toBeDefined()
     expect(useCases).toContain(`](${readSiteOrigin()}/en/index.md): `)
     expect(useCases).toContain(`](${readSiteOrigin()}/en/about.md): `)
     expect(useCases?.trim().split('\n')).toEqual([
@@ -94,20 +112,14 @@ test.describe('índices na árvore real de produção', () => {
     expect(markdown).not.toContain('(seo)')
   })
 
-  for (const path of [
-    '/llms.txt/helpers',
-    '/llms.txt/helpers/buildLlmsText',
-    '/llms.txt/helpers/collectLlmsPages',
-    '/robots.txt/buildRobotsText',
-    '/sitemap.xml/helpers',
-    '/sitemap.xml/helpers/buildSitemap',
-    '/sitemap.xml/helpers/buildSitemapResponse',
-    '/sitemap.xml/helpers/collectSitemapEntries',
-    '/sitemap.xml/helpers/normalizeSitemapEntries'
-  ]) {
-    test(`não publica o helper ${path}`, async ({ request }) => {
-      const response = await request.get(`/pt${path}`, { maxRedirects: 0 })
-      expect(response.status()).toBe(HTTP_NOT_FOUND)
+  for (const path of LOCAL_MODULES) {
+    test(`não publica o módulo local ${path}`, async ({ request }) => {
+      // O createAPIHandler casa o pathname cru, antes do prefixo de idioma:
+      // um módulo publicado por engano responderia sem o prefixo.
+      const raw = await request.get(path, { maxRedirects: 0 })
+      expect(raw.status()).not.toBe(HTTP_OK)
+      const localized = await request.get(`/pt${path}`, { maxRedirects: 0 })
+      expect(localized.status()).toBe(HTTP_NOT_FOUND)
     })
   }
 
