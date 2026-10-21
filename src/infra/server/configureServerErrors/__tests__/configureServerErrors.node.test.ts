@@ -1,7 +1,9 @@
 import {
   configureServerErrors,
+  createRequestEvent,
   redirect,
   respond,
+  type RequestEvent,
   type ServerErrorHook
 } from '@solidjs/web'
 import {
@@ -36,6 +38,9 @@ type PublicErrors = {
   isPublicError: typeof isPublicError
 }
 
+type RenderState = { hasErrors: boolean; hasCompleted: boolean }
+type RenderProbe = { event: RequestEvent; state: RenderState }
+
 // O wrapper ignora o contexto da invocação; o registro só precisa de run.
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ServerFunctionEvent não é construível fora do runtime do Solid.
 const context = {} as Parameters<WrapInvocationHook>[1]
@@ -55,6 +60,21 @@ function invoke(wrap: WrapInvocationHook, run: () => unknown): unknown {
 
 function logUnavailable(): never {
   throw new Error('stderr indisponível')
+}
+
+function registeredHook(): ServerErrorHook {
+  const [errors] = vi.mocked(configureServerErrors).mock.lastCall ?? []
+  const hook = errors?.onError
+  if (!hook) throw new Error('onError não registrado')
+  return hook
+}
+
+// Mesmo formato que a entrada grava antes do render.
+function renderProbe(): RenderProbe {
+  const event = createRequestEvent(new Request('http://localhost/'))
+  const state = { hasErrors: false, hasCompleted: false }
+  event.locals.ssrRenderState = state
+  return { event, state }
 }
 
 async function loadRegistration() {
@@ -82,10 +102,7 @@ describe('registro central da política de erros', () => {
     }
     config = registered
     wrap = registered.wrapInvocation
-    const [errors] = vi.mocked(configureServerErrors).mock.calls[0] ?? []
-    const hook = errors?.onError
-    if (!hook) throw new Error('onError não registrado')
-    onError = hook
+    onError = registeredHook()
     publicErrors = await import('@/infra/server/publicErrors/index.ts')
   })
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
@@ -189,11 +206,32 @@ describe('registro central da política de erros', () => {
     })
   })
 
-  it('não instala o hook em desenvolvimento', async () => {
+  it('marca o estado do render só nas falhas de render', () => {
+    const { event, state } = renderProbe()
+
+    onError(new Error('PRIVATE'), {
+      kind: 'server-function',
+      handling: 'thrown',
+      event
+    })
+    expect(state.hasErrors).toBe(false)
+    onError(new Error('PRIVATE'), { ...site, event })
+    expect(state.hasErrors).toBe(true)
+  })
+
+  it('instala o hook em desenvolvimento sem trocar o erro original', async () => {
     vi.stubEnv('DEV', true)
     await loadRegistration()
+    const { event, state } = renderProbe()
 
-    expect(configureServerErrors).not.toHaveBeenCalled()
+    expect(
+      registeredHook()(new Error('PRIVATE'), { ...site, event })
+    ).toBeUndefined()
+    expect(state.hasErrors).toBe(true)
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
     expect(configureServerFunctionsServer).toHaveBeenCalledOnce()
   })
 })

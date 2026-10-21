@@ -301,9 +301,10 @@ e `hasErrors === false` no estado seguro guardado em
 HTML e devolve erro público 500 com `private, no-store`. O estado cobre erros
 observados pelo render; não atesta dados de hidratação silenciosamente
 descartados pelo serializador. Markdown usa o HTML assentado, sem esses dados. O
-hook global pode deduplicar avisos e não serve como prova de integridade. HTML
-normal mantém streaming. O contrato e o critério para remover os patches estão
-em [erros no servidor](server-errors.md#integridade-do-ssr-para-markdown).
+hook global marca o estado e recebe cada erro uma vez por tipo em cada
+requisição; a conclusão continua exigida à parte. HTML normal mantém streaming.
+O contrato e o critério para remover o patch estão em
+[erros no servidor](server-errors.md#integridade-do-ssr-para-markdown).
 
 O prerender do build passa pelo mesmo adaptador. O módulo
 `tooling/markdownPrerender/` pede ao middleware a lista das páginas estáticas

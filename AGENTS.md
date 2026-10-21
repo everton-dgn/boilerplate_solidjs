@@ -209,8 +209,9 @@ release. Add a tool name to select part of the graph. For example, run
   para excluir conteúdo; CSS calculado não é interpretado. Preserve citações
   contextuais em footer dentro de main.
 - Antes de publicar HTML convertido, exija estado de integridade do render
-  presente e sem erros; ausência de aviso do hook global não basta. Preserve
-  o sinal de cancelamento até `renderToStream` e o streaming do HTML normal.
+  presente, concluído e sem erros. O hook global marca esse estado; não passe
+  `onError` local ao `renderToStream`, que o desviaria. Preserve o sinal de
+  cancelamento até `renderToStream` e o streaming do HTML normal.
 
 ## Parâmetros de função
 
@@ -403,9 +404,10 @@ release. Add a tool name to select part of the graph. For example, run
   não identifica dados confidenciais em strings. Não retorne erros, promises
   aninhadas ou trabalho adiado sem contrato específico.
 - Mantenha o registro global e os sinais de controle do Solid. O
-  `wrapInvocation` cobre server functions e o hook `onError`, instalado só em
-  produção, uniformiza a mensagem pública das demais falhas; ele nunca devolve
-  o objeto recebido. `containFailures` continua envolvendo a cadeia inteira
+  `wrapInvocation` cobre server functions e o hook `onError`, instalado em
+  todos os modos, marca o estado de integridade do render e, em produção,
+  uniformiza a mensagem pública das demais falhas; ele nunca devolve o objeto
+  recebido. `containFailures` continua envolvendo a cadeia inteira
   para que exceções não cheguem ao log do host; numa navegação ele renderiza a
   página de erro do app pelo `ServerFailureGate` de `App.tsx`. Um fallback visual não
   protege o payload.

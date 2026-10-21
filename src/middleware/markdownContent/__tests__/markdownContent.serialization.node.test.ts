@@ -97,6 +97,8 @@ function makeProbe({
     deserialize: () => token
   }
   const completed = vi.fn<() => void>()
+  // Mesmo formato que a entrada grava; o hook global marca hasErrors.
+  const state = { hasErrors: false, hasCompleted: false }
   let render: ReturnType<typeof renderToStream> | undefined
   let html = ''
 
@@ -127,19 +129,15 @@ function makeProbe({
   }
 
   async function next() {
+    event.locals.ssrRenderState = state
     render = renderToStream(content, {
       signal: event.request.signal,
       plugins: [plugin],
-      onCompleteAll: completed
-    })
-    event.locals.ssrRenderState = {
-      get hasErrors() {
-        return render?.hasErrors
-      },
-      get hasCompleted() {
-        return completed.mock.calls.length > 0
+      onCompleteAll() {
+        completed()
+        state.hasCompleted = true
       }
-    }
+    })
     html = await render
     return new Response(html, { headers: { 'content-type': 'text/html' } })
   }
@@ -155,7 +153,7 @@ function makeProbe({
       return html
     },
     get hasErrors() {
-      return render?.hasErrors
+      return state.hasErrors
     },
     run: () => provideRequestEvent(event, () => markdownContent(event, next))
   }

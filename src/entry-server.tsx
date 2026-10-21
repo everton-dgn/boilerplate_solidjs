@@ -7,8 +7,11 @@ import Document from './Document.tsx'
 export function render() {
   const event = getRequestEvent()
   const nonce = event?.nonce ?? undefined
-  let hasCompleted = false
-  const stream = renderToStream(
+  // O hook global de configureServerErrors marca hasErrors durante o render,
+  // então o estado precisa existir antes do primeiro passe.
+  const state = { hasErrors: false, hasCompleted: false }
+  if (event) event.locals.ssrRenderState = state
+  return renderToStream(
     () => (
       <Document>
         <App />
@@ -19,19 +22,8 @@ export function render() {
       nonce,
       signal: event?.request.signal,
       onCompleteAll() {
-        hasCompleted = true
+        state.hasCompleted = true
       }
     }
   )
-  if (event) {
-    event.locals.ssrRenderState = {
-      get hasErrors() {
-        return stream.hasErrors
-      },
-      get hasCompleted() {
-        return hasCompleted
-      }
-    }
-  }
-  return stream
 }

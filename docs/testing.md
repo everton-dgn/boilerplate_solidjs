@@ -140,8 +140,9 @@ filtros semânticos, links relativos, links com esquema de script ou de dados,
 imagens sem `alt`, negociação, HEAD, erros, limites de tamanho e cancelamento. A
 elegibilidade compartilhada tem regressão para herança de noindex com override
 explícito do filho. As fixtures E2E exercitam páginas parametrizadas, resolução
-assíncrona e isolamento de idiomas. A suíte definitiva precisa incluir o hook
-SSR que sinaliza render incompleto.
+assíncrona e isolamento de idiomas. O teste do registro central cobre a marcação
+do estado de integridade pelo hook SSR, e os E2E de streaming do Markdown cobrem
+renders com falha.
 
 Essas verificações cobrem o build e o preview local. Cache e regras de domínio
 da Vercel continuam exigindo conferência no site publicado.
