@@ -382,8 +382,11 @@ GET com `Accept: text/markdown` recebe Markdown diretamente, sem redirect para
 arquivo. A negociação respeita pesos e especificidade, com HTML em empate. O
 acesso explícito a `.md` exige somente que Markdown seja aceitável, mesmo quando
 HTML tenha peso maior; uma exclusão exata `text/markdown;q=0` prevalece sobre
-curingas. Nenhum formato aceitável na página publicada resulta em 406. Query
-strings permanecem no SSR. HEAD renderiza a mesma representação e remove o
+curingas. Além do peso, só `charset=utf-8` e, em `text/markdown`, as variantes
+`GFM` e `CommonMark` do RFC 7763 são aceitos; outro parâmetro descarta a faixa.
+O cabeçalho é lido numa varredura linear, então um `Accept` longo não custa
+tempo quadrático. Nenhum formato aceitável na página publicada resulta em 406.
+Query strings permanecem no SSR. HEAD renderiza a mesma representação e remove o
 corpo. APIs, assets, RPC e métodos de escrita mantêm o fluxo original.
 
 A localização preserva URL > cookie > Accept-Language. Redirects seguros para
