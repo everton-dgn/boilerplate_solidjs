@@ -32,6 +32,7 @@ vi.mock(import('@solidjs/web/server-functions/server'), () => ({
 
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const LOG_MESSAGE = '[server-error] Unexpected failure; private details omitted'
+const HTTP_NOT_FOUND = 404
 
 type PublicErrors = {
   createPublicError: typeof createPublicError
@@ -217,6 +218,19 @@ describe('registro central da política de erros', () => {
     expect(state.hasErrors).toBe(false)
     onError(new Error('PRIVATE'), { ...site, event })
     expect(state.hasErrors).toBe(true)
+  })
+
+  it('não marca o estado do render com sinais de controle', () => {
+    const { event, state } = renderProbe()
+
+    for (const control of [
+      redirect('/'),
+      respond({ ok: true }, { status: HTTP_NOT_FOUND }),
+      new NotReadyError(Promise.resolve('pronto'))
+    ]) {
+      expect(onError(control, { ...site, event })).toBeUndefined()
+    }
+    expect(state.hasErrors).toBe(false)
   })
 
   it('instala o hook em desenvolvimento sem trocar o erro original', async () => {

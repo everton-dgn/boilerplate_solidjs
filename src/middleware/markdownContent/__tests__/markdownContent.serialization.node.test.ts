@@ -8,7 +8,13 @@ import {
   ssr
 } from '@solidjs/web'
 import { provideRequestEvent } from '@solidjs/web/storage'
-import { createMemo, Loading, NotReadyError, onCleanup } from 'solid-js'
+import {
+  createMemo,
+  Errored,
+  Loading,
+  NotReadyError,
+  onCleanup
+} from 'solid-js'
 import { sharedConfig } from 'solid-js/internal'
 
 import { Router } from '@/router.ts'
@@ -31,6 +37,7 @@ type ProbeOptions = {
   scenario?: Scenario
   shouldRecover?: boolean
   shouldThrowCleanup?: boolean
+  shouldFailInBoundary?: boolean
 }
 
 const PRIVATE_MARKER = 'PRIVATE_SERIALIZATION_FAILURE'
@@ -68,7 +75,8 @@ function page() {
 function makeProbe({
   scenario,
   shouldRecover = false,
-  shouldThrowCleanup = scenario?.shouldThrowCleanup ?? false
+  shouldThrowCleanup = scenario?.shouldThrowCleanup ?? false,
+  shouldFailInBoundary = false
 }: ProbeOptions) {
   const controller = new AbortController()
   const event: Event = createRequestEvent(
@@ -111,6 +119,17 @@ function makeProbe({
         'serialization-probe',
         scenario.timing === 'sync' ? token : Promise.resolve(token),
         scenario.timing === 'defer'
+      )
+    }
+    if (shouldFailInBoundary) {
+      return ssr(
+        ['<main>', '</main>'],
+        createComponent(Errored, {
+          fallback: 'Contained fallback',
+          get children(): string {
+            throw failure
+          }
+        })
       )
     }
     if (shouldRecover) {
@@ -156,6 +175,20 @@ function makeProbe({
       return state.hasErrors
     },
     run: () => provideRequestEvent(event, () => markdownContent(event, next))
+  }
+}
+
+function shellFailurePlugin(token: object): SerializerPlugin {
+  return {
+    tag: 'shell-serialization-failure',
+    test: (value: unknown) => value === token,
+    parse: {
+      stream: () => {
+        throw new Error(PRIVATE_MARKER)
+      }
+    },
+    serialize: () => '{}',
+    deserialize: () => token
   }
 }
 
@@ -251,17 +284,6 @@ describe('markdown with the installed SSR serializer', () => {
 
   it('keeps the 500 of an HTML shell that failed to serialize', async () => {
     const token = Object.freeze({ isProbe: true })
-    const plugin: SerializerPlugin = {
-      tag: 'shell-serialization-failure',
-      test: (value: unknown) => value === token,
-      parse: {
-        stream: () => {
-          throw new Error(PRIVATE_MARKER)
-        }
-      },
-      serialize: () => '{}',
-      deserialize: () => token
-    }
     let isPending = true
     // O primeiro passe suspende; o re-pull acontece enquanto o shell é montado.
     function shellContent() {
@@ -284,7 +306,7 @@ describe('markdown with the installed SSR serializer', () => {
     const next = () =>
       createSSRResponse(
         renderToStream(() => ssr(['<main>', '</main>'], shellContent), {
-          plugins: [plugin],
+          plugins: [shellFailurePlugin(token)],
           signal: event.request.signal
         }),
         event
@@ -326,6 +348,34 @@ describe('markdown with the installed SSR serializer', () => {
         heads: [[LOG_MESSAGE, 'Error']],
         leaks: []
       })
+    } finally {
+      probe.controller.abort()
+    }
+  })
+
+  it('refuses an HTML 200 whose render fell back to <Errored>', async () => {
+    const probe = makeProbe({ shouldFailInBoundary: true })
+    try {
+      const response = await boundedResponse(probe)
+      expect({
+        status: response.status,
+        cacheControl: response.headers.get('cache-control'),
+        hasErrors: probe.hasErrors,
+        completed: probe.completed.mock.calls.length
+      }).toStrictEqual({
+        status: HTTP_SERVER_ERROR,
+        cacheControl: 'private, no-store',
+        hasErrors: true,
+        completed: 1
+      })
+      expect(probe.html).toContain('Contained fallback')
+      await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+      // O Vitest resolve o runtime de desenvolvimento do Solid, que também
+      // imprime o diagnóstico do <Errored>; o de produção não o emite.
+      expect(readLog(console.error).heads).toContainEqual([
+        LOG_MESSAGE,
+        'Error'
+      ])
     } finally {
       probe.controller.abort()
     }

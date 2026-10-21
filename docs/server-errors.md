@@ -16,8 +16,8 @@ O [registro central](../src/infra/server/configureServerErrors/index.ts) usa
 `configureServerFunctionsServer({ wrapInvocation })`. O
 [Vite](../vite.config.ts) o carrega por `serverFunctions.configure`, cobrindo
 server functions chamadas diretamente no SSR e pelo transporte HTTP. O mesmo
-módulo instala, só nos builds de produção, o hook
-`configureServerErrors({ onError })` de `@solidjs/web`.
+módulo instala, em todos os modos, o hook `configureServerErrors({ onError })`
+de `@solidjs/web`; a troca pelo erro público acontece só em produção.
 
 - [requestJson](../src/infra/server/requestJson/index.ts) verifica o status
   HTTP, lê o JSON de sucesso e aplica o schema de saída dentro da proteção.
@@ -45,27 +45,28 @@ status 204, 205 e 304. Depois reconstrói a resposta com os dados verificados.
 fronteira usa `isResponseEnvelope()` para reconhecer seu envelope em runtime.
 Chamadas diretas no SSR recebem os dados desembrulhados pelo Solid.
 
-O hook `onError` é aditivo. Ele troca qualquer falha que chega ao runtime,
-inclusive de render e de rejeições fora de server functions, por um
-`createPublicError()` novo e registra o log `[server-error]` quando o erro não
-era público. Sinais de controle (`Response` sem corpo, envelopes e
-`NotReadyError`) seguem a política padrão do runtime. `Response.error()` também
-não tem corpo, mas o status 0 não sai como HTTP, então ela vira falha pública.
-Um envelope lançado por uma query durante o SSR chega primeiro ao hook como
-controle; depois o router lança o valor do envelope no render, e esse valor é
-tratado como falha de render, com ou sem o hook. O retorno do hook vai ao
-cliente sem nova sanitização, então ele nunca devolve o objeto recebido, nem um
-erro público, que pode ter ganhado campos depois de criado. O hook é síncrono e
-não lança, nem quando o log falha: uma falha dele faria o runtime registrar o
-erro do hook.
+O hook `onError` é aditivo. Em produção, ele troca qualquer falha que chega ao
+runtime, inclusive de render e de rejeições fora de server functions, por um
+`createPublicError()` novo. Nos dois modos, registra o log `[server-error]`
+quando o erro não era público. Sinais de controle (`Response` sem corpo,
+envelopes e `NotReadyError`) seguem a política padrão do runtime.
+`Response.error()` também não tem corpo, mas o status 0 não sai como HTTP, então
+ela vira falha pública. Um envelope lançado por uma query durante o SSR chega
+primeiro ao hook como controle; depois o router lança o valor do envelope no
+render, e esse valor é tratado como falha de render, com ou sem o hook. O
+retorno do hook vai ao cliente sem nova sanitização, então ele nunca devolve o
+objeto recebido, nem um erro público, que pode ter ganhado campos depois de
+criado. O hook é síncrono e não lança, nem quando o log falha: uma falha dele
+faria o runtime registrar o erro do hook.
 
 Limites do hook:
 
 - A rejeição de uma fonte assíncrona é serializada com a política padrão antes
   de qualquer hook. O mesmo corpo leva "Internal Server Error" para a fonte e a
   mensagem pública para o boundary.
-- Em desenvolvimento o hook não é instalado, para que o runtime mostre o erro
-  original.
+- Em desenvolvimento o hook devolve `undefined`, para que o runtime envie o erro
+  original ao navegador. Ele só registra o log filtrado e marca o estado usado
+  pelo Markdown.
 - Valores primitivos lançados não têm veredito por objeto; o hook roda e
   registra o log a cada vez que o runtime os encontra.
 
@@ -469,26 +470,36 @@ automático configurado.
 A entrada grava em `event.locals.ssrRenderState` um estado com `hasErrors` e
 `hasCompleted` antes de chamar `renderToStream`. O hook de
 `configureServerErrors` marca `hasErrors` quando recebe uma falha com
-`kind: "render"`, e `onCompleteAll` marca `hasCompleted`. Desde o
-[solidjs/solid#4130](https://github.com/solidjs/solid/pull/4130), o hook recebe
-cada erro uma vez por tipo em cada requisição. Uma falha de server function
-contida por um boundary chega primeiro como `server-function` e depois como
-`render`, e só o segundo aviso marca o estado. O callback sozinho não comprova
-integridade: ele também pode ocorrer após falha de fragmento. O adaptador exige
-conclusão e ausência estrita de erros observados pelo render depois de aguardar
-o SSR, antes de publicar HTML convertido. Estado ausente ou inválido resulta em
-erro público 500 sem cache. Redirects e respostas que não são páginas elegíveis
-preservam seu fluxo anterior. As páginas estáticas passam por esse mesmo
-adaptador no prerender do build, e uma recusa ali interrompe o build.
+`kind: "render"` que não seja sinal de controle, e `onCompleteAll` marca
+`hasCompleted`. Um `redirect()` ou `respond()` lançado no render não conta como
+falha. Desde o [solidjs/solid#4130](https://github.com/solidjs/solid/pull/4130),
+o hook recebe cada erro uma vez por tipo em cada requisição. Uma falha de server
+function contida por um boundary chega primeiro como `server-function` e depois
+como `render`, e só o segundo aviso marca o estado. O callback sozinho não
+comprova integridade: ele também pode ocorrer após falha de fragmento. O
+adaptador exige conclusão e ausência estrita de erros observados pelo render
+depois de aguardar o SSR, antes de publicar HTML convertido. Estado ausente ou
+inválido resulta em erro público 500 sem cache. Redirects e respostas que não
+são páginas elegíveis preservam seu fluxo anterior. As páginas estáticas passam
+por esse mesmo adaptador no prerender do build, e uma recusa ali interrompe o
+build.
 
 Como o hook é a fonte desse sinal, ele fica instalado também em desenvolvimento.
 Nesse modo ele marca o estado e registra o log filtrado, mas devolve
 `undefined`, e o runtime continua enviando o erro original ao navegador. Com um
-hook instalado, o runtime deixa de imprimir essas falhas por conta própria; o
-log de `logServerFailure` ocupa esse lugar. A entrada continua sem um `onError`
-local: ele teria precedência sobre o hook global, desviaria a sanitização e o
-log e deixaria o estado sem marcação, e o Markdown publicaria com
-`hasErrors: false`.
+hook instalado, o runtime deixa de chamar `console.error` com o erro recebido, e
+o terminal mostra só a linha fixa e a classe registradas por `logServerFailure`.
+Os diagnósticos de desenvolvimento do Solid continuam imprimindo a mensagem
+original, como o de um erro contido por `<Errored>`. A entrada continua sem um
+`onError` local: ele teria precedência sobre o hook global, desviaria a
+sanitização e o log e deixaria o estado sem marcação, e o Markdown publicaria
+com `hasErrors: false`.
+
+O hook encontra o estado pelo evento que o runtime associa à falha, lido do
+`AsyncLocalStorage` da requisição. Uma falha informada fora desse contexto não
+marcaria o estado, e o Markdown publicaria o HTML. Os testes de serialização
+cobrem o fallback de `<Errored>`, o `onCleanup` que lança e as falhas do
+serializador com o contexto presente.
 
 O serializador padrão informa falhas de parse e de emissão ao hook, inclusive
 sem um hook local. A primeira falha marca `hasErrors`, passa pela política de
