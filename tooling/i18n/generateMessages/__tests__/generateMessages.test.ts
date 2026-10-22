@@ -23,6 +23,11 @@ type ProjectOptions = { parent: string; messages: Messages }
 const execute = promisify(execFile)
 const GENERATE = path.resolve(import.meta.dirname, '../../generate.ts')
 const MESSAGES = { home_title: 'Title {name}', home_body: 'Body' }
+// Cada teste sobe processos bun e o compilador do Paraglide. O limite global
+// de 60 s pega travamentos, mas com a máquina carregada esses testes chegaram
+// a passar dele sem falha de lógica; isolados levam de 5 a 20 s.
+// Por teste: o timeout de um describe não vence o --test-timeout global.
+const SUBPROCESS = { timeout: 180_000 }
 
 async function sandbox(context: TestContext): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), 'i18n-generate-'))
@@ -72,83 +77,99 @@ async function temporaryFiles(root: string): Promise<string[]> {
 }
 
 describe('generated messages', () => {
-  it('skips unchanged generations and repairs modified outputs', async context => {
-    const root = await project({
-      parent: await sandbox(context),
-      messages: MESSAGES
-    })
-    await generateMessages(root)
-    const reference = await output(root)
-    const times = await modifiedTimes(root)
-    assert.ok(reference.has('messages/home_title.js'))
-    assert.ok(reference.has('messages/home_title.d.ts'))
+  it(
+    'skips unchanged generations and repairs modified outputs',
+    SUBPROCESS,
+    async context => {
+      const root = await project({
+        parent: await sandbox(context),
+        messages: MESSAGES
+      })
+      await generateMessages(root)
+      const reference = await output(root)
+      const times = await modifiedTimes(root)
+      assert.ok(reference.has('messages/home_title.js'))
+      assert.ok(reference.has('messages/home_title.d.ts'))
 
-    await generateMessages(root)
-    assert.deepEqual(await modifiedTimes(root), times)
+      await generateMessages(root)
+      assert.deepEqual(await modifiedTimes(root), times)
 
-    await execute('bun', [GENERATE], { cwd: root })
-    assert.deepEqual(await modifiedTimes(root), times)
+      await execute('bun', [GENERATE], { cwd: root })
+      assert.deepEqual(await modifiedTimes(root), times)
 
-    await writeFile(path.join(root, 'paraglide/runtime.js'), 'broken')
-    await generateMessages(root)
-    assert.deepEqual(await output(root), reference)
-  })
+      await writeFile(path.join(root, 'paraglide/runtime.js'), 'broken')
+      await generateMessages(root)
+      assert.deepEqual(await output(root), reference)
+    }
+  )
 
-  it('rejects an invalid catalog without touching the previous output', async context => {
-    const root = await project({
-      parent: await sandbox(context),
-      messages: MESSAGES
-    })
-    await generateMessages(root)
-    const reference = await output(root)
-    const catalog = path.join(root, 'src/routes/Home/i18n/es.json')
-    await writeFile(catalog, JSON.stringify({ home_title: 'Title {name}' }))
-    await assert.rejects(
-      generateMessages(root),
-      /es\.json: missing-translation.*home_body/u
-    )
-    assert.deepEqual(await output(root), reference)
+  it(
+    'rejects an invalid catalog without touching the previous output',
+    SUBPROCESS,
+    async context => {
+      const root = await project({
+        parent: await sandbox(context),
+        messages: MESSAGES
+      })
+      await generateMessages(root)
+      const reference = await output(root)
+      const catalog = path.join(root, 'src/routes/Home/i18n/es.json')
+      await writeFile(catalog, JSON.stringify({ home_title: 'Title {name}' }))
+      await assert.rejects(
+        generateMessages(root),
+        /es\.json: missing-translation.*home_body/u
+      )
+      assert.deepEqual(await output(root), reference)
 
-    await writeFile(catalog, JSON.stringify(MESSAGES))
-    await generateMessages(root)
-    assert.deepEqual(await output(root), reference)
-  })
+      await writeFile(catalog, JSON.stringify(MESSAGES))
+      await generateMessages(root)
+      assert.deepEqual(await output(root), reference)
+    }
+  )
 
-  it('keeps complete outputs under concurrent generations', async context => {
-    const parent = await sandbox(context)
-    const reference = await project({ parent, messages: MESSAGES })
-    await generateMessages(reference)
-    const expected = await output(reference)
+  it(
+    'keeps complete outputs under concurrent generations',
+    SUBPROCESS,
+    async context => {
+      const parent = await sandbox(context)
+      const reference = await project({ parent, messages: MESSAGES })
+      await generateMessages(reference)
+      const expected = await output(reference)
 
-    const inProcess = await project({ parent, messages: MESSAGES })
-    await Promise.all([
-      generateMessages(inProcess),
-      generateMessages(inProcess),
-      generateMessages(inProcess)
-    ])
-    assert.deepEqual(await output(inProcess), expected)
+      const inProcess = await project({ parent, messages: MESSAGES })
+      await Promise.all([
+        generateMessages(inProcess),
+        generateMessages(inProcess),
+        generateMessages(inProcess)
+      ])
+      assert.deepEqual(await output(inProcess), expected)
 
-    const processes = await project({ parent, messages: MESSAGES })
-    await Promise.all(
-      [0, 1].map(() => execute('bun', [GENERATE], { cwd: processes }))
-    )
-    assert.deepEqual(await output(processes), expected)
-    assert.deepEqual(await temporaryFiles(inProcess), [])
-    assert.deepEqual(await temporaryFiles(processes), [])
-  })
+      const processes = await project({ parent, messages: MESSAGES })
+      await Promise.all(
+        [0, 1].map(() => execute('bun', [GENERATE], { cwd: processes }))
+      )
+      assert.deepEqual(await output(processes), expected)
+      assert.deepEqual(await temporaryFiles(inProcess), [])
+      assert.deepEqual(await temporaryFiles(processes), [])
+    }
+  )
 
-  it('lets Paraglide remove obsolete modules, including in a new process', async context => {
-    const parent = await sandbox(context)
-    const root = await project({ parent, messages: MESSAGES })
-    await generateMessages(root)
-    const obsolete = path.join(root, 'paraglide/messages/home_body.js')
-    await stat(obsolete)
+  it(
+    'lets Paraglide remove obsolete modules, including in a new process',
+    SUBPROCESS,
+    async context => {
+      const parent = await sandbox(context)
+      const root = await project({ parent, messages: MESSAGES })
+      await generateMessages(root)
+      const obsolete = path.join(root, 'paraglide/messages/home_body.js')
+      await stat(obsolete)
 
-    await writeMessages({ root, messages: { home_title: 'Title {name}' } })
-    await execute('bun', [GENERATE], { cwd: root })
-    const files = await output(root)
-    assert.ok(files.has('messages/home_title.js'))
+      await writeMessages({ root, messages: { home_title: 'Title {name}' } })
+      await execute('bun', [GENERATE], { cwd: root })
+      const files = await output(root)
+      assert.ok(files.has('messages/home_title.js'))
 
-    await assert.rejects(stat(obsolete), { code: 'ENOENT' })
-  })
+      await assert.rejects(stat(obsolete), { code: 'ENOENT' })
+    }
+  )
 })
