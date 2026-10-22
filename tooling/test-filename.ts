@@ -4,7 +4,7 @@ import { defineRule } from 'vite-plus/lint/plugins'
 
 // Suites sem módulo colocalizado declaram os próprios alvos explicitamente.
 const subjects: Record<string, readonly string[]> = {
-  'tooling/__tests__': ['playwright', 'test-filename'],
+  'tooling/__tests__': ['patched-dependencies', 'playwright', 'test-filename'],
   'src/__tests__': ['App', 'PageFileSystemRouter'],
   'src/constants/__tests__': ['cache'],
   'src/tests/pages/Home': ['Home'],

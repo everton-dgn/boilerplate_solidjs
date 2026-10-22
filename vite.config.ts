@@ -32,7 +32,8 @@ const PROJECT_CHECK_INPUTS = [
   'tsconfig*.json',
   'package.json',
   'bun.lock',
-  'bunfig.toml'
+  'bunfig.toml',
+  'patches/**'
 ]
 const CI_TEST_WORKERS = 2
 const TOOLING_CI_TEST_WORKERS = 3
