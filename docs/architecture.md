@@ -45,9 +45,12 @@ O patch Bun de `filesystem-routing` mantém a ordem da varredura quando o watche
 atualiza ou recria uma rota. Sem ele, editar um arquivo de rota no servidor de
 desenvolvimento movia a rota para o fim do manifesto, e a declaração gerada
 mudava de ordem sem mudança de conteúdo. O teste de `PageFileSystemRouter` cobre
-esse caso. A chave do patch inclui a versão do pacote: regenere-o com
-`bun patch` a cada atualização e remova-o quando o pacote publicado preservar a
-ordem.
+esse caso. O problema foi relatado em
+[solidjs/filesystem-routing#27](https://github.com/solidjs/filesystem-routing/issues/27),
+com a correção proposta em
+[#28](https://github.com/solidjs/filesystem-routing/pull/28). A chave do patch
+inclui a versão do pacote: regenere-o com `bun patch` a cada atualização e
+remova-o quando o pacote publicado preservar a ordem.
 
 O [tsconfig.json](../tsconfig.json) mantém TypeScript em modo estrito, com
 `erasableSyntaxOnly` para restringir a sintaxe TypeScript que exige
