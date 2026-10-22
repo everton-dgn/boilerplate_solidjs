@@ -4,6 +4,7 @@ import { page, userEvent } from 'vite-plus/test/browser/context'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { ToastProvider } from '../index.tsx'
+import type { ToastApi } from '../types.ts'
 import { useToast } from '../useToast/index.ts'
 
 const FOCUS_WAIT = 400
@@ -88,4 +89,54 @@ describe('notificações no navegador', () => {
     await expect.element(items).not.toBeInTheDocument()
     await expect.element(trigger).toHaveFocus()
   })
+
+  it.each([
+    { order: 'focado primeiro', isFocusedFirst: true },
+    { order: 'vizinho primeiro', isFocusedFirst: false }
+  ])(
+    'devolve o foco à origem quando os dois saem no mesmo tick: $order',
+    async ({ isFocusedFirst }) => {
+      let api: ToastApi | undefined
+      const ids: string[] = []
+      function Probe() {
+        const toast = useToast()
+        api = toast
+        return (
+          <button
+            type="button"
+            onClick={() => {
+              ids.push(
+                toast.show({ message: 'First toast', duration: 0 }),
+                toast.show({ message: 'Second toast', duration: 0 })
+              )
+            }}
+          >
+            Show toasts
+          </button>
+        )
+      }
+      renderComponent(
+        () => (
+          <ToastProvider>
+            <Probe />
+          </ToastProvider>
+        ),
+        { providers: false }
+      )
+      const trigger = page.getByRole('button', { name: 'Show toasts' })
+      await userEvent.click(trigger)
+      const items = page.getByRole('listitem')
+      await expect.element(items.nth(1)).toMatchTextContent('Second toast')
+      await userEvent.keyboard('{Tab}')
+      await expect
+        .element(items.nth(0).getByRole('button', { name: m.toast_close() }))
+        .toHaveFocus()
+      const [focused, neighbor] = ids
+      assert(api && focused && neighbor)
+      const order = isFocusedFirst ? [focused, neighbor] : [neighbor, focused]
+      for (const id of order) api.dismiss(id)
+      await expect.element(items).not.toBeInTheDocument()
+      await expect.element(trigger).toHaveFocus()
+    }
+  )
 })

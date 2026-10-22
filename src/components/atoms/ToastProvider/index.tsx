@@ -41,13 +41,25 @@ export function ToastProvider(props: ParentProps) {
   const items = new Map<string, HTMLLIElement>()
   let focusOrigin: HTMLElement | undefined
 
+  // Até o Solid atualizar o DOM, os itens dispensados no mesmo tick continuam
+  // como irmãos; só os que seguem em `items` podem receber o foco.
+  function findNeighbor(item: Element) {
+    const remaining = new Set<Element>(items.values())
+    let next = item.nextElementSibling
+    while (next && !remaining.has(next)) next = next.nextElementSibling
+    let previous = item.previousElementSibling
+    while (previous && !remaining.has(previous)) {
+      previous = previous.previousElementSibling
+    }
+    return next ?? previous
+  }
+
   // Sem este desvio, remover o item focado deixa o foco no body.
   function releaseFocus(id: string) {
     const item = items.get(id)
     items.delete(id)
     if (!item?.contains(document.activeElement)) return
-    const neighbor = item.nextElementSibling ?? item.previousElementSibling
-    const close = neighbor?.querySelector('button')
+    const close = findNeighbor(item)?.querySelector('button')
     if (close) {
       close.focus()
       return
