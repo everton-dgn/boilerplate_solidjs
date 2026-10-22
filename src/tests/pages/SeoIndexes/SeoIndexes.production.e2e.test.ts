@@ -1,3 +1,6 @@
+import { readdir } from 'node:fs/promises'
+import nodePath from 'node:path'
+
 import { expect, test } from '@playwright/test'
 
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
@@ -15,25 +18,27 @@ const NO_SCRIPTS = "script-src 'none'"
 // Grupo dos robôs de treinamento de IA: começa em GPTBot e termina bloqueando tudo.
 const AI_BOTS_GROUP =
   /\nUser-agent: GPTBot\n(?:User-agent: [^\n]+\n)*Disallow: \/\n/u
-// Pastas e módulos colocalizados em src/routes/(seo)/, exceto os endpoints.
-const LOCAL_MODULES = [
-  '/llms.txt/constants',
-  '/llms.txt/helpers',
-  '/llms.txt/helpers/buildLlmsResponse',
-  '/llms.txt/helpers/buildLlmsText',
-  '/llms.txt/helpers/collectLlmsPages',
-  '/llms.txt/helpers/resolveRouteLlms',
-  '/robots.txt/buildRobotsText',
-  '/robots.txt/constants',
-  '/robots.txt/types',
-  '/sitemap.xml/constants',
-  '/sitemap.xml/helpers',
-  '/sitemap.xml/helpers/buildSitemap',
-  '/sitemap.xml/helpers/buildSitemapResponse',
-  '/sitemap.xml/helpers/collectSitemapEntries',
-  '/sitemap.xml/helpers/normalizeSitemapEntries',
-  '/sitemap.xml/types'
-]
+const SEO_ROUTES = nodePath.resolve(
+  import.meta.dirname,
+  '../../../routes/(seo)'
+)
+
+// Pastas e módulos colocalizados em src/routes/(seo)/, exceto os endpoints,
+// lidos da árvore para que um helper novo entre na verificação.
+function localModulePath(entry: string): string | undefined {
+  const parts = entry.split(nodePath.sep)
+  if (parts.length === 1 || parts.includes('__tests__')) return undefined
+  if (nodePath.basename(entry) === 'index.ts') return undefined
+  return `/${parts.join('/').replace(/\.ts$/u, '')}`
+}
+
+const SEO_ENTRIES = await readdir(SEO_ROUTES, {
+  recursive: true,
+  encoding: 'utf8'
+})
+const LOCAL_MODULES = SEO_ENTRIES.flatMap(
+  entry => localModulePath(entry) ?? []
+).toSorted()
 
 test.describe('índices na árvore real de produção', () => {
   test('serve sitemap.xml sem redirecionamento', async ({ request }) => {

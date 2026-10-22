@@ -238,7 +238,7 @@ describe('orientações de uso no llms.txt', () => {
             'Inspect the rendered homepage before selecting the template.',
           section: 'When to use'
         }),
-        page({ path: '/', title: 'Home', section: 'Pages' })
+        page({ path: '/', title: 'Home' })
       ],
       siteUrl: 'https://example.com'
     })

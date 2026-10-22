@@ -69,6 +69,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
         'src/tests/pages/Hydration/Hydration.preload.e2e.test.ts',
         'src/tests/pages/OutsideError/OutsideError.e2e.test.ts',
         'src/tests/pages/I18n/I18n.production.e2e.test.ts',
+        'src/tests/pages/SeoIndexes/SeoIndexes.production.e2e.test.ts',
         'src/tests/helpers/readSiteOrigin/index.ts'
       ],
       rules: { 'import/no-nodejs-modules': 'off' }

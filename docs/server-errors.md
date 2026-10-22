@@ -1,5 +1,7 @@
 # Erros no servidor e chamadas de backend
 
+[Voltar ao README](../README.md)
+
 Toda chamada de backend deve entregar dados públicos ou um erro público novo
 antes de chegar ao Solid. Essa regra vale também para fixtures e código gerado
 por IA. O contrato abaixo deve ser preservado nas atualizações de dependências.
