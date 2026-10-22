@@ -50,6 +50,7 @@
   "patchedDependencies": {
     "@mdream/js@2.0.3": "patches/@mdream%2Fjs@2.0.3.patch",
     "@solidjs/web@2.0.0-rc.16": "patches/@solidjs%2Fweb@2.0.0-rc.16.patch",
+    "filesystem-routing@0.4.0": "patches/filesystem-routing@0.4.0.patch",
     "@voidzero-dev/vite-plus-core@1.3.0": "patches/@voidzero-dev%2Fvite-plus-core@1.3.0.patch",
   },
   "overrides": {

@@ -52,4 +52,32 @@ describe('roteamento por arquivo', () => {
     )
     expect(pages[0]?.children).toHaveLength(BASE_LAYOUT_PAGE_COUNT)
   })
+
+  it('mantém a ordem da varredura quando uma rota muda ou volta', async () => {
+    const router = new PageFileSystemRouter({
+      dir: `${import.meta.dirname}/../routes`,
+      extensions: ['js', 'jsx', 'ts', 'tsx']
+    })
+    const routes = await router.getRoutes()
+    const scanned = routes.map(route => route.path)
+    const [firstFile] = Object.values(routes[0] ?? {}).flatMap(value =>
+      typeof value === 'object' &&
+      value !== null &&
+      'src' in value &&
+      typeof value.src === 'string'
+        ? [value.src]
+        : []
+    )
+    if (!firstFile) throw new Error('A primeira rota não tem arquivo')
+
+    await router.updateRoute(firstFile)
+    const afterUpdate = router.routes.map(route => route.path)
+    router.removeRoute(firstFile)
+    await router.addRoute(firstFile)
+
+    expect({
+      afterUpdate,
+      afterReadd: router.routes.map(route => route.path)
+    }).toStrictEqual({ afterUpdate: scanned, afterReadd: scanned })
+  })
 })

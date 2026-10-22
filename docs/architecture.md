@@ -41,6 +41,14 @@ O plugin gera `src/@types/routes.d.ts` com os caminhos tipados durante o build
 ou desenvolvimento. Mantenha essa declaração versionada e atualizada ao mudar as
 rotas, para permitir typecheck antes de iniciar o Vite.
 
+O patch Bun de `filesystem-routing` mantém a ordem da varredura quando o watcher
+atualiza ou recria uma rota. Sem ele, editar um arquivo de rota no servidor de
+desenvolvimento movia a rota para o fim do manifesto, e a declaração gerada
+mudava de ordem sem mudança de conteúdo. O teste de `PageFileSystemRouter` cobre
+esse caso. A chave do patch inclui a versão do pacote: regenere-o com
+`bun patch` a cada atualização e remova-o quando o pacote publicado preservar a
+ordem.
+
 O [tsconfig.json](../tsconfig.json) mantém TypeScript em modo estrito, com
 `erasableSyntaxOnly` para restringir a sintaxe TypeScript que exige
 transformação além da remoção de tipos.

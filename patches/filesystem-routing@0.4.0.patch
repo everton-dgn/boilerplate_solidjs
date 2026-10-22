@@ -1,0 +1,32 @@
+diff --git a/dist/router.js b/dist/router.js
+index f34dd4d39bf8e569236ada54b9d53323eff64958..88dfb5cf93184a3ae55d25fdb0cc6113e7829f82 100644
+--- a/dist/router.js
++++ b/dist/router.js
+@@ -2,6 +2,13 @@ import fg from "fast-glob";
+ import micromatch from "micromatch";
+ import { posix, resolve, sep } from "node:path";
+ export const glob = (path) => fg.sync(path, { absolute: true });
++const routeSource = (route) => {
++    for (const value of Object.values(route)) {
++        if (value && typeof value === "object" && typeof value.src === "string")
++            return normalizePath(value.src);
++    }
++    return route.path;
++};
+ /** Normalize a file path to posix separators (bundler-agnostic). */
+ export function normalizePath(path) {
+     return sep === "\\" ? path.replace(/\\/g, "/") : path;
+@@ -59,6 +66,13 @@ export class BaseFileSystemRouter extends EventTarget {
+         if (idx >= 0)
+             this.routes.splice(idx, 1);
+         this.routes.push(route);
++        // Keep scan order: an update or a new file must not move the route, so
++        // the manifest and the generated types match a full scan.
++        this.routes.sort((a, b) => {
++            const left = routeSource(a);
++            const right = routeSource(b);
++            return left < right ? -1 : left > right ? 1 : 0;
++        });
+         return idx >= 0;
+     }
+     async addRoute(src) {
