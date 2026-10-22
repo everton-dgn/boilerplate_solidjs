@@ -1,4 +1,4 @@
-import { createSignal } from 'solid-js'
+import { createSignal, flush } from 'solid-js'
 
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
@@ -40,6 +40,27 @@ describe('campo de entrada', () => {
     expect(input).toHaveAttribute('aria-invalid', 'true')
     input.dispatchEvent(new Event('input', { bubbles: true }))
     expect(onInput).toHaveBeenCalledOnce()
+  })
+
+  it('preserva o que o usuário digitou ou marcou sem controle quando a variante muda', () => {
+    const [invalid, setInvalid] = createSignal(false)
+    const variant = () => (invalid() ? 'destructive' : 'default')
+    const host = renderComponent(() => (
+      <>
+        <Input defaultValue="Ada" variant={variant()} />
+        <Input type="checkbox" defaultChecked variant={variant()} />
+      </>
+    ))
+    const [text, checkbox] = host.querySelectorAll('input')
+    assert(text && checkbox)
+    text.value = 'Grace'
+    text.dispatchEvent(new Event('input', { bubbles: true }))
+    checkbox.click()
+    setInvalid(true)
+    flush()
+    expect(text).toHaveAttribute('aria-invalid', 'true')
+    expect(text).toHaveValue('Grace')
+    expect(checkbox).not.toBeChecked()
   })
 
   it('atualiza valor, disabled e estado de erro sem recriar o campo', async () => {

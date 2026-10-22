@@ -1,4 +1,4 @@
-import { createSignal, untrack } from 'solid-js'
+import { createSignal, flush, untrack } from 'solid-js'
 
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
@@ -33,6 +33,24 @@ describe('campo de texto multilinha', () => {
       rows: '4',
       description: 'message-help'
     })
+  })
+
+  it('preserva o texto digitado sem controle quando a variante muda', () => {
+    const [invalid, setInvalid] = createSignal(false)
+    const host = renderComponent(() => (
+      <Textarea
+        defaultValue="Draft"
+        variant={invalid() ? 'destructive' : 'default'}
+      />
+    ))
+    const textarea = host.querySelector('textarea')
+    assert(textarea)
+    textarea.value = 'Edited\ntext'
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    setInvalid(true)
+    flush()
+    expect(textarea).toHaveAttribute('aria-invalid', 'true')
+    expect(textarea).toHaveValue('Edited\ntext')
   })
 
   it('mantém o valor controlado e o estado de erro reativos', async () => {
