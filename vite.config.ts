@@ -5,7 +5,6 @@ import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 import packageJson from './package.json'
-import { devAssetManifest } from './tooling/devAssetManifest/index.ts'
 import { fmt } from './tooling/fmt.ts'
 import { lint } from './tooling/lint.ts'
 
@@ -101,7 +100,6 @@ const appPlugins = (mode: string) =>
   lazyPlugins(async () => {
     const modules = await loadPluginModules()
     return [
-      devAssetManifest(),
       modules.i18n(),
       icons(modules),
       modules.solid({

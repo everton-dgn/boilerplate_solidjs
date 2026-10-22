@@ -106,30 +106,18 @@ build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
 
 ## Estilos no primeiro carregamento em desenvolvimento
 
-`tooling/devAssetManifest` espera o servidor HTTP começar a escutar antes de
-carregar `virtual:solid-manifest`. Ele precisa aparecer antes do plugin do Solid
-em `appPlugins`. O Nitro pode importar esse módulo durante a inicialização; sem
-a espera, o Solid grava uma URL de ponte nula e o worker SSR deixa de enviar a
-CSS das rotas lazy. Isso causa texto sem estilo até o JavaScript carregar.
+O worker SSR do Nitro é isolado e busca a CSS das rotas lazy numa ponte HTTP do
+servidor de desenvolvimento. O plugin do Solid descobre a URL dessa ponte depois
+que o servidor começa a escutar, mesmo quando o Nitro importa o manifest antes,
+e limpa o cache da ponte no worker depois de cada edição. Sem isso, o primeiro
+HTML sai sem estilos até o JavaScript carregar, ou traz estilos antigos que só
+são trocados na hidratação.
 
-A espera ocorre só em `serve`, uma vez por inicialização, sem atraso por página
-nem alteração no build. Em modo middleware, sem servidor HTTP próprio, o plugin
-não espera um evento `listening`; o encerramento antes do bind também libera
-qualquer importação pendente. O teste em `tooling/devAssetManifest` antecipa a
-importação ao bind, ocupa a porta inicial e confere a URL efetiva e a CSS
-devolvida pela ponte após a troca automática de porta. Ao atualizar Solid ou
-Nitro, revalide essa ordem antes de retirar a integração.
-
-Após uma edição de módulo carregado no servidor, o plugin também invalida o
-manifest e avisa o runner SSR pelo canal de HMR do servidor. O cache de CSS da
-ponte vive no worker isolado do Nitro e não acompanha sozinho as edições vistas
-pelo Vite. Sem essa invalidação, o HTML pode trazer estilos antigos que só são
-substituídos na hidratação, causando deslocamentos ao recarregar. O cache
-continua disponível entre os passes da mesma renderização e entre requisições
-sem edições; o plugin não envia esse aviso ao navegador nem altera o build de
-produção. A regressão usa um runner com contexto global isolado, edita CSS com o
-servidor ligado e confere o conteúdo atualizado e as respostas síncronas do
-cache.
+Os E2E rodam no build de produção e não cobrem esse caminho. Ao atualizar o
+plugin do Solid ou o Nitro, confira com `vp run dev` que o primeiro HTML de uma
+página, pedido logo depois de o servidor subir, traz os
+`<style data-vite-dev-id>` das rotas, e que uma edição num CSS de rota aparece
+no HTML da requisição seguinte.
 
 ## Scripts
 

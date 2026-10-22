@@ -73,12 +73,13 @@ Limites do hook:
   registra o log a cada vez que o runtime os encontra.
 
 O handler nativo do plugin contém exceções que escapam dos middlewares, chama o
-hook e responde com 500 sem corpo. Ele também aceita uma `Response` ou um
-envelope lançado com corpo, portanto essa contenção não substitui a política de
-dados públicos nem a página de erro do app. O export padrão de
-[`src/middleware/index.ts`](../src/middleware/index.ts) é `createMiddleware()`,
-que adapta o evento do plugin à cadeia de `Request` do `filesystem-routing` e de
-`composeMiddleware`, entregando essa cadeia a `containFailures`. A contenção, em
+hook com `kind: "request"` e responde com 500 sem corpo. Ele também aceita uma
+`Response` ou um envelope lançado com corpo, portanto essa contenção não
+substitui a política de dados públicos nem a página de erro do app. O export
+padrão de [`src/middleware/index.ts`](../src/middleware/index.ts) é
+`createMiddleware()`, que adapta o evento do plugin à cadeia de `Request` do
+`filesystem-routing` e de `composeMiddleware`, entregando essa cadeia a
+`containFailures`. A contenção, em
 [`src/middleware/containFailures/index.ts`](../src/middleware/containFailures/index.ts),
 compõe a cadeia inteira dentro de si, e uma exceção nos middlewares, nas rotas
 de API ou no handler de páginas vira 500 com os headers de segurança e o log
@@ -525,12 +526,11 @@ do hook chama `observeRenderFailures()`; até lá a fábrica cria o estado com
 `serverFunctions.configure` do Vite, que carrega o registro, todo `.md` responde
 500 e o prerender interrompe o build.
 
-O hook encontra o estado pelo evento que o runtime associa à falha. Os dois
-pontos do patch passam o evento da requisição; os demais, como o fallback de
-`<Errored>`, o leem do `AsyncLocalStorage`. Uma falha informada fora desse
+O hook encontra o estado pelo evento que o runtime associa à falha. As falhas do
+serializador, o `onCleanup` que lança e o fallback de `<Errored>` chegam sem o
+evento, e o runtime o lê do `AsyncLocalStorage`. Uma falha informada fora desse
 contexto não marcaria o estado, e o Markdown publicaria o HTML. Os testes de
-serialização cobrem o fallback de `<Errored>`, o `onCleanup` que lança e as
-falhas do serializador com o contexto presente.
+serialização cobrem esses três casos com o contexto presente.
 
 O serializador padrão informa falhas de parse e de emissão ao hook, inclusive
 sem um hook local. A primeira falha marca `hasErrors`, passa pela política de
@@ -545,33 +545,34 @@ termina com o conteúdo que já saiu. Markdown aguarda o render e recusa a
 publicação com erro público 500 e `cache-control: private, no-store`. Uma falha
 de serialização não depende do timeout do adaptador para encerrar a resposta.
 
-Serializadores personalizados mantêm o comportamento do runtime: suas falhas só
-chegam ao hook por um `onError` local, que a entrada não usa. Erros suprimidos
+Serializadores personalizados mantêm o comportamento do runtime: as falhas que
+eles informam chegam ao hook, mas não encerram o render. Erros suprimidos
 internamente não são observáveis. Qualquer adoção exige validar a relação entre
 conteúdo, conclusão e falhas.
 
 O patch Bun de `@solidjs/web` cobre o que o runtime publicado ainda não faz, nos
-runtimes padrão, de desenvolvimento e de observação. Primeiro, ele leva ao hook
-as falhas do serializador padrão e encerra o render nelas, como descrito acima.
-Sem o patch, o runtime só as informa a um `onError` local: uma falha de parse
-síncrona deixava o render pendente, e uma assíncrona virava rejeição não
-tratada. Segundo, ele contém exceções de `onCleanup` no descarte da conclusão
-normal e as informa como falha do render; o runtime protege esse descarte só no
-abandono. Sem isso, um `onCleanup` que lança deixava uma rejeição não tratada e
-podia publicar o Markdown. Os dois pontos passam ao hook o evento da requisição.
-Com um `onError` local, o patch também encerra o render numa falha do
-serializador padrão, enquanto o runtime só informaria o callback. A chave do
-patch inclui a versão do pacote, então cada atualização de `@solidjs/web` exige
-regenerá-lo com `bun patch`; confira se o arquivo gerado não inclui o
-`.bun-tag-*` vazio do diretório de edição.
+runtimes padrão, de desenvolvimento e de observação: encerrar o render na falha
+do serializador padrão, como descrito acima. Sem o patch, o runtime informa a
+falha ao hook e deixa o render seguir. Uma falha durante a montagem do shell
+ainda envia o shell com status 200. Uma falha síncrona, de parse ou de
+`deferStream`, deixa o render pendente até o `signal` abortar, porque o seroval
+não chama `onDone` depois dela; o Markdown só responderia no timeout do
+adaptador, e o prerender esperaria esse prazo a cada página. Com um `onError`
+local, o patch também encerra o render, enquanto o runtime só informaria o
+callback. A chave do patch inclui a versão do pacote, então cada atualização de
+`@solidjs/web` exige regenerá-lo com `bun patch`. O teste
+`tooling/__tests__/patched-dependencies.test.ts` falha quando a chave de um
+patch não corresponde a uma versão resolvida no `bun.lock`.
 
-As duas lacunas, e o laço de cleanups do core que para no primeiro que lança,
-estão relatados em
-[solidjs/solid#4193](https://github.com/solidjs/solid/issues/4193). Remova o
-patch quando um pacote publicado cobrir essas duas lacunas e passar as
-regressões de erro reutilizado entre requisições, falha de server function que
-escapa de Loading, recuperação local, serialização, cleanup que lança e
-cancelamento. A issue ou o PR fechado não substitui a verificação dos artefatos
-instalados. O sinal composto de timeout e desconexão chega ao `renderToStream`;
-o teste Node do adaptador verifica o descarte de uma raiz SSR pendente no
-cancelamento.
+O [solidjs/solid#4193](https://github.com/solidjs/solid/issues/4193) relatou
+três lacunas. O [solidjs/solid#4206](https://github.com/solidjs/solid/pull/4206)
+levou as falhas do serializador ao hook global, passou a conter o `onCleanup`
+que lança no descarte da conclusão normal e fez o core rodar todos os cleanups
+mesmo depois de um que lança; essas partes saíram do patch. Remova o restante
+quando um pacote publicado encerrar o render na falha do serializador padrão e
+passar as regressões de erro reutilizado entre requisições, falha de server
+function que escapa de Loading, recuperação local, serialização, cleanup que
+lança e cancelamento. A issue ou o PR fechado não substitui a verificação dos
+artefatos instalados. O sinal composto de timeout e desconexão chega ao
+`renderToStream`; o teste Node do adaptador verifica o descarte de uma raiz SSR
+pendente no cancelamento.
