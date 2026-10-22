@@ -568,11 +568,16 @@ O [solidjs/solid#4193](https://github.com/solidjs/solid/issues/4193) relatou
 três lacunas. O [solidjs/solid#4206](https://github.com/solidjs/solid/pull/4206)
 levou as falhas do serializador ao hook global, passou a conter o `onCleanup`
 que lança no descarte da conclusão normal e fez o core rodar todos os cleanups
-mesmo depois de um que lança; essas partes saíram do patch. Remova o restante
-quando um pacote publicado encerrar o render na falha do serializador padrão e
-passar as regressões de erro reutilizado entre requisições, falha de server
-function que escapa de Loading, recuperação local, serialização, cleanup que
-lança e cancelamento. A issue ou o PR fechado não substitui a verificação dos
-artefatos instalados. O sinal composto de timeout e desconexão chega ao
-`renderToStream`; o teste Node do adaptador verifica o descarte de uma raiz SSR
-pendente no cancelamento.
+mesmo depois de um que lança; essas partes saíram do patch. O render pendente na
+falha síncrona foi relatado no
+[solidjs/solid#4227](https://github.com/solidjs/solid/issues/4227), com a
+correção proposta no
+[solidjs/solid#4229](https://github.com/solidjs/solid/pull/4229): ela faz o
+render concluir, mas não o encerra na falha. Remova o restante do patch quando
+um pacote publicado encerrar o render na falha do serializador padrão e passar
+as regressões de erro reutilizado entre requisições, falha de server function
+que escapa de Loading, recuperação local, serialização, cleanup que lança e
+cancelamento. A issue ou o PR fechado não substitui a verificação dos artefatos
+instalados. O sinal composto de timeout e desconexão chega ao `renderToStream`;
+o teste Node do adaptador verifica o descarte de uma raiz SSR pendente no
+cancelamento.
