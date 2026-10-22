@@ -64,18 +64,18 @@ describe('campo de entrada', () => {
   })
 
   it('atualiza valor, disabled e estado de erro sem recriar o campo', async () => {
-    const [invalid, setInvalid] = createSignal(true)
+    const [isInvalid, setIsInvalid] = createSignal(true)
     const [value, setValue] = createSignal('first')
     const host = renderComponent(() => (
       <Input
         value={value()}
-        disabled={invalid()}
-        variant={invalid() ? 'destructive' : 'default'}
+        disabled={isInvalid()}
+        variant={isInvalid() ? 'destructive' : 'default'}
       />
     ))
     const input = host.querySelector('input')
     expect(input).toBeDisabled()
-    setInvalid(false)
+    setIsInvalid(false)
     setValue('second')
     await expect.poll(() => input?.value).toBe('second')
     expect(input).not.toBeDisabled()

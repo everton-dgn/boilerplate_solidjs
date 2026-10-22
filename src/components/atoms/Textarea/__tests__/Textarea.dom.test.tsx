@@ -55,11 +55,11 @@ describe('campo de texto multilinha', () => {
 
   it('mantém o valor controlado e o estado de erro reativos', async () => {
     const [value, setValue] = createSignal('initial')
-    const [invalid, setInvalid] = createSignal(true)
+    const [isInvalid, setIsInvalid] = createSignal(true)
     const host = renderComponent(() => (
       <Textarea
         value={value()}
-        variant={invalid() ? 'destructive' : 'default'}
+        variant={isInvalid() ? 'destructive' : 'default'}
         onInput={event => setValue(event.currentTarget.value)}
       />
     ))
@@ -69,7 +69,7 @@ describe('campo de texto multilinha', () => {
     textarea.value = 'edited\ntext'
     textarea.dispatchEvent(new Event('input', { bubbles: true }))
     await expect.poll(() => untrack(value)).toBe('edited\ntext')
-    setInvalid(false)
+    setIsInvalid(false)
     setValue('replaced')
     await expect.poll(() => textarea.value).toBe('replaced')
     expect(textarea).not.toHaveAttribute('aria-invalid')
