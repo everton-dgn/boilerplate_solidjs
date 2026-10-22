@@ -53,10 +53,11 @@ function publishRouteSeo(): void {
     resolveSiteUrl(localizeHref({ href: location.pathname }))
   )
   const image = createMemo(() => resolveSiteUrl(seo().image.path))
-  const markdownHref = () =>
+  const markdownHref = createMemo(() =>
     isMarkdownRoute(matches().map(match => match.route.info))
       ? markdownPath(localizeHref({ href: location.pathname }))
       : undefined
+  )
   const structuredData = () =>
     buildStructuredData({ seo: seo(), url: canonical(), image: image() })
 
