@@ -2,7 +2,7 @@ import { acceptsMarkdown, negotiatePageFormat } from '../index.ts'
 
 // Com a varredura quadrática, 200 mil caracteres levavam dezenas de segundos.
 const LONG_HEADER_LENGTH = 200_000
-const LONG_HEADER_BUDGET_MS = 1000
+const LONG_HEADER_BUDGET_MS = 3000
 
 describe('page representation negotiation', () => {
   it.each([

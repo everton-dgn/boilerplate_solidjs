@@ -35,8 +35,17 @@ async function isValidCommitMessage(message: string): Promise<boolean> {
   try {
     await pending
     return true
-  } catch {
-    return false
+  } catch (error) {
+    // Só uma saída diferente de zero reprova a mensagem; sem o binário, o
+    // erro precisa falhar o teste.
+    if (
+      error instanceof Error &&
+      'code' in error &&
+      typeof error.code === 'number'
+    ) {
+      return false
+    }
+    throw error
   }
 }
 
