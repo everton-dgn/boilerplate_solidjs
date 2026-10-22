@@ -36,18 +36,18 @@ describe('campo de texto multilinha', () => {
   })
 
   it('preserva o texto digitado sem controle quando a variante muda', () => {
-    const [invalid, setInvalid] = createSignal(false)
+    const [isInvalid, setIsInvalid] = createSignal(false)
     const host = renderComponent(() => (
       <Textarea
         defaultValue="Draft"
-        variant={invalid() ? 'destructive' : 'default'}
+        variant={isInvalid() ? 'destructive' : 'default'}
       />
     ))
     const textarea = host.querySelector('textarea')
     assert(textarea)
     textarea.value = 'Edited\ntext'
     textarea.dispatchEvent(new Event('input', { bubbles: true }))
-    setInvalid(true)
+    setIsInvalid(true)
     flush()
     expect(textarea).toHaveAttribute('aria-invalid', 'true')
     expect(textarea).toHaveValue('Edited\ntext')

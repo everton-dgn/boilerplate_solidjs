@@ -43,8 +43,8 @@ describe('campo de entrada', () => {
   })
 
   it('preserva o que o usuário digitou ou marcou sem controle quando a variante muda', () => {
-    const [invalid, setInvalid] = createSignal(false)
-    const variant = () => (invalid() ? 'destructive' : 'default')
+    const [isInvalid, setIsInvalid] = createSignal(false)
+    const variant = () => (isInvalid() ? 'destructive' : 'default')
     const host = renderComponent(() => (
       <>
         <Input defaultValue="Ada" variant={variant()} />
@@ -56,7 +56,7 @@ describe('campo de entrada', () => {
     text.value = 'Grace'
     text.dispatchEvent(new Event('input', { bubbles: true }))
     checkbox.click()
-    setInvalid(true)
+    setIsInvalid(true)
     flush()
     expect(text).toHaveAttribute('aria-invalid', 'true')
     expect(text).toHaveValue('Grace')
