@@ -371,8 +371,8 @@ release. Add a tool name to select part of the graph. For example, run
   acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts para scripts.
 - O `style-src` é `'self'`, também sem `'unsafe-inline'`: um `<style>` ou um
   atributo `style` no HTML do servidor é bloqueado. Não use a prop `style` em
-  JSX renderizado no SSR, pois com valor nulo ela sai como `style=""`; use
-  classes. O tema do SSR vai só pela classe `light` ou `dark` do `<html>`.
+  JSX renderizado no SSR: qualquer valor não nulo vira um atributo bloqueado;
+  use classes. O tema do SSR vai só pela classe `light` ou `dark` do `<html>`.
 - O nonce fica no campo nativo `event.nonce`, criado por `requestNonce` antes
   do render e preservado quando o host já o fornece. O handler nativo do plugin
   o usa nos redirects depois do shell. Todo `<script>` do `Document` recebe

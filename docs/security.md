@@ -28,9 +28,9 @@ por `<link>` da mesma origem, e um `<style>` ou um atributo `style` no HTML é
 bloqueado. Por isso o `Document` aplica o tema do cookie só pela classe `light`
 ou `dark` do `<html>`, e o `color-scheme` vem das regras `.light`/`.dark` de
 [`colors.css`](../src/theme/tokens/colors.css). Não use a prop `style` em JSX
-renderizado no servidor: o SSR grava o atributo, e com valor nulo ele sai como
-`style=""`, que a CSP também bloqueia. O `applyTheme` grava o `color-scheme`
-direto em `element.style`, pelo CSSOM, que a CSP não bloqueia.
+renderizado no servidor: o SSR grava o atributo para qualquer valor não nulo, e
+a CSP o bloqueia. O `applyTheme` grava o `color-scheme` direto em
+`element.style`, pelo CSSOM, que a CSP não bloqueia.
 
 ## Nonce e entradas de renderização
 
