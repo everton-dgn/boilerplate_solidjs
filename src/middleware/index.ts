@@ -26,7 +26,7 @@ export function createMiddleware(extra: Middleware[] = []): StartMiddleware {
   const localized: Middleware = (request, next) =>
     localizeRequest({ request, next: () => run(request, next) })
   const contained = containFailures([localized])
-  // O filesystem-routing e composeMiddleware recebem Request; o plugin recebe o evento.
+  // A cadeia do projeto recebe Request; o plugin recebe o evento.
   return (event, next) => {
     let hasEnteredLocalizedChain = false
     const markdown: Middleware = (_request, render) =>

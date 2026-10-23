@@ -48,7 +48,7 @@
     "@mdream/js": "2.0.3",
     "@solidjs/router": "2.0.0-next.42",
     "@solidjs/web": "2.0.0-rc.17",
-    "filesystem-routing": "0.4.0",
+    "filesystem-routing": "0.4.1",
     "solid-js": "2.0.0-rc.17",
     "valibot": "1.5.0"
   },
@@ -84,12 +84,12 @@
   "type": "module",
   "packageManager": "bun@1.4.4",
   "engines": {
-    "node": ">=24.22.0 <25"
+    "node": ">=24.22.1 <25"
   },
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "24.22.0",
+      "version": "24.22.1",
       "onFail": "download"
     }
   },
@@ -99,9 +99,9 @@
   "workspaces": {
     "packages": [],
     "catalog": {
-      "vite": "npm:@voidzero-dev/vite-plus-core@1.3.0",
+      "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0",
       "vitest": "5.0.5",
-      "vite-plus": "1.3.0",
+      "vite-plus": "1.4.0",
       "@vitest/browser-playwright": "5.0.5",
       "@vitest/coverage-v8": "5.0.5",
       "@vitest/ui": "5.0.5"
@@ -115,8 +115,7 @@
   },
   "patchedDependencies": {
     "@mdream/js@2.0.3": "patches/@mdream%2Fjs@2.0.3.patch",
-    "@voidzero-dev/vite-plus-core@1.3.0": "patches/@voidzero-dev%2Fvite-plus-core@1.3.0.patch",
-    "filesystem-routing@0.4.0": "patches/filesystem-routing@0.4.0.patch",
+    "@voidzero-dev/vite-plus-core@1.4.0": "patches/@voidzero-dev%2Fvite-plus-core@1.4.0.patch",
     "@solidjs/web@2.0.0-rc.17": "patches/@solidjs%2Fweb@2.0.0-rc.17.patch"
   }
 }
