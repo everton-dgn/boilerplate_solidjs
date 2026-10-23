@@ -1,3 +1,7 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+
 import { buildRouteTree, PageFileSystemRouter } from 'filesystem-routing'
 
 const BASE_LAYOUT_PAGE_COUNT = 5
@@ -79,5 +83,37 @@ describe('roteamento por arquivo', () => {
       afterUpdate,
       afterReadd: router.routes.map(route => route.path)
     }).toStrictEqual({ afterUpdate: scanned, afterReadd: scanned })
+  })
+
+  it('mantém a página quando um módulo auxiliar de mesmo nome muda ou sai', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'page-routes-'))
+    // Sandbox criado pelo próprio teste: a remoção direta é o descarte correto.
+    onTestFinished(() => rm(directory, { recursive: true, force: true }))
+    await writeFile(
+      path.join(directory, 'about.tsx'),
+      'export default () => null\n'
+    )
+    const helper = path.join(directory, 'about.ts')
+    await writeFile(helper, 'export const data = {}\n')
+    const router = new PageFileSystemRouter({
+      dir: directory,
+      extensions: ['ts', 'tsx']
+    })
+    const routes = await router.getRoutes()
+    const scanned = routes.map(route => route.path)
+
+    await router.updateRoute(helper)
+    const afterUpdate = router.routes.map(route => route.path)
+    router.removeRoute(helper)
+
+    expect({
+      scanned,
+      afterUpdate,
+      afterRemove: router.routes.map(route => route.path)
+    }).toStrictEqual({
+      scanned: ['/about'],
+      afterUpdate: ['/about'],
+      afterRemove: ['/about']
+    })
   })
 })
