@@ -11,8 +11,12 @@ import { localizeRequest } from '../localizeRequest/index.ts'
 
 const TEST_ORIGIN = 'http://localhost'
 // vi.mock é içado para o topo do arquivo; o caminho sobe junto.
-const { API_PATH } = vi.hoisted(() => ({ API_PATH: '/rota-api' }))
+const { API_PATH, FORM_PATH } = vi.hoisted(() => ({
+  API_PATH: '/rota-api',
+  FORM_PATH: '/formulario'
+}))
 const HTTP_FOUND = 302
+const HTTP_METHOD_NOT_ALLOWED = 405
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
@@ -22,9 +26,16 @@ const ERROR_PAGE_LOG =
 vi.mock(import('../localizeRequest/index.ts'), { spy: true })
 
 // O projeto node usa um manifesto vazio. O handler de API real recebe aqui uma
-// rota sintética que responde sem chamar next, como sitemap.xml e robots.txt.
+// rota sintética que responde sem chamar next, como sitemap.xml e robots.txt,
+// e uma página que também trata POST.
 vi.mock(import('filesystem-routing/api'), async importOriginal => {
   const api = await importOriginal()
+  const formRoute = {
+    path: FORM_PATH,
+    page: true,
+    $component: {},
+    $POST: { require: () => ({ POST: () => new Response('post') }) }
+  }
   return {
     ...api,
     createAPIMatcher: () =>
@@ -32,7 +43,8 @@ vi.mock(import('filesystem-routing/api'), async importOriginal => {
         {
           path: API_PATH,
           $GET: { require: () => ({ GET: () => new Response('api') }) }
-        }
+        },
+        formRoute
       ]),
     createAPIHandler: () =>
       api.createAPIHandler([
@@ -46,10 +58,24 @@ vi.mock(import('filesystem-routing/api'), async importOriginal => {
                 })
             })
           }
-        }
+        },
+        formRoute
       ])
   }
 })
+
+function writeEvent(path: string): RequestEvent {
+  return createRequestEvent(
+    new Request(new URL(path, TEST_ORIGIN), {
+      method: 'POST',
+      headers: {
+        accept: 'text/html',
+        'content-type': 'application/x-www-form-urlencoded'
+      },
+      body: 'campo=1'
+    })
+  )
+}
 
 function pageEvent(path = '/pt'): RequestEvent {
   const request = new Request(new URL(path, TEST_ORIGIN), {
@@ -357,6 +383,48 @@ describe('cadeia de produção', () => {
       expect(event.nonce).toBeDefined()
       return Promise.resolve(response)
     })
+
+    await expect(
+      provideRequestEvent(event, () => middleware(event, next))
+    ).resolves.toBe(response)
+    expect(next).toHaveBeenCalledOnce()
+  })
+
+  // O handler do plugin renderizaria a página com qualquer método, no idioma
+  // base e com status 200.
+  it('responde 405 a um POST numa página sem chamar o render', async () => {
+    const event = writeEvent('/pt/about')
+    const next = vi.fn<() => Promise<Response>>()
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event, next)
+    )
+
+    expect(next).not.toHaveBeenCalled()
+    expect(response.status).toBe(HTTP_METHOD_NOT_ALLOWED)
+    expect(response.headers.get('allow')).toBe('GET, HEAD')
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(response.headers.get('content-security-policy')).toContain(
+      "script-src 'none'"
+    )
+  })
+
+  it('mantém o POST de uma página tratado pelo handler de API', async () => {
+    const event = writeEvent(FORM_PATH)
+    const next = vi.fn<() => Promise<Response>>()
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event, next)
+    )
+
+    expect(next).not.toHaveBeenCalled()
+    await expect(response.text()).resolves.toBe('post')
+  })
+
+  it('entrega ao dispatcher o POST de uma server function', async () => {
+    const event = writeEvent('/_server/acao')
+    const response = new Response('rpc')
+    const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
 
     await expect(
       provideRequestEvent(event, () => middleware(event, next))

@@ -1,6 +1,6 @@
 import { isMarkdownRoute, markdownPath } from '../index.ts'
 
-describe('hTML-derived Markdown', () => {
+describe('HTML-derived Markdown', () => {
   it('requires an explicit leaf opt-in and effective indexable SEO', () => {
     expect(isMarkdownRoute([{ markdown: true }, {}])).toBe(false)
     expect(

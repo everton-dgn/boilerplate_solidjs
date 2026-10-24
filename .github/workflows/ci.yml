@@ -19,6 +19,10 @@ concurrency:
 
 env:
   LEFTHOOK: '0'
+  # Única versão do Vercel CLI usada no pull, no build e no deploy. Para
+  # atualizar, escolha uma versão estável publicada no npm (vercel), troque o
+  # valor aqui e valide o E2E de produção e o deploy no push da main.
+  VERCEL_CLI_VERSION: '64.7.0'
 
 jobs:
   proof:
@@ -109,7 +113,7 @@ jobs:
 
       - name: Upload tested commit evidence
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ci-reuse-evidence-${{ github.run_attempt }}
           path: ${{ runner.temp }}/ci-reuse-evidence/evidence.json
@@ -119,6 +123,13 @@ jobs:
       - name: Set up project
         id: toolchain
         uses: ./.github/actions/setup-project
+
+      - name: Check commit messages
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: vp exec commitlint --from "$BASE_SHA" --to "$HEAD_SHA"
 
       - name: Restore validation cache
         id: validation-cache
@@ -144,6 +155,9 @@ jobs:
 
       - name: Check formatting and lint
         run: vp run check:ci
+
+      - name: Check dead code
+        run: vp run dead-code
 
       - name: Detect release tooling changes
         id: release-tests
@@ -174,7 +188,7 @@ jobs:
 
       - name: Upload test artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-artifacts-quality-${{ github.run_attempt }}
           path: |
@@ -232,7 +246,7 @@ jobs:
 
       - name: Upload test artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-artifacts-fixtures-${{ github.run_attempt }}
           path: |
@@ -247,8 +261,6 @@ jobs:
     name: E2E (production)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    outputs:
-      vercel-version: ${{ steps.vercel-cli.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -261,31 +273,33 @@ jobs:
         with:
           cache-save: false
 
-      # Uma única resolução de latest por run mantém pull, build e deploy na mesma versão.
-      - name: Resolve Vercel CLI version
-        id: vercel-cli
+      # O token chega só aos comandos do Vercel CLI. A documentação da Vercel
+      # passa o token também ao vercel build, então o build o mantém.
+      - name: Pull Vercel production settings
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          set -o pipefail
-          version=$(curl -fsS --retry 3 --max-time 20 https://registry.npmjs.org/vercel/latest | jq -er 'select(.name == "vercel") | .version')
-          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Unexpected Vercel CLI version'; exit 1; }
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Build deployment artifact
-        id: deployment-build
-        if: steps.vercel-cli.outcome == 'success'
         env:
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_CLI_VERSION: ${{ steps.vercel-cli.outputs.version }}
-          ENABLE_EXPERIMENTAL_COREPACK: '0'
         run: |
           test -n "$VERCEL_ORG_ID" || { echo 'Missing VERCEL_ORG_ID variable'; exit 1; }
           test -n "$VERCEL_PROJECT_ID" || { echo 'Missing VERCEL_PROJECT_ID variable'; exit 1; }
           test -n "$VERCEL_TOKEN" || { echo 'Missing VERCEL_TOKEN secret'; exit 1; }
           vp dlx "vercel@$VERCEL_CLI_VERSION" pull --yes --environment=production
-          vp dlx "vercel@$VERCEL_CLI_VERSION" build --prod --yes
+
+      - name: Build deployment with Vercel CLI
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          ENABLE_EXPERIMENTAL_COREPACK: '0'
+        run: vp dlx "vercel@$VERCEL_CLI_VERSION" build --prod --yes
+
+      - name: Package deployment artifact
+        id: deployment-build
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
           vp exec node --input-type=module <<'NODE_ARTIFACT'
           import { lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
           import { basename, join, sep } from 'node:path';
@@ -336,7 +350,7 @@ jobs:
 
       - name: Upload tested deployment artifact
         if: steps.deployment-build.outcome == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: vercel-output-${{ github.sha }}
           path: ${{ runner.temp }}/vercel-output.tar
@@ -346,7 +360,7 @@ jobs:
 
       - name: Upload test artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-artifacts-production-${{ github.run_attempt }}
           path: |
@@ -403,7 +417,6 @@ jobs:
     env:
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-      VERCEL_CLI_VERSION: ${{ needs.e2e-production.outputs.vercel-version }}
     steps:
       # Sob o lock de produção: um run antigo que termina depois não publica por
       # cima de um commit mais novo da main. Erro de API reprova o job.
@@ -445,7 +458,7 @@ jobs:
           test -n "$VERCEL_ORG_ID" || { echo 'Missing VERCEL_ORG_ID variable'; exit 1; }
           test -n "$VERCEL_PROJECT_ID" || { echo 'Missing VERCEL_PROJECT_ID variable'; exit 1; }
           test -n "$VERCEL_TOKEN" || { echo 'Missing VERCEL_TOKEN secret'; exit 1; }
-          [[ "$VERCEL_CLI_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Missing resolved Vercel CLI version'; exit 1; }
+          [[ "$VERCEL_CLI_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Invalid pinned Vercel CLI version'; exit 1; }
 
       - name: Download tested deployment artifact
         if: steps.freshness.outputs.should-deploy == 'true'

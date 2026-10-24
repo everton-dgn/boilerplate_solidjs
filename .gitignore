@@ -23,7 +23,6 @@ solid-env.d.ts
 
 .zed/
 .vscode/
-.dea/
 .idea
 .DS_Store
 *.suo

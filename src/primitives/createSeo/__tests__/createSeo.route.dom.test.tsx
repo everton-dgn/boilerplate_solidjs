@@ -3,6 +3,7 @@ import {
   memoryHistory,
   type RouteDefinition
 } from '@solidjs/router'
+import { render } from '@solidjs/web'
 
 import { SITE } from '@/constants/site.ts'
 import {
@@ -160,9 +161,31 @@ describe('metadados de SEO no head', () => {
 
   it('remove as tags ao desmontar e usa barra final na raiz', async () => {
     await vi.waitUntil(() => readCanonical() === null, POLL)
-    const base = await renderAt({ pathname: '/' })
+    const Router = createRouter({
+      routes: [{ path: '/*rest', component: () => null }],
+      history: memoryHistory('/')
+    })
+    const host = document.createElement('div')
+    document.body.append(host)
+    onTestFinished(() => host.remove())
+    const dispose = render(
+      () => (
+        <Router>
+          {props => {
+            createSeo({ route: true })
+            return props.children
+          }}
+        </Router>
+      ),
+      host
+    )
+    await vi.waitUntil(() => readCanonical() !== null, POLL)
+    expect(readCanonical()).toBe(`${SITE.url}/en`)
+    expect(readMeta('meta[property="og:url"]')).toBe(`${SITE.url}/en`)
 
-    expect(readCanonical()).toBe(`${base}/en`)
+    dispose()
+    await vi.waitUntil(() => readCanonical() === null, POLL)
+    expect(readMeta('meta[property="og:url"]')).toBeNull()
   })
 
   it('usa os metadados de SITE quando a rota não declara SEO', async () => {

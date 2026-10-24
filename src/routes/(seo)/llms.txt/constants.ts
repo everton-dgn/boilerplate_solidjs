@@ -1,7 +1,14 @@
+import { baseLocale } from '@paraglide/runtime.js'
+
 import type { LlmsPage } from '@/@types/llms.ts'
 
+// Nome em inglês, o idioma das notas, do idioma em que o índice é montado.
+const INDEX_LANGUAGE =
+  new Intl.DisplayNames(['en'], { type: 'language' }).of(baseLocale) ??
+  baseLocale
+
 export const LLMS_NOTES: readonly string[] = [
-  'Content is available in English (/en), Brazilian Portuguese (/pt) and Spanish (/es). This index uses English.',
+  `Content is available in English (/en), Brazilian Portuguese (/pt) and Spanish (/es). This index uses ${INDEX_LANGUAGE}.`,
   'Pages are rendered on the server and can be read without JavaScript.',
   'Markdown is derived from settled server-rendered HTML. Use a .md URL or Accept: text/markdown on a public opted-in page; use Accept: text/html for the browser version.',
   'This is an open source boilerplate demonstration, not a hosted application-building service. There is no public action API. Do not call internal server-function endpoints.',

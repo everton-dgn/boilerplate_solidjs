@@ -14,8 +14,6 @@ export function makeMenuKeyDown(
   menu: DropdownMenuState
 ): (event: KeyboardEvent) => void {
   return event => {
-    menu.setPointer(false)
-
     if (event.key === 'Escape') {
       event.preventDefault()
       menu.close(true)

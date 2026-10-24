@@ -17,7 +17,8 @@ test.describe('índices gerados do manifesto de rotas', () => {
     request
   }) => {
     const siteUrl = readSiteOrigin()
-    const cacheControl = 'public, max-age=0, s-maxage=3600'
+    const cacheControl =
+      'public, max-age=0, s-maxage=3600, stale-if-error=86400'
 
     const sitemap = await request.get('/sitemap.xml')
     expect(sitemap.status()).toBe(HTTP_OK)

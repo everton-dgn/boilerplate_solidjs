@@ -24,7 +24,7 @@ export function createTheme(): ThemeState {
   const [themePreference, setThemePreference] =
     createSignal<Theme>(DEFAULT_THEME)
   const [systemTheme, setSystemTheme] = createSignal<ResolvedTheme>('light')
-  const [ready, setReady] = createSignal(false)
+  const [isReady, setIsReady] = createSignal(false)
 
   const resolvedTheme = createMemo(() => {
     const current = themePreference()
@@ -34,7 +34,7 @@ export function createTheme(): ThemeState {
   let connection: ReturnType<typeof makeThemeChannel> | undefined
 
   createEffect(
-    () => (ready() ? resolvedTheme() : undefined),
+    () => (isReady() ? resolvedTheme() : undefined),
     resolved => {
       if (resolved !== undefined) apply(resolved)
     }
@@ -43,7 +43,7 @@ export function createTheme(): ThemeState {
   onSettled(() => {
     const system = makeSystemTheme(setSystemTheme)
     connection = makeThemeChannel(setThemePreference)
-    setReady(true)
+    setIsReady(true)
     return () => {
       connection?.dispose()
       connection = undefined
@@ -53,9 +53,8 @@ export function createTheme(): ThemeState {
 
   return {
     theme: themePreference,
-    systemTheme,
     resolvedTheme,
-    ready,
+    isReady,
     setTheme(next) {
       if (!isTheme(next)) return
       setThemePreference(next)

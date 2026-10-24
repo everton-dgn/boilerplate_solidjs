@@ -6,6 +6,19 @@ import { promisify } from 'node:util'
 
 import type { Ports } from '../types.ts'
 
+type Limits = {
+  signal: AbortSignal
+  timeout: number
+}
+type PortsOptions = {
+  repository: string
+  signal: AbortSignal
+}
+type EvidenceOptions = {
+  repository: string
+  limits: Limits
+}
+
 const execute = promisify(execFile)
 const COMMAND_TIMEOUT_MS = 20_000
 const MAX_OUTPUT_BYTES = 8_388_608
@@ -13,38 +26,7 @@ const MAX_ARCHIVE_BYTES = 1_048_576
 const MAX_EVIDENCE_BYTES = 65_536
 const EVIDENCE_FILE = 'evidence.json'
 
-async function api<T>(apiPath: string): Promise<T> {
-  try {
-    const { stdout } = await execute('gh', ['api', apiPath], {
-      timeout: COMMAND_TIMEOUT_MS,
-      maxBuffer: MAX_OUTPUT_BYTES
-    })
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- decideReuse compara cada campo usado com valores esperados.
-    return JSON.parse(stdout) as T
-  } catch {
-    // Não repasse a saída do gh: ela pode conter dados da requisição.
-    throw new Error(`Falha ao consultar ${apiPath.split('?')[0]}.`)
-  }
-}
-
-async function git(args: string[]): Promise<string> {
-  const { stdout } = await execute('git', args, {
-    timeout: COMMAND_TIMEOUT_MS,
-    maxBuffer: MAX_OUTPUT_BYTES
-  })
-  return stdout.trimEnd()
-}
-
-async function readBlob(spec: string): Promise<Uint8Array> {
-  const { stdout } = await execute('git', ['cat-file', 'blob', spec], {
-    encoding: 'buffer',
-    timeout: COMMAND_TIMEOUT_MS,
-    maxBuffer: MAX_OUTPUT_BYTES
-  })
-  return stdout
-}
-
-function evidenceReader(repository: string) {
+function evidenceReader({ repository, limits }: EvidenceOptions) {
   return async function readEvidence(artifactId: number): Promise<unknown> {
     const directory = await mkdtemp(path.join(tmpdir(), 'ci-reuse-'))
     try {
@@ -52,15 +34,11 @@ function evidenceReader(repository: string) {
       const { stdout } = await execute(
         'gh',
         ['api', `repos/${repository}/actions/artifacts/${artifactId}/zip`],
-        {
-          encoding: 'buffer',
-          timeout: COMMAND_TIMEOUT_MS,
-          maxBuffer: MAX_ARCHIVE_BYTES
-        }
+        { ...limits, encoding: 'buffer', maxBuffer: MAX_ARCHIVE_BYTES }
       )
       await writeFile(archive, stdout)
       const extracted = await execute('unzip', ['-p', archive, EVIDENCE_FILE], {
-        timeout: COMMAND_TIMEOUT_MS,
+        ...limits,
         maxBuffer: MAX_EVIDENCE_BYTES
       })
       return JSON.parse(extracted.stdout)
@@ -72,6 +50,39 @@ function evidenceReader(repository: string) {
   }
 }
 
-export function createPorts(repository: string): Ports {
-  return { api, git, readBlob, readEvidence: evidenceReader(repository) }
+// O sinal encerra os subprocessos ainda em andamento quando o prazo da prova
+// acaba; o timeout de cada comando continua limitando chamadas isoladas.
+export function createPorts({ repository, signal }: PortsOptions): Ports {
+  const limits = { signal, timeout: COMMAND_TIMEOUT_MS }
+  return {
+    async api<T>(apiPath: string): Promise<T> {
+      try {
+        const { stdout } = await execute('gh', ['api', apiPath], {
+          ...limits,
+          maxBuffer: MAX_OUTPUT_BYTES
+        })
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- decideReuse compara cada campo usado com valores esperados.
+        return JSON.parse(stdout) as T
+      } catch {
+        // Não repasse a saída do gh: ela pode conter dados da requisição.
+        throw new Error(`Falha ao consultar ${apiPath.split('?')[0]}.`)
+      }
+    },
+    async git(args: string[]): Promise<string> {
+      const { stdout } = await execute('git', args, {
+        ...limits,
+        maxBuffer: MAX_OUTPUT_BYTES
+      })
+      return stdout.trimEnd()
+    },
+    async readBlob(spec: string): Promise<Uint8Array> {
+      const { stdout } = await execute('git', ['cat-file', 'blob', spec], {
+        ...limits,
+        encoding: 'buffer',
+        maxBuffer: MAX_OUTPUT_BYTES
+      })
+      return stdout
+    },
+    readEvidence: evidenceReader({ repository, limits })
+  }
 }

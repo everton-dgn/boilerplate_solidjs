@@ -6,7 +6,7 @@ import type { DropdownMenuState } from '../types.ts'
 import S from '../styles.module.css'
 
 type MenuItemBaseProps = {
-  menu: Pick<DropdownMenuState, 'close' | 'closeAfterSelect'>
+  menu: Pick<DropdownMenuState, 'close'>
   checked?: boolean
   disabled?: boolean
   onSelect: () => void
@@ -14,19 +14,18 @@ type MenuItemBaseProps = {
 }
 
 export function MenuItemBase(props: MenuItemBaseProps) {
-  const select = (dismiss: () => void) => {
+  const select = () => {
     if (props.disabled) return
 
     props.onSelect()
-    dismiss()
+    props.menu.close(true)
   }
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (!DROPDOWN_SELECT_KEYS.includes(event.key)) return
 
     event.preventDefault()
-    const { close } = props.menu
-    select(() => close(true))
+    select()
   }
 
   return (
@@ -38,7 +37,7 @@ export function MenuItemBase(props: MenuItemBaseProps) {
       aria-checked={props.checked ? 'true' : 'false'}
       aria-disabled={props.disabled ? 'true' : undefined}
       class={S.item}
-      onClick={() => select(props.menu.closeAfterSelect)}
+      onClick={select}
       onKeyDown={handleKeyDown}
     >
       {props.children}

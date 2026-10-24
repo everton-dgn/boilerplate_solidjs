@@ -173,19 +173,20 @@ describe('menu suspenso no navegador', () => {
     await userEvent.keyboard(key)
 
     expect(onChange).toHaveBeenCalledWith('dark')
-    await expect
-      .element(page.getByRole('button', { name: 'Abrir' }))
-      .toHaveFocus()
+    const opener = page.getByRole('button', { name: 'Abrir' })
+    await expect.element(opener).toHaveFocus()
+    expect(opener.element().matches(':focus-visible')).toBe(true)
   })
 
-  it('devolve o foco ao gatilho quando o teclado seleciona após o mouse', async () => {
+  it('devolve o foco ao gatilho sem anel visível após seleção pelo ponteiro', async () => {
     const { onChange } = mountMenu()
     const opener = page.getByRole('button', { name: 'Abrir' })
 
     await opener.click()
     await page.getByRole('menuitemradio', { name: 'Escuro' }).click()
     await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
-    await expect.element(opener).not.toHaveFocus()
+    await expect.element(opener).toHaveFocus()
+    expect(opener.element().matches(':focus-visible')).toBe(false)
 
     await opener.click()
     await userEvent.keyboard('{Enter}')

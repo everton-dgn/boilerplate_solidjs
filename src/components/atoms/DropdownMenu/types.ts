@@ -38,11 +38,9 @@ export type DropdownMenuRefs = {
 
 export type DropdownMenuState = {
   id: string
-  open: () => boolean
+  isOpen: () => boolean
   refs: DropdownMenuRefs
-  close: (restoreFocus: boolean) => void
-  closeAfterSelect: () => void
+  close: (shouldRestoreFocus: boolean) => void
   focusAt: (index: number) => void
   openAt: (index: number) => void
-  setPointer: (value: boolean) => void
 }

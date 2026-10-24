@@ -17,6 +17,7 @@ const LANGUAGES = [
     locale: 'pt',
     tag: 'pt-BR',
     theme: 'Selecionar tema',
+    selector: 'Selecionar idioma',
     dark: 'Escuro',
     headings: [
       'SolidJS Boilerplate para aplicações web',
@@ -29,6 +30,7 @@ const LANGUAGES = [
     locale: 'en',
     tag: 'en-US',
     theme: 'Select theme',
+    selector: 'Select language',
     dark: 'Dark',
     headings: [
       'SolidJS Boilerplate for web applications',
@@ -41,6 +43,7 @@ const LANGUAGES = [
     locale: 'es',
     tag: 'es-ES',
     theme: 'Seleccionar tema',
+    selector: 'Seleccionar idioma',
     dark: 'Oscuro',
     headings: [
       'SolidJS Boilerplate para aplicaciones web',
@@ -187,7 +190,23 @@ for (const language of LANGUAGES) {
           .click()
         await expect(page.locator('html')).toHaveClass('dark')
         const header = await page.getByRole('banner').elementHandle()
-        expect(header).not.toBeNull()
+        if (width === MOBILE_WIDTH) {
+          // Os links transbordam e rolam dentro da barra; tema e idioma ficam
+          // fora dela, visíveis na tela estreita.
+          const nav = page.locator('header > nav')
+          expect(
+            await nav.evaluate(
+              element => element.scrollWidth > element.clientWidth
+            )
+          ).toBe(true)
+          await expect(nav.getByRole('button')).toHaveCount(0)
+          await expect(
+            page.getByRole('button', { name: language.theme })
+          ).toBeInViewport()
+          await expect(
+            page.getByRole('button', { name: language.selector })
+          ).toBeInViewport()
+        }
 
         for (const [index, path] of PATHS.entries()) {
           await page

@@ -141,9 +141,16 @@ test('modal and notifications fit a narrow dark viewport', async ({
     await dialog.getByRole('button', { name: 'Fechar diálogo' }).click()
     await page.getByRole('button', { name: 'Show notification' }).click()
     const notification = page.getByRole('region', { name: 'Notificações' })
-    const toastBox = await notification.boundingBox()
+    const toast = notification.getByRole('listitem')
+    await expect(toast).toBeVisible()
+    const toastBox = await toast.boundingBox()
     expect(
       toastBox && toastBox.x >= 0 && toastBox.x + toastBox.width <= MOBILE_WIDTH
+    ).toBe(true)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth
+      )
     ).toBe(true)
     await expect(
       notification.getByRole('button', { name: 'Fechar notificação' })

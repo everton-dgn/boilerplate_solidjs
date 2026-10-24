@@ -1,11 +1,15 @@
 /* oxlint-disable vitest/no-import-node-test -- O Bun executa os testes de release pela API node:test. */
 import assert from 'node:assert/strict'
+import { execFile } from 'node:child_process'
+import path from 'node:path'
 import { describe, it } from 'node:test'
+import { promisify } from 'node:util'
 
 import {
   assertReleaseFiles,
   assertReleasePullRequest,
   assertSourceRun,
+  isOpenReleasePullRequest,
   type PullRequest
 } from '../github.ts'
 import { planRelease } from '../versioning.ts'
@@ -20,6 +24,30 @@ const base = {
 }
 const commits = (...messages: string[]) =>
   messages.map(message => ({ sha: SHA, message }))
+const execute = promisify(execFile)
+const ROOT = path.resolve(import.meta.dirname, '../../..')
+const COMMITLINT = path.join(ROOT, 'node_modules/.bin/commitlint')
+
+// O commitlint lê a mensagem do stdin e usa a configuração do projeto.
+async function isValidCommitMessage(message: string): Promise<boolean> {
+  const pending = execute(COMMITLINT, { cwd: ROOT })
+  pending.child.stdin?.end(message)
+  try {
+    await pending
+    return true
+  } catch (error) {
+    // Só uma saída diferente de zero reprova a mensagem; sem o binário, o
+    // erro precisa falhar o teste.
+    if (
+      error instanceof Error &&
+      'code' in error &&
+      typeof error.code === 'number'
+    ) {
+      return false
+    }
+    throw error
+  }
+}
 
 describe('release versioning', () => {
   it('starts at 1.0.0 and keeps Unreleased for the next release', () => {
@@ -53,6 +81,44 @@ describe('release versioning', () => {
       })?.version,
       '2.0.0'
     )
+  })
+
+  it('recognizes breaking changes in any body line outside fences', () => {
+    for (const message of [
+      'fix: change\nBREAKING CHANGE: new API',
+      'fix: change\n\nExplain the change.\nBREAKING CHANGE: new API',
+      'fix: change\n\nExplain the change.\nBREAKING-CHANGE: new API'
+    ]) {
+      assert.equal(
+        planRelease({ ...base, commits: commits(message) })?.version,
+        '2.0.0',
+        message
+      )
+    }
+    for (const message of [
+      'fix: change\n\nMentions BREAKING CHANGE: inline',
+      'fix: change\n\nBREAKING CHANGE:',
+      'BREAKING CHANGE: not a conventional subject'
+    ]) {
+      assert.notEqual(
+        planRelease({ ...base, commits: commits(message) })?.version,
+        '2.0.0',
+        message
+      )
+    }
+  })
+
+  it('requires a blank line before footers in commit messages', async () => {
+    assert.equal(
+      await isValidCommitMessage('fix: change\n\nBREAKING CHANGE: new API'),
+      true
+    )
+    for (const message of [
+      'fix: change\nBREAKING CHANGE: new API',
+      'fix: change\n\nExplain the change.\nBREAKING CHANGE: new API'
+    ]) {
+      assert.equal(await isValidCommitMessage(message), false, message)
+    }
   })
 
   it('recognizes breaking footers but ignores fenced examples', () => {
@@ -168,7 +234,7 @@ describe('release identity gates', () => {
   }
 
   it('accepts only successful push CI from this repository and workflow', () => {
-    assert.equal(assertSourceRun(run, repository), SHA)
+    assert.equal(assertSourceRun({ run, repository }), SHA)
     for (const patch of [
       { conclusion: 'failure' },
       { event: 'pull_request' },
@@ -177,7 +243,7 @@ describe('release identity gates', () => {
       { head_repository: { full_name: 'fork/repo' } }
     ]) {
       assert.throws(
-        () => assertSourceRun({ ...run, ...patch }, repository),
+        () => assertSourceRun({ run: { ...run, ...patch }, repository }),
         /successful push CI/u
       )
     }
@@ -202,26 +268,67 @@ describe('release identity gates', () => {
       },
       base: { ref: 'main', repo: { full_name: repository } }
     }
-    assertReleasePullRequest(pr, repository, 'release/v1.0.0', SHA)
+    assertReleasePullRequest({
+      pr,
+      repository,
+      branch: 'release/v1.0.0',
+      head: SHA
+    })
     assert.throws(
       () =>
-        assertReleasePullRequest(
-          { ...pr, user: { login: 'someone' } },
+        assertReleasePullRequest({
+          pr: { ...pr, user: { login: 'someone' } },
           repository,
-          'release/v1.0.0',
-          SHA
-        ),
+          branch: 'release/v1.0.0',
+          head: SHA
+        }),
       /identity/u
     )
     assert.throws(
       () =>
-        assertReleasePullRequest(
+        assertReleasePullRequest({
           pr,
           repository,
-          'release/v1.0.0',
-          'b'.repeat(SHA_LENGTH)
-        ),
+          branch: 'release/v1.0.0',
+          head: 'b'.repeat(SHA_LENGTH)
+        }),
       /identity/u
     )
+  })
+})
+
+describe('obsolete release pull requests', () => {
+  const repository = 'owner/repo'
+  const pr: PullRequest = {
+    number: 2,
+    state: 'open',
+    merged: false,
+    merge_commit_sha: null,
+    user: { login: 'github-actions[bot]' },
+    head: {
+      sha: SHA,
+      ref: 'release/v1.2.4-aaaaaaaaaaaa',
+      repo: { full_name: repository }
+    },
+    base: { ref: 'main', repo: { full_name: repository } }
+  }
+
+  it('selects only open bot pull requests from release branches', () => {
+    assert.equal(isOpenReleasePullRequest({ pr, repository }), true)
+    for (const patch of [
+      { state: 'closed' },
+      { merged: true },
+      { user: { login: 'someone' } },
+      { head: { ...pr.head, ref: 'release/v1.2.4' } },
+      { head: { ...pr.head, ref: 'feat/release-v1.2.4-aaaaaaaaaaaa' } },
+      { head: { ...pr.head, repo: { full_name: 'fork/repo' } } },
+      { base: { ...pr.base, ref: 'develop' } }
+    ]) {
+      assert.equal(
+        isOpenReleasePullRequest({ pr: { ...pr, ...patch }, repository }),
+        false,
+        JSON.stringify(patch)
+      )
+    }
   })
 })

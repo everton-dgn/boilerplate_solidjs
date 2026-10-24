@@ -4,6 +4,20 @@ test.use({ locale: 'pt-BR' })
 
 const THEME_KEY = 'app-theme'
 
+// O listener da página foi registrado antes deste; quando este dispara, o tema
+// já teve a chance de reagir ao change.
+function watchDarkScheme(): void {
+  matchMedia('(prefers-color-scheme: dark)').addEventListener(
+    'change',
+    event => Reflect.set(globalThis, '__darkSchemeChanged', event.matches),
+    { once: true }
+  )
+}
+
+function hasDarkSchemeChanged(): boolean {
+  return Reflect.get(globalThis, '__darkSchemeChanged') === true
+}
+
 test.describe('tema da aplicação', () => {
   for (const colorScheme of ['dark', 'light'] as const) {
     test(`segue o sistema ${colorScheme} no primeiro carregamento`, async ({
@@ -49,9 +63,13 @@ test.describe('tema da aplicação', () => {
     await page.emulateMedia({ colorScheme: 'light' })
     await expect(page.locator('html')).toHaveClass('light')
     await page.getByRole('button', { name: 'Selecionar tema' }).click()
-    await page.getByRole('menuitemradio', { name: 'Escuro' }).click()
-    await page.emulateMedia({ colorScheme: 'light' })
-    await expect(page.locator('html')).toHaveClass('dark')
+    await page
+      .getByRole('menuitemradio', { name: 'Claro', exact: true })
+      .click()
+    await page.evaluate(watchDarkScheme)
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await expect.poll(() => page.evaluate(hasDarkSchemeChanged)).toBe(true)
+    await expect(page.locator('html')).toHaveClass('light')
   })
 
   test('aplica preferência salva antes de hidratar', async ({

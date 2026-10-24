@@ -39,11 +39,29 @@ idiomas. A API aceita texto simples e as variantes `info`, `success`, `warning`,
 `error` e `loading`. O prazo padrão é de cinco segundos; `loading` sem prazo e
 `duration: 0` permanecem até o fechamento. Atualizar a variante ou a duração
 reinicia o prazo; atualizar apenas o texto preserva o tempo restante. Hover,
-foco e aba oculta pausam o cronômetro. A fila mantém até cinco notificações e
-remove a mais antiga quando esse limite é excedido. Os anúncios de leitores de
-tela são agrupados por prioridade; erros usam a região assertiva. A notificação
-não desloca o foco ao aparecer. Cada provider tem estado próprio e libera os
-temporizadores ao desmontar.
+foco e aba oculta pausam o cronômetro. A fila mantém até cinco notificações e,
+quando esse limite é excedido, remove a mais antiga que não esteja com hover nem
+com foco. Os anúncios de leitores de tela são agrupados por prioridade; erros
+usam a região assertiva. A notificação não desloca o foco ao aparecer. Se a
+notificação removida contém o foco, ele passa ao botão de fechar da vizinha ou,
+sem vizinha, volta ao elemento focado antes de entrar na região. Cada provider
+tem estado próprio e libera os temporizadores ao desmontar.
+
+## Menus suspensos
+
+`DropdownMenu`, em `components/atoms/`, segue o padrão de menu do APG: setas,
+`Home` e `End` navegam entre os itens, `Escape` fecha, e `Tab` fecha sem prender
+o foco. Selecionar um item, pelo teclado ou pelo ponteiro, devolve o foco ao
+gatilho; com o ponteiro, o navegador não mostra o anel de `:focus-visible`.
+Clicar fora fecha o menu e preserva o destino do foco.
+
+Os gatilhos de tema e de idioma incluem o estado atual no nome acessível: o de
+idioma começa pelo código mostrado no botão, como "EN, select language", e o de
+tema informa a preferência atual depois da hidratação. Os dois dependem de
+JavaScript. O script do `head` marca o `<html>` com `data-js`, e a regra
+`.js_only` de `src/theme/class/scripting.css` esconde os gatilhos quando essa
+marca não existe. Sem JavaScript, o `noscript` do `LocaleSwitcher` oferece os
+links de idioma.
 
 ## Tema e persistência
 

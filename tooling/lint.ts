@@ -62,6 +62,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     },
     {
       files: [
+        'src/__tests__/PageFileSystemRouter.node.test.ts',
         'src/tests/pages/AgentReadiness/AgentReadiness.build.production.e2e.test.ts',
         'src/tests/pages/BackendError/BackendError.e2e.test.ts',
         'src/tests/pages/FragmentCss/FragmentCss.e2e.test.ts',
@@ -69,6 +70,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
         'src/tests/pages/Hydration/Hydration.preload.e2e.test.ts',
         'src/tests/pages/OutsideError/OutsideError.e2e.test.ts',
         'src/tests/pages/I18n/I18n.production.e2e.test.ts',
+        'src/tests/pages/SeoIndexes/SeoIndexes.production.e2e.test.ts',
         'src/tests/helpers/readSiteOrigin/index.ts'
       ],
       rules: { 'import/no-nodejs-modules': 'off' }
@@ -82,11 +84,13 @@ export const lint: NonNullable<UserConfig['lint']> = {
       rules: { 'unicorn/filename-case': 'off' }
     },
     {
-      // Callbacks de teste e hooks de plugin podem exigir mais de dois parâmetros.
+      // Callbacks de teste e hooks de plugin do Vite seguem assinaturas de
+      // terceiros, que podem exigir mais de dois parâmetros.
       files: [
         'src/**/*.test.{ts,tsx}',
         'src/tests/**/*.{ts,tsx}',
-        'tooling/**/*.ts',
+        'tooling/**/__tests__/**/*.ts',
+        'tooling/i18n/i18nPlugin/index.ts',
         'vite.config.ts'
       ],
       rules: { 'eslint/max-params': 'off' }
@@ -293,15 +297,12 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'eslint/no-prototype-builtins': 'error',
     'eslint/no-redeclare': 'error',
     'eslint/no-regex-spaces': 'error',
-    'eslint/no-restricted-exports': 'error',
-    'eslint/no-restricted-globals': 'error',
     'eslint/no-restricted-imports': [
       'error',
       {
         patterns: [RELATIVE_IMPORT_RESTRICTION]
       }
     ],
-    'eslint/no-restricted-properties': 'error',
     'eslint/no-return-assign': 'error',
     'eslint/no-script-url': 'error',
     'eslint/no-self-assign': 'error',
@@ -589,7 +590,6 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'typescript/no-non-null-assertion': 'error',
     'typescript/no-redundant-type-constituents': 'error',
     'typescript/no-require-imports': 'error',
-    'typescript/no-restricted-types': 'error',
     'typescript/no-this-alias': 'error',
     'typescript/no-unnecessary-boolean-literal-compare': 'error',
     'typescript/no-unnecessary-condition': 'error',
@@ -811,8 +811,6 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'vitest/no-interpolation-in-snapshots': 'error',
     'vitest/no-large-snapshots': 'error',
     'vitest/no-mocks-import': 'error',
-    'vitest/no-restricted-matchers': 'error',
-    'vitest/no-restricted-vi-methods': 'error',
     'vitest/no-standalone-expect': 'error',
     'vitest/no-test-prefixes': 'error',
     'vitest/no-test-return-statement': 'error',
@@ -832,7 +830,25 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'vitest/prefer-hooks-in-order': 'error',
     'vitest/prefer-hooks-on-top': 'error',
     'vitest/prefer-import-in-mock': 'error',
-    'vitest/prefer-lowercase-title': 'error',
+    // Sem prefixos permitidos, o autofix passa só a primeira letra da sigla
+    // para minúscula (HTML vira hTML).
+    'vitest/prefer-lowercase-title': [
+      'error',
+      {
+        allowedPrefixes: [
+          'API',
+          'CSP',
+          'CSS',
+          'DOM',
+          'HTML',
+          'HTTP',
+          'JSON',
+          'SEO',
+          'SSR',
+          'URL'
+        ]
+      }
+    ],
     'vitest/prefer-mock-promise-shorthand': 'error',
     'vitest/prefer-mock-return-shorthand': 'error',
     'vitest/prefer-snapshot-hint': 'error',

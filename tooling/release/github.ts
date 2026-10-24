@@ -1,21 +1,55 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
+type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
+type Mutation = {
+  path: string
+  method: 'POST' | 'PUT' | 'PATCH'
+  payload: Json
+}
+type ApiRequest = {
+  path: string
+  method: string
+  payload?: Json
+}
+type SourceRun = {
+  conclusion: string
+  event: string
+  head_branch: string
+  head_sha: string
+  path: string
+  head_repository: { full_name: string }
+}
+type SourceRunCheck = {
+  run: SourceRun
+  repository: string
+}
+type SourceRunRequest = {
+  repository: string
+  runId: string
+}
+type OpenPullRequestCheck = {
+  pr: PullRequest
+  repository: string
+}
+type ReleasePullRequestCheck = OpenPullRequestCheck & {
+  branch: string
+  head: string
+}
+
 const execute = promisify(execFile)
 const MAX_OUTPUT_BYTES = 16_777_216
 const RELEASE_FILE_COUNT = 2
-type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
+const RELEASE_BOT = 'github-actions[bot]'
 
-export async function command(file: string, args: string[]): Promise<string> {
-  const result = await execute(file, args, { maxBuffer: MAX_OUTPUT_BYTES })
-  return result.stdout.trim()
+// Branches de release criadas pela automação: release/vX.Y.Z-<12 hex do SHA>.
+function isReleaseBranch(ref: string): boolean {
+  return /^release\/v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-[a-f\d]{12}$/u.test(
+    ref
+  )
 }
 
-export async function api<T>(
-  path: string,
-  method = 'GET',
-  payload?: Json
-): Promise<T> {
+async function request<T>({ path, method, payload }: ApiRequest): Promise<T> {
   const args = ['api', path, '--method', method]
   if (payload !== undefined) args.push('--input', '-')
   // oxlint-disable-next-line promise/avoid-new -- Faz a ponte entre o stdin do execFile e o callback de conclusão.
@@ -43,6 +77,29 @@ export async function api<T>(
   return JSON.parse(output) as T
 }
 
+export type PullRequest = {
+  number: number
+  state: string
+  merged: boolean
+  merge_commit_sha: string | null
+  user: { login: string }
+  head: { sha: string; ref: string; repo: { full_name: string } }
+  base: { ref: string; repo: { full_name: string } }
+}
+
+export async function command(file: string, args: string[]): Promise<string> {
+  const result = await execute(file, args, { maxBuffer: MAX_OUTPUT_BYTES })
+  return result.stdout.trim()
+}
+
+export function api<T>(path: string): Promise<T> {
+  return request<T>({ path, method: 'GET' })
+}
+
+export function mutate<T>(mutation: Mutation): Promise<T> {
+  return request<T>(mutation)
+}
+
 export async function optionalApi<T>(path: string): Promise<T | undefined> {
   // Inspecione o status HTTP explicitamente para que falha de autenticação ou de rede nunca seja tratada como ausência.
   // oxlint-disable-next-line promise/avoid-new -- O HTTP 404 vem no stdout mesmo quando o execFile falha.
@@ -52,13 +109,17 @@ export async function optionalApi<T>(path: string): Promise<T | undefined> {
       ['api', path, '--include'],
       { maxBuffer: MAX_OUTPUT_BYTES },
       (error, stdout) => {
-        if (!error) resolve(stdout)
-        else if (/^HTTP\/\S+ 404\b/mu.test(stdout)) resolve('')
-        else {
-          reject(
-            new Error(`Cannot read ${path}: ${error.code ?? 'unknown error'}`)
-          )
+        if (!error) {
+          resolve(stdout)
+          return
         }
+        if (/^HTTP\/\S+ 404\b/mu.test(stdout)) {
+          resolve('')
+          return
+        }
+        reject(
+          new Error(`Cannot read ${path}: ${error.code ?? 'unknown error'}`)
+        )
       }
     )
   })
@@ -76,17 +137,7 @@ export function requireSha(value: string): string {
   return value
 }
 
-export function assertSourceRun(
-  run: {
-    conclusion: string
-    event: string
-    head_branch: string
-    head_sha: string
-    path: string
-    head_repository: { full_name: string }
-  },
-  repository: string
-): string {
+export function assertSourceRun({ run, repository }: SourceRunCheck): string {
   if (
     run.conclusion !== 'success' ||
     run.event !== 'push' ||
@@ -101,24 +152,37 @@ export function assertSourceRun(
   return requireSha(run.head_sha)
 }
 
-export type PullRequest = {
-  number: number
-  state: string
-  merged: boolean
-  merge_commit_sha: string | null
-  user: { login: string }
-  head: { sha: string; ref: string; repo: { full_name: string } }
-  base: { ref: string; repo: { full_name: string } }
+export async function readSourceRun({
+  repository,
+  runId
+}: SourceRunRequest): Promise<string> {
+  const run = await api<SourceRun>(`repos/${repository}/actions/runs/${runId}`)
+  return assertSourceRun({ run, repository })
 }
 
-export function assertReleasePullRequest(
-  pr: PullRequest,
-  repository: string,
-  branch: string,
-  head: string
-): void {
+export function isOpenReleasePullRequest({
+  pr,
+  repository
+}: OpenPullRequestCheck): boolean {
+  return (
+    pr.user.login === RELEASE_BOT &&
+    pr.state === 'open' &&
+    !pr.merged &&
+    isReleaseBranch(pr.head.ref) &&
+    pr.head.repo.full_name === repository &&
+    pr.base.ref === 'main' &&
+    pr.base.repo.full_name === repository
+  )
+}
+
+export function assertReleasePullRequest({
+  pr,
+  repository,
+  branch,
+  head
+}: ReleasePullRequestCheck): void {
   if (
-    pr.user.login !== 'github-actions[bot]' ||
+    pr.user.login !== RELEASE_BOT ||
     pr.head.sha !== head ||
     pr.head.ref !== branch ||
     pr.head.repo.full_name !== repository ||

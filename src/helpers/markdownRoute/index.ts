@@ -1,9 +1,8 @@
 import type { RouteInfo } from '@solidjs/router'
 
+import { LAST_MATCH } from '@/constants/router.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { delocalizePathname } from '@/i18n/urls/index.ts'
-
-const LAST_MATCH = -1
 
 export function isMarkdownRoute(
   info: readonly (RouteInfo | undefined)[]

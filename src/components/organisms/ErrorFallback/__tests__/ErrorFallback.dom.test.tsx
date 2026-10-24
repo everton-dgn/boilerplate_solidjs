@@ -1,9 +1,58 @@
-import { createSignal } from 'solid-js'
+import { m } from '@paraglide/messages.js'
+import { createSignal, Errored } from 'solid-js'
 
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { ErrorFallback } from '../index.tsx'
 import type { ErrorFallbackKind } from '../types.ts'
+
+function readMeta(name: string): string | null {
+  return (
+    document.head
+      .querySelector(`meta[name="${name}"]`)
+      ?.getAttribute('content') ?? null
+  )
+}
+
+function FailingPage(): never {
+  throw new Error('Falha antes do Router')
+}
+
+describe('metadados da falha', () => {
+  it('publica título, descrição e noindex quando a falha ocorre antes do Router', async () => {
+    await expect.poll(() => readMeta('robots')).toBeNull()
+    // Em desenvolvimento, o Errored registra no console o erro capturado.
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn())
+    const host = renderComponent(
+      () => (
+        <Errored fallback={() => <ErrorFallback kind="runtime" />}>
+          <FailingPage />
+        </Errored>
+      ),
+      { providers: false }
+    )
+    await expect.poll(() => readMeta('robots')).toBe('noindex')
+    expect(document.title).toBe(m.errorFallback_runtimeTitle())
+    expect(readMeta('description')).toBe(m.errorFallback_runtimeDescription())
+    expect(host.querySelector('h1')).toHaveTextContent(
+      m.errorFallback_runtimeTitle()
+    )
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Falha antes do Router' })
+    )
+  })
+
+  it('retira os metadados da falha quando a variante passa a ser página inexistente', async () => {
+    const [kind, setKind] = createSignal<ErrorFallbackKind>('runtime')
+    renderComponent(() => <ErrorFallback kind={kind()} />, {
+      providers: false
+    })
+    await expect.poll(() => readMeta('robots')).toBe('noindex')
+    setKind('not-found')
+    await expect.poll(() => readMeta('robots')).toBeNull()
+    expect(readMeta('description')).toBeNull()
+  })
+})
 
 describe('navegação após falha', () => {
   it('mantém os parâmetros da página no recarregamento sem depender do Router', () => {

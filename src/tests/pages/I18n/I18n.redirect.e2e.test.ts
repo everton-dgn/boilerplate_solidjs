@@ -3,7 +3,6 @@ import { expect, test } from '@playwright/test'
 import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 
 const REDIRECT = 302
-const OK = 200
 
 // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const [kind, destination] of [
@@ -26,9 +25,6 @@ for (const [kind, destination] of [
     await expect(page.locator('html')).toHaveAttribute('lang', 'pt-BR')
   })
 }
-const STREAM_REDIRECT =
-  /<script nonce="(?<nonce>[^"]+)">window\.location="\/es\/i18n-redirect\?from=query#target"<\/script>/u
-
 // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const source of ['action', 'query']) {
   test(`${source} redirects across locales load a new document with matching messages`, async ({
@@ -119,23 +115,18 @@ test('back and forward across locale history entries reload the selected documen
   await expect(page).toHaveURL('/pt/i18n-redirect?history=2#target')
 })
 
-test('SSR query redirect preserves HTTP metadata or a nonce-bearing streamed redirect', async ({
+test('SSR query redirect decided before the shell preserves HTTP status and Location', async ({
   request
 }) => {
-  const response = await request.get('/pt/i18n-redirect?initial=1', {
-    maxRedirects: 0
-  })
-  if (response.status() === REDIRECT) {
-    expect(response.headers().location).toBe(
-      '/es/i18n-redirect?from=query#target'
-    )
-    return
-  }
-  expect(response.status()).toBe(OK)
-  const nonce = STREAM_REDIRECT.exec(await response.text())?.groups?.nonce
-  expect(nonce).toBeDefined()
-  expect(response.headers()['content-security-policy']).toContain(
-    `'nonce-${nonce}'`
+  const url = '/pt/i18n-redirect?initial=1'
+  // Na primeira requisição do processo à rota, o redirect sai depois do shell,
+  // provavelmente pela carga dos módulos; esse caminho é o do LateRedirect.
+  // Nas seguintes, ele resolve antes do envio do shell.
+  await request.get(url, { maxRedirects: 0 })
+  const response = await request.get(url, { maxRedirects: 0 })
+  expect(response.status()).toBe(REDIRECT)
+  expect(response.headers().location).toBe(
+    '/es/i18n-redirect?from=query#target'
   )
 })
 test('localized fragment and empty navigation retain the page and query', async ({

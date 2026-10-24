@@ -13,8 +13,11 @@ Twitter, com dimensões e texto alternativo) e um
 no cliente. As tags sociais que não variam por rota (`og:locale`,
 `og:site_name`, `twitter:card`, `twitter:site` e `twitter:creator`) também saem
 do `createSeo`, para acompanhar a regra de `noindex` abaixo; em `Document.tsx`
-fica só `author`. Não repita no `Document.tsx` uma tag que o `createSeo`
-publica, porque o crawler lê a primeira ocorrência.
+ficam só `author` e um `<title>` com `SITE.title`. Esse título é a exceção: o
+runtime substitui no lugar o primeiro `<title>` do shell pelo que o `createSeo`
+publica com `useHead`, e o documento sai com um único `<title>`, conferido nos
+E2E de SEO. Não repita no `Document.tsx` outra tag que o `createSeo` publica,
+porque o crawler lê a primeira ocorrência.
 
 Cada página mantém seus metadados em `seo.ts`, ao lado de `index.tsx`, e importa
 o objeto `seo` para `route.info.seo`. O contrato aceita `title`, `description`,
@@ -167,7 +170,7 @@ O `llms.txt` coleta os mesmos metadados pelo manifesto, sem renderizar páginas
 nem executar preloads, e publica só as páginas que declaram `route.info.llms`. O
 arquivo é um índice curado para modelos de linguagem, não um sitemap: em sites
 grandes, selecione as páginas que explicam o produto e agrupe-as. `llms: true`
-inclui a página; sem seção herdada, ela entra na seção padrão `Páginas`.
+inclui a página; sem seção herdada, ela entra na seção padrão `Pages`.
 `{ section: 'Guias' }` cria ou reutiliza uma seção com esse nome, na ordem em
 que aparece no manifesto; `{ optional: true }` move a página para a seção
 `Optional`, que o formato reserva ao conteúdo que o modelo pode pular, e uma
@@ -192,22 +195,37 @@ parâmetro entra pelas entradas de `route.info.sitemap`: uma função, síncrona
 assíncrona, que devolve `{ path, lastmod? }` com caminhos absolutos do site,
 enumerados a partir da fonte de dados. O módulo da rota entra no bundle do
 cliente, então banco e SDK ficam numa server function chamada pela fonte,
-conforme o [contrato de erros no servidor](server-errors.md). A fonte roda a
-cada request do sitemap (o CDN reutiliza a resposta por uma hora) e é ignorada
-sob `noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito.
-As entradas são validadas na fronteira: caminho que não começa com `/`, com
-host, esquema, query, fragmento ou espaço falha; barras finais e repetidas são
-normalizadas; caminho repetido mantém a primeira ocorrência (a página estática
-antes da fonte); `lastmod` fora do W3C Datetime é omitido. Falha de qualquer
-fonte, entrada inválida, prazo estourado ou sitemap acima do limite do protocolo
-(a quantidade fica em `sitemap.xml/constants.ts` e o limite de bytes em
+conforme o [contrato de erros no servidor](server-errors.md). A fonte recebe um
+`AbortSignal` que aborta no prazo das fontes, na desconexão do cliente e ao fim
+da leitura, inclusive quando outra fonte falha; repasse-o à leitura para
+cancelá-la, em vez de só deixar de esperá-la. Uma fonte que ignore o sinal
+continua rodando, mas a resposta não a espera além do prazo. A fonte roda a cada
+request do sitemap (o CDN reutiliza a resposta por uma hora) e é ignorada sob
+`noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito. As
+entradas são validadas na fronteira: caminho que não começa com `/`, com host,
+esquema, query, fragmento ou espaço falha; barras finais e repetidas são
+normalizadas; entradas que resultam na mesma URL publicada mantêm a primeira
+ocorrência (a página estática antes da fonte). A comparação usa a URL localizada
+que vai para o XML, então `/a/../b` e `/b`, `/café` e `/caf%C3%A9` ou
+`/pt/blog/x` e `/blog/x` contam como a mesma página. `lastmod` fora do W3C
+Datetime é omitido. Falha de qualquer fonte, entrada inválida, prazo estourado
+ou sitemap acima do limite do protocolo (a quantidade fica em
+`sitemap.xml/constants.ts` e o limite de bytes em
 `sitemap.xml/helpers/buildSitemapResponse/index.ts`) respondem 503 sem corpo e
-sem cache: o crawler tenta de novo e o CDN mantém a última cópia boa, em vez de
-guardar um sitemap parcial por uma hora. Títulos carregados em runtime ainda
-podem usar `useHead`, mas essas alterações não são lidas pelo gerador.
+com `no-store`, e o servidor registra a linha fixa `[sitemap]` descrita em
+[erros no servidor](server-errors.md#log-de-falhas). O crawler tenta de novo, e
+o CDN não guarda um sitemap parcial por uma hora. A resposta de sucesso traz
+`stale-if-error=86400`: depois que a cópia em cache expira, se a função
+responder com erro, o CDN da Vercel serve a última cópia boa por até um dia, sem
+guardar o erro. A documentação da Vercel cita como exemplos o 500, falha de rede
+e de DNS; que o 503 desta rota também acione a cópia antiga é uma hipótese ainda
+não medida. Títulos carregados em runtime ainda podem usar `useHead`, mas essas
+alterações não são lidas pelo gerador.
 
-Os limites são conferidos depois de gerar uma URL por idioma, com alternates e
-`x-default`. Veja a [integração dos índices com i18n](i18n.md#índices-de-seo).
+Os limites são conferidos uma única vez, depois de gerar uma URL por idioma, com
+alternates e `x-default`: a quantidade de caminhos aceita é o limite de URLs
+dividido pelo número de idiomas. Veja a
+[integração dos índices com i18n](i18n.md#índices-de-seo).
 
 ```tsx
 import type { RouteDefinition } from '@solidjs/router'
@@ -255,14 +273,21 @@ pedido do usuário continuam liberados, porque são o público do llms.txt.
 índice; para isso, use `noindex` em `route.info.seo`. Em produção o processo
 guarda em memória a resposta do robots e do llms.txt e a leitura do manifesto do
 sitemap, porque o manifesto, os grupos e a URL do site são fixos no build; as
-fontes do sitemap rodam a cada request. Os três arquivos saem com
-`public, max-age=0, s-maxage=3600` em produção (o CDN reutiliza por uma hora; a
-Vercel só cacheia resposta de função com `s-maxage`) e com `no-store` em
-desenvolvimento. As URLs absolutas dos três arquivos partem da origem de
-`VITE_SITE_URL`; um site servido em um subcaminho não é suportado por essa
-geração. A página 404 declara `robots: noindex`. A imagem social fica em
-`public/images/og.png`, com cache imutável configurado em `vercel.json`; o logo
-do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
+fontes do sitemap rodam a cada request. O llms.txt é montado dentro do contexto
+Paraglide do idioma base (`baseLocale` do runtime), inclusive a descrição do
+site e os metadados das páginas, para que nem a requisição que preenche a
+memória nem um contexto de outro idioma mudem o texto; a nota sobre o idioma do
+índice deriva do mesmo `baseLocale`. Os três arquivos saem com
+`public, max-age=0, s-maxage=3600, stale-if-error=86400` em produção (o CDN
+reutiliza por uma hora; a Vercel só cacheia resposta de função com `s-maxage` e
+consome `s-maxage` e `stale-if-error` sem repassá-los ao navegador) e com
+`no-store` em desenvolvimento. Com `stale-if-error`, um erro da função depois
+que a cópia expira não derruba o arquivo por até um dia. As URLs absolutas dos
+três arquivos partem da origem de `VITE_SITE_URL`; um site servido em um
+subcaminho não é suportado por essa geração. A página 404 declara
+`robots: noindex`. A imagem social fica em `public/images/og.png`, com cache
+imutável configurado em `vercel.json`; o logo do JSON-LD reutiliza
+`public/favicon/apple-touch-icon.png`.
 
 ## Leitura por agentes
 
@@ -301,19 +326,22 @@ e `hasErrors === false` no estado seguro guardado em
 HTML e devolve erro público 500 com `private, no-store`. O estado cobre erros
 observados pelo render; não atesta dados de hidratação silenciosamente
 descartados pelo serializador. Markdown usa o HTML assentado, sem esses dados. O
-hook global pode deduplicar avisos e não serve como prova de integridade. HTML
-normal mantém streaming. O contrato e o critério para remover os patches estão
-em [erros no servidor](server-errors.md#integridade-do-ssr-para-markdown).
+hook global marca o estado e recebe cada erro uma vez por tipo em cada
+requisição; a conclusão continua exigida à parte. HTML normal mantém streaming.
+O contrato e o critério para remover o patch estão em
+[erros no servidor](server-errors.md#integridade-do-ssr-para-markdown).
 
 O prerender do build passa pelo mesmo adaptador. O módulo
 `tooling/markdownPrerender/` pede ao middleware a lista das páginas estáticas
 (`/_markdown/static.json`, respondida só com o header `x-nitro-prerender`),
-prerenderiza cada `.md` e não grava a lista. Uma página que falhe ou não seja
-gravada, ou uma lista inválida ou que não passe pelo prerender, interrompe o
-build. O Nitro só falha por rota com erro registrado; uma rejeição no fetch ou
-na gravação deixaria o arquivo de fora sem falhar, e por isso o módulo confere
-no fim que cada `.md` da lista foi gravado. O resultado fica em
-`.vercel/output/static`.
+prerenderiza cada `.md` e não grava a lista. Qualquer cliente pode enviar esse
+header: ele não autentica nada. Por isso a lista só pode conter páginas
+públicas, as mesmas que o build publica em `.md`; num redirect, o header só
+troca a resposta por 500 público. Uma página que falhe ou não seja gravada, ou
+uma lista inválida ou que não passe pelo prerender, interrompe o build. O Nitro
+só falha por rota com erro registrado; uma rejeição no fetch ou na gravação
+deixaria o arquivo de fora sem falhar, e por isso o módulo confere no fim que
+cada `.md` da lista foi gravado. O resultado fica em `.vercel/output/static`.
 
 Na Vercel, um `index.md` estático também pode atender à URL do diretório. Depois
 que o preset do Nitro gera o `config.json`, o módulo antecipa suas regras da
@@ -370,16 +398,28 @@ marcadores literais escapados na coluna do conteúdo; wrappers de ênfase e
 legendas mantêm seus delimitadores juntos. Links preservam o texto visível
 dentro de blocos e usam o nome acessível após ícones removidos, sem perder o
 espaço final nem mover para fora o espaço entre dois ícones. O patch altera só o
-`dist` do pacote. Remova-o quando uma versão publicada cobrir esses
+`dist` do pacote e corresponde aos PRs
+[harlan-zw/mdream#385](https://github.com/harlan-zw/mdream/pull/385) (espaços e
+sublinhado de título), [#386](https://github.com/harlan-zw/mdream/pull/386)
+(títulos em listas) e [#390](https://github.com/harlan-zw/mdream/pull/390)
+(nomes de links). Remova-o quando uma versão publicada cobrir esses
 comportamentos e os testes de regressão de `convertHtml` passarem sem ele.
 
 GET com `Accept: text/markdown` recebe Markdown diretamente, sem redirect para
 arquivo. A negociação respeita pesos e especificidade, com HTML em empate. O
 acesso explícito a `.md` exige somente que Markdown seja aceitável, mesmo quando
 HTML tenha peso maior; uma exclusão exata `text/markdown;q=0` prevalece sobre
-curingas. Nenhum formato aceitável na página publicada resulta em 406. Query
-strings permanecem no SSR. HEAD renderiza a mesma representação e remove o
-corpo. APIs, assets, RPC e métodos de escrita mantêm o fluxo original.
+curingas. Além do peso, só `charset=utf-8` e, em `text/markdown`, as variantes
+`GFM` e `CommonMark` do RFC 7763 são aceitos; outro parâmetro descarta a faixa.
+O cabeçalho é lido numa varredura linear, então um `Accept` longo não custa
+tempo quadrático. Nenhum formato aceitável na página publicada resulta em 406.
+Query strings permanecem no SSR. HEAD renderiza a mesma representação e remove o
+corpo. APIs, assets, RPC e métodos de escrita ficam fora da negociação. Num
+caminho de página sem handler de API para o método, POST, PUT, PATCH, DELETE e
+OPTIONS recebem 405 com `Allow: GET, HEAD`: sem essa resposta, o handler do
+plugin renderizaria a página com status 200 no idioma base, fora do contexto de
+idioma. Os formulários do router enviam ao endpoint das server functions, que
+não passa por essa restrição.
 
 A localização preserva URL > cookie > Accept-Language. Redirects seguros para
 uma página elegível da mesma origem preservam a intenção `.md`; o middleware não

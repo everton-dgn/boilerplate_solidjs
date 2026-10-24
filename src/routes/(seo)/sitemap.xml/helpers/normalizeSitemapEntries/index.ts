@@ -1,6 +1,14 @@
-import type { SitemapEntry } from '@/@types/sitemap.ts'
+import { baseLocale } from '@paraglide/runtime.js'
 
-import { SITEMAP_URL_LIMIT } from '../../constants.ts'
+import type { SitemapEntry } from '@/@types/sitemap.ts'
+import { localizeHref } from '@/i18n/urls/index.ts'
+
+type NormalizeSitemapEntriesOptions = {
+  entries: readonly SitemapEntry[]
+  siteUrl: string
+}
+
+type SitemapUrlOptions = { path: string; siteUrl: string }
 
 const DATE_LENGTH = 10
 
@@ -29,19 +37,25 @@ function normalizeLastmod(lastmod: string | undefined): string | undefined {
     : undefined
 }
 
+// A mesma URL do idioma base que buildLocaleAlternates grava no XML. Caminhos
+// diferentes que a URL resolve igual (`/a/../b`, `/café` e `/caf%C3%A9`, `/pt/x`
+// e `/x`) geram as mesmas URLs em todos os idiomas.
+function sitemapUrl({ path, siteUrl }: SitemapUrlOptions): string {
+  return new URL(localizeHref({ href: path, locale: baseLocale }), siteUrl).href
+}
+
 // Em URLs repetidas, a página estática prevalece sobre a fonte dinâmica.
-export function normalizeSitemapEntries(
-  entries: readonly SitemapEntry[]
-): SitemapEntry[] {
+export function normalizeSitemapEntries({
+  entries,
+  siteUrl
+}: NormalizeSitemapEntriesOptions): SitemapEntry[] {
   const normalized = new Map<string, SitemapEntry>()
   for (const entry of entries) {
     const path = normalizePath(entry.path)
-    if (normalized.has(path)) continue
+    const url = sitemapUrl({ path, siteUrl })
+    if (normalized.has(url)) continue
     const lastmod = normalizeLastmod(entry.lastmod)
-    normalized.set(path, lastmod === undefined ? { path } : { path, lastmod })
-  }
-  if (normalized.size > SITEMAP_URL_LIMIT) {
-    throw new Error(`Sitemap acima do limite de ${SITEMAP_URL_LIMIT} URLs`)
+    normalized.set(url, lastmod === undefined ? { path } : { path, lastmod })
   }
   return [...normalized.values()]
 }

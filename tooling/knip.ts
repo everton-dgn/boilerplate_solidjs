@@ -5,6 +5,7 @@ import {
   PageFileSystemRouter,
   type RouteManifestEntry
 } from 'filesystem-routing'
+import { DEFAULT_EXTENSIONS } from 'filesystem-routing/vite'
 import type { KnipConfig } from 'knip'
 
 type DiscoverRouteModulesOptions = {
@@ -35,7 +36,8 @@ async function discoverRouteModules({
 }: DiscoverRouteModulesOptions) {
   const router = new PageFileSystemRouter({
     dir: `${import.meta.dirname}/../${directory}`,
-    extensions: ['js', 'jsx', 'ts', 'tsx'],
+    // O fileRoutes do vite.config.ts usa esta mesma lista padrão.
+    extensions: DEFAULT_EXTENSIONS,
     httpMethods: true
   })
   const routes = await router.getRoutes()
@@ -52,6 +54,9 @@ const config = {
   // módulos virtual:env, então nada o importa diretamente.
   entry: [
     // Entradas autorais do SSR, carregadas pelo @solidjs/vite-plugin por convenção.
+    // O plugin do Knip só lê solid() importado estaticamente, e o vite.config.ts
+    // o carrega com import(); por isso estas entradas, o middleware e o
+    // configure ficam aqui (webpro-nl/knip#2147).
     'src/entry-server.tsx!',
     'src/entry-client.tsx!',
     // O runtime gerado importa o polyfill de URLPattern do pacote Paraglide.
@@ -69,7 +74,10 @@ const config = {
     'src/i18n/localizedRedirect/index.ts!',
     'env.ts!',
     // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.
-    'src/tests/fixtures/e2e/middleware/index.ts'
+    'src/tests/fixtures/e2e/middleware/index.ts',
+    // A CI roda a prova com `vp exec node`, que o plugin de GitHub Actions do
+    // Knip não reconhece como execução de arquivo.
+    'tooling/ciReuse/prove-reuse.ts'
   ],
   project: [
     'src/**/*.{ts,tsx}!',
@@ -81,6 +89,9 @@ const config = {
   stylelint: {
     config: ['tooling/css/stylelint.config.mjs']
   },
+  // O plugin trata todo arquivo de src/routes como entrada e esconderia
+  // helpers colocalizados sem uso; discoverRouteModules seleciona só as rotas.
+  'filesystem-routing': false,
   // O Kingfisher é externo; o vp do script start vem de uma devDependency.
   ignoreBinaries: ['kingfisher', 'vp!'],
   treatConfigHintsAsErrors: true

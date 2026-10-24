@@ -30,6 +30,11 @@ type Diagnostic = { filename: string; code: string; severity: string }
 type PolicyCase = { source: string; code: string }
 type FilenameMatch = { actual: string; expected: string }
 
+const OBSERVER_CODES = new Set([
+  'eslint(no-restricted-imports)',
+  'backend(static-render-integrity-imports)'
+])
+
 function matchesFilename({ actual, expected }: FilenameMatch): boolean {
   return actual === expected || actual.endsWith(`/${expected}`)
 }
@@ -139,6 +144,30 @@ test('a regra exige imports estáticos do pacote Solid e seus subcaminhos', () =
       'import("@solidjs/web/server-functions/server")',
       'import(`@solidjs/web/server-functions/server`)',
       'import("@solidjs/web/other-entry")'
+    ].map(code => ({
+      filename: 'src/probe.ts',
+      code,
+      errors: [{ messageId: 'staticImport' }]
+    }))
+  })
+})
+
+test('a regra exige import estático do estado de integridade do render', () => {
+  const rule = backendPlugin.rules['static-render-integrity-imports']
+  assert.ok(rule)
+  new RuleTester({ cwd: ROOT }).run('static-render-integrity-imports', rule, {
+    valid: [
+      'import { createRenderIntegrity } from "@/infra/server/renderIntegrity/index.ts"',
+      'type State = import("@/infra/server/renderIntegrity/index.ts").RenderIntegrity',
+      'import("@/infra/server/renderIntegrityProbe/index.ts")',
+      'import("./renderIntegrity.css")',
+      'import(modulePath)'
+    ].map(code => ({ filename: 'src/probe.ts', code })),
+    invalid: [
+      'import("@/infra/server/renderIntegrity/index.ts")',
+      'import("@/infra/server/renderIntegrity")',
+      'import("../renderIntegrity/index.ts")',
+      'import(`../renderIntegrity`)'
     ].map(code => ({
       filename: 'src/probe.ts',
       code,
@@ -344,6 +373,52 @@ test('só o módulo de registro instala o hook de erros do servidor', context =>
   }
 })
 
+test('só o registro do hook declara as falhas de render observadas', context => {
+  const restricted = {
+    'src/helpers/observer.ts':
+      'import { observeRenderFailures } from "@/infra/server/renderIntegrity/index.ts"; observeRenderFailures()',
+    'src/helpers/observer-alias.ts':
+      'import { observeRenderFailures as observe } from "@/infra/server/renderIntegrity"; observe()',
+    'src/helpers/observer-namespace.ts':
+      'import * as integrity from "@/infra/server/renderIntegrity/index.ts"; integrity.observeRenderFailures()',
+    'src/infra/server/requestJson/index.ts':
+      'export { observeRenderFailures } from "../renderIntegrity/index.ts"',
+    'src/infra/server/publicErrors/index.ts':
+      'import { observeRenderFailures } from "../renderIntegrity/index.ts"; observeRenderFailures()',
+    'src/helpers/observer-dynamic.ts':
+      'void import("@/infra/server/renderIntegrity/index.ts").then(module => module.observeRenderFailures())'
+  }
+  const result = lintFixture({ sources: restricted, context })
+  assert.equal(result.status, 1, result.stderr)
+  const diagnostics = readDiagnostics(result.stdout)
+  for (const filename of Object.keys(restricted)) {
+    assert.ok(
+      diagnostics.some(
+        diagnostic =>
+          matchesFilename({
+            actual: diagnostic.filename,
+            expected: filename
+          }) &&
+          OBSERVER_CODES.has(diagnostic.code) &&
+          diagnostic.severity === 'error'
+      ),
+      filename
+    )
+  }
+  const allowed = lintFixture({
+    context,
+    sources: {
+      'src/infra/server/configureServerErrors/index.ts':
+        'import { observeRenderFailures } from "../renderIntegrity/index.ts"; observeRenderFailures()',
+      'src/entry-server.tsx':
+        'import { createRenderIntegrity, markRenderFailure } from "@/infra/server/renderIntegrity/index.ts"; export { createRenderIntegrity, markRenderFailure }',
+      'src/infra/server/renderIntegrity/__tests__/renderIntegrity.node.test.ts':
+        'import { observeRenderFailures } from "../index.ts"; observeRenderFailures()'
+    }
+  })
+  assert.equal(allowed.status, 0, allowed.stdout + allowed.stderr)
+})
+
 test('a política cobre todas as extensões de código sem ampliar privilégios', context => {
   const cases = {
     fetch: {
@@ -371,6 +446,15 @@ test('a política cobre todas as extensões de código sem ampliar privilégios'
     dynamic: {
       source: 'void import("@solidjs/web")',
       code: 'backend(static-solid-imports)'
+    },
+    observer: {
+      source:
+        'import { observeRenderFailures } from "@/infra/server/renderIntegrity/index.ts"',
+      code: 'eslint(no-restricted-imports)'
+    },
+    observerDynamic: {
+      source: 'void import("@/infra/server/renderIntegrity/index.ts")',
+      code: 'backend(static-render-integrity-imports)'
     }
   } satisfies Record<string, PolicyCase>
   const fixtures: Record<string, PolicyCase> = {}
@@ -389,7 +473,7 @@ test('a política cobre todas as extensões de código sem ampliar privilégios'
       // import dinâmico continuam exercitando essa extensão.
       if (
         extension !== 'cjs' ||
-        !['safe', 'config', 'hook', 'transport'].includes(name)
+        !['safe', 'config', 'hook', 'transport', 'observer'].includes(name)
       ) {
         fixtures[`src/helpers/${name}.${extension}`] = fixture
       }
@@ -403,6 +487,7 @@ test('a política cobre todas as extensões de código sem ampliar privilégios'
   fixtures['src/infra/server/logServerFailure/index.mts'] = cases.console
   fixtures['src/infra/server/publicErrors/index.mts'] = cases.safe
   fixtures['src/infra/server/configureServerErrors/index.mts'] = cases.config
+  fixtures['src/infra/server/configureServerErrors/index.tsx'] = cases.observer
   const sources = Object.fromEntries(
     Object.entries(fixtures).map(([filename, { source }]) => [filename, source])
   )

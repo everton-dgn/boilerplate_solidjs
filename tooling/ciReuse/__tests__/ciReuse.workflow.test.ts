@@ -299,52 +299,21 @@ test(EVIDENCE_TEST, async context => {
   })
 })
 
-test('pull, build e deploy usam uma única versão estrita do Vercel CLI', async context => {
-  assert.doesNotMatch(WORKFLOW, /vercel@latest/u)
+test('pull, build e deploy usam uma única versão fixa do Vercel CLI', async () => {
+  assert.doesNotMatch(WORKFLOW, /vercel@latest|registry\.npmjs\.org/u)
+  const pins = [
+    ...WORKFLOW.matchAll(/^ {2}VERCEL_CLI_VERSION: '(?<version>.+)'$/gmu)
+  ]
+  assert.equal(pins.length, 1)
+  assert.equal(WORKFLOW.split('VERCEL_CLI_VERSION:').length - 1, 1)
+  assert.match(
+    pins[0]?.groups?.version ?? '',
+    /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u
+  )
   assert.equal(
     WORKFLOW.split('vp dlx "vercel@$VERCEL_CLI_VERSION"').length - 1,
     VERCEL_COMMAND_COUNT
   )
-  assert.ok(
-    jobBlock('deploy').includes(
-      `VERCEL_CLI_VERSION: \${{ needs.e2e-production.outputs.vercel-version }}`
-    )
-  )
-  const directory = await mkdtemp(path.join(tmpdir(), 'ci-vercel-version-'))
-  context.after(() => rm(directory, { recursive: true, force: true }))
-  await writeFile(
-    path.join(directory, 'curl'),
-    '#!/bin/sh\ntest -n "$FAKE_RESPONSE" || exit 22\nprintf "%s" "$FAKE_RESPONSE"\n',
-    { mode: 0o755 }
-  )
-  const resolve = stepScript('Resolve Vercel CLI version')
-  const output = path.join(directory, 'output')
-  const cases = [
-    { response: '{"name":"vercel","version":"64.5.0"}', expected: '64.5.0' },
-    { response: '{"name":"vercel","version":"64.5.0-canary.1"}' },
-    { response: '{"name":"vercel","version":"latest"}' },
-    { response: '{"name":"vercel","version":"1.2"}' },
-    { response: '{"name":"vercel","version":"01.2.3"}' },
-    { response: '{"name":"other","version":"1.2.3"}' },
-    { response: '' }
-  ]
-  for (const { response, expected } of cases) {
-    await writeFile(output, '')
-    const isAccepted = await runScript({
-      script: resolve,
-      variables: {
-        FAKE_RESPONSE: response,
-        GITHUB_OUTPUT: output,
-        PATH: `${directory}:${env.PATH ?? ''}`
-      }
-    })
-    assert.equal(isAccepted, expected !== undefined, response)
-    assert.equal(
-      await readFile(output, 'utf8'),
-      expected ? `version=${expected}\n` : '',
-      response
-    )
-  }
   const verify = stepScript('Verify deployment configuration')
   const configured = {
     VERCEL_ORG_ID: 'org',
@@ -365,6 +334,28 @@ test('pull, build e deploy usam uma única versão estrita do Vercel CLI', async
       version
     )
   }
+})
+
+test('o token da Vercel chega só aos passos do Vercel CLI', () => {
+  const steps = WORKFLOW.split(/\n(?= {6}- name: )/u)
+  const withToken = steps
+    .filter(step => step.includes('secrets.VERCEL_TOKEN'))
+    .map(step => /- name: (?<name>.+)/u.exec(step)?.groups?.name)
+  assert.deepEqual(withToken, [
+    'Pull Vercel production settings',
+    'Build deployment with Vercel CLI',
+    'Verify deployment configuration',
+    'Deploy tested production artifact'
+  ])
+  for (const step of steps.filter(item =>
+    item.includes('secrets.VERCEL_TOKEN')
+  )) {
+    assert.doesNotMatch(step, /vp exec|vp run|\btar\b/u)
+  }
+  assert.equal(
+    WORKFLOW.split('secrets.VERCEL_TOKEN').length - 1,
+    withToken.length
+  )
 })
 
 test('só proof e deploy preparam as ferramentas sem instalar dependências', () => {

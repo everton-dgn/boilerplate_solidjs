@@ -27,9 +27,11 @@ export function Input(props: InputProps) {
   const initialChecked = untrack(() => props.defaultChecked)
   // Preserva a ausência das propriedades nativas (um checkbox sem value envia "on").
   // O renderizador SSR precisa de value/checked em vez de defaultValue/defaultChecked.
+  // No cliente, value/checked sem controle seriam regravados por cima da edição
+  // sempre que outra prop do campo mudasse.
   const fieldState = (): InputFieldState => {
-    const value = props.value ?? initialValue
-    const checked = props.checked ?? initialChecked
+    const value = isServer ? (props.value ?? initialValue) : props.value
+    const checked = isServer ? (props.checked ?? initialChecked) : props.checked
     const fields: InputFieldState = {}
 
     if (initialValue !== undefined && !isServer) {

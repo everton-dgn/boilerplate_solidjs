@@ -8,7 +8,7 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 
 ## Built-in Commands vs Scripts
 
-`vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name. Run interactive commands directly, such as `vp update --interactive --latest`, because the task runner can close the selection without input.
+`vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name.
 
 ## Tool Versions
 
@@ -40,6 +40,18 @@ release. Add a tool name to select part of the graph. For example, run
   em Bun. Valide a automação com `vp run test:release`, também executado no
   pre-push. No CI, essa suíte roda quando a automação ou suas dependências
   mudam; a publicação mantém as verificações reais sem repetir os testes.
+  Só o job de plano da release instala dependências e importa o Vite+
+  (`tooling/release/plan-release.ts`); os jobs com escrita usam apenas Git,
+  `gh` e módulos `node:`.
+- Para validar mudanças, use `vp run check:ci` e `vp run test`, não os
+  comandos embutidos `vp check` e `vp test` citados acima: eles pulam o
+  `i18n:generate` e o lint de CSS.
+- `vp run` entrega aos scripts um stdin não bloqueante enquanto o bloco `run`
+  do `vite.config.ts` usar constantes
+  ([vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155)).
+  Prompts interativos fecham sem esperar entrada; rode-os diretamente, como
+  `vp update --interactive --latest`, ou com `bun run <script>`. Detalhes em
+  [desenvolvimento](docs/development.md#execução-e-cache).
 
 ## Documentação de dependências
 
@@ -203,8 +215,9 @@ release. Add a tool name to select part of the graph. For example, run
   para excluir conteúdo; CSS calculado não é interpretado. Preserve citações
   contextuais em footer dentro de main.
 - Antes de publicar HTML convertido, exija estado de integridade do render
-  presente e sem erros; ausência de aviso do hook global não basta. Preserve
-  o sinal de cancelamento até `renderToStream` e o streaming do HTML normal.
+  presente, concluído e sem erros. O hook global marca esse estado; não passe
+  `onError` local ao `renderToStream`, que o desviaria. Preserve o sinal de
+  cancelamento até `renderToStream` e o streaming do HTML normal.
 
 ## Parâmetros de função
 
@@ -358,8 +371,8 @@ release. Add a tool name to select part of the graph. For example, run
   acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts para scripts.
 - O `style-src` é `'self'`, também sem `'unsafe-inline'`: um `<style>` ou um
   atributo `style` no HTML do servidor é bloqueado. Não use a prop `style` em
-  JSX renderizado no SSR, pois com valor nulo ela sai como `style=""`; use
-  classes. O tema do SSR vai só pela classe `light` ou `dark` do `<html>`.
+  JSX renderizado no SSR: qualquer valor não nulo vira um atributo bloqueado;
+  use classes. O tema do SSR vai só pela classe `light` ou `dark` do `<html>`.
 - O nonce fica no campo nativo `event.nonce`, criado por `requestNonce` antes
   do render e preservado quando o host já o fornece. O handler nativo do plugin
   o usa nos redirects depois do shell. Todo `<script>` do `Document` recebe
@@ -397,26 +410,30 @@ release. Add a tool name to select part of the graph. For example, run
   não identifica dados confidenciais em strings. Não retorne erros, promises
   aninhadas ou trabalho adiado sem contrato específico.
 - Mantenha o registro global e os sinais de controle do Solid. O
-  `wrapInvocation` cobre server functions e o hook `onError`, instalado só em
-  produção, uniformiza a mensagem pública das demais falhas; ele nunca devolve
-  o objeto recebido. `containFailures` continua envolvendo a cadeia inteira
+  `wrapInvocation` cobre server functions e o hook `onError`, instalado em
+  todos os modos, marca o estado de integridade do render e, em produção,
+  uniformiza a mensagem pública das demais falhas; ele nunca devolve o objeto
+  recebido. `containFailures` continua envolvendo a cadeia inteira
   para que exceções não cheguem ao log do host; numa navegação ele renderiza a
   página de erro do app pelo `ServerFailureGate` de `App.tsx`. Um fallback visual não
   protege o payload.
   O log grava a mensagem fixa da origem e, para um `Error`, só a classe e os
-  frames filtrados, sem mensagem, `cause` nem propriedades.
+  frames filtrados, sem mensagem, `cause` nem propriedades. Em desenvolvimento
+  o hook pede também o erro original, numa segunda chamada; em produção o log
+  ignora o pedido.
 - Não registre erro original, headers, cookies, argumentos, corpos ou
   credenciais. Logs detalhados exigem remoção de dados sensíveis definida antes;
   a de `logServerFailure` está em "Log de falhas", no guia.
   O lint reserva `console` a `logServerFailure`, onde se usa `console.error`
   diretamente. Acessos como `globalThis.console` continuam proibidos. Preserve
-  o argumento único coberto pelos testes: uma string que começa pela mensagem
-  fixa da origem.
+  o argumento único da linha filtrada coberto pelos testes: uma string que
+  começa pela mensagem fixa da origem.
 - Preserve as restrições de lint em `tooling/backendPolicy`: o módulo inteiro
-  de configuração do servidor e o hook `configureServerErrors` de
-  `@solidjs/web` pertencem a `configureServerErrors`. Use imports
-  estáticos de `@solidjs/web` e seus subcaminhos, inclusive nos módulos
-  privilegiados. SDKs novos exigem restrição por pacote e exceção por adapter.
+  de configuração do servidor, o hook `configureServerErrors` de
+  `@solidjs/web` e `observeRenderFailures` de `renderIntegrity` pertencem a
+  `configureServerErrors`. Use imports estáticos de `@solidjs/web`, de seus
+  subcaminhos e de `renderIntegrity`, inclusive nos módulos privilegiados.
+  SDKs novos exigem restrição por pacote e exceção por adapter.
   Revise fontes de import calculadas, templates dos outros pacotes e demais
   limites do guia; não contorne o contrato com disable. Fixtures seguem
   protegidas; as exceções de backend cobrem só testes e declarações de tipos.

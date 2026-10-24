@@ -210,6 +210,41 @@ test('a política distingue dependências permitidas e inversões de camada', ()
   })
 })
 
+test('as pastas colocalizadas das entradas pertencem à camada de entrada', () => {
+  const rule = architecturePolicy.rules['layer-imports']
+  assert.ok(rule)
+  new RuleTester({ cwd: ROOT }).run('layer-imports', rule, {
+    valid: [
+      {
+        filename: 'src/helpers/example.ts',
+        code: 'import value from "@/routerExtra/value.ts"; import other from "@/entry-clientExtra/value.ts"'
+      },
+      {
+        filename: 'src/router/createLocaleNavigationGuard/index.ts',
+        code: 'import { Button } from "@/components/atoms/Button/index.tsx"'
+      }
+    ],
+    invalid: [
+      {
+        filename: 'src/helpers/example.ts',
+        code: 'import { createLocaleNavigationGuard } from "@/router/createLocaleNavigationGuard/index.ts"'
+      },
+      {
+        filename: 'src/primitives/example.ts',
+        code: 'import { installLocaleHistoryGuard } from "@/entry-client/installLocaleHistoryGuard/index.ts"'
+      },
+      {
+        filename: 'src/infra/adapters/example/index.ts',
+        code: 'import { guard } from "../../../router/guard/index.ts"'
+      }
+    ].map(({ filename, code }) => ({
+      filename,
+      code,
+      errors: [{ messageId: 'forbidden' }]
+    }))
+  })
+})
+
 test('i18n e módulos gerados pertencem à camada base', () => {
   const rule = architecturePolicy.rules['layer-imports']
   assert.ok(rule)

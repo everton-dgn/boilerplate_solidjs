@@ -9,12 +9,14 @@ import { protectServerOperation } from '../index.ts'
 
 type Invocation = { run: () => unknown; allowControl?: boolean }
 type CyclicData = { self?: CyclicData }
+type VisitCount = { visits: number }
+type CountedNode = { node: object; count: VisitCount }
 
 const HTTP_CREATED = 201
 const HTTP_NO_CONTENT = 204
 const HTTP_RESET_CONTENT = 205
 const HTTP_NOT_MODIFIED = 304
-const DIAMOND_DEPTH = 24
+const DIAMOND_DEPTH = 16
 const REJECTED_SHAPES = 4
 const LOG_MESSAGE =
   '[server-operation] Unexpected failure; private details omitted'
@@ -26,6 +28,16 @@ function thrownValue(invocation: Invocation): unknown {
     return error
   }
   throw new Error('Expected operation to throw')
+}
+
+// Conta quantas vezes a verificação lista as chaves de cada nó.
+function countedNode({ node, count }: CountedNode): object {
+  return new Proxy(node, {
+    ownKeys(target) {
+      count.visits += 1
+      return Reflect.ownKeys(target)
+    }
+  })
 }
 
 function logUnavailable(): never {
@@ -246,6 +258,30 @@ describe('proteção de operações no servidor', () => {
   })
 })
 
+describe('reconstrução de envelopes', () => {
+  // respond() serializa no corpo o valor recebido na criação. Um valor trocado
+  // depois disso passa pela verificação, mas o corpo original ainda sairia.
+  it('reconstrói o envelope e o corpo a partir dos dados verificados', async () => {
+    const envelope = respond(
+      { secret: 'PRIVATE_BODY' },
+      { status: HTTP_CREATED, headers: { 'x-public': 'yes' } }
+    )
+    Object.assign(envelope, { value: { ok: true } })
+
+    const rebuilt: unknown = protectServerOperation({
+      run: () => envelope,
+      allowControl: true
+    })
+
+    if (!isResponseEnvelope(rebuilt)) throw new TypeError('Expected envelope')
+    expect(rebuilt).not.toBe(envelope)
+    expect(rebuilt.value).toStrictEqual({ ok: true })
+    expect(rebuilt.status).toBe(HTTP_CREATED)
+    expect(rebuilt.headers.get('x-public')).toBe('yes')
+    await expect(rebuilt.text()).resolves.toBe('{"ok":true}')
+  })
+})
+
 describe('envelopes sem corpo', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 
@@ -321,17 +357,23 @@ describe('estrutura dos dados públicos', () => {
     expect(console.error).toHaveBeenCalledTimes(REJECTED_SHAPES)
   })
 
-  it('aceita referências compartilhadas em tempo linear e recusa ciclos profundos', () => {
+  it('aceita referências compartilhadas visitando cada nó uma vez e recusa ciclos profundos', () => {
     const shared = { id: 1 }
     const dag = { a: shared, b: [shared, { c: shared }] }
     expect(protectServerOperation({ run: () => dag })).toBe(dag)
     // Um losango por nível dobra os caminhos até a folha: sem memória de nós
-    // já verificados, 24 níveis custam 2^24 visitas e estouram o timeout.
-    let diamond: unknown = { leaf: true }
+    // já verificados, 16 níveis custariam 2^17 - 1 visitas em vez de 17. A
+    // contagem não depende da velocidade da máquina.
+    const count: VisitCount = { visits: 0 }
+    let diamond = countedNode({ node: { leaf: true }, count })
     for (let depth = 0; depth < DIAMOND_DEPTH; depth += 1) {
-      diamond = { left: diamond, right: diamond }
+      diamond = countedNode({
+        node: { left: diamond, right: diamond },
+        count
+      })
     }
     expect(protectServerOperation({ run: () => diamond })).toBe(diamond)
+    expect(count.visits).toBe(DIAMOND_DEPTH + 1)
     const nested: CyclicData = {}
     nested.self = nested
     expectPublicFailure(

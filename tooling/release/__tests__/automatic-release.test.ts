@@ -13,6 +13,11 @@ const EXECUTABLE_MODE = 0o700
 const SHA_LENGTH = 40
 const HEAD = 'b'.repeat(SHA_LENGTH)
 const script = path.resolve('tooling/release/automatic-release.ts')
+const planScript = path.resolve('tooling/release/plan-release.ts')
+const STALE_PR = 2
+const NEWER_PR = 3
+const HUMAN_PR = 4
+const OTHER_BRANCH_PR = 5
 
 // O PATH do subprocesso contém só estes comandos falsos. Nenhum Git ou GitHub real fica acessível.
 const fake = String.raw`
@@ -33,6 +38,7 @@ if (process.argv[1].endsWith('/git')) {
     s.ref = null; s.deleted = true; out(''); return;
   }
   const [command, ...rest] = args;
+  if (command === 'merge-base' && rest[0] === '--is-ancestor' && (s.notAncestors ?? []).includes(rest[1])) { save(); process.exitCode = 1; return; }
   if (['fetch', 'merge-base'].includes(command)) out('');
   else if (command === 'rev-parse') out(source);
   else if (command === 'tag') out('');
@@ -49,7 +55,14 @@ if (process.argv[1].endsWith('/git')) {
   const body = args.includes('--input') ? JSON.parse(fs.readFileSync(0, 'utf8')) : {};
   s.calls.push(method + ' ' + endpoint);
   let value;
-  if (endpoint === root + '/actions/runs/1') value = { conclusion: s.badRun ? 'failure' : 'success', event: 'push', head_branch: 'main', head_sha: source, path: '.github/workflows/ci.yml', head_repository: { full_name: 'owner/repo' } };
+  if (method === 'PATCH' && /\/pulls\/\d+$/.test(endpoint)) {
+    const number = Number(endpoint.split('/').pop());
+    if (body.state !== 'closed') throw Error('Unexpected pull request update');
+    s.closed = [...(s.closed ?? []), number];
+    if (s.pr?.number === number) s.pr.state = 'closed';
+    value = { number, state: 'closed' };
+  }
+  else if (endpoint === root + '/actions/runs/1') value = { conclusion: s.badRun ? 'failure' : 'success', event: 'push', head_branch: 'main', head_sha: source, path: '.github/workflows/ci.yml', head_repository: { full_name: 'owner/repo' } };
   else if (endpoint === root + '/git/ref/heads/main') value = { object: { sha: s.advanced ? 'e'.repeat(40) : s.merged ? merge : source } };
   else if (endpoint === root + '/rules/branches/main?per_page=100') value = s.unprotected ? [] : [{type:'pull_request'}, {type:'required_status_checks', parameters:{strict_required_status_checks_policy: !s.loose, required_status_checks:[{context:'CI required',integration_id:15368}]}}];
   else if (endpoint === root + '/check-runs') {
@@ -60,12 +73,14 @@ if (process.argv[1].endsWith('/git')) {
   else if (endpoint === root + '/git/commits/' + source) value = { sha: source, tree: { sha: 'base-tree' }, parents: [] };
   else if (endpoint === root + '/git/commits/' + head) value = { sha: head, tree: { sha: 'release-tree' }, parents: [{sha: s.hasUnexpectedParent ? 'e'.repeat(40) : source}] };
   else if (endpoint === root + '/git/commits/' + merge) value = { sha: merge, tree: { sha: s.race ? 'wrong-tree' : 'release-tree' }, parents: [{sha: s.hasDifferentMergeBase ? 'e'.repeat(40) : source}, {sha: head}] };
+  else if (endpoint.startsWith(root + '/git/commits/') && s.commits?.[endpoint.slice(root.length + 13)]) value = s.commits[endpoint.slice(root.length + 13)];
   else if (endpoint === root + '/git/trees') { s.files = Object.fromEntries(body.tree.map(f => [f.path, f.content])); value = {sha: 'release-tree'}; }
   else if (endpoint === root + '/git/commits') value = {sha: head};
   else if (endpoint === root + '/git/refs') {
     if (body.ref.startsWith('refs/heads/')) { s.branch = body.ref.slice(11); value = s.ref = {object: {sha: head, type: 'commit'}}; }
     else { if (s.hasTagRefFailure) { save(); process.exitCode = 1; return; } value = s.tagRef = {object: {sha: tag, type: 'tag'}}; }
   }
+  else if (endpoint === root + '/pulls?state=open&base=main&per_page=100') value = s.openPulls ?? [];
   else if (endpoint.startsWith(root + '/pulls?')) value = s.pr ? [{number:s.pr.number}] : [];
   else if (endpoint === root + '/pulls') value = s.pr = {number: 1, state: 'open', merged: false, merge_commit_sha: null, user: {login: 'github-actions[bot]'}, head: {sha: head, ref: s.branch, repo: {full_name: 'owner/repo'}}, base: {ref: 'main', repo: {full_name: 'owner/repo'}}};
   else if (endpoint === root + '/pulls/1') value = s.pr;
@@ -96,6 +111,26 @@ type ReleaseCheck = {
   output: { title: string; summary: string }
 }
 
+type OpenPull = {
+  number: number
+  state: string
+  user: { login: string }
+  head: { sha: string; ref: string; repo: { full_name: string } }
+  base: { ref: string; repo: { full_name: string } }
+}
+type StaleCommit = {
+  sha: string
+  tree: { sha: string }
+  parents: { sha: string }[]
+}
+type Artifact = Record<string, unknown>
+type OpenPullInput = {
+  number: number
+  head: string
+  ref: string
+  login: string
+}
+
 type State = {
   calls: string[]
   files?: Record<string, string>
@@ -118,6 +153,11 @@ type State = {
   cleanupAdvanced?: boolean
   cleanupRace?: boolean
   release?: { tag_name: string }
+  pr?: { state: string }
+  closed?: number[]
+  openPulls?: OpenPull[]
+  commits?: Record<string, StaleCommit>
+  notAncestors?: string[]
 }
 
 async function fixture(context: TestContext) {
@@ -125,6 +165,9 @@ async function fixture(context: TestContext) {
   // Sandbox criado pelo próprio teste: a remoção direta é o descarte correto.
   context.after(() => rm(directory, { recursive: true, force: true }))
   const statePath = path.join(directory, 'state.json')
+  const planPath = path.join(directory, 'release-plan.json')
+  const outputPath = path.join(directory, 'output')
+  const summaryPath = path.join(directory, 'summary')
   await writeFile(statePath, JSON.stringify({ calls: [] }), { flag: 'wx' })
   for (const name of ['git', 'gh']) {
     const executable = path.join(directory, name)
@@ -137,8 +180,27 @@ async function fixture(context: TestContext) {
     )
     await chmod(executable, EXECUTABLE_MODE)
   }
+  const environment = {
+    PATH: directory,
+    FAKE_STATE: statePath,
+    GITHUB_REPOSITORY: 'owner/repo',
+    RELEASE_SOURCE_RUN_ID: '1',
+    RELEASE_PLAN_FILE: planPath,
+    GITHUB_OUTPUT: outputPath,
+    GITHUB_STEP_SUMMARY: summaryPath,
+    GH_TOKEN: 'synthetic'
+  }
+  let isPlanned = false
+  // O job de leitura gera o plano uma vez; as execuções seguintes simulam os
+  // jobs com escrita e as recuperações do mesmo run de origem.
+  async function plan() {
+    if (isPlanned) return
+    await execute(execPath, [planScript], { env: environment })
+    isPlanned = true
+  }
   return {
     directory,
+    plan,
     async state(): Promise<State> {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- O estado é escrito exclusivamente por esta CLI sintética.
       return JSON.parse(await readFile(statePath, 'utf8')) as State
@@ -148,21 +210,57 @@ async function fixture(context: TestContext) {
       const state = JSON.parse(await readFile(statePath, 'utf8')) as State
       await writeFile(statePath, JSON.stringify({ ...state, ...patch }))
     },
+    async artifact(): Promise<Artifact> {
+      await plan()
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Artifact gerado pelo script de plano nesta fixture.
+      return JSON.parse(await readFile(planPath, 'utf8')) as Artifact
+    },
+    async replaceArtifact(artifact: Artifact) {
+      await writeFile(planPath, JSON.stringify(artifact))
+    },
+    async lastOutput(name: string): Promise<string | undefined> {
+      const content = await readFile(outputPath, 'utf8')
+      return content
+        .trim()
+        .split('\n')
+        .findLast(line => line.startsWith(`${name}=`))
+        ?.slice(name.length + 1)
+    },
+    summary(): Promise<string> {
+      return readFile(summaryPath, 'utf8')
+    },
     async run(mode: string) {
-      return execute(execPath, [script], {
-        env: {
-          PATH: directory,
-          FAKE_STATE: statePath,
-          GITHUB_REPOSITORY: 'owner/repo',
-          RELEASE_SOURCE_RUN_ID: '1',
-          RELEASE_MODE: mode,
-          RELEASE_HEAD: HEAD,
-          GITHUB_OUTPUT: path.join(directory, 'output'),
-          GH_TOKEN: 'synthetic'
-        }
+      await plan()
+      return execute(execPath, ['--no-install', script], {
+        env: { ...environment, RELEASE_MODE: mode, RELEASE_HEAD: HEAD }
       })
     }
   }
+}
+
+function openPull({ number, head, ref, login }: OpenPullInput): OpenPull {
+  return {
+    number,
+    state: 'open',
+    user: { login },
+    head: { sha: head, ref, repo: { full_name: 'owner/repo' } },
+    base: { ref: 'main', repo: { full_name: 'owner/repo' } }
+  }
+}
+
+function releaseCommit(sha: string, parent: string): StaleCommit {
+  return { sha, tree: { sha: 'tree' }, parents: [{ sha: parent }] }
+}
+
+// O Bun imprime trechos do código ao redor do throw no stderr; só a linha da
+// mensagem do erro prova qual verificação recusou o artifact.
+function thrown(message: string): RegExp {
+  const escaped = message.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`)
+  return new RegExp(`^(?:error|[A-Z]\\w*Error): [^\\n]*${escaped}`, 'mu')
+}
+
+function mutations(state: State): string[] {
+  return state.calls.filter(call => !call.startsWith('GET '))
 }
 
 describe(
@@ -294,6 +392,79 @@ describe(
 )
 
 describe(
+  'release plan artifact from the read-only job',
+  { timeout: 30_000, concurrency: true },
+  () => {
+    it('rejects a tampered artifact before any mutation', async context => {
+      const cases: [(artifact: Artifact) => Artifact, string][] = [
+        [artifact => ({ ...artifact, extra: true }), 'unexpected structure'],
+        [artifact => ({ ...artifact, notes: 1 }), 'unexpected structure'],
+        [
+          artifact => ({ ...artifact, source: 'e'.repeat(SHA_LENGTH) }),
+          'does not match the source plan'
+        ],
+        [
+          artifact => ({ ...artifact, version: '9.0.0', tag: 'v9.0.0' }),
+          'does not match the source plan'
+        ],
+        [
+          artifact => ({
+            ...artifact,
+            packageJson: String(artifact.packageJson).replace(
+              '"name": "fixture"',
+              '"name": "fixture", "scripts": { "postinstall": "curl" }'
+            )
+          }),
+          'changes package.json'
+        ],
+        [
+          artifact => ({
+            ...artifact,
+            changelog: String(artifact.changelog).replace(
+              'initial application',
+              'initial [link](https://example.com)'
+            )
+          }),
+          'changes CHANGELOG.md'
+        ],
+        [
+          artifact => ({ ...artifact, notes: 'Different notes.' }),
+          'notes differ'
+        ]
+      ]
+      for (const [tamper, error] of cases) {
+        const f = await fixture(context)
+        await f.replaceArtifact(tamper(await f.artifact()))
+
+        await assert.rejects(f.run('prepare'), thrown(error))
+
+        assert.deepEqual(mutations(await f.state()), [])
+      }
+    })
+
+    it('accepts formatting differences limited to whitespace', async context => {
+      const f = await fixture(context)
+      const artifact = await f.artifact()
+      await f.replaceArtifact({
+        ...artifact,
+        changelog: String(artifact.changelog).replace(
+          '# Changelog\n',
+          '# Changelog   \n\n'
+        )
+      })
+
+      await f.run('prepare')
+
+      const state = await f.state()
+      assert.equal(
+        state.files?.['CHANGELOG.md']?.startsWith('# Changelog   \n'),
+        true
+      )
+    })
+  }
+)
+
+describe(
   'release orchestration with isolated Git and GitHub',
   { timeout: 30_000, concurrency: true },
   () => {
@@ -403,26 +574,6 @@ describe(
       }
     })
 
-    it('stops on invalid CI and main advancing before merge', async context => {
-      const f = await fixture(context)
-      try {
-        await f.patch({ badRun: true })
-        await assert.rejects(f.run('prepare'), /successful push CI/u)
-        await f.patch({ badRun: false })
-        await f.run('prepare')
-        await f.patch({ advanced: true })
-        await assert.rejects(f.run('publish'), /Main advanced/u)
-        const state = await f.state()
-        assert.equal(
-          state.calls.includes('PUT repos/owner/repo/pulls/1/merge'),
-          false
-        )
-      } finally {
-        // As fixtures contêm só dados sintéticos e ficam no diretório temporário do sistema.
-        assert.ok(f.directory.startsWith(tmpdir()))
-      }
-    })
-
     it('does not mutate main if it advances at the protected merge boundary', async context => {
       const f = await fixture(context)
       try {
@@ -455,6 +606,106 @@ describe(
         assert.equal(state.merged, undefined)
         assert.equal(state.checked, undefined)
       }
+    })
+  }
+)
+
+describe(
+  'obsolete releases after main advances',
+  { timeout: 30_000, concurrency: true },
+  () => {
+    it('stops on invalid CI and skips the merge without failing when main advances', async context => {
+      const f = await fixture(context)
+      await f.patch({ badRun: true })
+      await assert.rejects(f.run('prepare'), /successful push CI/u)
+      await f.patch({ badRun: false })
+      await f.run('prepare')
+      await f.patch({ advanced: true })
+      const before = await f.state()
+
+      await f.run('publish')
+
+      const after = await f.state()
+      assert.deepEqual(mutations(after), mutations(before))
+      assert.equal(after.pr?.state, 'open')
+      assert.match(await f.summary(), /merge skipped.*#1/u)
+    })
+
+    it('postpones without artifacts when main advances before preparing', async context => {
+      const f = await fixture(context)
+      await f.patch({ advanced: true })
+
+      await f.run('prepare')
+
+      const state = await f.state()
+      assert.deepEqual(mutations(state), [])
+      assert.equal(await f.lastOutput('publish'), 'false')
+      assert.match(await f.summary(), /Main advanced past a{40}/u)
+    })
+
+    it('closes its own obsolete pull request when main advances after preparing', async context => {
+      const f = await fixture(context)
+      await f.run('prepare')
+      assert.equal(await f.lastOutput('publish'), 'true')
+      await f.patch({ advanced: true })
+
+      await f.run('prepare')
+
+      const state = await f.state()
+      assert.deepEqual(state.closed, [1])
+      assert.equal(state.pr?.state, 'closed')
+      assert.equal(
+        state.calls.includes('PUT repos/owner/repo/pulls/1/merge'),
+        false
+      )
+      assert.equal(await f.lastOutput('publish'), 'false')
+    })
+
+    it('closes only open release pull requests from older sources', async context => {
+      const f = await fixture(context)
+      const older = '1'.repeat(SHA_LENGTH)
+      const newer = '3'.repeat(SHA_LENGTH)
+      const staleHead = '2'.repeat(SHA_LENGTH)
+      const newerHead = '4'.repeat(SHA_LENGTH)
+      await f.patch({
+        openPulls: [
+          openPull({
+            number: STALE_PR,
+            head: staleHead,
+            ref: 'release/v0.9.0-111111111111',
+            login: 'github-actions[bot]'
+          }),
+          openPull({
+            number: NEWER_PR,
+            head: newerHead,
+            ref: 'release/v1.1.0-333333333333',
+            login: 'github-actions[bot]'
+          }),
+          openPull({
+            number: HUMAN_PR,
+            head: staleHead,
+            ref: 'release/v0.9.0-111111111111',
+            login: 'someone'
+          }),
+          openPull({
+            number: OTHER_BRANCH_PR,
+            head: staleHead,
+            ref: 'feat/release-notes',
+            login: 'github-actions[bot]'
+          })
+        ],
+        commits: {
+          [staleHead]: releaseCommit(staleHead, older),
+          [newerHead]: releaseCommit(newerHead, newer)
+        },
+        notAncestors: [newer]
+      })
+
+      await f.run('prepare')
+
+      const state = await f.state()
+      assert.deepEqual(state.closed, [STALE_PR])
+      assert.equal(await f.lastOutput('publish'), 'true')
     })
   }
 )

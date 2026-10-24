@@ -9,7 +9,6 @@ import { ThemeToggle } from '@/components/atoms/ThemeToggle/index.tsx'
 import { SITE } from '@/constants/site.ts'
 import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 
-import { BRAND_NAME } from './constants.ts'
 import { NavItem } from './NavItem/index.tsx'
 
 import S from './styles.module.css'
@@ -23,7 +22,7 @@ export function Topbar(props: TopbarProps) {
   return (
     <header class={[S.topbar, props.class]}>
       <LocalizedLink href="/" class={S.brand}>
-        {BRAND_NAME}
+        {SITE.title}
       </LocalizedLink>
 
       <nav class={S.nav} aria-label={m.topbar_navigation()}>

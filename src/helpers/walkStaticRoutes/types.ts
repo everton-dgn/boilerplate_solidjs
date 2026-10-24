@@ -12,7 +12,7 @@ type VisitStaticRouteOptions<State> = {
   route: StaticRoute
   path: string
   parentState: State
-  dynamic: boolean
+  isDynamic: boolean
 }
 
 export type StaticRoute = {
@@ -27,8 +27,8 @@ export type WalkStaticRoutesOptions<State> = {
   initialState: State
   visit: (options: VisitStaticRouteOptions<State>) => State
   // Por padrão, ramos com parâmetro são pulados inteiros. Com `true`, eles
-  // são visitados e marcados como `dynamic`.
-  dynamic?: boolean
+  // são visitados e marcados como `isDynamic`.
+  shouldVisitDynamic?: boolean
 }
 
 export type WalkFrame<State> = {
@@ -36,5 +36,5 @@ export type WalkFrame<State> = {
   index: number
   parent: string
   state: State
-  dynamic: boolean
+  isDynamic: boolean
 }

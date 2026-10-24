@@ -2,6 +2,7 @@ import { m } from '@paraglide/messages.js'
 import { For } from 'solid-js'
 
 import type { SitePage } from '@/@types/site-page.ts'
+import { LocalizedLink } from '@/components/atoms/LocalizedLink/index.tsx'
 
 import S from './styles.module.css'
 
@@ -24,9 +25,9 @@ export function SiteContent(props: SiteContentProps) {
         <nav aria-label={m.siteContent_navigationLabel()} class={S.links}>
           <For each={props.page.links}>
             {link => (
-              <a href={link.href} class={S.link}>
+              <LocalizedLink href={link.href} class={S.link}>
                 {link.label}
-              </a>
+              </LocalizedLink>
             )}
           </For>
         </nav>

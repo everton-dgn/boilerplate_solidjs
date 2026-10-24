@@ -4,14 +4,23 @@ import {
   createComponent,
   createRequestEvent,
   createSSRResponse,
+  redirect,
   renderToStream,
   ssr
 } from '@solidjs/web'
 import { provideRequestEvent } from '@solidjs/web/storage'
-import { createMemo, Loading, NotReadyError, onCleanup } from 'solid-js'
+import {
+  createMemo,
+  Errored,
+  Loading,
+  NotReadyError,
+  onCleanup
+} from 'solid-js'
 import { sharedConfig } from 'solid-js/internal'
 
+import { createRenderIntegrity } from '@/infra/server/renderIntegrity/index.ts'
 import { Router } from '@/router.ts'
+import { throwValue } from '@/tests/helpers/failureValues/index.ts'
 import { readLog } from '@/tests/helpers/readLog/index.ts'
 
 import { markdownContent } from '../index.ts'
@@ -21,7 +30,7 @@ type Timing = 'sync' | 'async' | 'defer'
 type Scenario = {
   phase: FailurePhase
   timing: Timing
-  shouldThrowCleanup?: boolean
+  shouldThrowCleanup: boolean
 }
 type RenderOptions = NonNullable<Parameters<typeof renderToStream>[1]>
 type SerializerPlugin = NonNullable<RenderOptions['plugins']>[number]
@@ -31,6 +40,13 @@ type ProbeOptions = {
   scenario?: Scenario
   shouldRecover?: boolean
   shouldThrowCleanup?: boolean
+  boundaryFailure?: unknown
+}
+type ContainedCase = {
+  name: string
+  failure: unknown
+  hookLogs: string[][]
+  leaks: string[]
 }
 
 const PRIVATE_MARKER = 'PRIVATE_SERIALIZATION_FAILURE'
@@ -40,6 +56,22 @@ const DEADLINE_MS = 1000
 const HTTP_OK = 200
 const HTTP_SERVER_ERROR = 500
 const CLEANUP_ERROR_LOG_COUNT = 2
+const CONTAINED_DIAGNOSTIC = '[SSR_RENDER_ERROR_CONTAINED]'
+// Um redirect() capturado por um <Errored> aninhado também vira fallback.
+const CONTAINED_CASES: ContainedCase[] = [
+  {
+    name: 'an Error',
+    failure: new Error(PRIVATE_MARKER),
+    hookLogs: [[LOG_MESSAGE, 'Error']],
+    leaks: [PRIVATE_MARKER]
+  },
+  {
+    name: 'a redirect',
+    failure: redirect('/elsewhere'),
+    hookLogs: [],
+    leaks: []
+  }
+]
 
 async function recover(failure: Error): Promise<string> {
   try {
@@ -68,7 +100,8 @@ function page() {
 function makeProbe({
   scenario,
   shouldRecover = false,
-  shouldThrowCleanup = scenario?.shouldThrowCleanup ?? false
+  shouldThrowCleanup = scenario?.shouldThrowCleanup ?? false,
+  boundaryFailure
 }: ProbeOptions) {
   const controller = new AbortController()
   const event: Event = createRequestEvent(
@@ -97,6 +130,8 @@ function makeProbe({
     deserialize: () => token
   }
   const completed = vi.fn<() => void>()
+  // Mesma fábrica da entrada; o hook global marca hasErrors.
+  const { state, complete } = createRenderIntegrity()
   let render: ReturnType<typeof renderToStream> | undefined
   let html = ''
 
@@ -109,6 +144,17 @@ function makeProbe({
         'serialization-probe',
         scenario.timing === 'sync' ? token : Promise.resolve(token),
         scenario.timing === 'defer'
+      )
+    }
+    if (boundaryFailure !== undefined) {
+      return ssr(
+        ['<main>', '</main>'],
+        createComponent(Errored, {
+          fallback: 'Contained fallback',
+          get children(): string {
+            return throwValue(boundaryFailure)
+          }
+        })
       )
     }
     if (shouldRecover) {
@@ -127,19 +173,15 @@ function makeProbe({
   }
 
   async function next() {
+    event.locals.ssrRenderState = state
     render = renderToStream(content, {
       signal: event.request.signal,
       plugins: [plugin],
-      onCompleteAll: completed
-    })
-    event.locals.ssrRenderState = {
-      get hasErrors() {
-        return render?.hasErrors
-      },
-      get hasCompleted() {
-        return completed.mock.calls.length > 0
+      onCompleteAll() {
+        completed()
+        complete()
       }
-    }
+    })
     html = await render
     return new Response(html, { headers: { 'content-type': 'text/html' } })
   }
@@ -155,9 +197,23 @@ function makeProbe({
       return html
     },
     get hasErrors() {
-      return render?.hasErrors
+      return state.hasErrors
     },
     run: () => provideRequestEvent(event, () => markdownContent(event, next))
+  }
+}
+
+function shellFailurePlugin(token: object): SerializerPlugin {
+  return {
+    tag: 'shell-serialization-failure',
+    test: (value: unknown) => value === token,
+    parse: {
+      stream: () => {
+        throw new Error(PRIVATE_MARKER)
+      }
+    },
+    serialize: () => '{}',
+    deserialize: () => token
   }
 }
 
@@ -198,12 +254,12 @@ describe('markdown with the installed SSR serializer', () => {
   })
 
   it.each<Scenario>([
-    { phase: 'parse', timing: 'sync' },
-    { phase: 'parse', timing: 'async' },
-    { phase: 'parse', timing: 'defer' },
-    { phase: 'serialize', timing: 'sync' },
-    { phase: 'serialize', timing: 'async' },
-    { phase: 'serialize', timing: 'defer' },
+    { phase: 'parse', timing: 'sync', shouldThrowCleanup: false },
+    { phase: 'parse', timing: 'async', shouldThrowCleanup: false },
+    { phase: 'parse', timing: 'defer', shouldThrowCleanup: false },
+    { phase: 'serialize', timing: 'sync', shouldThrowCleanup: false },
+    { phase: 'serialize', timing: 'async', shouldThrowCleanup: false },
+    { phase: 'serialize', timing: 'defer', shouldThrowCleanup: false },
     { phase: 'serialize', timing: 'sync', shouldThrowCleanup: true }
   ])(
     'contains $phase/$timing failures ($shouldThrowCleanup)',
@@ -253,17 +309,6 @@ describe('markdown with the installed SSR serializer', () => {
 
   it('keeps the 500 of an HTML shell that failed to serialize', async () => {
     const token = Object.freeze({ isProbe: true })
-    const plugin: SerializerPlugin = {
-      tag: 'shell-serialization-failure',
-      test: (value: unknown) => value === token,
-      parse: {
-        stream: () => {
-          throw new Error(PRIVATE_MARKER)
-        }
-      },
-      serialize: () => '{}',
-      deserialize: () => token
-    }
     let isPending = true
     // O primeiro passe suspende; o re-pull acontece enquanto o shell é montado.
     function shellContent() {
@@ -286,7 +331,7 @@ describe('markdown with the installed SSR serializer', () => {
     const next = () =>
       createSSRResponse(
         renderToStream(() => ssr(['<main>', '</main>'], shellContent), {
-          plugins: [plugin],
+          plugins: [shellFailurePlugin(token)],
           signal: event.request.signal
         }),
         event
@@ -332,6 +377,39 @@ describe('markdown with the installed SSR serializer', () => {
       probe.controller.abort()
     }
   })
+
+  it.each(CONTAINED_CASES)(
+    'refuses an HTML 200 whose <Errored> caught $name',
+    async ({ failure, hookLogs, leaks }) => {
+      const probe = makeProbe({ boundaryFailure: failure })
+      try {
+        const response = await boundedResponse(probe)
+        expect({
+          status: response.status,
+          cacheControl: response.headers.get('cache-control'),
+          hasErrors: probe.hasErrors,
+          completed: probe.completed.mock.calls.length,
+          hasFallback: probe.html.includes('Contained fallback')
+        }).toStrictEqual({
+          status: HTTP_SERVER_ERROR,
+          cacheControl: 'private, no-store',
+          hasErrors: true,
+          completed: 1,
+          hasFallback: true
+        })
+        await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+        // O Vitest resolve o runtime de desenvolvimento do Solid, cujo
+        // diagnóstico do <Errored> imprime a mensagem original antes do hook; o
+        // de produção não o emite.
+        const log = readLog(console.error)
+        expect(log.heads[0]?.[0]).toContain(CONTAINED_DIAGNOSTIC)
+        expect(log.heads.slice(1)).toStrictEqual(hookLogs)
+        expect(log.leaks).toStrictEqual(leaks)
+      } finally {
+        probe.controller.abort()
+      }
+    }
+  )
 
   it.each([false, true])(
     'preserves successful content (recovery: %s)',

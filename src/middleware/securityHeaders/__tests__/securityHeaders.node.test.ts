@@ -81,7 +81,9 @@ describe('cabeçalhos de segurança da resposta', () => {
     'text/plain; charset=utf-8',
     'application/xml; charset=utf-8',
     'text/markdown; charset=utf-8',
-    'application/json'
+    'application/json',
+    'text/html-sandboxed',
+    'application/json; profile=text/html'
   ])('bloqueia scripts em resposta %s mesmo com nonce', contentType => {
     const response = applySecurityHeaders({
       response: new Response('conteúdo', {

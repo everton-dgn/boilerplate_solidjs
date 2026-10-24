@@ -1,33 +1,40 @@
 import { appendFile } from 'node:fs/promises'
 import { env } from 'node:process'
 
-import { format } from 'vite-plus/fmt'
-
-import { fmt } from '../fmt.ts'
+import {
+  appendOutput,
+  readContext,
+  readSourcePlan,
+  requiredEnv,
+  type ReleaseContext
+} from './context.ts'
 import {
   api,
   assertReleaseFiles,
   assertReleasePullRequest,
-  assertSourceRun,
   command,
+  isOpenReleasePullRequest,
+  mutate,
   optionalApi,
   requireSha,
   type PullRequest
 } from './github.ts'
 import {
-  parseVersion,
-  planRelease,
-  type Commit,
-  type ReleasePlan
-} from './versioning.ts'
+  assertPlanArtifact,
+  readPlanArtifact,
+  type ValidatedRelease
+} from './plan-artifact.ts'
 
-const LOG_FIELD_COUNT = 2
-const ISO_DATE_LENGTH = 10
-const JSON_INDENT = 2
+// Este script roda nos jobs com escrita: usa só Git, gh e módulos nativos. A
+// formatação com o Vite+ fica no job de leitura (plan-release.ts).
 const BRANCH_SHA_LENGTH = 12
 const MERGE_PARENT_COUNT = 2
 const GITHUB_ACTIONS_APP_ID = 15_368
 const REQUIRED_CHECK = 'CI required'
+const BOT = {
+  name: 'github-actions[bot]',
+  email: '41898282+github-actions[bot]@users.noreply.github.com'
+}
 
 type GitCommit = {
   sha: string
@@ -38,15 +45,8 @@ type GitCommit = {
 type GitReference = {
   object: { sha: string; type: string }
 }
-type Context = {
-  repository: string
-  source: string
-  root: string
-  date: string
-  manifest: Record<string, unknown>
-}
 type Prepared = {
-  plan: ReleasePlan
+  release: ValidatedRelease
   branch: string
   head: string
   pr: PullRequest
@@ -58,56 +58,58 @@ type BranchRule = {
     required_status_checks?: { context: string; integration_id: number }[]
   }
 }
-
-function required(name: string): string {
-  const value = env[name]
-  if (!value) throw new Error(`Missing ${name}.`)
-  return value
+type ReleaseRequest = {
+  ctx: ReleaseContext
+  release: ValidatedRelease
+}
+type HeadCheck = ReleaseRequest & { head: string }
+type BranchRequest = ReleaseRequest & { branch: string }
+type PrepareOptions = ReleaseRequest & { shouldCreate: boolean }
+type PullRequestTarget = {
+  ctx: ReleaseContext
+  pr: PullRequest
+}
+type ObsoleteSearch = {
+  ctx: ReleaseContext
+  branch: string
+}
+type Ancestry = {
+  ancestor: string
+  descendant: string
+}
+type PublishRequest = {
+  ctx: ReleaseContext
+  prepared: Prepared
+}
+type MergeCheck = PublishRequest & { merge: string }
+type MergeResult = {
+  merged: boolean
+  sha: string
+}
+type PublishedRelease = {
+  body: string
+  draft: boolean
+  prerelease: boolean
 }
 
-async function git(...args: string[]): Promise<string> {
+function git(...args: string[]): Promise<string> {
   return command('git', args)
 }
 
-async function output(values: Record<string, string>): Promise<void> {
-  const file = required('GITHUB_OUTPUT')
-  await appendFile(
-    file,
-    Object.entries(values)
-      .map(([key, value]) => `${key}=${value}\n`)
-      .join('')
-  )
-}
-
-async function context(): Promise<Context> {
-  const repository = required('GITHUB_REPOSITORY')
-  if (!/^[\w.-]+\/[\w.-]+$/u.test(repository)) {
-    throw new Error('Invalid repository.')
+// Adiar não é falha: o CI do commit mais novo da main inicia outra release.
+async function postpone(message: string): Promise<void> {
+  console.warn(`::notice::${message}`)
+  if (env.GITHUB_STEP_SUMMARY) {
+    await appendFile(env.GITHUB_STEP_SUMMARY, `${message}\n`)
   }
-  const runId = required('RELEASE_SOURCE_RUN_ID')
-  if (!/^\d+$/u.test(runId)) throw new Error('Invalid source run ID.')
-  const root = `repos/${repository}`
-  const run = await api<Parameters<typeof assertSourceRun>[0]>(
-    `${root}/actions/runs/${runId}`
-  )
-  const source = assertSourceRun(run, repository)
-  await git('fetch', 'origin', 'main', '--tags')
-  await git('merge-base', '--is-ancestor', source, 'origin/main')
-  const trusted = await git('rev-parse', 'HEAD')
-  await git('merge-base', '--is-ancestor', trusted, 'origin/main')
-  const date = await git('show', '-s', '--format=%cI', source)
-  const rawManifest = await git('show', `${source}:package.json`)
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- O manifest é lido do commit validado pela CI; a versão é validada no createPlan.
-  const manifest = JSON.parse(rawManifest) as Record<string, unknown>
-  return { repository, root, source, date, manifest }
 }
 
-async function mainSha(ctx: Context): Promise<string> {
+async function mainSha(ctx: ReleaseContext): Promise<string> {
   const ref = await api<GitReference>(`${ctx.root}/git/ref/heads/main`)
   return requireSha(ref.object.sha)
 }
 
-async function assertMainProtection(ctx: Context): Promise<void> {
+async function assertMainProtection(ctx: ReleaseContext): Promise<void> {
   const rules = await api<BranchRule[]>(
     `${ctx.root}/rules/branches/main?per_page=100`
   )
@@ -129,80 +131,7 @@ async function assertMainProtection(ctx: Context): Promise<void> {
   }
 }
 
-async function createPlan(ctx: Context): Promise<ReleasePlan | undefined> {
-  const { version } = ctx.manifest
-  if (typeof version !== 'string') {
-    throw new TypeError('Invalid package.json version.')
-  }
-  const tags = await git(
-    'tag',
-    '--merged',
-    ctx.source,
-    '--sort=-version:refname'
-  )
-  const baselineTag = tags
-    .split('\n')
-    .find(tag => /^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(tag))
-  const range = baselineTag ? `${baselineTag}..${ctx.source}` : ctx.source
-  const log = await git('log', '--no-merges', '--format=%H%x00%B%x00', range)
-  const fields = log.split('\0')
-  const commits: Commit[] = []
-  for (let index = 0; index + 1 < fields.length; index += LOG_FIELD_COUNT) {
-    commits.push({
-      sha: requireSha((fields[index] ?? '').trim()),
-      message: fields[index + 1] ?? ''
-    })
-  }
-  const plan = planRelease({
-    currentVersion: version,
-    baselineTag,
-    commits,
-    changelog: await git('show', `${ctx.source}:CHANGELOG.md`),
-    date: ctx.date.slice(0, ISO_DATE_LENGTH)
-  })
-  if (!plan) return undefined
-  const formatted = await format('CHANGELOG.md', plan.changelog, fmt)
-  if (formatted.errors.length > 0) {
-    throw new Error('Cannot format release notes.')
-  }
-  const heading = `## ${plan.version} - ${ctx.date.slice(0, ISO_DATE_LENGTH)}`
-  const section = formatted.code.slice(
-    formatted.code.indexOf(heading) + heading.length
-  )
-  const next = section.search(/^## /mu)
-  return {
-    ...plan,
-    changelog: formatted.code,
-    notes: section.slice(0, next < 0 ? undefined : next).trim()
-  }
-}
-
-async function expectedFiles(
-  ctx: Context,
-  plan: ReleasePlan
-): Promise<{ path: string; content: string }[]> {
-  const files = [
-    {
-      path: 'package.json',
-      content: `${JSON.stringify({ ...ctx.manifest, version: plan.version }, null, JSON_INDENT)}\n`
-    },
-    { path: 'CHANGELOG.md', content: plan.changelog }
-  ]
-  for (const file of files) {
-    const formatted = await format(file.path, file.content, fmt)
-    if (formatted.errors.length > 0) {
-      throw new Error(`Cannot format ${file.path}.`)
-    }
-    file.content = formatted.code
-  }
-  return files
-}
-
-async function validateHead(
-  ctx: Context,
-  plan: ReleasePlan,
-  head: string
-): Promise<void> {
+async function validateHead({ ctx, release, head }: HeadCheck): Promise<void> {
   await git('fetch', 'origin', head)
   const commit = await api<GitCommit>(`${ctx.root}/git/commits/${head}`)
   if (commit.parents.length !== 1 || commit.parents[0]?.sha !== ctx.source) {
@@ -211,12 +140,11 @@ async function validateHead(
     )
   }
   const changed = await git('diff', '--name-only', ctx.source, head)
-  const files = changed.split('\n')
-  assertReleaseFiles(files)
+  assertReleaseFiles(changed.split('\n'))
   if (await git('diff', '--summary', ctx.source, head)) {
     throw new Error('Release commit must preserve file modes and types.')
   }
-  for (const expected of await expectedFiles(ctx, plan)) {
+  for (const expected of release.files) {
     // A saída do git show já vem aparada pelo comando; normalize só a quebra de linha final.
     if (
       (await git('show', `${head}:${expected.path}`)) !==
@@ -227,121 +155,208 @@ async function validateHead(
   }
 }
 
-async function prepare(
-  ctx: Context,
-  plan: ReleasePlan,
-  create: boolean
-): Promise<Prepared> {
-  const branch = `release/v${plan.version}-${ctx.source.slice(0, BRANCH_SHA_LENGTH)}`
-  const [owner] = ctx.repository.split('/')
+async function isAncestor({
+  ancestor,
+  descendant
+}: Ancestry): Promise<boolean> {
+  try {
+    await git('merge-base', '--is-ancestor', ancestor, descendant)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function closePullRequest({ ctx, pr }: PullRequestTarget): Promise<void> {
+  await mutate({
+    path: `${ctx.root}/pulls/${pr.number}`,
+    method: 'PATCH',
+    payload: { state: 'closed' }
+  })
+  await postpone(`Closed obsolete release pull request #${pr.number}.`)
+}
+
+// Fecha PRs de release abertos cuja origem ficou para trás na main. A branch
+// permanece para inspeção; um PR de origem mais nova nunca é tocado.
+async function closeObsoletePullRequests({
+  ctx,
+  branch
+}: ObsoleteSearch): Promise<void> {
   const pulls = await api<PullRequest[]>(
-    `${ctx.root}/pulls?state=all&base=main&head=${owner}:${branch}&per_page=100`
+    `${ctx.root}/pulls?state=open&base=main&per_page=100`
   )
-  if (pulls.length > 1) throw new Error('Ambiguous release pull requests.')
-  if (pulls[0]) {
-    const pr = await api<PullRequest>(`${ctx.root}/pulls/${pulls[0].number}`)
-    if (pr.merged) {
-      const head = requireSha(pr.head.sha)
-      assertReleasePullRequest(pr, ctx.repository, branch, head)
-      await validateHead(ctx, plan, head)
-      return { plan, branch, head, pr }
+  for (const pr of pulls) {
+    if (
+      pr.head.ref === branch ||
+      !isOpenReleasePullRequest({ pr, repository: ctx.repository })
+    ) {
+      continue
+    }
+    const commit = await api<GitCommit>(
+      `${ctx.root}/git/commits/${requireSha(pr.head.sha)}`
+    )
+    const [parent] = commit.parents
+    if (
+      commit.parents.length === 1 &&
+      parent &&
+      parent.sha !== ctx.source &&
+      (await isAncestor({ ancestor: parent.sha, descendant: ctx.source }))
+    ) {
+      await closePullRequest({ ctx, pr })
     }
   }
-  if (create) await assertMainProtection(ctx)
-  let ref = await optionalApi<GitReference>(
-    `${ctx.root}/git/ref/heads/${branch}`
-  )
-  if (!ref) {
-    if (!create) throw new Error('Prepared release branch is missing.')
-    if ((await mainSha(ctx)) !== ctx.source) {
-      throw new Error('Main advanced; wait for its own successful CI.')
-    }
-    const base = await api<GitCommit>(`${ctx.root}/git/commits/${ctx.source}`)
-    const files = await expectedFiles(ctx, plan)
-    const tree = await api<{ sha: string }>(`${ctx.root}/git/trees`, 'POST', {
+}
+
+async function createBranch({
+  ctx,
+  release,
+  branch
+}: BranchRequest): Promise<GitReference> {
+  const base = await api<GitCommit>(`${ctx.root}/git/commits/${ctx.source}`)
+  const tree = await mutate<{ sha: string }>({
+    path: `${ctx.root}/git/trees`,
+    method: 'POST',
+    payload: {
       base_tree: base.tree.sha,
-      tree: files.map(file => ({
+      tree: release.files.map(file => ({
         path: file.path,
         content: file.content,
         mode: '100644',
         type: 'blob'
       }))
-    })
-    const identity = {
-      name: 'github-actions[bot]',
-      email: '41898282+github-actions[bot]@users.noreply.github.com',
-      date: ctx.date
     }
-    const commit = await api<{ sha: string }>(
-      `${ctx.root}/git/commits`,
-      'POST',
-      {
-        message: `chore(release): v${plan.version}\n\n[skip ci]`,
-        tree: tree.sha,
-        parents: [ctx.source],
-        author: identity,
-        committer: identity
-      }
-    )
-    ref = await api<GitReference>(`${ctx.root}/git/refs`, 'POST', {
-      ref: `refs/heads/${branch}`,
-      sha: commit.sha
-    })
-  }
-  const head = requireSha(ref.object.sha)
-  await validateHead(ctx, plan, head)
-  let number = pulls[0]?.number
-  if (!number) {
-    if (!create) throw new Error('Prepared release pull request is missing.')
-    const pr = await api<PullRequest>(`${ctx.root}/pulls`, 'POST', {
-      title: `chore(release): v${plan.version}`,
-      head: branch,
-      base: 'main',
-      body: `Release prepared from successful CI at ${ctx.source}.\n\n${plan.notes}`
-    })
-    ;({ number } = pr)
-  }
-  const pr = await api<PullRequest>(`${ctx.root}/pulls/${number}`)
-  assertReleasePullRequest(pr, ctx.repository, branch, head)
-  return { plan, branch, head, pr }
+  })
+  const identity = { ...BOT, date: ctx.date }
+  const commit = await mutate<{ sha: string }>({
+    path: `${ctx.root}/git/commits`,
+    method: 'POST',
+    payload: {
+      message: `chore(release): v${release.plan.version}\n\n[skip ci]`,
+      tree: tree.sha,
+      parents: [ctx.source],
+      author: identity,
+      committer: identity
+    }
+  })
+  return mutate<GitReference>({
+    path: `${ctx.root}/git/refs`,
+    method: 'POST',
+    payload: { ref: `refs/heads/${branch}`, sha: commit.sha }
+  })
 }
 
-async function verifyMerge(
-  ctx: Context,
-  prepared: Prepared,
-  sha: string
-): Promise<void> {
-  const merge = await api<GitCommit>(`${ctx.root}/git/commits/${sha}`)
+async function prepare({
+  ctx,
+  release,
+  shouldCreate
+}: PrepareOptions): Promise<Prepared | undefined> {
+  const branch = `release/v${release.plan.version}-${ctx.source.slice(0, BRANCH_SHA_LENGTH)}`
+  const [owner] = ctx.repository.split('/')
+  const pulls = await api<PullRequest[]>(
+    `${ctx.root}/pulls?state=all&base=main&head=${owner}:${branch}&per_page=100`
+  )
+  if (pulls.length > 1) throw new Error('Ambiguous release pull requests.')
+  const existing = pulls[0]
+    ? await api<PullRequest>(`${ctx.root}/pulls/${pulls[0].number}`)
+    : undefined
+  if (existing?.merged) {
+    const head = requireSha(existing.head.sha)
+    assertReleasePullRequest({
+      pr: existing,
+      repository: ctx.repository,
+      branch,
+      head
+    })
+    await validateHead({ ctx, release, head })
+    return { release, branch, head, pr: existing }
+  }
+  if (shouldCreate && (await mainSha(ctx)) !== ctx.source) {
+    if (
+      existing &&
+      isOpenReleasePullRequest({ pr: existing, repository: ctx.repository })
+    ) {
+      await closePullRequest({ ctx, pr: existing })
+    }
+    await postpone(
+      `Main advanced past ${ctx.source}; the release waits for the CI of the newer commit.`
+    )
+    return undefined
+  }
+  if (shouldCreate) {
+    await assertMainProtection(ctx)
+    await closeObsoletePullRequests({ ctx, branch })
+  }
+  let ref = await optionalApi<GitReference>(
+    `${ctx.root}/git/ref/heads/${branch}`
+  )
+  if (!ref) {
+    if (!shouldCreate) throw new Error('Prepared release branch is missing.')
+    ref = await createBranch({ ctx, release, branch })
+  }
+  const head = requireSha(ref.object.sha)
+  await validateHead({ ctx, release, head })
+  let number = existing?.number
+  if (!number) {
+    if (!shouldCreate) {
+      throw new Error('Prepared release pull request is missing.')
+    }
+    const created = await mutate<PullRequest>({
+      path: `${ctx.root}/pulls`,
+      method: 'POST',
+      payload: {
+        title: `chore(release): v${release.plan.version}`,
+        head: branch,
+        base: 'main',
+        body: `Release prepared from successful CI at ${ctx.source}.\n\n${release.plan.notes}`
+      }
+    })
+    ;({ number } = created)
+  }
+  const pr = await api<PullRequest>(`${ctx.root}/pulls/${number}`)
+  assertReleasePullRequest({ pr, repository: ctx.repository, branch, head })
+  return { release, branch, head, pr }
+}
+
+async function verifyMerge({
+  ctx,
+  prepared,
+  merge
+}: MergeCheck): Promise<void> {
+  const commit = await api<GitCommit>(`${ctx.root}/git/commits/${merge}`)
   const head = await api<GitCommit>(`${ctx.root}/git/commits/${prepared.head}`)
   if (
-    merge.parents.length !== MERGE_PARENT_COUNT ||
-    merge.parents[0]?.sha !== ctx.source ||
-    merge.parents[1]?.sha !== prepared.head ||
-    merge.tree.sha !== head.tree.sha
+    commit.parents.length !== MERGE_PARENT_COUNT ||
+    commit.parents[0]?.sha !== ctx.source ||
+    commit.parents[1]?.sha !== prepared.head ||
+    commit.tree.sha !== head.tree.sha
   ) {
     throw new Error(
       'Merge differs from the validated release tree; publication stopped.'
     )
   }
   await git('fetch', 'origin', 'main')
-  await git('merge-base', '--is-ancestor', sha, 'origin/main')
+  await git('merge-base', '--is-ancestor', merge, 'origin/main')
 }
 
-async function publish(ctx: Context, prepared: Prepared): Promise<void> {
-  if (required('RELEASE_HEAD') !== prepared.head) {
-    throw new Error('Validated release SHA changed.')
+// Devolve o SHA do merge, ou undefined quando a main avançou antes do merge.
+async function mergeRelease({
+  ctx,
+  prepared
+}: PublishRequest): Promise<string | undefined> {
+  if (prepared.pr.merged) return prepared.pr.merge_commit_sha ?? undefined
+  // Os strict checks rejeitam atualização concorrente da base dentro da operação de merge do GitHub.
+  await assertMainProtection(ctx)
+  if ((await mainSha(ctx)) !== ctx.source) {
+    await postpone(
+      `Main advanced past ${ctx.source} during release validation; merge skipped. The next release closes pull request #${prepared.pr.number}.`
+    )
+    return undefined
   }
-  let merge = prepared.pr.merge_commit_sha
-  if (!prepared.pr.merged) {
-    // Os strict checks rejeitam atualização concorrente da base dentro da operação de merge do GitHub.
-    await assertMainProtection(ctx)
-    if ((await mainSha(ctx)) !== ctx.source) {
-      throw new Error(
-        'Main advanced during release validation; refusing merge.'
-      )
-    }
-    const sourceCiUrl = `https://github.com/${ctx.repository}/actions/runs/${required('RELEASE_SOURCE_RUN_ID')}`
-    await api(`${ctx.root}/check-runs`, 'POST', {
+  const sourceCiUrl = `https://github.com/${ctx.repository}/actions/runs/${requiredEnv('RELEASE_SOURCE_RUN_ID')}`
+  await mutate({
+    path: `${ctx.root}/check-runs`,
+    method: 'POST',
+    payload: {
       name: REQUIRED_CHECK,
       head_sha: prepared.head,
       details_url: sourceCiUrl,
@@ -351,39 +366,77 @@ async function publish(ctx: Context, prepared: Prepared): Promise<void> {
         title: 'Release metadata validated against successful source CI',
         summary: `Source CI passed for ${ctx.source}. Release ${prepared.head} preserves the validated application and changes only the package version and generated changelog. [View source CI](${sourceCiUrl}).`
       }
-    })
-    const result = await api<{ merged: boolean; sha: string }>(
-      `${ctx.root}/pulls/${prepared.pr.number}/merge`,
-      'PUT',
-      {
-        merge_method: 'merge',
-        sha: prepared.head,
-        commit_title: `chore(release): v${prepared.plan.version}`
-      }
+    }
+  })
+  const result = await mutate<MergeResult>({
+    path: `${ctx.root}/pulls/${prepared.pr.number}/merge`,
+    method: 'PUT',
+    payload: {
+      merge_method: 'merge',
+      sha: prepared.head,
+      commit_title: `chore(release): v${prepared.release.plan.version}`
+    }
+  })
+  if (!result.merged) throw new Error('Release PR was not merged.')
+  return result.sha
+}
+
+async function cleanupBranch({ ctx, prepared }: PublishRequest): Promise<void> {
+  try {
+    const branchRef = `refs/heads/${prepared.branch}`
+    const remaining = await optionalApi<GitReference>(
+      `${ctx.root}/git/ref/heads/${prepared.branch}`
     )
-    if (!result.merged) throw new Error('Release PR was not merged.')
-    merge = result.sha
+    if (!remaining) return
+    if (remaining.object.sha !== prepared.head) {
+      throw new Error('Release branch advanced; refusing cleanup.')
+    }
+    // O lease confere o SHA esperado de forma atômica, inclusive atualizações após a leitura.
+    await command('git', [
+      '-c',
+      'credential.helper=',
+      '-c',
+      'credential.helper=!gh auth git-credential',
+      'push',
+      `--force-with-lease=${branchRef}:${prepared.head}`,
+      `https://github.com/${ctx.repository}.git`,
+      `:${branchRef}`
+    ])
+  } catch {
+    console.warn(
+      '::warning::Release published; branch cleanup could not complete. The branch was preserved if it still exists.'
+    )
   }
+}
+
+async function publish({ ctx, prepared }: PublishRequest): Promise<void> {
+  if (requiredEnv('RELEASE_HEAD') !== prepared.head) {
+    throw new Error('Validated release SHA changed.')
+  }
+  const merge = await mergeRelease({ ctx, prepared })
+  if (merge === undefined && !prepared.pr.merged) return
   if (!merge) throw new Error('Missing release merge SHA.')
   requireSha(merge)
-  await verifyMerge(ctx, prepared, merge)
-  const tagPath = `${ctx.root}/git/ref/tags/${prepared.plan.tag}`
+  await verifyMerge({ ctx, prepared, merge })
+  const { plan } = prepared.release
+  const tagPath = `${ctx.root}/git/ref/tags/${plan.tag}`
   let tagRef = await optionalApi<GitReference>(tagPath)
   if (!tagRef) {
-    const tag = await api<{ sha: string }>(`${ctx.root}/git/tags`, 'POST', {
-      tag: prepared.plan.tag,
-      message: `Release ${prepared.plan.tag}`,
-      object: merge,
-      type: 'commit',
-      tagger: {
-        name: 'github-actions[bot]',
-        email: '41898282+github-actions[bot]@users.noreply.github.com',
-        date: ctx.date
+    const tag = await mutate<{ sha: string }>({
+      path: `${ctx.root}/git/tags`,
+      method: 'POST',
+      payload: {
+        tag: plan.tag,
+        message: `Release ${plan.tag}`,
+        object: merge,
+        type: 'commit',
+        tagger: { ...BOT, date: ctx.date }
       }
     })
-    tagRef = await api<GitReference>(`${ctx.root}/git/refs`, 'POST', {
-      ref: `refs/tags/${prepared.plan.tag}`,
-      sha: tag.sha
+    tagRef = await mutate<GitReference>({
+      path: `${ctx.root}/git/refs`,
+      method: 'POST',
+      payload: { ref: `refs/tags/${plan.tag}`, sha: tag.sha }
     })
   }
   if (tagRef.object.type !== 'tag') {
@@ -395,72 +448,58 @@ async function publish(ctx: Context, prepared: Prepared): Promise<void> {
   if (tag.object.sha !== merge || tag.object.type !== 'commit') {
     throw new Error('Existing tag points to another commit.')
   }
-  const release = await optionalApi<{
-    body: string
-    draft: boolean
-    prerelease: boolean
-  }>(`${ctx.root}/releases/tags/${prepared.plan.tag}`)
-  if (release) {
-    if (
-      release.draft ||
-      release.prerelease ||
-      release.body.trim() !== prepared.plan.notes.trim()
-    ) {
-      throw new Error('Existing release does not match the generated notes.')
-    }
-  } else {
-    await api(`${ctx.root}/releases`, 'POST', {
-      tag_name: prepared.plan.tag,
-      name: prepared.plan.tag,
-      body: prepared.plan.notes,
-      draft: false,
-      prerelease: false
+  const published = await optionalApi<PublishedRelease>(
+    `${ctx.root}/releases/tags/${plan.tag}`
+  )
+  if (
+    published &&
+    (published.draft ||
+      published.prerelease ||
+      published.body.trim() !== plan.notes.trim())
+  ) {
+    throw new Error('Existing release does not match the generated notes.')
+  }
+  if (!published) {
+    await mutate({
+      path: `${ctx.root}/releases`,
+      method: 'POST',
+      payload: {
+        tag_name: plan.tag,
+        name: plan.tag,
+        body: plan.notes,
+        draft: false,
+        prerelease: false
+      }
     })
   }
-  await output({ tag: prepared.plan.tag, version: prepared.plan.version })
-  try {
-    const branchRef = `refs/heads/${prepared.branch}`
-    const remaining = await optionalApi<GitReference>(
-      `${ctx.root}/git/ref/heads/${prepared.branch}`
-    )
-    if (remaining) {
-      if (remaining.object.sha !== prepared.head) {
-        throw new Error('Release branch advanced; refusing cleanup.')
-      }
-      // O lease confere o SHA esperado de forma atômica, inclusive atualizações após a leitura.
-      await command('git', [
-        '-c',
-        'credential.helper=',
-        '-c',
-        'credential.helper=!gh auth git-credential',
-        'push',
-        `--force-with-lease=${branchRef}:${prepared.head}`,
-        `https://github.com/${ctx.repository}.git`,
-        `:${branchRef}`
-      ])
-    }
-  } catch {
-    console.warn(
-      '::warning::Release published; branch cleanup could not complete. The branch was preserved if it still exists.'
-    )
-  }
+  await appendOutput({ tag: plan.tag, version: plan.version })
+  await cleanupBranch({ ctx, prepared })
 }
 
-const mode = required('RELEASE_MODE')
+const mode = requiredEnv('RELEASE_MODE')
 if (!['prepare', 'publish'].includes(mode)) {
   throw new Error('Invalid release mode.')
 }
-const ctx = await context()
-const plan = await createPlan(ctx)
-if (plan) {
-  parseVersion(plan.version)
-  const prepared = await prepare(ctx, plan, mode === 'prepare')
-  if (mode === 'publish') {
-    await publish(ctx, prepared)
-  } else {
-    const values = { publish: 'true', head: prepared.head, source: ctx.source }
-    await output(values)
-  }
-} else {
-  await output({ publish: 'false' })
+const ctx = await readContext()
+const expected = await readSourcePlan(ctx)
+if (!expected) throw new Error('The validated source has no release to plan.')
+const release = assertPlanArtifact({
+  artifact: await readPlanArtifact(requiredEnv('RELEASE_PLAN_FILE')),
+  ctx,
+  expected
+})
+const prepared = await prepare({
+  ctx,
+  release,
+  shouldCreate: mode === 'prepare'
+})
+if (mode === 'publish' && prepared) {
+  await publish({ ctx, prepared })
+}
+if (mode === 'prepare') {
+  await appendOutput(
+    prepared
+      ? { publish: 'true', head: prepared.head, source: ctx.source }
+      : { publish: 'false' }
+  )
 }
