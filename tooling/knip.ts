@@ -50,8 +50,6 @@ async function discoverRouteModules({
 }
 
 const config = {
-  // O env.ts é lido pelo @solidjs/vite-plugin (start.env) para gerar os
-  // módulos virtual:env, então nada o importa diretamente.
   entry: [
     // Entradas autorais do SSR, carregadas pelo @solidjs/vite-plugin por convenção.
     'src/entry-server.tsx!',
@@ -69,7 +67,6 @@ const config = {
     'src/components/atoms/ToastProvider/useToast/index.ts!',
     'src/primitives/createLocalizedNavigate/index.ts!',
     'src/i18n/localizedRedirect/index.ts!',
-    'env.ts!',
     // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.
     'src/tests/fixtures/e2e/middleware/index.ts',
     // A CI roda a prova com `vp exec node`, que o plugin de GitHub Actions do
