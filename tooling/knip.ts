@@ -54,6 +54,9 @@ const config = {
   // módulos virtual:env, então nada o importa diretamente.
   entry: [
     // Entradas autorais do SSR, carregadas pelo @solidjs/vite-plugin por convenção.
+    // O plugin do Knip só lê solid() importado estaticamente, e o vite.config.ts
+    // o carrega com import(); por isso estas entradas, o middleware e o
+    // configure ficam aqui (webpro-nl/knip#2147).
     'src/entry-server.tsx!',
     'src/entry-client.tsx!',
     // O runtime gerado importa o polyfill de URLPattern do pacote Paraglide.
