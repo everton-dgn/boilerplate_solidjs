@@ -1,8 +1,8 @@
 diff --git a/dist/server.dev.js b/dist/server.dev.js
-index 908cba651c201618f7d4658f2cf00515e25712fd..aee28d74efa5b42a329d3ed549d5abab7b879cb8 100644
+index af9dc5064eef6c6303286580967a6f62a2756213..14a501952f4cc3ad3f4c56f0577786ddca3350bb 100644
 --- a/dist/server.dev.js
 +++ b/dist/server.dev.js
-@@ -1892,6 +1892,7 @@ function renderToStream(code, options = {}) {
+@@ -1975,6 +1975,7 @@ function renderToStream(code, options = {}) {
    };
    let dispose;
    let dead = false;
@@ -10,7 +10,7 @@ index 908cba651c201618f7d4658f2cf00515e25712fd..aee28d74efa5b42a329d3ed549d5abab
    let render;
    let rootOwner;
    let serializer;
-@@ -2073,7 +2074,7 @@ function renderToStream(code, options = {}) {
+@@ -2156,7 +2157,7 @@ function renderToStream(code, options = {}) {
      }
    };
    const onDone = () => {
@@ -19,7 +19,7 @@ index 908cba651c201618f7d4658f2cf00515e25712fd..aee28d74efa5b42a329d3ed549d5abab
      writeTasks();
      lastBlockingSize = blockingPromises.size;
      doShell();
-@@ -2134,9 +2135,16 @@ function renderToStream(code, options = {}) {
+@@ -2217,9 +2218,16 @@ function renderToStream(code, options = {}) {
    serializer = (options.serializer || createHydrationSerializer)({
      scopeId: options.renderId,
      plugins: options.plugins,
@@ -38,7 +38,7 @@ index 908cba651c201618f7d4658f2cf00515e25712fd..aee28d74efa5b42a329d3ed549d5abab
    });
    let rootAssetsSerialized = false;
    const serializeRootAssets = () => {
-@@ -2602,6 +2610,7 @@ function renderToStream(code, options = {}) {
+@@ -2685,6 +2693,7 @@ function renderToStream(code, options = {}) {
      }
      serializeRootAssets();
      flushStubBatch();
@@ -47,10 +47,10 @@ index 908cba651c201618f7d4658f2cf00515e25712fd..aee28d74efa5b42a329d3ed549d5abab
      if (render) render.shell();
      sink.shell(resolveSSRSelectValues(html), {
 diff --git a/dist/server.js b/dist/server.js
-index 047236881ca9127c29dae30b180465e482b13de2..a29b69a3a05ea16fe26a9fd17b7de0b88125ab53 100644
+index 79582a37adf3328d81e7ff17356c7da5ef021abe..c0721f5a6e6b9b5e492a5aff1d3a5febced7ac5d 100644
 --- a/dist/server.js
 +++ b/dist/server.js
-@@ -1627,6 +1627,7 @@ function renderToStream(code, options = {}) {
+@@ -1710,6 +1710,7 @@ function renderToStream(code, options = {}) {
    };
    let dispose;
    let dead = false;
@@ -58,7 +58,7 @@ index 047236881ca9127c29dae30b180465e482b13de2..a29b69a3a05ea16fe26a9fd17b7de0b8
    let render;
    let rootOwner;
    let serializer;
-@@ -1787,7 +1788,7 @@ function renderToStream(code, options = {}) {
+@@ -1870,7 +1871,7 @@ function renderToStream(code, options = {}) {
      }
    };
    const onDone = () => {
@@ -67,7 +67,7 @@ index 047236881ca9127c29dae30b180465e482b13de2..a29b69a3a05ea16fe26a9fd17b7de0b8
      writeTasks();
      lastBlockingSize = blockingPromises.size;
      doShell();
-@@ -1848,9 +1849,16 @@ function renderToStream(code, options = {}) {
+@@ -1931,9 +1932,16 @@ function renderToStream(code, options = {}) {
    serializer = (options.serializer || createHydrationSerializer)({
      scopeId: options.renderId,
      plugins: options.plugins,
@@ -86,7 +86,7 @@ index 047236881ca9127c29dae30b180465e482b13de2..a29b69a3a05ea16fe26a9fd17b7de0b8
    });
    let rootAssetsSerialized = false;
    const serializeRootAssets = () => {
-@@ -2300,6 +2308,7 @@ function renderToStream(code, options = {}) {
+@@ -2383,6 +2391,7 @@ function renderToStream(code, options = {}) {
      }
      serializeRootAssets();
      flushStubBatch();
@@ -95,10 +95,10 @@ index 047236881ca9127c29dae30b180465e482b13de2..a29b69a3a05ea16fe26a9fd17b7de0b8
      if (render) render.shell();
      sink.shell(resolveSSRSelectValues(html), {
 diff --git a/dist/server.observe.js b/dist/server.observe.js
-index d088c49145ce09f807b8c6928fe05cdd373e4568..2264448c847d7079878a586f79bb86593f449f16 100644
+index ce6ed4402637a3412610c8e124becd8953423cc2..2593a88fd37c79a2b851df326d451832d43d35f6 100644
 --- a/dist/server.observe.js
 +++ b/dist/server.observe.js
-@@ -1723,6 +1723,7 @@ function renderToStream(code, options = {}) {
+@@ -1806,6 +1806,7 @@ function renderToStream(code, options = {}) {
    };
    let dispose;
    let dead = false;
@@ -106,7 +106,7 @@ index d088c49145ce09f807b8c6928fe05cdd373e4568..2264448c847d7079878a586f79bb8659
    let render;
    let rootOwner;
    let serializer;
-@@ -1904,7 +1905,7 @@ function renderToStream(code, options = {}) {
+@@ -1987,7 +1988,7 @@ function renderToStream(code, options = {}) {
      }
    };
    const onDone = () => {
@@ -115,7 +115,7 @@ index d088c49145ce09f807b8c6928fe05cdd373e4568..2264448c847d7079878a586f79bb8659
      writeTasks();
      lastBlockingSize = blockingPromises.size;
      doShell();
-@@ -1965,9 +1966,16 @@ function renderToStream(code, options = {}) {
+@@ -2048,9 +2049,16 @@ function renderToStream(code, options = {}) {
    serializer = (options.serializer || createHydrationSerializer)({
      scopeId: options.renderId,
      plugins: options.plugins,
@@ -134,7 +134,7 @@ index d088c49145ce09f807b8c6928fe05cdd373e4568..2264448c847d7079878a586f79bb8659
    });
    let rootAssetsSerialized = false;
    const serializeRootAssets = () => {
-@@ -2433,6 +2441,7 @@ function renderToStream(code, options = {}) {
+@@ -2516,6 +2524,7 @@ function renderToStream(code, options = {}) {
      }
      serializeRootAssets();
      flushStubBatch();

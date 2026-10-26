@@ -553,14 +553,15 @@ conteúdo, conclusão e falhas.
 O patch Bun de `@solidjs/web` cobre o que o runtime publicado ainda não faz, nos
 runtimes padrão, de desenvolvimento e de observação: encerrar o render na falha
 do serializador padrão, como descrito acima. Sem o patch, o runtime informa a
-falha ao hook e deixa o render seguir. Uma falha durante a montagem do shell
-ainda envia o shell com status 200. Uma falha síncrona, de parse ou de
-`deferStream`, deixa o render pendente até o `signal` abortar, porque o seroval
-não chama `onDone` depois dela; o Markdown só responderia no timeout do
-adaptador, e o prerender esperaria esse prazo a cada página. Com um `onError`
-local, o patch também encerra o render, enquanto o runtime só informaria o
-callback. A chave do patch inclui a versão do pacote, então cada atualização de
-`@solidjs/web` exige regenerá-lo com `bun patch`. O teste
+falha ao hook e conclui o render pelo fluxo normal, inclusive chamando
+`onCompleteAll`. O Markdown recusa esse resultado pela falha registrada, mas uma
+falha durante a montagem do shell ainda envia o HTML com status 200. O patch
+bloqueia essa saída e a conclusão normal antes de descartar o render. Com um
+`onError` local, o patch também encerra o render, enquanto o runtime só
+informaria o callback e concluiria normalmente. Falhas na fase de serialização
+chegam ao log como `SerovalSerializationError`; a mensagem e a causa continuam
+descartadas. A chave do patch inclui a versão do pacote, então cada atualização
+de `@solidjs/web` exige regenerá-lo com `bun patch`. O teste
 `tooling/__tests__/patched-dependencies.test.ts` falha quando a chave de um
 patch não corresponde a uma versão resolvida no `bun.lock`.
 
@@ -571,12 +572,14 @@ que lança no descarte da conclusão normal e fez o core rodar todos os cleanups
 mesmo depois de um que lança; essas partes saíram do patch. O render pendente na
 falha síncrona foi relatado no
 [solidjs/solid#4227](https://github.com/solidjs/solid/issues/4227), com a
-correção no [solidjs/solid#4229](https://github.com/solidjs/solid/pull/4229),
-integrada mas ainda não publicada: ela faz o render concluir, mas não o encerra
-na falha. Remova o restante do patch quando um pacote publicado encerrar o
-render na falha do serializador padrão e passar as regressões de erro
-reutilizado entre requisições, falha de server function que escapa de Loading,
-recuperação local, serialização, cleanup que lança e cancelamento. A issue ou o
-PR fechado não substitui a verificação dos artefatos instalados. O sinal
-composto de timeout e desconexão chega ao `renderToStream`; o teste Node do
-adaptador verifica o descarte de uma raiz SSR pendente no cancelamento.
+correção no [solidjs/solid#4229](https://github.com/solidjs/solid/pull/4229), já
+incluída no pacote instalado: ela faz o render concluir, mas não o encerra na
+falha. O serializador também passou a encerrar cada escrita no primeiro valor
+que falha, sem enviar os irmãos seguintes dessa escrita. Remova o restante do
+patch quando um pacote publicado encerrar o render na falha do serializador
+padrão e passar as regressões de erro reutilizado entre requisições, falha de
+server function que escapa de Loading, recuperação local, serialização, cleanup
+que lança e cancelamento. A issue ou o PR fechado não substitui a verificação
+dos artefatos instalados. O sinal composto de timeout e desconexão chega ao
+`renderToStream`; o teste Node do adaptador verifica o descarte de uma raiz SSR
+pendente no cancelamento.

@@ -52,10 +52,13 @@ type ContainedCase = {
 const PRIVATE_MARKER = 'PRIVATE_SERIALIZATION_FAILURE'
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const LOG_MESSAGE = '[server-error] Unexpected failure; private details omitted'
+const FAILURE_LOG_CLASSES = {
+  parse: 'Error',
+  serialize: 'SerovalSerializationError'
+}
 const DEADLINE_MS = 1000
 const HTTP_OK = 200
 const HTTP_SERVER_ERROR = 500
-const CLEANUP_ERROR_LOG_COUNT = 2
 const CONTAINED_DIAGNOSTIC = '[SSR_RENDER_ERROR_CONTAINED]'
 // Um redirect() capturado por um <Errored> aninhado também vira fallback.
 const CONTAINED_CASES: ContainedCase[] = [
@@ -293,12 +296,10 @@ describe('markdown with the installed SSR serializer', () => {
           JSON.stringify({ headers: [...response.headers], html: probe.html })
         ).not.toContain('PRIVATE')
         expect(readLog(console.error)).toStrictEqual({
-          heads: Array.from(
-            {
-              length: scenario.shouldThrowCleanup ? CLEANUP_ERROR_LOG_COUNT : 1
-            },
-            () => [LOG_MESSAGE, 'Error']
-          ),
+          heads: [
+            [LOG_MESSAGE, FAILURE_LOG_CLASSES[scenario.phase]],
+            ...(scenario.shouldThrowCleanup ? [[LOG_MESSAGE, 'Error']] : [])
+          ],
           leaks: []
         })
       } finally {

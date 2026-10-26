@@ -44,12 +44,12 @@
     "commitlint": "commitlint"
   },
   "dependencies": {
-    "@inlang/paraglide-js": "2.29.1",
+    "@inlang/paraglide-js": "2.29.2",
     "@mdream/js": "2.0.3",
     "@solidjs/router": "2.0.0-next.42",
-    "@solidjs/web": "2.0.0-rc.17",
+    "@solidjs/web": "2.0.0-rc.18",
     "filesystem-routing": "0.4.1",
-    "solid-js": "2.0.0-rc.17",
+    "solid-js": "2.0.0-rc.18",
     "valibot": "1.5.0"
   },
   "devDependencies": {
@@ -108,14 +108,14 @@
     }
   },
   "overrides": {
-    "@solidjs/babel-plugin": "2.0.0-rc.17",
-    "@solidjs/compiler": "2.0.0-rc.17",
+    "@solidjs/babel-plugin": "2.0.0-rc.18",
+    "@solidjs/compiler": "2.0.0-rc.18",
     "vite@*": "catalog:",
     "vitest@*": "catalog:"
   },
   "patchedDependencies": {
     "@mdream/js@2.0.3": "patches/@mdream%2Fjs@2.0.3.patch",
     "@voidzero-dev/vite-plus-core@1.4.0": "patches/@voidzero-dev%2Fvite-plus-core@1.4.0.patch",
-    "@solidjs/web@2.0.0-rc.17": "patches/@solidjs%2Fweb@2.0.0-rc.17.patch"
+    "@solidjs/web@2.0.0-rc.18": "patches/@solidjs%2Fweb@2.0.0-rc.18.patch"
   }
 }
