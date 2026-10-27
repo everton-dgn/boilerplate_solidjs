@@ -49,7 +49,7 @@ const save = action(async function* (input: Input) {
 ```
 
 Armadilha: nenhum dos desfechos gera erro, e o resultado depende do grafo. Medido em 2026-10-27 no runtime instalado, grafo sem DOM, builds dev e prod, com `await refresh(fonte)` no helper depois de outro `await`:
-- fonte que lê estado já escrito pela action (memo que lê signal escrito no gerador, ou `createOptimistic` com escrita otimista): a Promise da action nunca assenta;
+- fonte que lê estado já escrito pela action (memo que lê signal escrito no gerador, ou `createOptimistic` com escrita otimista): a Promise da action não assentou, pendente após 2 a 5 s contra cerca de 12 ms no controle;
 - fonte independente: o valor novo publica no meio da action, mesmo com `isPending` ainda verdadeiro por `affects`. Signal que a action ainda não escreveu, escrito no helper, também publica na hora;
 - escrita no helper em signal que a action já escreveu entrelaça com a transação e fica retida, arrastando o `refresh` feito logo depois.
 
