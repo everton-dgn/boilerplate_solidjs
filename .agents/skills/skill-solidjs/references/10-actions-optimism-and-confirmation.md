@@ -30,7 +30,7 @@ const save = action(async function* (input: Input) {
 
 Armadilha: sem yield vazio, confirmação já recebida no store retido pode criar leitor retido, esperando o commit que a própria action bloqueia, até `TimeoutError`. Teste confirmação antes e depois da resposta da mutação. `flush()` dentro da action rejeita com `FLUSH_IN_ACTION` em dev.
 
-Contrato: helper `async` cedido por `yield helper()` só roda na transação até o primeiro `await` dele. `refresh` aguardado no helper depois desse ponto fica fora da action: o helper devolve o resultado e o gerador faz `yield refresh(fonte)`.
+Contrato: helper `async` cedido por `yield helper()` só roda na transação até o primeiro `await` dele. Escrita e `refresh` feitos no helper depois desse ponto ficam fora da action. O helper devolve o resultado e o gerador faz as escritas e o `yield refresh(fonte)`; para reaproveitar o passo, use gerador delegado por `yield*`, como `revalidate` em [tasks](../examples/tasks.tsx). Em `async function*`, `yield refresh(fonte)` logo depois de `await` também roda antes de reentrar: faça `yield` vazio primeiro. Prefira essa forma quando precisar do tipo do resultado: em `function*`, o valor de `yield` é `any` pela assinatura de `action`.
 
 Receita:
 ```ts
@@ -39,15 +39,21 @@ async function persist(input: Input) {
   return saved.id
 }
 
-const save = action(function* (input: Input) {
+const save = action(async function* (input: Input) {
   affects(items)
-  const id = yield persist(input)
+  const id = await persist(input)
+  yield
   yield refresh(items)
   setSelected(id)
 })
 ```
 
-Armadilha: nada falha. O refresh resolve, a action também, e o teste que só olha o resultado final passa. Medido no runtime instalado, grafo sem DOM, builds dev e prod: com `await refresh(m)` no helper depois de outro `await`, o efeito que lê `m` publicou o valor novo no meio da action, enquanto a escrita comum feita antes no gerador seguiu retida até o assentamento. Com `yield refresh(m)` no gerador, os dois chegaram juntos no assentamento. Na revisão, procure `refresh(` em funções `async` chamadas por actions; o teste precisa observar a fonte durante a action pendente.
+Armadilha: nenhum dos desfechos gera erro, e o resultado depende do grafo. Medido em 2026-10-27 no runtime instalado, grafo sem DOM, builds dev e prod, com `await refresh(fonte)` no helper depois de outro `await`:
+- fonte que lê estado já escrito pela action (memo que lê signal escrito no gerador, ou `createOptimistic` com escrita otimista): a Promise da action nunca assenta;
+- fonte independente: o valor novo publica no meio da action, mesmo com `isPending` ainda verdadeiro por `affects`. Signal que a action ainda não escreveu, escrito no helper, também publica na hora;
+- escrita no helper em signal que a action já escreveu entrelaça com a transação e fica retida, arrastando o `refresh` feito logo depois.
+
+Com escritas e `refresh` no gerador, todos assentaram juntos. Na revisão, procure `refresh(` e setters em funções `async` chamadas por actions.
 
 ## Sobreposição e estado durável
 
