@@ -30,6 +30,31 @@ const save = action(async function* (input: Input) {
 
 Armadilha: sem yield vazio, confirmação já recebida no store retido pode criar leitor retido, esperando o commit que a própria action bloqueia, até `TimeoutError`. Teste confirmação antes e depois da resposta da mutação. `flush()` dentro da action rejeita com `FLUSH_IN_ACTION` em dev.
 
+Contrato: helper `async` cedido por `yield helper()` só roda na transação até o primeiro `await` dele. Escrita e `refresh` feitos no helper depois desse ponto ficam fora da action. O helper devolve o resultado e o gerador faz as escritas e o `yield refresh(fonte)`; para reaproveitar o passo, use gerador delegado por `yield*`, como `revalidate` em [tasks](../examples/tasks.tsx). Em `async function*`, `yield refresh(fonte)` logo depois de `await` também roda antes de reentrar: faça `yield` vazio primeiro. Prefira essa forma quando precisar do tipo do resultado: em `function*`, o valor de `yield` é `any` pela assinatura de `action`.
+
+Receita:
+```ts
+async function persist(input: Input) {
+  const saved = await api.save(input)
+  return saved.id
+}
+
+const save = action(async function* (input: Input) {
+  affects(items)
+  const id = await persist(input)
+  yield
+  yield refresh(items)
+  setSelected(id)
+})
+```
+
+Armadilha: nenhum dos desfechos gera erro, e o resultado depende do grafo. Medido em 2026-10-27 no runtime instalado, grafo sem DOM, builds dev e prod, com `await refresh(fonte)` no helper depois de outro `await`:
+- fonte que lê estado já escrito pela action (memo que lê signal escrito no gerador, ou `createOptimistic` com escrita otimista): a Promise da action não assentou, pendente após 2 a 5 s contra cerca de 12 ms no controle;
+- fonte independente: o valor novo publica no meio da action, mesmo com `isPending` ainda verdadeiro por `affects`. Signal que a action ainda não escreveu, escrito no helper, também publica na hora;
+- escrita no helper em signal que a action já escreveu entrelaça com a transação e fica retida, arrastando o `refresh` feito logo depois.
+
+Com escritas e `refresh` no gerador, todos assentaram juntos. Na revisão, procure `refresh(` e setters em funções `async` chamadas por actions.
+
 ## Sobreposição e estado durável
 
 Contrato: `createOptimistic` e `createOptimisticStore` fornecem sobreposição transitória. Derivação mantém fonte autoritativa; toda escrita otimista dentro da action reverte no settle, com sucesso ou falha, inclusive escrita após yield usando resposta servidor. Verdade durável vem da derivação reexecutada por refresh/entrada ou de store comum separada. Escrita otimista fora de action aparece por um flush e reverte ao fim dele. `setOptimistic` não é export da base; use o setter do par.
