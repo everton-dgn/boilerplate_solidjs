@@ -30,6 +30,25 @@ const save = action(async function* (input: Input) {
 
 Armadilha: sem yield vazio, confirmação já recebida no store retido pode criar leitor retido, esperando o commit que a própria action bloqueia, até `TimeoutError`. Teste confirmação antes e depois da resposta da mutação. `flush()` dentro da action rejeita com `FLUSH_IN_ACTION` em dev.
 
+Contrato: helper `async` cedido por `yield helper()` só roda na transação até o primeiro `await` dele. `refresh` aguardado no helper depois desse ponto fica fora da action: o helper devolve o resultado e o gerador faz `yield refresh(fonte)`.
+
+Receita:
+```ts
+async function persist(input: Input) {
+  const saved = await api.save(input)
+  return saved.id
+}
+
+const save = action(function* (input: Input) {
+  affects(items)
+  const id = yield persist(input)
+  yield refresh(items)
+  setSelected(id)
+})
+```
+
+Armadilha: nada falha. O refresh resolve, a action também, e o teste que só olha o resultado final passa. Medido no runtime instalado, grafo sem DOM, builds dev e prod: com `await refresh(m)` no helper depois de outro `await`, o efeito que lê `m` publicou o valor novo no meio da action, enquanto a escrita comum feita antes no gerador seguiu retida até o assentamento. Com `yield refresh(m)` no gerador, os dois chegaram juntos no assentamento. Na revisão, procure `refresh(` em funções `async` chamadas por actions; o teste precisa observar a fonte durante a action pendente.
+
 ## Sobreposição e estado durável
 
 Contrato: `createOptimistic` e `createOptimisticStore` fornecem sobreposição transitória. Derivação mantém fonte autoritativa; toda escrita otimista dentro da action reverte no settle, com sucesso ou falha, inclusive escrita após yield usando resposta servidor. Verdade durável vem da derivação reexecutada por refresh/entrada ou de store comum separada. Escrita otimista fora de action aparece por um flush e reverte ao fim dele. `setOptimistic` não é export da base; use o setter do par.
