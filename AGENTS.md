@@ -246,6 +246,19 @@ release. Add a tool name to select part of the graph. For example, run
   ficam como o contrato exige, sem adaptação: middlewares `(request, next)` em
   `src/middleware/`, callbacks de teste e hooks de plugin do Vite.
 
+## Eventos em JSX
+
+- Declare os handlers de eventos DOM e de props de componentes como funções
+  nomeadas fora do JSX e passe a referência à prop, como `onClick={handleClick}`
+  ou `onChange={handleChange}`. Mantenha a lógica, incluindo condicionais e
+  construção de argumentos, nessas funções.
+- Callbacks de `ref` com uma chamada simples podem permanecer inline. Quando
+  houver atribuição com `=` ou lógica adicional, extraia uma função nomeada.
+  Callbacks de renderização e outras props seguem seus contratos próprios.
+- Aplique a regra em código novo e nos trechos alterados, sem refatoração em
+  massa de componentes existentes. A regra é conferida na revisão; o lint atual
+  não exige handlers nomeados.
+
 ## Condicionais e fluxo de controle
 
 - Evite ao máximo encadear condições com `else if`. Prefira guard clauses
