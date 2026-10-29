@@ -18,7 +18,7 @@ type StartOptions = {
   context: TestContext
   root?: string
   onClosing?: () => void
-  shouldDelayWatchEvents?: boolean
+  shouldIgnoreCompilerInputs?: boolean
 }
 type DevServer = {
   root: string
@@ -38,7 +38,9 @@ type ContainsOptions = { root: string; file: string; expected: RegExp }
 
 const RUNTIME_FILE = 'paraglide/runtime.js'
 const TIMEOUT_MS = 20_000
-const CACHE_TEST_STABILITY_MS = 1000
+// Entradas lidas pelo compilador. A fixture as grava antes da varredura, e o
+// fs.watch do macOS pode reportar essas escritas depois do ready.
+const COMPILER_INPUTS = ['**/project.inlang/**', '**/.paraglide/**']
 
 function payloadType(payload: unknown): unknown {
   return typeof payload === 'object' && payload !== null && 'type' in payload
@@ -108,7 +110,7 @@ export async function startServer({
   context,
   root: existing,
   onClosing,
-  shouldDelayWatchEvents = false
+  shouldIgnoreCompilerInputs = false
 }: StartOptions): Promise<DevServer> {
   const root = existing ?? (await mkdtemp(path.join(tmpdir(), 'i18n-plugin-')))
   const closers: Close[] = []
@@ -135,14 +137,7 @@ export async function startServer({
       watch: {
         useFsEvents: false,
         usePolling: false,
-        ...(shouldDelayWatchEvents
-          ? {
-              awaitWriteFinish: {
-                stabilityThreshold: CACHE_TEST_STABILITY_MS,
-                pollInterval: 10
-              }
-            }
-          : {})
+        ...(shouldIgnoreCompilerInputs ? { ignored: COMPILER_INPUTS } : {})
       }
     },
     optimizeDeps: { noDiscovery: true, include: [] },
