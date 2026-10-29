@@ -171,27 +171,33 @@ tarefa do `vite.config.ts`. Os dois podem divergir, então confira o
 `package.json` antes de rodar direto.
 
 Execute comandos interativos diretamente. Para selecionar atualizações, use
-`bun run deps:update`, que roda `bunx taze newest -l -I`; para só listar, use
-`bunx taze newest -l`. O `vp update --latest` e o `vp outdated` comparam cada
-pacote só com a dist-tag `latest` e omitem versões publicadas apenas em outra
-tag, como as RCs do Solid na `next`. O modo `newest` usa a última versão
-publicada de cada pacote, inclusive pré-releases de pacotes estáveis. Se ela for
-menor que a instalada, como um patch da linha 1.x publicado depois de uma RC da
-2.0, o pacote some da lista; quando um pacote do Solid não aparecer, confira com
+`bun run deps:update`, que roda o taze fixado nas devDependencies com
+`taze newest -l -I --no-node-version --no-github-actions`; para só listar, use
+`vp exec taze newest -l --no-node-version --no-github-actions`. O
+`vp update --latest` e o `vp outdated` comparam cada pacote só com a dist-tag
+`latest` e omitem versões publicadas apenas em outra tag, como as RCs do Solid
+na `next`. O modo `newest` usa a última versão publicada de cada pacote,
+inclusive pré-releases de pacotes estáveis. Se ela for menor que a instalada,
+como um patch da linha 1.x publicado depois de uma RC da 2.0, o pacote some da
+lista; quando um pacote do Solid não aparecer, confira com
 `npm view <pacote> dist-tags`. O `-l` é necessário porque o `package.json` fixa
-versões exatas. O seletor abre com as atualizações marcadas, inclusive o Node do
-`devEngines` e as GitHub Actions. Com tudo marcado, a tecla `a` desmarca tudo;
-se algum item vier desmarcado, o primeiro `a` marca tudo e o segundo limpa.
-Depois de gravar o `package.json`, o taze oferece instalar com o `bun` do
-`PATH`: responda não e rode `vp install`, que usa o Bun fixado. Observado no
-macOS: sob `vp run`, o script recebe o stdin em modo não bloqueante quando o
-bloco `run` deste `vite.config.ts` usa constantes, como `CSS_CACHE_INPUTS`.
-Segundo o mantenedor, o Vite+ carrega configurações dinâmicas e estáticas por
-caminhos diferentes, e a carga dinâmica consulta se o terminal é TTY, momento em
-que o Node passa o stdin para o modo não bloqueante. Uma leitura bloqueante
-falha na hora com `EAGAIN`, e o seletor do `vp update` fecha com zero pacotes
-selecionados antes de receber entrada. O do taze desenha a lista, mas não recebe
-as teclas. `bun run <script>` não tem o problema. O defeito está registrado em
+versões exatas. O Node do `devEngines` e as GitHub Actions ficam fora da lista:
+o Node muda à mão no `devEngines` e no `engines`, e as Actions são atualizadas
+pelo Dependabot. O seletor abre com as atualizações marcadas, e o taze ainda não
+tem opção para começar sem nada marcado
+([antfu-collective/taze#330](https://github.com/antfu-collective/taze/pull/330)).
+Com tudo marcado, a tecla `a` desmarca tudo; se algum item vier desmarcado, o
+primeiro `a` marca tudo e o segundo limpa. Depois de gravar o `package.json`, o
+taze oferece instalar com o `bun` do `PATH`: responda não e rode `vp install`,
+que usa o Bun fixado. Observado no macOS: sob `vp run`, o script recebe o stdin
+em modo não bloqueante quando o bloco `run` deste `vite.config.ts` usa
+constantes, como `CSS_CACHE_INPUTS`. Segundo o mantenedor, o Vite+ carrega
+configurações dinâmicas e estáticas por caminhos diferentes, e a carga dinâmica
+consulta se o terminal é TTY, momento em que o Node passa o stdin para o modo
+não bloqueante. Uma leitura bloqueante falha na hora com `EAGAIN`, e o seletor
+do `vp update` fecha com zero pacotes selecionados antes de receber entrada. O
+do taze desenha a lista, mas não recebe as teclas. `bun run <script>` não tem o
+problema. O defeito está registrado em
 [vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155); retire
 esta orientação quando `vp run deps:update` voltar a receber a seleção. A tabela
 acima também mantém Vitest em observação, interfaces de teste e o gerador do
