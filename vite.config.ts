@@ -360,7 +360,6 @@ export default defineConfig(({ mode }) => {
             name: { label: 'dom', color: 'magenta' },
             environment: 'happy-dom',
             environmentOptions: { happyDOM: { url: 'http://localhost/en' } },
-            setupFiles: ['./tooling/vitest.setup.ts'],
             include: ['src/**/*.dom.test.{ts,tsx}']
           }
         },

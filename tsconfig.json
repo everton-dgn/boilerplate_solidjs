@@ -31,6 +31,7 @@
       "node",
       "vite/client",
       "vite-plus/test/globals",
+      "@testing-library/jest-dom/vitest",
       "@solidjs/vite-plugin/boundary-modules",
       "@solidjs/vite-plugin/virtual-solid-manifest"
     ],

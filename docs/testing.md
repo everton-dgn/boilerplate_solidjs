@@ -43,7 +43,9 @@ porque `expectTypeOf` não conta como asserção em runtime.
 
 Os projetos `node` e `dom` usam `pool: 'threads'` e `css: false`. O projeto
 `node` não carrega happy-dom nem os plugins de componentes. O projeto `dom`
-carrega happy-dom, Solid e ícones, sem Nitro ou a configuração de SSR. O projeto
+carrega happy-dom, Solid e ícones, sem Nitro ou a configuração de SSR. O
+`@solidjs/vite-plugin` registra os matchers do `@testing-library/jest-dom` nesse
+projeto, sem `setupFiles` próprio, e os tipos vêm do `tsconfig.json`. O projeto
 `browser` usa Chromium com CSS habilitado e o mesmo Lightning CSS da aplicação.
 Importe o CSS no teste quando precisar validar estilos.
 
