@@ -59,10 +59,10 @@ local. As entradas autorais de renderização permanecem porque `entry-client.ts
 configura o idioma antes de hidratar, e o plugin exige o par cliente/servidor
 quando uma dessas entradas existe. Ambas usam a mesma árvore de `Document` e
 `App`. Com as entradas autorais, o plugin deixa de gerar o
-`DefaultErrorBoundary` de produção e a opção `start.errorBoundary` não tem
-efeito; o `Errored` raiz do `App` continua responsável pela página de erro. Uma
-exceção no próprio `Document` sai síncrona do `renderToStream` e a contenção de
-falhas responde o 500 em texto, com o log fixo.
+`DefaultErrorBoundary` de produção e a opção `start.productionErrorBoundary` não
+tem efeito; o `Errored` raiz do `App` continua responsável pela página de erro.
+Uma exceção no próprio `Document` sai síncrona do `renderToStream` e a contenção
+de falhas responde o 500 em texto, com o log fixo.
 
 ## Validação e CSS em streaming
 

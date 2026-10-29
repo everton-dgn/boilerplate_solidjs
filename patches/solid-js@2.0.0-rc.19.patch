@@ -1,0 +1,26 @@
+diff --git a/dist/solid.dev.js b/dist/solid.dev.js
+index 14ae6f6bf5fc3c9e725869782f8986a8476adb54..1103565747a3d861decbd1cd9b74311b3236fb06 100644
+--- a/dist/solid.dev.js
++++ b/dist/solid.dev.js
+@@ -1362,7 +1362,7 @@ function hydratedCreateLoadingBoundary(fn, fallback, options) {
+         const assets = boundaryAssets(id);
+         assets ? waitAndResume(true, resume, assets) : resume(true);
+       }) : (
+-      revealed || hy.v?.[id]?.forEach?.(n => n.remove()), recover(id, registeredAt, () => resume(shouldHydrate)) ), assetPromise,
++      revealed || hy.v?.[id]?.forEach?.(n => n.remove()), recover(id, registeredAt, () => resume(_truncated.has(id) ? false : shouldHydrate)) ), assetPromise,
+       0, fragmentAbort(id));
+       return revealed ? undefined : fallback();
+     }
+diff --git a/dist/solid.js b/dist/solid.js
+index 5393b4055774fc765dbe5001faf5cecd5315a7a8..9ffb41e9d98d38bb1425c232b6e72e772b2be43a 100644
+--- a/dist/solid.js
++++ b/dist/solid.js
+@@ -1304,7 +1304,7 @@ function hydratedCreateLoadingBoundary(fn, fallback, options) {
+         const assets = boundaryAssets(id);
+         assets ? waitAndResume(true, resume, assets) : resume(true);
+       }) : (
+-      revealed || hy.v?.[id]?.forEach?.(n => n.remove()), resume(shouldHydrate)), assetPromise,
++      revealed || hy.v?.[id]?.forEach?.(n => n.remove()), resume(_truncated.has(id) ? false : shouldHydrate)), assetPromise,
+       0, fragmentAbort(id));
+       return revealed ? undefined : fallback();
+     }

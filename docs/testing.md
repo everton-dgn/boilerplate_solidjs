@@ -120,6 +120,18 @@ sem ele. Não o use para controlar a UI: preserve `isHydrating()` e `onSettled`
 nos componentes que precisam distinguir SSR e estado do cliente. O contrato
 atual considera uma única raiz de hidratação.
 
+O patch Bun de `solid-js` preserva essa nova busca. Desde o
+[solidjs/solid#4313](https://github.com/solidjs/solid/pull/4313) e o
+[solidjs/solid#4319](https://github.com/solidjs/solid/pull/4319), a recuperação
+de um fragmento rejeitado roda numa passagem que adota o que o servidor enviou.
+Num stream truncado, o memo adotava a promise pendente do shell, que nunca
+assenta, porque a referência só sai do registro num `setTimeout` posterior. O
+patch usa a recuperação comum só para fragmentos truncados e mantém a adoção
+para rejeições enviadas pelo servidor, em `dist/solid.js` e `dist/solid.dev.js`.
+A chave do patch inclui a versão do pacote. Remova-o quando um pacote publicado
+passar o caso de recuperação após truncamento de `Hydration.parser.e2e.test.ts`
+sem ele; a issue ou o PR fechado não substitui essa verificação.
+
 `Hydration/` testa HTML bruto, JavaScript desligado, bundle retido ou abortado,
 recarga, replay de clique e navegação. Os cenários de parser e preload usam o
 evento `load` do módulo de entrada como prova de avaliação. Um proxy retém o

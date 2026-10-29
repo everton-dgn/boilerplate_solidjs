@@ -50,7 +50,7 @@ async function discoverRouteModules({
 }
 
 const config = {
-  // O env.ts é lido pelo @solidjs/vite-plugin (start.env) para gerar os
+  // O env.ts é lido pelo @solidjs/vite-plugin (opção env) para gerar os
   // módulos virtual:env, então nada o importa diretamente.
   entry: [
     // Entradas autorais do SSR, carregadas pelo @solidjs/vite-plugin por convenção.
