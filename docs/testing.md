@@ -127,23 +127,25 @@ de um fragmento rejeitado roda numa passagem que adota o que o servidor enviou.
 Num stream truncado, o memo adotava a promise pendente do shell, que nunca
 assenta, porque a referência só sai do registro num `setTimeout` posterior. O
 patch usa a recuperação comum para o fragmento que ainda esperava o servidor
-quando o truncamento foi detectado, como na RC18: as leituras desse fragmento
-são refeitas no cliente, inclusive as que o servidor já tinha enviado. Rejeições
-enviadas pelo servidor continuam adotadas, e o teste de erro contido de
-`Hydration.streaming.e2e.test.ts` confere que elas não geram nova busca. O patch
-altera `dist/solid.js` e `dist/solid.dev.js`; ativar `observe` no
+quando o truncamento foi detectado, como antes desses PRs: as leituras desse
+fragmento são refeitas no cliente, inclusive as que o servidor já tinha enviado.
+Rejeições enviadas pelo servidor continuam adotadas, e o teste de erro contido
+de `Hydration.streaming.e2e.test.ts` confere que elas não geram nova busca. O
+patch altera `dist/solid.js` e `dist/solid.dev.js`; ativar `observe` no
 `@solidjs/vite-plugin` exige incluir também `dist/solid.observe.js`. A chave do
 patch inclui a versão do pacote. Remova-o quando um pacote publicado passar os
 casos de truncamento de `Hydration.parser.e2e.test.ts` sem ele; a issue ou o PR
 fechado não substitui essa verificação. A regressão está relatada em
 [solidjs/solid#4413](https://github.com/solidjs/solid/issues/4413), com a
-correção proposta em
+correção integrada em
 [solidjs/solid#4414](https://github.com/solidjs/solid/pull/4414), que também
 preserva os valores já enviados. O runtime só detecta o truncamento quando a
 hidratação começa com o documento ainda em carregamento; uma raiz que só começa
 a hidratar depois do `DOMContentLoaded` espera os fragmentos indefinidamente,
-limitação que já existia na RC18
-([solidjs/solid#4415](https://github.com/solidjs/solid/issues/4415)).
+limitação anterior a esses PRs
+([solidjs/solid#4415](https://github.com/solidjs/solid/issues/4415), com a
+correção proposta em
+[solidjs/solid#4416](https://github.com/solidjs/solid/pull/4416)).
 
 `Hydration/` testa HTML bruto, JavaScript desligado, bundle retido ou abortado,
 recarga, replay de clique e navegação. Os cenários de parser e preload usam o
