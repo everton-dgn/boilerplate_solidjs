@@ -427,8 +427,10 @@ seguintes depois de uma falha.
   `bunfig.toml`) para evitar quebras silenciosas. Consulte os arquivos de
   dependências para saber quais estão instaladas.
 - Os overrides de `@solidjs/compiler` e `@solidjs/babel-plugin` mantêm o
-  compilador alinhado ao runtime do Solid. Atualize os dois junto com `solid-js`
-  e `@solidjs/web`, respeitando a compatibilidade do plugin do Vite.
+  compilador alinhado ao runtime do Solid, e o de `@solidjs/signals` prende o
+  núcleo reativo à mesma versão do `solid-js`, que o declara com `^`. Atualize
+  os três junto com `solid-js` e `@solidjs/web`, respeitando a compatibilidade
+  do plugin do Vite.
 - `vite-plus`, `vite`, `vitest` e os pacotes `@vitest/*` vêm do catálogo em
   `workspaces.catalog` do `package.json`; `vite` resolve para o core do Vite+.
   Atualize as versões nesse catálogo e mantenha os `@vitest/*` na versão exata

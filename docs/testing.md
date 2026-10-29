@@ -46,10 +46,10 @@ Os projetos `node` e `dom` usam `pool: 'threads'` e `css: false`. O projeto
 carrega happy-dom, Solid e ícones, sem Nitro ou a configuração de SSR. O
 `@solidjs/vite-plugin` registra os matchers do `@testing-library/jest-dom` nesse
 projeto, sem `setupFiles` próprio, e os tipos vêm do `tsconfig.json`. A injeção
-só acontece em projetos fora do browser mode e é pulada quando algum
-`setupFiles` tem `jest-dom` no caminho. O projeto `browser` usa Chromium com CSS
-habilitado e o mesmo Lightning CSS da aplicação. Importe o CSS no teste quando
-precisar validar estilos.
+só acontece em projetos de DOM fora do browser mode, como `happy-dom`, e é
+pulada quando algum `setupFiles` tem `jest-dom` no caminho. O projeto `browser`
+usa Chromium com CSS habilitado e o mesmo Lightning CSS da aplicação. Importe o
+CSS no teste quando precisar validar estilos.
 
 Localmente, os testes de navegador e E2E usam o Chromium instalado pelo
 Playwright. Com `CI=true`, usam o Chrome do runner pelo canal `chrome`.
@@ -126,16 +126,25 @@ O patch Bun de `solid-js` preserva essa nova busca. Desde o
 de um fragmento rejeitado roda numa passagem que adota o que o servidor enviou.
 Num stream truncado, o memo adotava a promise pendente do shell, que nunca
 assenta, porque a referência só sai do registro num `setTimeout` posterior. O
-patch usa a recuperação comum só para fragmentos truncados e mantém a adoção
-para rejeições enviadas pelo servidor, em `dist/solid.js` e `dist/solid.dev.js`.
-A chave do patch inclui a versão do pacote. Remova-o quando um pacote publicado
-passar o caso de recuperação após truncamento de `Hydration.parser.e2e.test.ts`
-sem ele; a issue ou o PR fechado não substitui essa verificação.
+patch usa a recuperação comum para o fragmento que ainda esperava o servidor
+quando o truncamento foi detectado, como na RC18: as leituras desse fragmento
+são refeitas no cliente, inclusive as que o servidor já tinha enviado. Rejeições
+enviadas pelo servidor continuam adotadas, e o teste de erro contido de
+`Hydration.streaming.e2e.test.ts` confere que elas não geram nova busca. O patch
+altera `dist/solid.js` e `dist/solid.dev.js`; ativar `observe` no
+`@solidjs/vite-plugin` exige incluir também `dist/solid.observe.js`. A chave do
+patch inclui a versão do pacote. Remova-o quando um pacote publicado passar os
+casos de truncamento de `Hydration.parser.e2e.test.ts` sem ele; a issue ou o PR
+fechado não substitui essa verificação. O runtime só detecta o truncamento
+quando a hidratação começa com o documento ainda em carregamento; uma raiz que
+só começa a hidratar depois do `DOMContentLoaded` espera os fragmentos
+indefinidamente, limitação que já existia na RC18.
 
 `Hydration/` testa HTML bruto, JavaScript desligado, bundle retido ou abortado,
 recarga, replay de clique e navegação. Os cenários de parser e preload usam o
 evento `load` do módulo de entrada como prova de avaliação. Um proxy retém o
-corpo após `</head>`; outro caso encerra o stream antes dos fragmentos. A
+corpo após `</head>`; outros casos encerram o stream antes dos fragmentos e
+antes do fim do shell, com o `hydrate()` estacionado até o `DOMContentLoaded`. A
 fixture de dois `Loading` usa gates do backend, liberados pelo teste, para
 conferir resolução fora de ordem, erro contido, descarte por navegação e
 recuperação após truncamento. As provas usam o build real, sem mock do Solid, e

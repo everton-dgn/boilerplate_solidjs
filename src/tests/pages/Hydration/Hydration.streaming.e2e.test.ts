@@ -96,6 +96,16 @@ test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
   const id = crypto.randomUUID()
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
+  // A rejeição enviada pelo servidor é adotada na hidratação, sem nova busca.
+  let clientLoads = 0
+  page.on('request', resource => {
+    if (
+      resource.method() === 'POST' &&
+      new URL(resource.url()).pathname.startsWith('/_server/')
+    ) {
+      clientLoads += 1
+    }
+  })
   const violations = await watchCspViolations(page)
   try {
     await openStream({ page, id, shouldReject: true })
@@ -114,6 +124,7 @@ test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
     await expect(
       page.getByText('First stream failed', { exact: true })
     ).toBeVisible()
+    expect(clientLoads).toBe(0)
     expect(violations).toStrictEqual([])
     expect(errors).toStrictEqual([])
   } finally {
