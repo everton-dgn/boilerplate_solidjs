@@ -1,6 +1,0 @@
-/* O script do head marca o documento. Sem JavaScript, os controles que
-   dependem dele ficariam inertes e saem da tela; o seletor de idioma tem
-   links em noscript no lugar, e o de tema não tem alternativa. */
-:root:not([data-js]) .js_only {
-  display: none;
-}

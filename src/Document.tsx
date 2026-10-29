@@ -47,7 +47,6 @@ export default function Document(props: ParentProps) {
         <link rel="describedby" href="/llms.txt" />
         <script nonce={nonce}>
           {`(() => {
-            document.documentElement.dataset.js = '';
             const theme = ${JSON.stringify(theme)};
             const dark = theme === 'dark' || (theme === 'system' && matchMedia(${JSON.stringify(DARK_MEDIA_QUERY)}).matches);
             (${applyTheme.toString()})({ theme: dark ? 'dark' : 'light', color: dark ? ${JSON.stringify(THEME_COLORS.dark)} : ${JSON.stringify(THEME_COLORS.light)} });

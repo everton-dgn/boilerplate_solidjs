@@ -27,12 +27,6 @@ test.describe('layout na árvore de produção', () => {
         .getByRole('banner')
         .locator('button[aria-haspopup="menu"]')
       await expect(menuTriggers).toHaveCount(MENU_TRIGGERS)
-      for (const trigger of await menuTriggers.all()) {
-        await expect(trigger).toBeHidden()
-      }
-      await expect(
-        page.getByRole('navigation', { name: 'Idioma' }).getByRole('link')
-      ).toHaveText(['Português', 'English', 'Español'])
       await expect(page.locator('head link[rel="canonical"]')).toHaveCount(1)
 
       const missing = await page.goto('/pt/pagina-inexistente')

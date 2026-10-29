@@ -77,13 +77,9 @@ test.describe('without JavaScript', () => {
   }) => {
     await page.goto(PAGE_URL)
     await expectServerDocument(page)
-    // Sem JavaScript o gatilho fica escondido, mas o servidor o entrega
-    // desabilitado.
     const trigger = page.getByRole('button', {
-      name: THEME_BUTTON,
-      includeHidden: true
+      name: THEME_BUTTON
     })
-    await expect(trigger).toBeHidden()
     await expect(trigger).toBeDisabled()
     await expect(page.getByRole('menu')).toHaveCount(0)
     expect(await page.evaluate(() => document.readyState)).toBe('complete')

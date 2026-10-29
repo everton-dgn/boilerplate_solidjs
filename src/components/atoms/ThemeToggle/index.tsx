@@ -22,7 +22,6 @@ export function ThemeToggle() {
 
   return (
     <DropdownMenu<Theme>
-      class="js_only"
       label={m.themeToggle_label()}
       value={state.theme()}
       onChange={state.setTheme}

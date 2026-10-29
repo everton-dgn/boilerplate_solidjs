@@ -18,12 +18,7 @@ function mountSwitcher() {
 }
 
 describe('seletor de idioma', () => {
-  afterEach(() => {
-    document.documentElement.toggleAttribute('data-js', false)
-  })
-
   it('inclui o idioma visível no nome acessível do gatilho', async () => {
-    document.documentElement.toggleAttribute('data-js', true)
     mountSwitcher()
     const trigger = page.getByRole('button', { name: /select language/u })
     await expect.element(trigger).toHaveTextContent('EN')
@@ -32,15 +27,5 @@ describe('seletor de idioma', () => {
     await expect
       .element(page.getByRole('menuitemradio', { name: 'English' }))
       .toHaveAttribute('aria-checked', 'true')
-  })
-
-  it('oculta o gatilho quando o documento não tem JavaScript', async () => {
-    const host = mountSwitcher()
-    await expect.poll(() => host.querySelector('button')).not.toBeNull()
-    const trigger = host.querySelector('button')
-    assert(trigger)
-    await expect.element(trigger).not.toBeVisible()
-    document.documentElement.toggleAttribute('data-js', true)
-    await expect.element(trigger).toBeVisible()
   })
 })

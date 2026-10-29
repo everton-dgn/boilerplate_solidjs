@@ -96,6 +96,15 @@ release. Add a tool name to select part of the graph. For example, run
 - Ao renomear um módulo, atualize seus imports, referências documentais e
   nomes dos testes correspondentes, preservando os sufixos de ambiente.
 
+## JavaScript e renderização no servidor
+
+- A aplicação exige JavaScript para os controles interativos. Não crie
+  fallbacks de navegação em `noscript`, classes ou scripts para ocultar
+  controles quando JavaScript estiver desativado, nem suporte alternativo
+  específico para esse cenário.
+- Preserve SSR, SEO e testes do HTML inicial: eles verificam o conteúdo entregue
+  pelo servidor e a hidratação, sem prometer operação da aplicação sem JavaScript.
+
 ## Traduções
 
 - Idiomas e idioma base vêm de `project.inlang/settings.json`. Cada consumidor

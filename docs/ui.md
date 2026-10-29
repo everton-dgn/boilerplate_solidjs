@@ -58,10 +58,7 @@ Clicar fora fecha o menu e preserva o destino do foco.
 Os gatilhos de tema e de idioma incluem o estado atual no nome acessível: o de
 idioma começa pelo código mostrado no botão, como "EN, select language", e o de
 tema informa a preferência atual depois da hidratação. Os dois dependem de
-JavaScript. O script do `head` marca o `<html>` com `data-js`, e a regra
-`.js_only` de `src/theme/class/scripting.css` esconde os gatilhos quando essa
-marca não existe. Sem JavaScript, o `noscript` do `LocaleSwitcher` oferece os
-links de idioma.
+JavaScript.
 
 ## Tema e persistência
 
