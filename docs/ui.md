@@ -171,9 +171,14 @@ o componente e a folha inline gerariam classes diferentes
 `[name]_[local]`, porque todos os módulos se chamam `styles.module.css` e as
 classes colidiriam, nem `[content-hash]` sem `[local]`, que junta todas as
 classes da folha num nome só. Como o nome vem do conteúdo, editar um CSS muda as
-classes geradas, e duas folhas com conteúdo idêntico compartilham os nomes.
+classes geradas e o hash do chunk JS que importa a folha, e duas folhas com
+conteúdo idêntico compartilham os nomes; isso só é seguro sem `url()`, `@import`
+ou `composes` relativos, que apontariam para alvos diferentes.
 `tooling/lightningCssModules/` carrega o `vite.config.ts` real e confere que o
-import normal e o `?inline` usam a mesma classe.
+import normal e o `?inline` usam a mesma classe e que as classes continuam
+distintas entre seletores e entre módulos. Quando uma versão do Vite+ trouxer o
+[vitejs/vite#23736](https://github.com/vitejs/vite/pull/23736), o padrão pode
+voltar ao `[hash]` do Lightning CSS, desde que esse teste continue passando.
 
 ## SVGs locais como componentes
 

@@ -45,9 +45,11 @@ Os projetos `node` e `dom` usam `pool: 'threads'` e `css: false`. O projeto
 `node` não carrega happy-dom nem os plugins de componentes. O projeto `dom`
 carrega happy-dom, Solid e ícones, sem Nitro ou a configuração de SSR. O
 `@solidjs/vite-plugin` registra os matchers do `@testing-library/jest-dom` nesse
-projeto, sem `setupFiles` próprio, e os tipos vêm do `tsconfig.json`. O projeto
-`browser` usa Chromium com CSS habilitado e o mesmo Lightning CSS da aplicação.
-Importe o CSS no teste quando precisar validar estilos.
+projeto, sem `setupFiles` próprio, e os tipos vêm do `tsconfig.json`. A injeção
+só acontece em projetos fora do browser mode e é pulada quando algum
+`setupFiles` tem `jest-dom` no caminho. O projeto `browser` usa Chromium com CSS
+habilitado e o mesmo Lightning CSS da aplicação. Importe o CSS no teste quando
+precisar validar estilos.
 
 Localmente, os testes de navegador e E2E usam o Chromium instalado pelo
 Playwright. Com `CI=true`, usam o Chrome do runner pelo canal `chrome`.
