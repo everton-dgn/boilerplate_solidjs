@@ -457,7 +457,7 @@ Valide com `vp run check:ci`, `vp run typecheck:node`, `vp run test:tooling` e
 os testes Node de `src/middleware/` e de SEO. Execute
 `vp run test:e2e:production` para conferir a árvore real e `vp run test:e2e`
 para exercitar também as fixtures e falhas do servidor. As suítes
-`AgentReadiness` cobrem conteúdo sem JavaScript, idiomas, negociação, HEAD, 404
+`AgentReadiness` cobrem conteúdo do HTML inicial, idiomas, negociação, HEAD, 404
 e navegação em larguras de celular e desktop.
 
 A home mantém pelo menos 500 caracteres de conteúdo visível nos três idiomas,

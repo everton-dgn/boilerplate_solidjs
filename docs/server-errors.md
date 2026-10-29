@@ -418,10 +418,11 @@ permanecer 200 após o envio inicial; os testes conferem confidencialidade
 independentemente dele. Fontes adiadas aninhadas e trabalho assíncrono fora do
 retorno aguardado exigem integração e testes próprios.
 
-O link global "Recarregar página" preserva a URL e funciona sem JavaScript.
-Ações iniciadas depois do carregamento precisam ser repetidas. Para retry local
-com query, invalide a chave antes de `reset()`:
-`revalidate(getData.key); reset()`. Confirme uma nova chamada ao backend.
+O link global "Recarregar página" preserva a URL e faz uma navegação de
+documento, independente da hidratação. Ações iniciadas depois do carregamento
+precisam ser repetidas. Para retry local com query, invalide a chave antes de
+`reset()`: `revalidate(getData.key); reset()`. Confirme uma nova chamada ao
+backend.
 
 Após alterar essa fronteira, execute:
 

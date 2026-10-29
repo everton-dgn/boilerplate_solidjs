@@ -74,7 +74,7 @@ function readMainContent(html: string) {
 for (const language of LANGUAGES) {
   // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
   for (const [index, path] of PATHS.entries()) {
-    test(`${language.locale}${path || '/'} publishes readable content and discovery links without JavaScript`, async ({
+    test(`${language.locale}${path || '/'} publishes readable content and discovery metadata in the initial HTML`, async ({
       browser,
       baseURL,
       request
@@ -150,7 +150,7 @@ for (const language of LANGUAGES) {
           const link = page
             .locator('header > nav')
             .locator(`a[href="/${language.locale}${destination}"]`)
-          await expect(link).toBeVisible()
+          await expect(link).toHaveCount(1)
           await expect(link).toHaveAccessibleName(/\S/u)
         }
       } finally {
@@ -209,10 +209,12 @@ for (const language of LANGUAGES) {
         }
 
         for (const [index, path] of PATHS.entries()) {
-          await page
+          const link = page
             .locator('header > nav')
             .locator(`a[href="/${language.locale}${path}"]`)
-            .click()
+          await expect(link).toBeVisible()
+          await expect(link).toHaveAccessibleName(/\S/u)
+          await link.click()
           await expect(page).toHaveURL(`/${language.locale}${path}`)
           await expect(markdownAlternate).toHaveAttribute(
             'href',

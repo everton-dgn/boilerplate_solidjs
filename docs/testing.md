@@ -88,7 +88,7 @@ exceto os arquivos `*.production.e2e.test.ts`, com Chromium. O Playwright gera o
 build e inicia o servidor de produção em `http://127.0.0.1:4317`, encerrando-o
 ao terminar. A porta precisa estar livre. Os cenários cobrem a página inicial,
 hidratação do seletor de tema, teclado, persistência e sincronização entre abas,
-cores sem JavaScript, layout e resposta 404 com navegação de volta ao início.
+cores no HTML inicial, layout e resposta 404 com navegação de volta ao início.
 Também cobrem a confidencialidade de erros do servidor: HTTP 500 de um backend
 local, exceção após a leitura, `Error` dentro do resultado, erro público e
 sucesso, cada um em SSR inicial, chamada pelo navegador e streaming, além de
@@ -159,12 +159,13 @@ da Vercel continuam exigindo conferência no site publicado.
 
 `AgentReadiness.content.production.e2e.test.ts` verifica a apresentação compacta
 da home, sem subtítulos nem rodapé no `main`, e preserva a exigência de conteúdo
-detalhado, com subtítulos, nas páginas internas. Sem JavaScript, cada página
-mostra os links da topbar visíveis e nomeados nos três idiomas. Com JavaScript,
-a navegação por esses links, em telas estreitas e largas, mantém tema, idioma e
-o mesmo cabeçalho, sem alargar o documento. Em 375 px, os links transbordam e
-rolam dentro da barra, e os botões de tema e idioma, fora dela, continuam
-visíveis. O Markdown da home traz o título e nenhuma seção de segundo nível.
+detalhado, com subtítulos, nas páginas internas. O HTML inicial e os links da
+topbar são inspecionados nos três idiomas. Após a hidratação, os links ficam
+visíveis e nomeados; a navegação, em telas estreitas e largas, mantém tema,
+idioma e o mesmo cabeçalho, sem alargar o documento. Em 375 px, os links
+transbordam e rolam dentro da barra, e os botões de tema e idioma, fora dela,
+continuam visíveis. O Markdown da home traz o título e nenhuma seção de segundo
+nível.
 
 `Home.csp.production.e2e.test.ts` confere que a CSP traz um nonce que muda a
 cada requisição, que todos os `<script>` e `modulepreload` do HTML bruto trazem

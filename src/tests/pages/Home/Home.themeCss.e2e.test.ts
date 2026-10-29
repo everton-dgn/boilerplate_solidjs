@@ -2,11 +2,9 @@ import { expect, test } from '@playwright/test'
 
 test.use({ locale: 'pt-BR' })
 
-test.describe('cores CSS sem JavaScript', () => {
+test.describe('cores no HTML inicial', () => {
   for (const colorScheme of ['light', 'dark'] as const) {
-    test(`CSS segue o sistema ${colorScheme} sem JavaScript`, async ({
-      browser
-    }) => {
+    test(`CSS inicial segue o sistema ${colorScheme}`, async ({ browser }) => {
       const context = await browser.newContext({
         javaScriptEnabled: false,
         colorScheme
@@ -29,7 +27,7 @@ test.describe('cores CSS sem JavaScript', () => {
   }
 
   for (const theme of ['light', 'dark'] as const) {
-    test(`SSR aplica cookie ${theme} sem JavaScript e contra o sistema`, async ({
+    test(`SSR aplica cookie ${theme} contra o sistema antes da hidratação`, async ({
       browser,
       baseURL
     }) => {
