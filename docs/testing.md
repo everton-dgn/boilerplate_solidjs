@@ -135,10 +135,15 @@ altera `dist/solid.js` e `dist/solid.dev.js`; ativar `observe` no
 `@solidjs/vite-plugin` exige incluir também `dist/solid.observe.js`. A chave do
 patch inclui a versão do pacote. Remova-o quando um pacote publicado passar os
 casos de truncamento de `Hydration.parser.e2e.test.ts` sem ele; a issue ou o PR
-fechado não substitui essa verificação. O runtime só detecta o truncamento
-quando a hidratação começa com o documento ainda em carregamento; uma raiz que
-só começa a hidratar depois do `DOMContentLoaded` espera os fragmentos
-indefinidamente, limitação que já existia na RC18.
+fechado não substitui essa verificação. A regressão está relatada em
+[solidjs/solid#4413](https://github.com/solidjs/solid/issues/4413), com a
+correção proposta em
+[solidjs/solid#4414](https://github.com/solidjs/solid/pull/4414), que também
+preserva os valores já enviados. O runtime só detecta o truncamento quando a
+hidratação começa com o documento ainda em carregamento; uma raiz que só começa
+a hidratar depois do `DOMContentLoaded` espera os fragmentos indefinidamente,
+limitação que já existia na RC18
+([solidjs/solid#4415](https://github.com/solidjs/solid/issues/4415)).
 
 `Hydration/` testa HTML bruto, JavaScript desligado, bundle retido ou abortado,
 recarga, replay de clique e navegação. Os cenários de parser e preload usam o
