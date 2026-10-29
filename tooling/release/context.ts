@@ -36,6 +36,14 @@ export async function appendOutput(
   )
 }
 
+// Adiar não é falha: o CI do commit mais novo da main inicia outra release.
+export async function postpone(message: string): Promise<void> {
+  console.warn(`::notice::${message}`)
+  if (env.GITHUB_STEP_SUMMARY) {
+    await appendFile(env.GITHUB_STEP_SUMMARY, `${message}\n`)
+  }
+}
+
 export function releaseDay(ctx: ReleaseContext): string {
   return ctx.date.slice(0, ISO_DATE_LENGTH)
 }

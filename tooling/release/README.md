@@ -10,6 +10,19 @@ aprovado da origem e verifica o conteúdo exato do commit de release antes do
 merge normal. Depois cria uma tag anotada e publica as notas na GitHub Release.
 Não publica no npm nem faz deploy.
 
+## Organização do código
+
+`automatic-release.ts` lê o modo e o contexto, valida o artifact e coordena as
+etapas. `prepare-release.ts` prepara a branch e o PR e verifica os commits
+envolvidos. `publish-release.ts` integra a release, verifica o merge e publica a
+tag e as notas. `repository.ts` reúne as consultas de estado e as proteções do
+repositório; `context.ts` mantém o contexto da execução e suas saídas.
+
+Os tipos compartilhados dessas etapas ficam em `types.ts`; os tipos privados
+permanecem no módulo que os usa. A árvore de imports dos jobs com escrita
+continua usando apenas módulos nativos, sem instalar dependências. Os testes
+executam a mesma entrada do workflow e verificam essa árvore de imports.
+
 ## Versionamento
 
 | Commit                                                             | Incremento                 |
