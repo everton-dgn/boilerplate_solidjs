@@ -179,11 +179,13 @@ na `next`. O modo `newest` também oferece pré-releases de pacotes estáveis, e
 com todas as atualizações marcadas, inclusive o Node do `devEngines` e as GitHub
 Actions; tecle `a` para desmarcar tudo antes de escolher. Observado no macOS:
 sob `vp run`, o script recebe o stdin em modo não bloqueante quando o bloco
-`run` deste `vite.config.ts` usa constantes, como `CSS_CACHE_INPUTS`. Uma
-leitura bloqueante falha na hora com `EAGAIN`, e o seletor do `vp update` fecha
-com zero pacotes selecionados antes de receber entrada. O do taze desenha a
-lista, mas não recebe as teclas. `bun run <script>` não tem o problema. O
-defeito está registrado em
+`run` deste `vite.config.ts` usa constantes, como `CSS_CACHE_INPUTS`. Segundo o
+mantenedor, o Vite+ carrega configurações dinâmicas e estáticas por caminhos
+diferentes, e a carga dinâmica lê `process.isTTY`, momento em que o Node passa o
+stdin para o modo não bloqueante. Uma leitura bloqueante falha na hora com
+`EAGAIN`, e o seletor do `vp update` fecha com zero pacotes selecionados antes
+de receber entrada. O do taze desenha a lista, mas não recebe as teclas.
+`bun run <script>` não tem o problema. O defeito está registrado em
 [vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155); retire
 esta orientação quando `vp run deps:update` voltar a receber a seleção. A tabela
 acima também mantém Vitest em observação, interfaces de teste e o gerador do
