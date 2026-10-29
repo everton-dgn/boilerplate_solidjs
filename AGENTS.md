@@ -50,8 +50,8 @@ release. Add a tool name to select part of the graph. For example, run
   do `vite.config.ts` usar constantes, que fazem o Vite+ carregar a configuração
   de forma dinâmica
   ([vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155)).
-  Prompts interativos não recebem a entrada; rode-os com `bun run <script>`,
-  como `bun run deps:update`, ou com o comando direto. Detalhes em
+  Prompts interativos não recebem a entrada; rode-os diretamente, como
+  `vp update --interactive --latest`, ou com `bun run <script>`. Detalhes em
   [desenvolvimento](docs/development.md#execução-e-cache).
 
 ## Documentação de dependências
