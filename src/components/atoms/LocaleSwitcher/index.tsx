@@ -16,6 +16,18 @@ import { LOCALE_NAMES } from './constants.ts'
 
 import S from './styles.module.css'
 
+function makeLanguages() {
+  return locales.map(locale => ({
+    value: locale,
+    label: LOCALE_NAMES[locale],
+    icon: (
+      <span class={S.code} aria-hidden="true">
+        {locale.toUpperCase()}
+      </span>
+    )
+  }))
+}
+
 export function LocaleSwitcher() {
   const location = useLocation()
   return (
@@ -25,15 +37,7 @@ export function LocaleSwitcher() {
         label={m.localeSwitcher_label()}
         value={getLocale()}
         onChange={locale => setLocale(locale)}
-        items={locales.map(locale => ({
-          value: locale,
-          label: LOCALE_NAMES[locale],
-          icon: (
-            <span class={S.code} aria-hidden="true">
-              {locale.toUpperCase()}
-            </span>
-          )
-        }))}
+        items={makeLanguages()}
         trigger={props => (
           <Button
             {...props}
