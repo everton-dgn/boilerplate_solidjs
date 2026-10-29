@@ -8,17 +8,19 @@ import { createServer, isRunnableDevEnvironment } from 'vite-plus'
 type CssModule = { default: Record<string, string> }
 type CssSource = { default: string }
 
+const ROOT = path.resolve(import.meta.dirname, '../../..')
 const BADGE_CSS = '/src/components/atoms/PageBadge/styles.module.css'
 
-// Cobre o backport de https://github.com/vitejs/vite/pull/23736 e deve continuar
-// passando quando uma atualização permitir retirar o patch da dependência.
+// Carrega o vite.config.ts real: o SSR de desenvolvimento do plugin do Solid
+// importa as folhas com ?inline, e as classes precisam coincidir com as do
+// import normal feito pelo componente.
 it('keeps CSS Module classes when importing the stylesheet inline', async context => {
   const server = await createServer({
-    root: path.resolve(import.meta.dirname, '../../..'),
-    configFile: false,
+    root: ROOT,
+    configFile: path.join(ROOT, 'vite.config.ts'),
+    mode: 'test',
     logLevel: 'silent',
     appType: 'custom',
-    css: { transformer: 'lightningcss' },
     server: { middlewareMode: true, watch: null, ws: false },
     optimizeDeps: { noDiscovery: true, include: [] }
   })

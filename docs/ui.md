@@ -162,6 +162,19 @@ nessas regras. O Vite+ cuida dos imports de CSS e da minificação no build, e a
 mesma configuração vale para os builds Nitro e para o projeto `browser` do
 Vitest.
 
+As classes dos CSS Modules seguem o padrão `[content-hash]_[local]`
+(`css.lightningcss.cssModules.pattern`). O `[hash]` padrão do Lightning CSS
+inclui a query do módulo, e o SSR de desenvolvimento do plugin do Solid importa
+cada folha com `?inline` para entregar o estilo no primeiro HTML: com o padrão,
+o componente e a folha inline gerariam classes diferentes
+([vitejs/vite#23735](https://github.com/vitejs/vite/issues/23735)). Não use
+`[name]_[local]`, porque todos os módulos se chamam `styles.module.css` e as
+classes colidiriam, nem `[content-hash]` sem `[local]`, que junta todas as
+classes da folha num nome só. Como o nome vem do conteúdo, editar um CSS muda as
+classes geradas, e duas folhas com conteúdo idêntico compartilham os nomes.
+`tooling/lightningCssModules/` carrega o `vite.config.ts` real e confere que o
+import normal e o `?inline` usam a mesma classe.
+
 ## SVGs locais como componentes
 
 O `unplugin-icons` carrega a coleção `my-images` de `src/assets/images/` com

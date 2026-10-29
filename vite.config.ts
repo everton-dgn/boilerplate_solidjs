@@ -135,9 +135,12 @@ const appPlugins = (mode: string) =>
   })
 
 // O Lightning CSS transpila nesting, light-dark() e prefixos para os navegadores
-// do Baseline padrão do Vite.
+// do Baseline padrão do Vite. O nome das classes dos CSS Modules vem só do
+// conteúdo: o [hash] padrão inclui a query, e o ?inline usado pelo plugin do
+// Solid no SSR de desenvolvimento geraria outras classes (vitejs/vite#23735).
 const css = {
-  transformer: 'lightningcss'
+  transformer: 'lightningcss',
+  lightningcss: { cssModules: { pattern: '[content-hash]_[local]' } }
 } as const
 
 // oxlint-disable-next-line eslint/max-lines-per-function -- A configuração declarativa do Vite fica reunida neste callback.
