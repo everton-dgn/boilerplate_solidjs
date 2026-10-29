@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+## 1.12.12 - 2026-10-29
+
+### Fixed
+
+- update Solid rc.18 and Paraglide (fca0b8b)
+- update knip to 6.43.0 (28f6925)
+- update filesystem-routing, Vite+ and Node (70d4f5b)
+- keep uncommitted edits in uncontrolled inputs and textareas (1d82056)
+- update Solid to rc.17 and the Vite plugin to next.51 (ec7bdf0)
+- update Bun to 1.4.4 (879cf7e)
+- skip toasts dismissed in the same tick when moving focus (4a236e0)
+- keep the file route manifest in scan order on updates (d44ac9e)
+- keep focus, accessible names and hydration consistent (bad88f2)
+- harden SEO indexes, page methods and middleware checks (ca98df9)
+- parse Accept in linear time and accept RFC 7763 variants (c5b0b66)
+- limit typecheck cache inputs to files tsc reads (d1aa2e9)
+- print the original SSR error in development again (f83ca07)
+- keep the SSR integrity state read-only and fail closed (b371043)
+- pass the request event from the residual Solid web patch (a7e08be)
+- mark the SSR integrity state for control signals again (64d51c6)
+- keep control signals out of the SSR integrity state (63163e6)
+- update Solid Router to next.41 and adopt formAction (3c322d5)
+- update Solid to rc.16 and read SSR integrity from the error hook (39087ac)
+- update knip and keep route helpers under dead-code checks (6934dfc)
+- update paraglide, inlang message format, commitlint and happy-dom (77aca8d)
+- declare the CI reuse proof as a Knip entry (562875b)
+- drop esbuild from trustedDependencies (ef275bd)
+- include every typecheck-node input in its cache key (e327c53)
+- update vite-plus to 1.3.0 (8805c47)
+
 ## 1.12.11 - 2026-10-20
 
 ### Fixed
