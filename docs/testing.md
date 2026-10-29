@@ -120,29 +120,18 @@ sem ele. Não o use para controlar a UI: preserve `isHydrating()` e `onSettled`
 nos componentes que precisam distinguir SSR e estado do cliente. O contrato
 atual considera uma única raiz de hidratação.
 
-O patch Bun de `solid-js` preserva essa nova busca. Desde o
-[solidjs/solid#4313](https://github.com/solidjs/solid/pull/4313) e o
-[solidjs/solid#4319](https://github.com/solidjs/solid/pull/4319), a recuperação
-de um fragmento rejeitado roda numa passagem que adota o que o servidor enviou.
-Num stream truncado, o memo adotava a promise pendente do shell, que nunca
-assenta, porque a referência só sai do registro num `setTimeout` posterior. O
-patch usa a recuperação comum para o fragmento que ainda esperava o servidor
-quando o truncamento foi detectado, como antes desses PRs: as leituras desse
-fragmento são refeitas no cliente, inclusive as que o servidor já tinha enviado.
-Rejeições enviadas pelo servidor continuam adotadas, e o teste de erro contido
-de `Hydration.streaming.e2e.test.ts` confere que elas não geram nova busca. O
-patch altera `dist/solid.js` e `dist/solid.dev.js`; ativar `observe` no
-`@solidjs/vite-plugin` exige incluir também `dist/solid.observe.js`. A chave do
-patch inclui a versão do pacote. Remova-o quando um pacote publicado passar os
-casos de truncamento de `Hydration.parser.e2e.test.ts` sem ele; a issue ou o PR
-fechado não substitui essa verificação. A regressão está relatada em
-[solidjs/solid#4413](https://github.com/solidjs/solid/issues/4413), com a
-correção integrada em
-[solidjs/solid#4414](https://github.com/solidjs/solid/pull/4414), que também
-preserva os valores já enviados. O runtime só detecta o truncamento quando a
-hidratação começa com o documento ainda em carregamento; uma raiz que só começa
-a hidratar depois do `DOMContentLoaded` espera os fragmentos indefinidamente,
-limitação anterior a esses PRs
+Um fragmento cortado pelo truncamento é renderizado do zero no cliente e adota
+por id o que o servidor já tinha enviado
+([solidjs/solid#4319](https://github.com/solidjs/solid/pull/4319)). Os registros
+que o stream nunca assentou saem do registro antes dessa renderização
+([solidjs/solid#4414](https://github.com/solidjs/solid/pull/4414)), então só as
+leituras sem resposta do servidor são refeitas. Os casos de truncamento de
+`Hydration.parser.e2e.test.ts` cobrem essa nova busca, e o teste de erro contido
+de `Hydration.streaming.e2e.test.ts` confere que rejeições enviadas pelo
+servidor continuam adotadas, sem nova busca. O runtime só detecta o truncamento
+quando a hidratação começa com o documento ainda em carregamento; uma raiz que
+só começa a hidratar depois do `DOMContentLoaded` espera os fragmentos
+indefinidamente
 ([solidjs/solid#4415](https://github.com/solidjs/solid/issues/4415), com a
 correção proposta em
 [solidjs/solid#4416](https://github.com/solidjs/solid/pull/4416)).
