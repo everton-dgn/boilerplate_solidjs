@@ -248,16 +248,22 @@ release. Add a tool name to select part of the graph. For example, run
 
 ## Eventos em JSX
 
-- Declare os handlers de eventos DOM e de props de componentes como funções
-  nomeadas fora do JSX e passe a referência à prop, como `onClick={handleClick}`
-  ou `onChange={handleChange}`. Mantenha a lógica, incluindo condicionais e
-  construção de argumentos, nessas funções.
+- Handlers de eventos DOM e de props de componentes podem permanecer inline
+  quando descrevem uma ação local curta. Construir um objeto de argumentos ou
+  usar uma guarda simples não exige extração por si só.
+- Extraia uma função nomeada quando houver lógica complexa, várias etapas,
+  reuso ou um nome que esclareça a intenção. Evite criar uma sequência de
+  handlers que apenas repassam chamadas e obrigam alternar entre as declarações
+  e o JSX para entender o elemento.
+- No `ToastProvider`, mantenha junto ao JSX os callbacks curtos de pausa,
+  foco e fechamento que usam o `id` de cada item do `For`. Preserve funções
+  próprias para operações como encontrar o vizinho e devolver o foco.
 - Callbacks de `ref` com uma chamada simples podem permanecer inline. Quando
   houver atribuição com `=` ou lógica adicional, extraia uma função nomeada.
   Callbacks de renderização e outras props seguem seus contratos próprios.
 - Aplique a regra em código novo e nos trechos alterados, sem refatoração em
-  massa de componentes existentes. A regra é conferida na revisão; o lint atual
-  não exige handlers nomeados.
+  massa de componentes existentes. A escolha entre inline e função nomeada é
+  conferida na revisão; o lint atual não impõe essa decisão.
 
 ## Condicionais e fluxo de controle
 

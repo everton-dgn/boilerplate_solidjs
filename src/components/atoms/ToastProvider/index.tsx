@@ -1,5 +1,5 @@
 import { m } from '@paraglide/messages.js'
-import { dynamicComponent, type JSX } from '@solidjs/web'
+import { dynamicComponent } from '@solidjs/web'
 import { For, type ParentProps, untrack } from 'solid-js'
 import IconWarning from '~icons/hugeicons/alert-02'
 import IconError from '~icons/hugeicons/alert-circle'
@@ -69,15 +69,6 @@ export function ToastProvider(props: ParentProps) {
 
   const state = createToastState({ beforeRemove: releaseFocus })
 
-  const handleViewportFocus: JSX.FocusEventHandler<
-    HTMLElement,
-    FocusEvent
-  > = event => {
-    const origin = event.relatedTarget
-    if (origin instanceof Node && event.currentTarget.contains(origin)) return
-    focusOrigin = origin instanceof HTMLElement ? origin : undefined
-  }
-
   return (
     <ToastContext value={state.api}>
       {props.children}
@@ -95,46 +86,58 @@ export function ToastProvider(props: ParentProps) {
       <section
         class={S.viewport}
         aria-label={m.toast_notifications()}
-        onFocusIn={handleViewportFocus}
+        onFocusIn={event => {
+          const origin = event.relatedTarget
+          if (origin instanceof Node && event.currentTarget.contains(origin)) {
+            return
+          }
+          focusOrigin = origin instanceof HTMLElement ? origin : undefined
+        }}
       >
         <ol class={S.list}>
           <For each={state.toasts()} keyed={toast => toast.id}>
             {toast => {
               const id = untrack(() => toast().id)
               const Icon = dynamicComponent(() => icons[toast().variant])
-              const handlePointerEnter = () => {
-                state.pause({ id, reason: 'hover', isPaused: true })
-              }
-              const handlePointerLeave = () => {
-                state.pause({ id, reason: 'hover', isPaused: false })
-              }
-              const handleFocusIn = () => {
-                state.pause({ id, reason: 'focus', isPaused: true })
-              }
-              const handleFocusOut: JSX.FocusEventHandler<
-                HTMLLIElement,
-                FocusEvent
-              > = event => {
-                if (
-                  !(event.relatedTarget instanceof Node) ||
-                  !event.currentTarget.contains(event.relatedTarget)
-                ) {
-                  state.pause({ id, reason: 'focus', isPaused: false })
-                }
-              }
-              const handleClose = () => {
-                state.api.dismiss(id)
-              }
               return (
                 <li
                   ref={element => {
                     items.set(id, element)
                   }}
                   class={[S.toast, S[`variant_${toast().variant}`]]}
-                  onPointerEnter={handlePointerEnter}
-                  onPointerLeave={handlePointerLeave}
-                  onFocusIn={handleFocusIn}
-                  onFocusOut={handleFocusOut}
+                  onPointerEnter={() =>
+                    state.pause({
+                      id,
+                      reason: 'hover',
+                      isPaused: true
+                    })
+                  }
+                  onPointerLeave={() =>
+                    state.pause({
+                      id,
+                      reason: 'hover',
+                      isPaused: false
+                    })
+                  }
+                  onFocusIn={() =>
+                    state.pause({
+                      id,
+                      reason: 'focus',
+                      isPaused: true
+                    })
+                  }
+                  onFocusOut={event => {
+                    if (
+                      !(event.relatedTarget instanceof Node) ||
+                      !event.currentTarget.contains(event.relatedTarget)
+                    ) {
+                      state.pause({
+                        id,
+                        reason: 'focus',
+                        isPaused: false
+                      })
+                    }
+                  }}
                 >
                   <span class={S.icon}>
                     <Icon width={20} height={20} />
@@ -147,7 +150,7 @@ export function ToastProvider(props: ParentProps) {
                     class={S.close}
                     type="button"
                     aria-label={m.toast_close()}
-                    onClick={handleClose}
+                    onClick={() => state.api.dismiss(id)}
                   >
                     <IconClose width={18} height={18} />
                   </button>
