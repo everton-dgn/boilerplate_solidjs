@@ -335,7 +335,7 @@ de `@solidjs/web`, SDKs desconhecidos e marcação manual por `Symbol.for` exige
 revisão. Ele também não restringe `allowControl` pelo nome nem verifica o
 conteúdo dos argumentos de log em `logServerFailure`. Não use essas lacunas nem
 um disable para contornar o contrato. O padrão de imports relativos é
-compartilhado com `tooling/lint.ts` pela constante
+compartilhado com `tooling/lint/rules/javascript.ts` pela constante
 `RELATIVE_IMPORT_RESTRICTION`, em `tooling/backendPolicy/constants.ts`.
 
 ## Consumo em páginas
