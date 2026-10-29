@@ -174,11 +174,12 @@ Execute comandos interativos diretamente. Para selecionar atualizações, use
 `bun run deps:update`, que roda `bunx taze newest -l -I`; para só listar, use
 `bunx taze newest -l`. O `vp update --latest` e o `vp outdated` comparam cada
 pacote só com a dist-tag `latest` e omitem versões publicadas apenas em outra
-tag, como as RCs do Solid na `next`. O modo `newest` oferece a versão publicada
-mais recente de cada pacote, inclusive pré-releases de pacotes estáveis: se uma
-versão estável sair depois da RC mais recente, é ela que aparece, então confira
-o alvo antes de marcar. O `-l` é necessário porque o `package.json` fixa versões
-exatas. O seletor abre com as atualizações marcadas, inclusive o Node do
+tag, como as RCs do Solid na `next`. O modo `newest` usa a última versão
+publicada de cada pacote, inclusive pré-releases de pacotes estáveis. Se ela for
+menor que a instalada, como um patch da linha 1.x publicado depois de uma RC da
+2.0, o pacote some da lista; quando um pacote do Solid não aparecer, confira com
+`npm view <pacote> dist-tags`. O `-l` é necessário porque o `package.json` fixa
+versões exatas. O seletor abre com as atualizações marcadas, inclusive o Node do
 `devEngines` e as GitHub Actions. Com tudo marcado, a tecla `a` desmarca tudo;
 se algum item vier desmarcado, o primeiro `a` marca tudo e o segundo limpa.
 Depois de gravar o `package.json`, o taze oferece instalar com o `bun` do
