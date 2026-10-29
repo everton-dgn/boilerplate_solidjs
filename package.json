@@ -44,11 +44,11 @@
     "commitlint": "commitlint"
   },
   "dependencies": {
-    "@inlang/paraglide-js": "2.29.2",
+    "@inlang/paraglide-js": "2.29.3",
     "@mdream/js": "2.0.3",
     "@solidjs/router": "2.0.0-next.42",
     "@solidjs/web": "2.0.0-rc.18",
-    "filesystem-routing": "0.4.1",
+    "filesystem-routing": "0.4.2",
     "solid-js": "2.0.0-rc.18",
     "valibot": "1.5.0"
   },
