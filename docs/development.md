@@ -150,7 +150,7 @@ no HTML da requisição seguinte.
 | `vp run test:e2e:production`                                  | Testar as rotas reais de produção                                                 |
 | `vp exec playwright test --config tooling/playwright.ts --ui` | Abrir a interface interativa dos E2E                                              |
 | `vp exec playwright codegen`                                  | Abrir o gerador de testes do Playwright                                           |
-| `bunx taze newest -l -I`                                      | Selecionar atualizações de dependências                                           |
+| `bun run deps:update`                                         | Selecionar atualizações de dependências com o taze                                |
 | `vp run bun:update`                                           | Atualizar o Bun fixado e reinstalar dependências                                  |
 | `vp run detect:duplicates`                                    | Procurar código duplicado em `src`                                                |
 | `vp run dead-code`                                            | Verificar código sem uso com Knip                                                 |
@@ -171,21 +171,26 @@ tarefa do `vite.config.ts`. Os dois podem divergir, então confira o
 `package.json` antes de rodar direto.
 
 Execute comandos interativos diretamente. Para selecionar atualizações, use
-`bunx taze newest -l -I`; sem `-I`, o taze apenas lista as versões disponíveis.
-O `vp update --latest` e o `vp outdated` comparam cada pacote só com a dist-tag
-`latest` e omitem versões publicadas apenas em outra tag, como as RCs do Solid
-na `next`. O modo `newest` também oferece pré-releases de pacotes estáveis, e o
-`-l` é necessário porque o `package.json` fixa versões exatas. O seletor abre
-com todas as atualizações marcadas, inclusive o Node do `devEngines` e as GitHub
-Actions; tecle `a` para desmarcar tudo antes de escolher. Observado no macOS:
-sob `vp run`, o script recebe o stdin em modo não bloqueante quando o bloco
-`run` deste `vite.config.ts` usa constantes, como `CSS_CACHE_INPUTS`. Segundo o
-mantenedor, o Vite+ carrega configurações dinâmicas e estáticas por caminhos
-diferentes, e a carga dinâmica lê `process.isTTY`, momento em que o Node passa o
-stdin para o modo não bloqueante. Uma leitura bloqueante falha na hora com
-`EAGAIN`, e o seletor do `vp update` fecha com zero pacotes selecionados antes
-de receber entrada. O do taze desenha a lista, mas não recebe as teclas.
-`bun run <script>` não tem o problema. O defeito está registrado em
+`bun run deps:update`, que roda `bunx taze newest -l -I`; para só listar, use
+`bunx taze newest -l`. O `vp update --latest` e o `vp outdated` comparam cada
+pacote só com a dist-tag `latest` e omitem versões publicadas apenas em outra
+tag, como as RCs do Solid na `next`. O modo `newest` oferece a versão publicada
+mais recente de cada pacote, inclusive pré-releases de pacotes estáveis: se uma
+versão estável sair depois da RC mais recente, é ela que aparece, então confira
+o alvo antes de marcar. O `-l` é necessário porque o `package.json` fixa versões
+exatas. O seletor abre com as atualizações marcadas, inclusive o Node do
+`devEngines` e as GitHub Actions. Com tudo marcado, a tecla `a` desmarca tudo;
+se algum item vier desmarcado, o primeiro `a` marca tudo e o segundo limpa.
+Depois de gravar o `package.json`, o taze oferece instalar com o `bun` do
+`PATH`: responda não e rode `vp install`, que usa o Bun fixado. Observado no
+macOS: sob `vp run`, o script recebe o stdin em modo não bloqueante quando o
+bloco `run` deste `vite.config.ts` usa constantes, como `CSS_CACHE_INPUTS`.
+Segundo o mantenedor, o Vite+ carrega configurações dinâmicas e estáticas por
+caminhos diferentes, e a carga dinâmica consulta se o terminal é TTY, momento em
+que o Node passa o stdin para o modo não bloqueante. Uma leitura bloqueante
+falha na hora com `EAGAIN`, e o seletor do `vp update` fecha com zero pacotes
+selecionados antes de receber entrada. O do taze desenha a lista, mas não recebe
+as teclas. `bun run <script>` não tem o problema. O defeito está registrado em
 [vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155); retire
 esta orientação quando `vp run deps:update` voltar a receber a seleção. A tabela
 acima também mantém Vitest em observação, interfaces de teste e o gerador do

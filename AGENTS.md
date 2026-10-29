@@ -47,11 +47,11 @@ release. Add a tool name to select part of the graph. For example, run
   comandos embutidos `vp check` e `vp test` citados acima: eles pulam o
   `i18n:generate` e o lint de CSS.
 - `vp run` entrega aos scripts um stdin não bloqueante enquanto o bloco `run`
-  do `vite.config.ts` usar constantes: a carga dinâmica da configuração lê
-  `process.isTTY`
+  do `vite.config.ts` usar constantes, que fazem o Vite+ carregar a configuração
+  de forma dinâmica
   ([vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155)).
-  Prompts interativos não recebem a entrada; rode-os diretamente, como
-  `bunx taze newest -l -I`, ou com `bun run <script>`. Detalhes em
+  Prompts interativos não recebem a entrada; rode-os com `bun run <script>`,
+  como `bun run deps:update`, ou com o comando direto. Detalhes em
   [desenvolvimento](docs/development.md#execução-e-cache).
 
 ## Documentação de dependências
