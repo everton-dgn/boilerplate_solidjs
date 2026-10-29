@@ -276,9 +276,10 @@ release. Add a tool name to select part of the graph. For example, run
   reuso ou um nome que esclareça a intenção. Evite criar uma sequência de
   handlers que apenas repassam chamadas e obrigam alternar entre as declarações
   e o JSX para entender o elemento.
-- No `ToastProvider`, mantenha junto ao JSX os callbacks curtos de pausa,
-  foco e fechamento que usam o `id` de cada item do `For`. Preserve funções
-  próprias para operações como encontrar o vizinho e devolver o foco.
+- No `ToastProvider`, mantenha junto ao JSX os callbacks curtos de pausa e
+  fechamento que usam o `id` de cada item do `For`. O handler da seção que lê a
+  origem do foco, aplica uma guarda e atualiza `focusOrigin` fica em uma função
+  nomeada. Preserve funções próprias para encontrar o vizinho e devolver o foco.
 - Callbacks de `ref` com uma chamada simples podem permanecer inline. Quando
   houver atribuição com `=` ou lógica adicional, extraia uma função nomeada.
   Callbacks de renderização e outras props seguem seus contratos próprios.

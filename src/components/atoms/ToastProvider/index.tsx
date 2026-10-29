@@ -1,5 +1,5 @@
 import { m } from '@paraglide/messages.js'
-import { dynamicComponent } from '@solidjs/web'
+import { dynamicComponent, type JSX } from '@solidjs/web'
 import { For, type ParentProps, untrack } from 'solid-js'
 import IconWarning from '~icons/hugeicons/alert-02'
 import IconError from '~icons/hugeicons/alert-circle'
@@ -69,6 +69,15 @@ export function ToastProvider(props: ParentProps) {
 
   const state = createToastState({ beforeRemove: releaseFocus })
 
+  const rememberFocusOrigin: JSX.FocusEventHandler<
+    HTMLElement,
+    FocusEvent
+  > = event => {
+    const origin = event.relatedTarget
+    if (origin instanceof Node && event.currentTarget.contains(origin)) return
+    focusOrigin = origin instanceof HTMLElement ? origin : undefined
+  }
+
   return (
     <ToastContext value={state.api}>
       {props.children}
@@ -86,13 +95,7 @@ export function ToastProvider(props: ParentProps) {
       <section
         class={S.viewport}
         aria-label={m.toast_notifications()}
-        onFocusIn={event => {
-          const origin = event.relatedTarget
-          if (origin instanceof Node && event.currentTarget.contains(origin)) {
-            return
-          }
-          focusOrigin = origin instanceof HTMLElement ? origin : undefined
-        }}
+        onFocusIn={rememberFocusOrigin}
       >
         <ol class={S.list}>
           <For each={state.toasts()} keyed={toast => toast.id}>
@@ -101,9 +104,7 @@ export function ToastProvider(props: ParentProps) {
               const Icon = dynamicComponent(() => icons[toast().variant])
               return (
                 <li
-                  ref={element => {
-                    items.set(id, element)
-                  }}
+                  ref={element => items.set(id, element)}
                   class={[S.toast, S[`variant_${toast().variant}`]]}
                   onPointerEnter={() =>
                     state.pause({
