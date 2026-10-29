@@ -1,9 +1,17 @@
+import type { SitemapEntry } from '@/@types/sitemap.ts'
+
 import { SITEMAP_URL_LIMIT } from '../../../constants.ts'
 import { normalizeSitemapEntries } from '../index.ts'
 
+const SITE_URL = 'https://example.com'
+
+function normalize(entries: readonly SitemapEntry[]): SitemapEntry[] {
+  return normalizeSitemapEntries({ entries, siteUrl: SITE_URL })
+}
+
 describe('normalização das entradas do sitemap', () => {
   it('mantém caminhos do site e normaliza as barras como o manifesto', () => {
-    const entries = normalizeSitemapEntries([
+    const entries = normalize([
       { path: '/' },
       { path: '/docs/' },
       { path: '/a//b//' },
@@ -29,13 +37,13 @@ describe('normalização das entradas do sitemap', () => {
     String.raw`/a\b`,
     '/a b'
   ])('rejeita o caminho %j', path => {
-    expect(() => normalizeSitemapEntries([{ path }])).toThrow(
+    expect(() => normalize([{ path }])).toThrow(
       'Caminho inválido para o sitemap'
     )
   })
 
   it('deduplica pelo caminho normalizado, mantendo a primeira ocorrência', () => {
-    const entries = normalizeSitemapEntries([
+    const entries = normalize([
       { path: '/docs', lastmod: '2026-09-01' },
       { path: '/docs/', lastmod: '2026-09-21' },
       { path: '/docs' }
@@ -55,7 +63,7 @@ describe('normalização das entradas do sitemap', () => {
     '2026-09-21T10:00:00Z',
     '2026-09-21T10:00:00.5-03:00'
   ])('aceita lastmod %s em W3C Datetime', lastmod => {
-    expect(normalizeSitemapEntries([{ path: '/', lastmod }])).toStrictEqual([
+    expect(normalize([{ path: '/', lastmod }])).toStrictEqual([
       { path: '/', lastmod }
     ])
   })
@@ -74,19 +82,48 @@ describe('normalização das entradas do sitemap', () => {
     '2026-09-21T10:00:00',
     '2026-09-21 10:00:00Z'
   ])('omite lastmod %j fora do formato ou impossível', lastmod => {
-    expect(normalizeSitemapEntries([{ path: '/', lastmod }])).toStrictEqual([
-      { path: '/' }
-    ])
+    expect(normalize([{ path: '/', lastmod }])).toStrictEqual([{ path: '/' }])
   })
 
-  it('aceita o limite do protocolo e falha uma URL acima dele', () => {
-    const atLimit = Array.from({ length: SITEMAP_URL_LIMIT }, (_, index) => ({
+  // O XML recebe a URL resolvida e localizada: caminhos diferentes que viram a
+  // mesma URL repetiriam as mesmas entradas em todos os idiomas.
+  it.each([
+    ['/b', '/a/../b'],
+    ['/a/../b', '/b'],
+    ['/caf%C3%A9', '/café'],
+    ['/café', '/caf%C3%A9'],
+    ['/blog/x', '/pt/blog/x'],
+    ['/pt/blog/x', '/blog/x'],
+    ['/es/blog/x', '/en/blog/x']
+  ])(
+    'deduplica %s e %s pela URL localizada, mantendo a primeira',
+    (first, repeated) => {
+      expect(
+        normalize([
+          { path: first, lastmod: '2026-09-01' },
+          { path: repeated, lastmod: '2026-09-21' }
+        ])
+      ).toStrictEqual([{ path: first, lastmod: '2026-09-01' }])
+    }
+  )
+
+  it('mantém caminhos que resolvem para URLs diferentes', () => {
+    const entries = [
+      { path: '/blog/x' },
+      { path: '/blog/y' },
+      { path: '/blog' }
+    ]
+
+    expect(normalize(entries)).toStrictEqual(entries)
+  })
+
+  // O limite de URLs é conferido na resposta, depois da localização.
+  it('não limita a quantidade de entradas antes da localização', () => {
+    const count = SITEMAP_URL_LIMIT + 1
+    const entries = Array.from({ length: count }, (_, index) => ({
       path: `/page-${index}`
     }))
 
-    expect(normalizeSitemapEntries(atLimit)).toHaveLength(SITEMAP_URL_LIMIT)
-    expect(() =>
-      normalizeSitemapEntries([...atLimit, { path: '/uma-a-mais' }])
-    ).toThrow('acima do limite')
+    expect(normalize(entries)).toHaveLength(count)
   })
 })

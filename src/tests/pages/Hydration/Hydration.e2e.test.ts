@@ -77,9 +77,10 @@ test.describe('without JavaScript', () => {
   }) => {
     await page.goto(PAGE_URL)
     await expectServerDocument(page)
-    await expect(
-      page.getByRole('button', { name: THEME_BUTTON })
-    ).toBeDisabled()
+    const trigger = page.getByRole('button', {
+      name: THEME_BUTTON
+    })
+    await expect(trigger).toBeDisabled()
     await expect(page.getByRole('menu')).toHaveCount(0)
     expect(await page.evaluate(() => document.readyState)).toBe('complete')
     expect(await hydrationFinished(page)).toBe(false)

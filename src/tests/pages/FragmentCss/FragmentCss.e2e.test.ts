@@ -3,12 +3,17 @@ import { createServer, request as proxyRequest, type Server } from 'node:http'
 
 import { expect, test, type Page } from '@playwright/test'
 
+import {
+  readGatedBody,
+  releaseFixtureGate
+} from '@/tests/helpers/fixtureGate/index.ts'
 import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 
 const HTTP_OK = 200
 const HTTP_BAD_GATEWAY = 502
 const PAGE_URL = '/fragment-css'
 const PANEL_TEXT = 'Painel com CSS própria'
+const LOADING_TEXT = 'Carregando fragmento...'
 // A ordem dos atributos não faz parte do contrato do runtime.
 const FRAGMENT_STYLESHEET =
   /<link\b(?=[^>]*\brel="stylesheet")(?=[^>]*\bhref="(?<href>\/assets\/[^"]+\.css)")[^>]*>/gu
@@ -79,20 +84,30 @@ async function expectStyledPanel(page: Page): Promise<void> {
     'padding-block-start',
     '8px'
   )
-  await expect(
-    page.getByText('Carregando fragmento...', { exact: true })
-  ).not.toBeVisible()
+  await expect(page.getByText(LOADING_TEXT, { exact: true })).not.toBeVisible()
+}
+
+function fragmentId(): string {
+  return `fragment-css:${crypto.randomUUID()}`
 }
 
 // O template deve existir antes de uma folha em cache disparar o evento load.
 test('envia o template antes da CSS do fragmento, sem handlers inline', async ({
-  request
+  request,
+  baseURL
 }) => {
-  const response = await request.get(PAGE_URL, {
+  if (!baseURL) throw new Error('Missing test base URL')
+  const id = fragmentId()
+  const response = await fetch(`${baseURL}${PAGE_URL}?id=${id}`, {
     headers: { accept: 'text/html' }
   })
-  expect(response.status()).toBe(HTTP_OK)
-  const html = await response.text()
+  const html = await readGatedBody({
+    request,
+    id,
+    response,
+    shellText: LOADING_TEXT
+  })
+  expect(response.status).toBe(HTTP_OK)
   const stylesheets = readFragmentStylesheets(html)
 
   for (const stylesheet of stylesheets) {
@@ -106,7 +121,7 @@ test('envia o template antes da CSS do fragmento, sem handlers inline', async ({
   }
   expect(html).not.toMatch(/<[a-z][^>]*\son[a-z]+=/iu)
 
-  const policy = response.headers()['content-security-policy'] ?? ''
+  const policy = response.headers.get('content-security-policy') ?? ''
   const nonce = SCRIPT_NONCE.exec(policy)?.groups?.nonce
   expect(nonce).toBeDefined()
   const scripts = html.match(/<script\b[^>]*>/gu) ?? []
@@ -118,6 +133,7 @@ test('envia o template antes da CSS do fragmento, sem handlers inline', async ({
 
 test('revela o painel com CSS nova e em cache, sem violação de CSP', async ({
   page,
+  request,
   baseURL
 }) => {
   if (!baseURL) throw new Error('Missing test base URL')
@@ -134,8 +150,15 @@ test('revela o painel com CSS nova e em cache, sem violação de CSP', async ({
       errors.push(error.message)
     })
 
-    const response = await page.goto(url)
+    // Cada navegação usa um gate novo: um id já liberado resolveria o dado
+    // antes do shell e levaria a CSS ao <head>.
+    const firstId = fragmentId()
+    const response = await page.goto(`${url}?id=${firstId}`, {
+      waitUntil: 'commit'
+    })
     expect(response?.status()).toBe(HTTP_OK)
+    await expect(page.getByText(LOADING_TEXT, { exact: true })).toBeVisible()
+    await releaseFixtureGate({ request, id: firstId })
     await expectStyledPanel(page)
     expect(violations).toStrictEqual([])
     const html = (await response?.text()) ?? ''
@@ -146,10 +169,16 @@ test('revela o painel com CSS nova e em cache, sem violação de CSP', async ({
     })
 
     // A primeira navegação termina com a folha carregada. A segunda usa a
-    // mesma origem e URL, sem modificar o DOM nem interceptar requests.
+    // mesma origem e as mesmas folhas, sem modificar o DOM nem interceptar
+    // requests.
     await page.goto('about:blank')
-    const cachedResponse = await page.goto(url)
+    const cachedId = fragmentId()
+    const cachedResponse = await page.goto(`${url}?id=${cachedId}`, {
+      waitUntil: 'commit'
+    })
     expect(cachedResponse?.status()).toBe(HTTP_OK)
+    await expect(page.getByText(LOADING_TEXT, { exact: true })).toBeVisible()
+    await releaseFixtureGate({ request, id: cachedId })
     await expectStyledPanel(page)
     const timings = await page.evaluate(hrefs => {
       const urls = new Set(hrefs)

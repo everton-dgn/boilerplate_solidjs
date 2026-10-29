@@ -1,7 +1,10 @@
 import {
   configureServerErrors,
+  createRequestEvent,
   redirect,
   respond,
+  type RequestEvent,
+  type RequestEventLocals,
   type ServerErrorHook
 } from '@solidjs/web'
 import {
@@ -14,6 +17,7 @@ import type {
   createPublicError,
   isPublicError
 } from '@/infra/server/publicErrors/index.ts'
+import type { createRenderIntegrity } from '@/infra/server/renderIntegrity/index.ts'
 import {
   hostileValue,
   throwValue
@@ -30,11 +34,16 @@ vi.mock(import('@solidjs/web/server-functions/server'), () => ({
 
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 const LOG_MESSAGE = '[server-error] Unexpected failure; private details omitted'
+const HTTP_NOT_FOUND = 404
 
 type PublicErrors = {
   createPublicError: typeof createPublicError
   isPublicError: typeof isPublicError
 }
+
+type RenderState = NonNullable<RequestEventLocals['ssrRenderState']>
+type RenderProbe = { event: RequestEvent; state: RenderState }
+type CreateRenderIntegrity = typeof createRenderIntegrity
 
 // O wrapper ignora o contexto da invocação; o registro só precisa de run.
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ServerFunctionEvent não é construível fora do runtime do Solid.
@@ -57,6 +66,22 @@ function logUnavailable(): never {
   throw new Error('stderr indisponível')
 }
 
+function registeredHook(): ServerErrorHook {
+  const [errors] = vi.mocked(configureServerErrors).mock.lastCall ?? []
+  const hook = errors?.onError
+  if (!hook) throw new Error('onError não registrado')
+  return hook
+}
+
+// O registro é recarregado com resetModules; a fábrica precisa ser a da mesma
+// carga do hook que marca o estado.
+function renderProbe(createIntegrity: CreateRenderIntegrity): RenderProbe {
+  const event = createRequestEvent(new Request('http://localhost/'))
+  const { state } = createIntegrity()
+  event.locals.ssrRenderState = state
+  return { event, state }
+}
+
 async function loadRegistration() {
   vi.resetModules()
   vi.mocked(configureServerErrors).mockClear()
@@ -71,6 +96,7 @@ describe('registro central da política de erros', () => {
   // O registro é recarregado com resetModules; o módulo de erros públicos
   // precisa ser a mesma instância que o hook usa.
   let publicErrors: PublicErrors
+  let createIntegrity: CreateRenderIntegrity
 
   beforeAll(async () => {
     vi.stubEnv('DEV', false)
@@ -82,11 +108,10 @@ describe('registro central da política de erros', () => {
     }
     config = registered
     wrap = registered.wrapInvocation
-    const [errors] = vi.mocked(configureServerErrors).mock.calls[0] ?? []
-    const hook = errors?.onError
-    if (!hook) throw new Error('onError não registrado')
-    onError = hook
+    onError = registeredHook()
     publicErrors = await import('@/infra/server/publicErrors/index.ts')
+    ;({ createRenderIntegrity: createIntegrity } =
+      await import('@/infra/server/renderIntegrity/index.ts'))
   })
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 
@@ -189,11 +214,48 @@ describe('registro central da política de erros', () => {
     })
   })
 
-  it('não instala o hook em desenvolvimento', async () => {
+  it('marca o estado do render só nas falhas de render', () => {
+    const { event, state } = renderProbe(createIntegrity)
+
+    onError(new Error('PRIVATE'), {
+      kind: 'server-function',
+      handling: 'thrown',
+      event
+    })
+    expect(state.hasErrors).toBe(false)
+    onError(new Error('PRIVATE'), { ...site, event })
+    expect(state.hasErrors).toBe(true)
+  })
+
+  it.each([
+    ['um redirect()', redirect('/')],
+    ['um respond()', respond({ ok: true }, { status: HTTP_NOT_FOUND })]
+  ])('marca o estado do render também com %s', (_name, control) => {
+    const { event, state } = renderProbe(createIntegrity)
+
+    expect(onError(control, { ...site, event })).toBeUndefined()
+    expect(state.hasErrors).toBe(true)
+    expect(console.error).not.toHaveBeenCalled()
+  })
+
+  it('instala o hook em desenvolvimento e imprime o erro original', async () => {
     vi.stubEnv('DEV', true)
     await loadRegistration()
+    const { createRenderIntegrity: createFresh } =
+      await import('@/infra/server/renderIntegrity/index.ts')
+    const { event, state } = renderProbe(createFresh)
+    const failure = new Error('PRIVATE')
 
-    expect(configureServerErrors).not.toHaveBeenCalled()
+    expect(registeredHook()(failure, { ...site, event })).toBeUndefined()
+    expect(state.hasErrors).toBe(true)
+    // O log filtrado vem primeiro; o original volta ao terminal só em dev.
+    expect(readLog(console.error).heads[0]).toStrictEqual([
+      LOG_MESSAGE,
+      'Error'
+    ])
+    expect(vi.mocked(console.error).mock.calls.slice(1)).toStrictEqual([
+      [failure]
+    ])
     expect(configureServerFunctionsServer).toHaveBeenCalledOnce()
   })
 })

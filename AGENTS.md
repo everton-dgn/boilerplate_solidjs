@@ -8,7 +8,7 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 
 ## Built-in Commands vs Scripts
 
-`vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name. Run interactive commands directly, such as `vp update --interactive --latest`, because the task runner can close the selection without input.
+`vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name.
 
 ## Tool Versions
 
@@ -40,6 +40,18 @@ release. Add a tool name to select part of the graph. For example, run
   em Bun. Valide a automação com `vp run test:release`, também executado no
   pre-push. No CI, essa suíte roda quando a automação ou suas dependências
   mudam; a publicação mantém as verificações reais sem repetir os testes.
+  Só o job de plano da release instala dependências e importa o Vite+
+  (`tooling/release/plan-release.ts`); os jobs com escrita usam apenas Git,
+  `gh` e módulos `node:`.
+- Para validar mudanças, use `vp run check:ci` e `vp run test`, não os
+  comandos embutidos `vp check` e `vp test` citados acima: eles pulam o
+  `i18n:generate` e o lint de CSS.
+- `vp run` entrega aos scripts um stdin não bloqueante enquanto o bloco `run`
+  do `vite.config.ts` usar constantes
+  ([vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155)).
+  Prompts interativos fecham sem esperar entrada; rode-os diretamente, como
+  `vp update --interactive --latest`, ou com `bun run <script>`. Detalhes em
+  [desenvolvimento](docs/development.md#execução-e-cache).
 
 ## Documentação de dependências
 
@@ -83,6 +95,15 @@ release. Add a tool name to select part of the graph. For example, run
   e `context.ts`. Esta regra não exige renomear pastas organizacionais.
 - Ao renomear um módulo, atualize seus imports, referências documentais e
   nomes dos testes correspondentes, preservando os sufixos de ambiente.
+
+## JavaScript e renderização no servidor
+
+- A aplicação exige JavaScript para os controles interativos. Não crie
+  fallbacks de navegação em `noscript`, classes ou scripts para ocultar
+  controles quando JavaScript estiver desativado, nem suporte alternativo
+  específico para esse cenário.
+- Preserve SSR, SEO e testes do HTML inicial: eles verificam o conteúdo entregue
+  pelo servidor e a hidratação, sem prometer operação da aplicação sem JavaScript.
 
 ## Traduções
 
@@ -158,6 +179,11 @@ release. Add a tool name to select part of the graph. For example, run
   consumidor, como `DropdownMenu/constants.ts` e
   `(seo)/robots.txt/constants.ts`. Nunca em `src/constants/` antes do segundo
   consumidor.
+- Extraia constantes para expressar significado de domínio, configuração ou
+  um contrato compartilhado. Dois consumidores, por si só, não justificam um
+  módulo compartilhado: valores idiomáticos como o `-1` de `.at(-1)` ficam no
+  ponto de uso. Não crie um nome, arquivo ou comentário apenas para explicar
+  a semântica evidente de uma API nativa.
 - Códigos HTTP usados pela aplicação ficam em `src/constants/http.ts`, mesmo
   quando um código ainda tiver um único consumidor. O arquivo reúne os status
   do protocolo; acrescente apenas códigos efetivamente usados. Testes podem
@@ -181,6 +207,22 @@ release. Add a tool name to select part of the graph. For example, run
 - Testes não decidem a localização. Um módulo colocalizado mantém seus
   testes em `__tests__/` ao lado dele.
 
+## Coesão e tamanho dos módulos
+
+- Use o número de linhas como sinal para examinar responsabilidades e custo de
+  leitura, sem impor um teto de linhas para dividir arquivos.
+- Extraia blocos coesos que possam ser compreendidos e alterados juntos, como
+  preparação e publicação de release ou consulta de caches. Mantenha na entrada
+  a sequência que coordena essas operações e as decisões principais do fluxo.
+- Agrupe configurações extensas por responsabilidade, preservando os valores,
+  a precedência dos overrides e a ordem de avaliação que tenha efeito.
+- Preserve juntas as operações que dependem do mesmo contexto local. Evite
+  arquivos com wrappers que apenas encaminham chamadas, fragmentos sem sentido
+  próprio ou um arquivo por função só para reduzir a contagem de linhas.
+- Declare os contratos compartilhados perto da funcionalidade e mantenha os
+  tipos privados junto de seu único consumidor, respeitando as exceções de
+  tamanho da seção "Localização de tipos".
+
 ## Módulos de página
 
 - Metadados próprios da página ficam em `seo.ts`, ao lado de `index.tsx`.
@@ -203,8 +245,9 @@ release. Add a tool name to select part of the graph. For example, run
   para excluir conteúdo; CSS calculado não é interpretado. Preserve citações
   contextuais em footer dentro de main.
 - Antes de publicar HTML convertido, exija estado de integridade do render
-  presente e sem erros; ausência de aviso do hook global não basta. Preserve
-  o sinal de cancelamento até `renderToStream` e o streaming do HTML normal.
+  presente, concluído e sem erros. O hook global marca esse estado; não passe
+  `onError` local ao `renderToStream`, que o desviaria. Preserve o sinal de
+  cancelamento até `renderToStream` e o streaming do HTML normal.
 
 ## Parâmetros de função
 
@@ -223,6 +266,26 @@ release. Add a tool name to select part of the graph. For example, run
 - A preferência vale para as funções do projeto. Assinaturas ditadas por terceiros
   ficam como o contrato exige, sem adaptação: middlewares `(request, next)` em
   `src/middleware/`, callbacks de teste e hooks de plugin do Vite.
+
+## Eventos em JSX
+
+- Handlers de eventos DOM e de props de componentes podem permanecer inline
+  quando descrevem uma ação local curta. Construir um objeto de argumentos ou
+  usar uma guarda simples não exige extração por si só.
+- Extraia uma função nomeada quando houver lógica complexa, várias etapas,
+  reuso ou um nome que esclareça a intenção. Evite criar uma sequência de
+  handlers que apenas repassam chamadas e obrigam alternar entre as declarações
+  e o JSX para entender o elemento.
+- No `ToastProvider`, mantenha junto ao JSX os callbacks curtos de pausa e
+  fechamento que usam o `id` de cada item do `For`. O handler da seção que lê a
+  origem do foco, aplica uma guarda e atualiza `focusOrigin` fica em uma função
+  nomeada. Preserve funções próprias para encontrar o vizinho e devolver o foco.
+- Callbacks de `ref` com uma chamada simples podem permanecer inline. Quando
+  houver atribuição com `=` ou lógica adicional, extraia uma função nomeada.
+  Callbacks de renderização e outras props seguem seus contratos próprios.
+- Aplique a regra em código novo e nos trechos alterados, sem refatoração em
+  massa de componentes existentes. A escolha entre inline e função nomeada é
+  conferida na revisão; o lint atual não impõe essa decisão.
 
 ## Condicionais e fluxo de controle
 
@@ -358,8 +421,8 @@ release. Add a tool name to select part of the graph. For example, run
   acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts para scripts.
 - O `style-src` é `'self'`, também sem `'unsafe-inline'`: um `<style>` ou um
   atributo `style` no HTML do servidor é bloqueado. Não use a prop `style` em
-  JSX renderizado no SSR, pois com valor nulo ela sai como `style=""`; use
-  classes. O tema do SSR vai só pela classe `light` ou `dark` do `<html>`.
+  JSX renderizado no SSR: qualquer valor não nulo vira um atributo bloqueado;
+  use classes. O tema do SSR vai só pela classe `light` ou `dark` do `<html>`.
 - O nonce fica no campo nativo `event.nonce`, criado por `requestNonce` antes
   do render e preservado quando o host já o fornece. O handler nativo do plugin
   o usa nos redirects depois do shell. Todo `<script>` do `Document` recebe
@@ -397,26 +460,30 @@ release. Add a tool name to select part of the graph. For example, run
   não identifica dados confidenciais em strings. Não retorne erros, promises
   aninhadas ou trabalho adiado sem contrato específico.
 - Mantenha o registro global e os sinais de controle do Solid. O
-  `wrapInvocation` cobre server functions e o hook `onError`, instalado só em
-  produção, uniformiza a mensagem pública das demais falhas; ele nunca devolve
-  o objeto recebido. `containFailures` continua envolvendo a cadeia inteira
+  `wrapInvocation` cobre server functions e o hook `onError`, instalado em
+  todos os modos, marca o estado de integridade do render e, em produção,
+  uniformiza a mensagem pública das demais falhas; ele nunca devolve o objeto
+  recebido. `containFailures` continua envolvendo a cadeia inteira
   para que exceções não cheguem ao log do host; numa navegação ele renderiza a
   página de erro do app pelo `ServerFailureGate` de `App.tsx`. Um fallback visual não
   protege o payload.
   O log grava a mensagem fixa da origem e, para um `Error`, só a classe e os
-  frames filtrados, sem mensagem, `cause` nem propriedades.
+  frames filtrados, sem mensagem, `cause` nem propriedades. Em desenvolvimento
+  o hook pede também o erro original, numa segunda chamada; em produção o log
+  ignora o pedido.
 - Não registre erro original, headers, cookies, argumentos, corpos ou
   credenciais. Logs detalhados exigem remoção de dados sensíveis definida antes;
   a de `logServerFailure` está em "Log de falhas", no guia.
   O lint reserva `console` a `logServerFailure`, onde se usa `console.error`
   diretamente. Acessos como `globalThis.console` continuam proibidos. Preserve
-  o argumento único coberto pelos testes: uma string que começa pela mensagem
-  fixa da origem.
+  o argumento único da linha filtrada coberto pelos testes: uma string que
+  começa pela mensagem fixa da origem.
 - Preserve as restrições de lint em `tooling/backendPolicy`: o módulo inteiro
-  de configuração do servidor e o hook `configureServerErrors` de
-  `@solidjs/web` pertencem a `configureServerErrors`. Use imports
-  estáticos de `@solidjs/web` e seus subcaminhos, inclusive nos módulos
-  privilegiados. SDKs novos exigem restrição por pacote e exceção por adapter.
+  de configuração do servidor, o hook `configureServerErrors` de
+  `@solidjs/web` e `observeRenderFailures` de `renderIntegrity` pertencem a
+  `configureServerErrors`. Use imports estáticos de `@solidjs/web`, de seus
+  subcaminhos e de `renderIntegrity`, inclusive nos módulos privilegiados.
+  SDKs novos exigem restrição por pacote e exceção por adapter.
   Revise fontes de import calculadas, templates dos outros pacotes e demais
   limites do guia; não contorne o contrato com disable. Fixtures seguem
   protegidas; as exceções de backend cobrem só testes e declarações de tipos.

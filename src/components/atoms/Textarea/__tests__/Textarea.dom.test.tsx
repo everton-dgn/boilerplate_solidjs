@@ -1,4 +1,4 @@
-import { createSignal, untrack } from 'solid-js'
+import { createSignal, flush, untrack } from 'solid-js'
 
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
@@ -35,13 +35,31 @@ describe('campo de texto multilinha', () => {
     })
   })
 
+  it('preserva o texto digitado sem controle quando a variante muda', () => {
+    const [isInvalid, setIsInvalid] = createSignal(false)
+    const host = renderComponent(() => (
+      <Textarea
+        defaultValue="Draft"
+        variant={isInvalid() ? 'destructive' : 'default'}
+      />
+    ))
+    const textarea = host.querySelector('textarea')
+    assert(textarea)
+    textarea.value = 'Edited\ntext'
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    setIsInvalid(true)
+    flush()
+    expect(textarea).toHaveAttribute('aria-invalid', 'true')
+    expect(textarea).toHaveValue('Edited\ntext')
+  })
+
   it('mantém o valor controlado e o estado de erro reativos', async () => {
     const [value, setValue] = createSignal('initial')
-    const [invalid, setInvalid] = createSignal(true)
+    const [isInvalid, setIsInvalid] = createSignal(true)
     const host = renderComponent(() => (
       <Textarea
         value={value()}
-        variant={invalid() ? 'destructive' : 'default'}
+        variant={isInvalid() ? 'destructive' : 'default'}
         onInput={event => setValue(event.currentTarget.value)}
       />
     ))
@@ -51,7 +69,7 @@ describe('campo de texto multilinha', () => {
     textarea.value = 'edited\ntext'
     textarea.dispatchEvent(new Event('input', { bubbles: true }))
     await expect.poll(() => untrack(value)).toBe('edited\ntext')
-    setInvalid(false)
+    setIsInvalid(false)
     setValue('replaced')
     await expect.poll(() => textarea.value).toBe('replaced')
     expect(textarea).not.toHaveAttribute('aria-invalid')

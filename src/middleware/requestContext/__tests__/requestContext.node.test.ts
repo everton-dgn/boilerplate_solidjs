@@ -22,6 +22,16 @@ describe('contexto da requisição', () => {
     expect(next).toHaveBeenCalledExactlyOnceWith()
   })
 
+  it('devolve a própria promise do próximo handler', () => {
+    const pending = Promise.resolve(new Response())
+    const next = vi.fn<() => Promise<Response>>().mockReturnValue(pending)
+    const event = createRequestEvent(new Request(TEST_ORIGIN))
+
+    expect(
+      provideRequestEvent(event, () => requestContext(event.request, next))
+    ).toBe(pending)
+  })
+
   it('continua a requisição mesmo sem contexto', async () => {
     // Em produção o servidor instala o armazenamento do contexto antes da
     // primeira requisição. Um escopo vazio faz o mesmo aqui, sem depender da

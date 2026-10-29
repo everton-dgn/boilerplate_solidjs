@@ -1,9 +1,14 @@
 import type { UserConfig } from 'vite-plus'
 
-import { RELATIVE_IMPORT_RESTRICTION } from './constants.ts'
+import {
+  RELATIVE_IMPORT_RESTRICTION,
+  RENDER_INTEGRITY_MODULE
+} from './constants.ts'
 
 type LintConfig = NonNullable<UserConfig['lint']>
 type ImportPath = { name: string; importNames?: string[]; message: string }
+type ImportPattern = { regex: string; importNames?: string[]; message: string }
+type ImportRestrictions = { paths: ImportPath[]; patterns?: ImportPattern[] }
 type GlobalRestrictions = { names: string[]; properties?: string[] }
 
 const NETWORK = ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource']
@@ -31,6 +36,14 @@ const SERVER_CONFIG: ImportPath[] = [
   name,
   message: 'Mantenha o registro da política em configureServerErrors.'
 }))
+// Depois dessa chamada o estado do render nasce sem erros; ela só vale no
+// registro que instala o hook capaz de marcá-lo.
+const RENDER_OBSERVER: ImportPattern = {
+  regex: RENDER_INTEGRITY_MODULE,
+  importNames: ['observeRenderFailures'],
+  message:
+    'Somente configureServerErrors declara que as falhas de render são observadas.'
+}
 const TRANSPORTS = ['http', 'https', 'http2', 'net', 'tls', 'undici']
   .flatMap(name => [name, `node:${name}`])
   .map(name => ({
@@ -38,13 +51,16 @@ const TRANSPORTS = ['http', 'https', 'http2', 'net', 'tls', 'undici']
     message: 'Integre transportes de backend em um adapter protegido.'
   }))
 
-function imports(paths: ImportPath[]): LintConfig['rules'] {
+function imports({
+  paths,
+  patterns = []
+}: ImportRestrictions): LintConfig['rules'] {
   return {
     'eslint/no-restricted-imports': [
       'error',
       {
         paths,
-        patterns: [RELATIVE_IMPORT_RESTRICTION]
+        patterns: [RELATIVE_IMPORT_RESTRICTION, ...patterns]
       }
     ]
   }
@@ -84,14 +100,18 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
     files: ['src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'],
     rules: {
       'backend/static-solid-imports': 'error',
+      'backend/static-render-integrity-imports': 'error',
       'eslint/no-console': ['error', { allow: [] }],
       ...globals({ names: RESTRICTED_GLOBALS }),
-      ...imports([
-        SAFE_ERRORS,
-        SERVER_ERROR_HOOK,
-        ...SERVER_CONFIG,
-        ...TRANSPORTS
-      ])
+      ...imports({
+        paths: [
+          SAFE_ERRORS,
+          SERVER_ERROR_HOOK,
+          ...SERVER_CONFIG,
+          ...TRANSPORTS
+        ],
+        patterns: [RENDER_OBSERVER]
+      })
     }
   },
   {
@@ -109,11 +129,14 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
   },
   {
     files: ['src/infra/server/publicErrors/index.ts'],
-    rules: imports([SERVER_ERROR_HOOK, ...SERVER_CONFIG, ...TRANSPORTS])
+    rules: imports({
+      paths: [SERVER_ERROR_HOOK, ...SERVER_CONFIG, ...TRANSPORTS],
+      patterns: [RENDER_OBSERVER]
+    })
   },
   {
     files: ['src/infra/server/configureServerErrors/index.ts'],
-    rules: imports([SAFE_ERRORS, ...TRANSPORTS])
+    rules: imports({ paths: [SAFE_ERRORS, ...TRANSPORTS] })
   },
   {
     files: [
@@ -124,10 +147,11 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
     ],
     rules: {
       'backend/static-solid-imports': 'off',
+      'backend/static-render-integrity-imports': 'off',
       'eslint/no-console': 'off',
       'eslint/no-restricted-globals': 'off',
       'eslint/no-restricted-properties': 'off',
-      ...imports([])
+      ...imports({ paths: [] })
     }
   }
 ]

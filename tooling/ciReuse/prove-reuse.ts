@@ -27,7 +27,11 @@ const timeout = {
 function expire() {
   // O abort depois da decisão também resolve, sem rejeição pendente.
   return delay(DEADLINE_MS, undefined, { signal: deadline.signal }).then(
-    () => timeout,
+    () => {
+      // O mesmo sinal encerra os subprocessos da prova ainda em andamento.
+      deadline.abort()
+      return timeout
+    },
     () => timeout
   )
 }
@@ -42,7 +46,7 @@ const decision = isMainPush
           arch: env.RUNNER_ARCH ?? '',
           nodeArch: arch
         },
-        ports: createPorts(repository)
+        ports: createPorts({ repository, signal: deadline.signal })
       }),
       expire()
     ])

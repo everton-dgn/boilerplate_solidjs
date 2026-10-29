@@ -10,6 +10,19 @@ aprovado da origem e verifica o conteúdo exato do commit de release antes do
 merge normal. Depois cria uma tag anotada e publica as notas na GitHub Release.
 Não publica no npm nem faz deploy.
 
+## Organização do código
+
+`automatic-release.ts` lê o modo e o contexto, valida o artifact e coordena as
+etapas. `prepare-release.ts` prepara a branch e o PR e verifica os commits
+envolvidos. `publish-release.ts` integra a release, verifica o merge e publica a
+tag e as notas. `repository.ts` reúne as consultas de estado e as proteções do
+repositório; `context.ts` mantém o contexto da execução e suas saídas.
+
+Os tipos compartilhados dessas etapas ficam em `types.ts`; os tipos privados
+permanecem no módulo que os usa. A árvore de imports dos jobs com escrita
+continua usando apenas módulos nativos, sem instalar dependências. Os testes
+executam a mesma entrada do workflow e verificam essa árvore de imports.
+
 ## Versionamento
 
 | Commit                                                             | Incremento                 |
@@ -17,8 +30,13 @@ Não publica no npm nem faz deploy.
 | `feat`                                                             | Minor                      |
 | `fix`, `perf`, `revert`                                            | Patch                      |
 | `chore(deps)`, `chore(deps-dev)`, `build(deps)`, `build(deps-dev)` | Patch                      |
-| `!` no cabeçalho ou rodapé `BREAKING CHANGE:`                      | Major                      |
+| `!` no cabeçalho, `BREAKING CHANGE:` ou `BREAKING-CHANGE:`         | Major                      |
 | Outros tipos, sem mudança incompatível                             | Não geram release sozinhos |
+
+`BREAKING CHANGE:` e `BREAKING-CHANGE:` contam no início de qualquer linha do
+corpo fora de blocos de código, mesmo sem a linha em branco que o commitlint
+exige antes do rodapé; commits criados fora do hook podem omiti-la. O Dependabot
+de actions usa `ci(deps)`, que não gera release.
 
 A primeira release parte de `0.0.0` e gera `1.0.0`. Depois disso, a versão do
 `package.json` deve coincidir com a última tag estável alcançável pelo commit.
@@ -26,15 +44,32 @@ Se houver mais de um tipo de mudança, vale o maior incremento.
 
 As notas preenchidas manualmente em `## Unreleased` são preservadas. Quando essa
 seção está vazia, as notas são geradas dos commits, agrupadas em `Added`,
-`Changed` e `Fixed`. O Oxfmt do Vite+ formata os arquivos gerados.
+`Changed` e `Fixed`. O Oxfmt do Vite+ formata os arquivos gerados no job de
+plano, o único que instala dependências.
 
 ## Ativação no GitHub
 
 Em Settings > Actions > General > Workflow permissions, habilite a opção
 "Permitir que o GitHub Actions crie e aprove pull requests" ("Allow GitHub
-Actions to create and approve pull requests"). O workflow solicita
-`contents: write` e `pull-requests: write` somente nas etapas de preparação e
-publicação. Ele não aprova o próprio PR nem ignora regras de proteção.
+Actions to create and approve pull requests"). O workflow tem três jobs:
+
+| Job       | Permissões                                                                 | O que roda                                                  |
+| --------- | -------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `plan`    | `actions: read`, `contents: read`                                          | Instala as dependências, calcula o plano e formata arquivos |
+| `prepare` | `actions: read`, `contents: write`, `pull-requests: write`                 | Cria a branch e o PR e fecha PRs de release obsoletos       |
+| `publish` | `actions: read`, `checks: write`, `contents: write`, `pull-requests: read` | Atesta, integra, cria a tag e publica as notas              |
+
+Só `plan` executa `vp install` e importa o Vite+. Ele entrega o artifact
+`release-plan` com a versão, as notas, o `package.json` e o `CHANGELOG.md`
+formatados. Os jobs com escrita preparam só a toolchain pela ação
+`setup-project` (`install-dependencies: false`), baixam o artifact com
+verificação de digest e executam `bun --no-install`, sem pacotes de terceiros no
+processo que recebe o `GH_TOKEN`. Antes de qualquer escrita, o script recalcula
+o plano com Git e código nativo e recusa o artifact se a estrutura, a origem, a
+versão ou a tag divergirem, se o `package.json` mudar algo além da versão ou se
+o changelog diferir do plano em algo além de espaços. O merge exige
+`contents: write`; `publish` só lê PRs. O workflow não aprova o próprio PR nem
+ignora regras de proteção.
 
 O ruleset `.github/main-ruleset.json` protege a `main`: exige PR, merge normal,
 conversas resolvidas e o check `CI required` do GitHub Actions, com a branch
@@ -42,8 +77,13 @@ atualizada antes do merge. Bloqueia exclusão e force push, sem atores com
 bypass, inclusive administradores. Não exige aprovação humana, para permitir a
 release automática e o trabalho individual no repositório.
 
-O JSON é o contrato versionado da configuração remota. Alterá-lo no Git não
-atualiza o GitHub automaticamente; mudanças precisam ser aplicadas ao ruleset
+O ruleset `.github/release-tags-ruleset.json` protege as tags `v*` contra
+atualização e exclusão, também sem atores com bypass. A criação continua livre
+para a automação publicar novas tags; uma tag existente com outro SHA faz a
+release falhar em vez de ser sobrescrita.
+
+Os JSONs são o contrato versionado da configuração remota. Alterá-los no Git não
+atualiza o GitHub automaticamente; mudanças precisam ser aplicadas aos rulesets
 pela API ou pela interface do repositório.
 
 PRs criados pelo `GITHUB_TOKEN` não dependem de um novo evento de PR para
@@ -63,8 +103,8 @@ e no CI quando houver mudanças relevantes; a publicação não os repete.
 O script confere as regras ativas da `main` antes de criar qualquer artefato de
 release e repete a conferência imediatamente antes do merge. Se faltar a
 exigência de CI estrito, a preparação para sem criar commit, branch ou PR. As
-versões de Node e Vite+ vêm do `package.json`; as dependências são instaladas
-com lockfile congelado.
+versões de Node, Bun e Vite+ vêm do `package.json`; só o job `plan` instala as
+dependências, com lockfile congelado.
 
 Os testes mantêm os projetos node, dom e browser. No CI, o provider usa o canal
 `chrome` disponível no runner definido no
@@ -86,11 +126,16 @@ deploys de produção pelo job `deploy` do CI. Ele depende de `check` e do E2E d
 produção e executa somente em push na `main`. O CI de PRs valida o código sem
 publicar na Vercel.
 
-No push para `main`, o job de E2E de produção consulta uma vez a versão `latest`
-do pacote `vercel` no registry do npm, aceita somente uma versão numérica
-`x.y.z` e usa essa mesma versão em `pull`, `build` e no `deploy`, que a recebe
-como output do job. Em seguida, carrega as configurações da Vercel e executa
-`vercel build --prod` uma vez. O Playwright testa esse output sem recompilar,
+No push para `main`, o job de E2E de produção usa a versão do Vercel CLI fixada
+em `VERCEL_CLI_VERSION`, no `env` do
+[workflow do CI](../../.github/workflows/ci.yml), a mesma em `pull`, `build` e
+`deploy`. Para atualizar, troque esse valor por uma versão estável publicada no
+npm e confira o E2E de produção e o deploy do push na `main`. O job carrega as
+configurações da Vercel e executa `vercel build --prod` uma vez. O secret
+`VERCEL_TOKEN` chega somente aos passos de `pull`, `build` e `deploy` e à
+conferência de configuração do deploy; a inspeção e o empacotamento do output
+rodam sem ele. A documentação da Vercel passa o token também ao `vercel build`,
+por isso o build o mantém. O Playwright testa esse output sem recompilar,
 recebendo apenas as variáveis públicas `VITE_*` daquele arquivo, sem as
 credenciais de backend. O job empacota somente `.vercel/output` em tar,
 preservando permissões e links, e compara o conteúdo e a listagem dos arquivos
@@ -119,11 +164,11 @@ Vite+ com Bun explicitamente; para executá-lo, use `vp run build`.
 O GitHub precisa destas configurações em Settings > Secrets and variables >
 Actions:
 
-| Tipo     | Nome                | Finalidade                                 |
-| -------- | ------------------- | ------------------------------------------ |
-| Secret   | `VERCEL_TOKEN`      | Autorizar build e deploy no projeto Vercel |
-| Variable | `VERCEL_ORG_ID`     | Identificar a equipe da conta pessoal      |
-| Variable | `VERCEL_PROJECT_ID` | Identificar o projeto de destino           |
+| Tipo     | Nome                | Finalidade                               |
+| -------- | ------------------- | ---------------------------------------- |
+| Secret   | `VERCEL_TOKEN`      | Autorizar pull, build e deploy na Vercel |
+| Variable | `VERCEL_ORG_ID`     | Identificar a equipe da conta pessoal    |
+| Variable | `VERCEL_PROJECT_ID` | Identificar o projeto de destino         |
 
 Os IDs e o secret `VERCEL_TOKEN` estão cadastrados no GitHub. A credencial
 `github-boilerplate-solidjs-ci` está restrita ao projeto `boilerplate-solidjs`,
@@ -174,9 +219,15 @@ ela ainda aponta para o SHA validado. A exclusão usa uma comparação atômica 
 SHA; uma atualização concorrente impede a limpeza. Se a branch já foi excluída,
 a recuperação usa o PR integrado e não recria a branch. O PR e a tag permanecem.
 
-Se a `main` avançar antes do merge, a execução para. Aguarde o CI do novo commit
-e use essa execução como origem. O PR antigo permanece para inspeção; não há
-exclusão automática de branches ou PRs abandonados antes do merge.
+Se a `main` avançar antes do merge, a execução termina sem erro e registra o
+motivo no resumo: o CI do novo commit inicia outra release, que inclui as
+mudanças pendentes. Quando o avanço aparece no `prepare`, ele fecha o PR desta
+origem. Quando aparece no `publish`, que só lê PRs, o merge é pulado e o PR fica
+aberto até a próxima preparação. Toda preparação fecha os PRs de release abertos
+pela automação cuja origem é ancestral estrita da origem atual; PRs humanos,
+outras branches e origens mais novas não são tocados. As branches permanecem
+para inspeção; não há exclusão automática de branches abandonadas antes do
+merge.
 
 Se a `main` avançar entre a última conferência e a chamada de merge, a exigência
 de branch atualizada do ruleset bloqueia a integração no GitHub. O script mantém
@@ -193,7 +244,6 @@ manual.
 vp run test
 vp run test:release
 vp run typecheck
-actionlint .github/workflows/auto-release.yml
 ```
 
 `vp run test:release` executa apenas `tooling/release` em Bun, com isolamento
@@ -208,11 +258,11 @@ os testes rodar. Renomeações são tratadas como exclusão e adição para pres
 os caminhos de origem e destino na seleção.
 
 O filtro em `shouldTestRelease/index.ts` cobre `tooling/release/`,
-`tooling/fmt.ts`, `package.json`, `bun.lock`, `bunfig.toml`, `vite.config.ts`,
-`tsconfig.json`, `tsconfig.node.json`, os workflows de CI e release e as ações
-locais em `.github/actions/`. Ao acrescentar uma dependência local da automação,
-atualize essa lista e os testes do filtro. Mudanças somente na aplicação ou em
-guias fora da pasta de release não executam a suíte no CI.
+`tooling/fmt.ts`, `.commitlintrc`, `package.json`, `bun.lock`, `bunfig.toml`,
+`vite.config.ts`, `tsconfig.json`, `tsconfig.node.json`, os workflows de CI e
+release e as ações locais em `.github/actions/`. Ao acrescentar uma dependência
+local da automação, atualize essa lista e os testes do filtro. Mudanças somente
+na aplicação ou em guias fora da pasta de release não executam a suíte no CI.
 
 A seleção não pula o workflow nem o job `Quality`. `CI required` exige sucesso
 de todos os jobs, exceto quando o push da `main` reaproveita a validação do PR,
@@ -222,6 +272,12 @@ A recuperação manual também mantém as verificações reais de origem, commit
 publicação; ela não repete os testes.
 
 Os testes de integração substituem `git` e `gh` por executáveis sintéticos e
-isolam o `PATH` dos subprocessos. Não usam credenciais reais nem criam releases
-remotas. As fixtures ficam no diretório temporário do sistema e a suíte as
-descarta ao terminar. Se uma execução interrompida deixar resíduos, use `trash`.
+isolam o `PATH` dos subprocessos. Eles geram o artifact com o script do job
+`plan` e executam os jobs com escrita com `bun --no-install`, inclusive com
+artifacts adulterados. Um teste estático confere que a entrada desses jobs só
+alcança módulos `node:` e que o workflow mantém as permissões e a instalação
+separadas. Nenhuma ferramenta valida a sintaxe dos workflows localmente; o
+GitHub a valida ao carregar o arquivo. Não usam credenciais reais nem criam
+releases remotas. As fixtures ficam no diretório temporário do sistema e a suíte
+as descarta ao terminar. Se uma execução interrompida deixar resíduos, use
+`trash`.

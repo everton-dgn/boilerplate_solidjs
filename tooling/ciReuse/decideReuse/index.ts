@@ -1,16 +1,30 @@
-import { createHash } from 'node:crypto'
-
-import type { Ports } from '../types.ts'
+import { hasMainCaches } from './hasMainCaches/index.ts'
+import type {
+  DecideReuseOptions,
+  Decision,
+  Merge,
+  Context,
+  MergeContext,
+  PullRequest,
+  PullContext,
+  TimelineEvent,
+  TimelineOptions,
+  WorkflowRun,
+  WorkflowRuns,
+  RunContext,
+  Jobs,
+  Artifacts,
+  GitCommit
+} from './types.ts'
 
 const SHA_PATTERN = /^[a-f\d]{40}$/u
 const REPOSITORY_PATTERN = /^[\w.-]+\/[\w.-]+$/u
 const MAIN_BRANCH = 'main'
-const MAIN_REF = 'refs/heads/main'
+
 const WORKFLOW_PATH = '.github/workflows/ci.yml'
 const EVIDENCE_VERSION = 1
 const EVIDENCE_PREFIX = 'ci-reuse-evidence-'
-const VALIDATION_CACHE_PREFIX = 'ci-validation-v2-'
-const DEPENDENCY_CACHE_PREFIX = 'vite-plus-'
+
 const PAGE_SIZE = 100
 const MAX_TIMELINE_PAGES = 10
 const MERGE_PARENT_COUNT = 2
@@ -26,91 +40,6 @@ const RETARGET_EVENTS = new Set([
   'automatic_base_change_succeeded',
   'automatic_base_change_failed'
 ])
-
-type Runner = {
-  os: string
-  arch: string
-  nodeArch: string
-}
-type DecideReuseOptions = {
-  repository: string
-  sha: string
-  runner: Runner
-  ports: Ports
-}
-type Decision = {
-  shouldReuse: boolean
-  shouldRunQuality: boolean
-  reason: string
-  sourceRunUrl?: string
-}
-type Merge = {
-  base: string
-  head: string
-  tree: string
-}
-type Context = {
-  repository: string
-  sha: string
-  ports: Ports
-}
-type MergeContext = Context & { merge: Merge }
-type RepositoryName = { full_name: string }
-type RepositoryIdentity = { id: number; full_name: string }
-type BranchRef = { ref: string; sha: string; repo: RepositoryName | null }
-type PullRequest = {
-  number: number
-  merged_at: string | null
-  merge_commit_sha: string | null
-  base: BranchRef
-  head: BranchRef
-}
-type PullContext = MergeContext & { pr: PullRequest }
-type TimelineEvent = { event?: string }
-type TimelineOptions = Context & { pr: number; page: number }
-type WorkflowRun = {
-  id: number
-  run_attempt: number
-  event: string
-  status: string
-  conclusion: string | null
-  head_sha: string
-  head_branch: string | null
-  path: string
-  head_repository: RepositoryName | null
-  repository: RepositoryIdentity
-}
-type WorkflowRuns = { total_count: number; workflow_runs: WorkflowRun[] }
-type RunContext = PullContext & { run: WorkflowRun }
-type Job = {
-  name: string
-  run_attempt: number
-  status: string
-  conclusion: string | null
-}
-type Jobs = { total_count: number; jobs: Job[] }
-type ArtifactRun = {
-  id: number
-  repository_id: number
-  head_repository_id: number
-  head_sha: string
-}
-type Artifact = {
-  id: number
-  name: string
-  expired: boolean
-  workflow_run: ArtifactRun | null
-}
-type Artifacts = { total_count: number; artifacts: Artifact[] }
-type TreeRef = { sha: string }
-type GitCommit = { tree: TreeRef; parents: TreeRef[] }
-type ActionsCache = { key: string; ref: string }
-type ActionsCaches = { actions_caches: ActionsCache[] }
-type RuntimeEngine = { version?: unknown }
-type DevEngines = { runtime?: RuntimeEngine }
-type Manifest = { devEngines?: DevEngines; packageManager?: unknown }
-type CacheOptions = Context & { runner: Runner }
-type CacheLookup = Context & { key: string; isPrefix: boolean }
 
 function reject(reason: string): never {
   throw new Error(reason)
@@ -342,48 +271,6 @@ async function assertTestedCommit(context: RunContext, tested: string) {
   ) {
     reject('O commit testado no PR difere do merge da main.')
   }
-}
-
-function digest(value: Uint8Array): Buffer {
-  return createHash('sha256').update(value).digest()
-}
-
-async function hasMainCache({ repository, key, isPrefix, ports }: CacheLookup) {
-  const query = encodeURIComponent(key)
-  const caches = await ports.api<ActionsCaches>(
-    `repos/${repository}/actions/caches?ref=${encodeURIComponent(MAIN_REF)}&key=${query}&per_page=${PAGE_SIZE}`
-  )
-  return caches.actions_caches.some(
-    cache =>
-      cache.ref === MAIN_REF &&
-      (isPrefix ? cache.key.startsWith(key) : cache.key === key)
-  )
-}
-
-async function hasMainCaches({ sha, runner, ...context }: CacheOptions) {
-  const { ports } = context
-  // Mesmo valor de hashFiles('bun.lock') nas chaves do workflow.
-  const lock = digest(digest(await ports.readBlob(`${sha}:bun.lock`)))
-  const hash = lock.toString('hex')
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Os campos lidos são validados abaixo.
-  const manifest = JSON.parse(
-    await ports.git(['show', `${sha}:package.json`])
-  ) as Manifest
-  const node = manifest.devEngines?.runtime?.version
-  const packageManager =
-    typeof manifest.packageManager === 'string' ? manifest.packageManager : ''
-  const bun = /^bun@(?<version>[^+]+)/u.exec(packageManager)?.groups?.version
-  if (typeof node !== 'string' || !bun) {
-    reject('Versões de Node ou Bun ausentes no package.json.')
-  }
-  const dependencies = `${DEPENDENCY_CACHE_PREFIX}${runner.os}-${runner.nodeArch}-bun-${hash}`
-  const validation = `${VALIDATION_CACHE_PREFIX}${runner.os}-${runner.arch}-node-${node}-bun-${bun}-${hash}-`
-  const lookups = [
-    { ...context, sha, key: dependencies, isPrefix: false },
-    { ...context, sha, key: validation, isPrefix: true }
-  ]
-  const results = await Promise.all(lookups.map(lookup => hasMainCache(lookup)))
-  return results.every(Boolean)
 }
 
 async function verify(options: DecideReuseOptions): Promise<Decision> {

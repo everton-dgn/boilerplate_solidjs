@@ -1,25 +1,23 @@
-import type { RouteDefinition } from '@solidjs/router'
+import { useSearchParams, type RouteDefinition } from '@solidjs/router'
 import { createMemo, lazy, Loading, Show } from 'solid-js'
 
-const DATA_DELAY_MS = 150
+import { waitFixtureGate } from '../../outside-error/waitFixtureGate/index.ts'
+
+type DelayedPanelProps = { id: string }
 
 const FragmentCssPanel = lazy(
   () => import('../../fragment-css/FragmentCssPanel/index.tsx')
 )
 
-function loadLabel(): Promise<string> {
-  // oxlint-disable-next-line promise/avoid-new -- Adapta o timer da fixture para suspender o SSR.
-  return new Promise(resolve => {
-    setTimeout(() => resolve('Fragmento resolvido'), DATA_DELAY_MS)
+// A memo espera o gate, que o teste libera depois do shell, e o componente
+// lazy só é criado quando ela resolve. Assim a CSS dele entra no fragmento em
+// streaming, depois do template, e não no <head>. A fixture cobre a liberação
+// do fragmento com CSP estrita e com a folha já em cache.
+function DelayedPanel(props: DelayedPanelProps) {
+  const label = createMemo(async () => {
+    await waitFixtureGate({ id: props.id, real: false })
+    return 'Fragmento resolvido'
   })
-}
-
-// A memo assíncrona mantém o Loading pendente até depois do shell, e o
-// componente lazy só é criado quando ela resolve. Assim a CSS dele entra no
-// fragmento em streaming, depois do template, e não no <head>. A fixture
-// cobre a liberação do fragmento com CSP estrita e com a folha já em cache.
-function DelayedPanel() {
-  const label = createMemo(loadLabel)
   return (
     <section>
       <h2>{label()}</h2>
@@ -40,11 +38,12 @@ export const route = {
 } satisfies RouteDefinition
 
 export default function FragmentCssPage() {
+  const [params] = useSearchParams()
   return (
     <main>
       <h1>CSS de fragmento em streaming</h1>
       <Loading fallback={<p>Carregando fragmento...</p>}>
-        <DelayedPanel />
+        <DelayedPanel id={String(params.id)} />
       </Loading>
     </main>
   )

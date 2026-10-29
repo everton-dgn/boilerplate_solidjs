@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises'
 
 import { expect, test } from '@playwright/test'
+import * as v from 'valibot'
 
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
@@ -10,6 +11,7 @@ const HTTP_NOT_FOUND = 404
 const HTTP_REDIRECT = 307
 const REQUESTS = 18
 const ALTERNATE_LINKS = 4
+const homeCatalog = v.object({ home_features: v.string() })
 const LANGUAGES = [
   {
     locale: 'pt',
@@ -80,12 +82,31 @@ test('loads the home route implementation only when visiting the home page', asy
       source: await readFile(new URL(file, directory), 'utf8')
     }))
   )
-  const homeModules = sources.filter(({ source }) =>
-    source.includes('SolidJS 2 · Vite+ · TypeScript 7')
+  // home_features só é usada pela Home: o módulo lazy da rota precisa levar
+  // a mensagem nos três idiomas, e nenhum outro módulo pode tê-la.
+  const homeFeatures = await Promise.all(
+    LANGUAGES.map(async ({ locale }) => {
+      const catalog = await readFile(
+        new URL(
+          `../../../routes/(base)/(home)/i18n/${locale}.json`,
+          import.meta.url
+        ),
+        'utf8'
+      )
+      return v.parse(homeCatalog, JSON.parse(catalog)).home_features
+    })
+  )
+  const messageModules = sources.filter(({ source }) =>
+    homeFeatures.some(text => source.includes(text))
+  )
+  const homeModules = messageModules.filter(
+    ({ source }) =>
+      source.includes('SolidJS 2 · Vite+ · TypeScript 7') &&
+      homeFeatures.every(text => source.includes(text))
   )
   expect(homeModules).toHaveLength(1)
+  expect(messageModules).toStrictEqual(homeModules)
   const homeModule = homeModules[0]?.file
-  expect(homeModule).toBeDefined()
   const requested = new Set<string>()
   page.on('request', request =>
     requested.add(new URL(request.url()).pathname.split('/').pop() ?? '')
@@ -135,7 +156,6 @@ for (const language of LANGUAGES) {
       ALTERNATE_LINKS
     )
     const header = await page.getByRole('banner').elementHandle()
-    expect(header).not.toBeNull()
     await page.getByRole('link', { name: '404', exact: true }).click()
     await expect(page).toHaveURL(`/${language.locale}/404`)
     await expect(page).toHaveTitle(language.missing)

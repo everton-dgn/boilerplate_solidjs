@@ -1,5 +1,5 @@
 import { m } from '@paraglide/messages.js'
-import { dynamicComponent } from '@solidjs/web'
+import { dynamicComponent, type JSX } from '@solidjs/web'
 import { For, type ParentProps, untrack } from 'solid-js'
 import IconWarning from '~icons/hugeicons/alert-02'
 import IconError from '~icons/hugeicons/alert-circle'
@@ -38,7 +38,45 @@ function announcement(toast: ToastEntry | undefined) {
 }
 
 export function ToastProvider(props: ParentProps) {
-  const state = createToastState()
+  const items = new Map<string, HTMLLIElement>()
+  let focusOrigin: HTMLElement | undefined
+
+  // Até o Solid atualizar o DOM, os itens dispensados no mesmo tick continuam
+  // como irmãos; só os que seguem em `items` podem receber o foco.
+  function findNeighbor(item: Element) {
+    const remaining = new Set<Element>(items.values())
+    let next = item.nextElementSibling
+    while (next && !remaining.has(next)) next = next.nextElementSibling
+    let previous = item.previousElementSibling
+    while (previous && !remaining.has(previous)) {
+      previous = previous.previousElementSibling
+    }
+    return next ?? previous
+  }
+
+  // Sem este desvio, remover o item focado deixa o foco no body.
+  function releaseFocus(id: string) {
+    const item = items.get(id)
+    items.delete(id)
+    if (!item?.contains(document.activeElement)) return
+    const close = findNeighbor(item)?.querySelector('button')
+    if (close) {
+      close.focus()
+      return
+    }
+    if (focusOrigin?.isConnected) focusOrigin.focus()
+  }
+
+  const state = createToastState({ beforeRemove: releaseFocus })
+
+  const rememberFocusOrigin: JSX.FocusEventHandler<
+    HTMLElement,
+    FocusEvent
+  > = event => {
+    const origin = event.relatedTarget
+    if (origin instanceof Node && event.currentTarget.contains(origin)) return
+    focusOrigin = origin instanceof HTMLElement ? origin : undefined
+  }
 
   return (
     <ToastContext value={state.api}>
@@ -54,7 +92,11 @@ export function ToastProvider(props: ParentProps) {
       >
         {announcement(state.assertive())}
       </div>
-      <section class={S.viewport} aria-label={m.toast_notifications()}>
+      <section
+        class={S.viewport}
+        aria-label={m.toast_notifications()}
+        onFocusIn={rememberFocusOrigin}
+      >
         <ol class={S.list}>
           <For each={state.toasts()} keyed={toast => toast.id}>
             {toast => {
@@ -62,26 +104,27 @@ export function ToastProvider(props: ParentProps) {
               const Icon = dynamicComponent(() => icons[toast().variant])
               return (
                 <li
+                  ref={element => items.set(id, element)}
                   class={[S.toast, S[`variant_${toast().variant}`]]}
                   onPointerEnter={() =>
                     state.pause({
                       id,
-                      reason: 'hovered',
-                      paused: true
+                      reason: 'hover',
+                      isPaused: true
                     })
                   }
                   onPointerLeave={() =>
                     state.pause({
                       id,
-                      reason: 'hovered',
-                      paused: false
+                      reason: 'hover',
+                      isPaused: false
                     })
                   }
                   onFocusIn={() =>
                     state.pause({
                       id,
-                      reason: 'focused',
-                      paused: true
+                      reason: 'focus',
+                      isPaused: true
                     })
                   }
                   onFocusOut={event => {
@@ -91,8 +134,8 @@ export function ToastProvider(props: ParentProps) {
                     ) {
                       state.pause({
                         id,
-                        reason: 'focused',
-                        paused: false
+                        reason: 'focus',
+                        isPaused: false
                       })
                     }
                   }}

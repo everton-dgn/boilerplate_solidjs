@@ -9,11 +9,17 @@ import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import type { ThemeState } from '../types.ts'
 
+function resetDocumentTheme(): void {
+  document.documentElement.classList.remove('light', 'dark')
+  document.documentElement.style.colorScheme = ''
+}
+
 describe('primitive de tema', () => {
   let state: ThemeState
   let media: EventTarget & { matches: boolean }
 
   beforeEach(() => {
+    resetDocumentTheme()
     document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
     media = Object.assign(new EventTarget(), { matches: true })
     vi.stubGlobal('matchMedia', () => media)
@@ -33,7 +39,7 @@ describe('primitive de tema', () => {
 
   it('segue o sistema sem preferência salva', async () => {
     mount()
-    await expect.poll(() => state.ready()).toBe(true)
+    await expect.poll(() => state.isReady()).toBe(true)
     expect(state.theme()).toBe('system')
     expect(state.resolvedTheme()).toBe('dark')
     expect(document.documentElement).toHaveClass('dark')
@@ -42,7 +48,7 @@ describe('primitive de tema', () => {
 
   it('mantém escolha explícita quando o sistema muda', async () => {
     mount()
-    await expect.poll(() => state.ready()).toBe(true)
+    await expect.poll(() => state.isReady()).toBe(true)
     state.setTheme('light')
     media.dispatchEvent(new Event('change'))
     await expect.poll(() => state.resolvedTheme()).toBe('light')
@@ -52,7 +58,7 @@ describe('primitive de tema', () => {
 
   it('reconcilia mudança de outra aba e remoção da preferência', async () => {
     mount()
-    await expect.poll(() => state.ready()).toBe(true)
+    await expect.poll(() => state.isReady()).toBe(true)
     saveTheme('light')
     globalThis.dispatchEvent(new Event('focus'))
     await expect.poll(() => state.theme()).toBe('light')
@@ -65,7 +71,7 @@ describe('primitive de tema', () => {
   it('continua alternando quando o armazenamento é bloqueado', async () => {
     const restore = blockCookie()
     mount()
-    await expect.poll(() => state.ready()).toBe(true)
+    await expect.poll(() => state.isReady()).toBe(true)
     state.setTheme('light')
     await expect.poll(() => state.resolvedTheme()).toBe('light')
     expect(readTheme()).toBeUndefined()
@@ -78,14 +84,14 @@ describe('primitive de tema', () => {
     state.setTheme('light')
     expect(document.documentElement).toHaveClass('light')
     expect(readTheme()).toBe('light')
-    await expect.poll(() => state.ready()).toBe(true)
+    await expect.poll(() => state.isReady()).toBe(true)
     expect(state.theme()).toBe('light')
     expect(document.documentElement).toHaveClass('light')
   })
 
   it('aplica o tema antes de tentar gravar o cookie', async () => {
     mount()
-    await expect.poll(() => state.ready()).toBe(true)
+    await expect.poll(() => state.isReady()).toBe(true)
     const applied: boolean[] = []
     vi.spyOn(document, 'cookie', 'set').mockImplementation(() => {
       applied.push(document.documentElement.classList.contains('light'))
@@ -105,6 +111,7 @@ describe('primitive de tema com canal entre abas', () => {
   let channel: TestChannel
 
   beforeEach(() => {
+    resetDocumentTheme()
     document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
     channel = Object.assign(new EventTarget(), {
       postMessage: vi.fn<() => void>(),
@@ -132,7 +139,7 @@ describe('primitive de tema com canal entre abas', () => {
       state = useContext(ThemeContext)
       return <span>{state.resolvedTheme()}</span>
     })
-    await expect.poll(() => state.ready()).toBe(true)
+    await expect.poll(() => state.isReady()).toBe(true)
     expect(document.documentElement).toHaveClass('light')
     channel.dispatchEvent(
       new MessageEvent('message', {

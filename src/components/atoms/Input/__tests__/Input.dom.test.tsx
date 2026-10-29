@@ -1,4 +1,4 @@
-import { createSignal } from 'solid-js'
+import { createSignal, flush } from 'solid-js'
 
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
@@ -42,19 +42,40 @@ describe('campo de entrada', () => {
     expect(onInput).toHaveBeenCalledOnce()
   })
 
+  it('preserva o que o usuário digitou ou marcou sem controle quando a variante muda', () => {
+    const [isInvalid, setIsInvalid] = createSignal(false)
+    const variant = () => (isInvalid() ? 'destructive' : 'default')
+    const host = renderComponent(() => (
+      <>
+        <Input defaultValue="Ada" variant={variant()} />
+        <Input type="checkbox" defaultChecked variant={variant()} />
+      </>
+    ))
+    const [text, checkbox] = host.querySelectorAll('input')
+    assert(text && checkbox)
+    text.value = 'Grace'
+    text.dispatchEvent(new Event('input', { bubbles: true }))
+    checkbox.click()
+    setIsInvalid(true)
+    flush()
+    expect(text).toHaveAttribute('aria-invalid', 'true')
+    expect(text).toHaveValue('Grace')
+    expect(checkbox).not.toBeChecked()
+  })
+
   it('atualiza valor, disabled e estado de erro sem recriar o campo', async () => {
-    const [invalid, setInvalid] = createSignal(true)
+    const [isInvalid, setIsInvalid] = createSignal(true)
     const [value, setValue] = createSignal('first')
     const host = renderComponent(() => (
       <Input
         value={value()}
-        disabled={invalid()}
-        variant={invalid() ? 'destructive' : 'default'}
+        disabled={isInvalid()}
+        variant={isInvalid() ? 'destructive' : 'default'}
       />
     ))
     const input = host.querySelector('input')
     expect(input).toBeDisabled()
-    setInvalid(false)
+    setIsInvalid(false)
     setValue('second')
     await expect.poll(() => input?.value).toBe('second')
     expect(input).not.toBeDisabled()

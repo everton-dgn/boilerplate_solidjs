@@ -9,6 +9,7 @@ const HTTP_OK = 200
 const HTTP_REDIRECT = 307
 const HTTP_BAD_REQUEST = 400
 const HTTP_NOT_FOUND = 404
+const HTTP_METHOD_NOT_ALLOWED = 405
 const HTTP_NOT_ACCEPTABLE = 406
 const HTTP_INTERNAL_SERVER_ERROR = 500
 
@@ -254,12 +255,12 @@ test('keeps unknown and invalid paths outside successful Markdown', async ({
 test('does not convert API, assets or server function dispatch', async ({
   request
 }) => {
-  for (const path of [
-    '/robots.txt',
-    '/sitemap.xml',
-    '/favicon/favicon.svg',
-    '/_server/markdown-contract-missing'
-  ]) {
+  for (const [path, status] of [
+    ['/robots.txt', HTTP_OK],
+    ['/sitemap.xml', HTTP_OK],
+    ['/favicon/favicon.svg', HTTP_OK],
+    ['/_server/markdown-contract-missing', HTTP_NOT_FOUND]
+  ] as const) {
     const plain = await request.get(path, {
       headers: { accept: '*/*' },
       maxRedirects: 0
@@ -268,6 +269,7 @@ test('does not convert API, assets or server function dispatch', async ({
       headers: { accept: 'text/markdown' },
       maxRedirects: 0
     })
+    expect(plain.status(), path).toBe(status)
     expect(markdown.status()).toBe(plain.status())
     expect(markdown.headers()['content-type']).toBe(
       plain.headers()['content-type']
@@ -279,15 +281,21 @@ test('does not convert API, assets or server function dispatch', async ({
 test('preserves non-read methods instead of rendering Markdown', async ({
   request
 }) => {
-  for (const method of ['POST', 'PUT', 'DELETE']) {
-    const response = await request.fetch(`${PAGE}.md`, {
-      method,
-      maxRedirects: 0,
-      headers: { accept: 'text/markdown' }
-    })
-    expect(response.headers()['content-type'] ?? '').not.toContain(
-      'text/markdown'
-    )
-    expect(await response.text()).not.toContain('# HTML Markdown contract:')
+  for (const path of [PAGE, `${PAGE}.md`]) {
+    for (const method of ['POST', 'PUT', 'DELETE']) {
+      const response = await request.fetch(path, {
+        method,
+        maxRedirects: 0,
+        headers: { accept: 'text/markdown' }
+      })
+      expect(response.status(), `${method} ${path}`).toBe(
+        HTTP_METHOD_NOT_ALLOWED
+      )
+      expect(response.headers().allow).toBe('GET, HEAD')
+      expect(response.headers()['content-type'] ?? '').not.toContain(
+        'text/markdown'
+      )
+      expect(await response.text()).not.toContain('# HTML Markdown contract:')
+    }
   }
 })

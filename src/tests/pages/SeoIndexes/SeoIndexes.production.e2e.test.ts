@@ -1,3 +1,6 @@
+import { readdir } from 'node:fs/promises'
+import nodePath from 'node:path'
+
 import { expect, test } from '@playwright/test'
 
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
@@ -9,12 +12,33 @@ const EXPECTED_SITEMAP_URLS = LOCALES.flatMap(locale =>
 )
 const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
-const CACHE_CONTROL = 'public, max-age=0, s-maxage=3600'
+const CACHE_CONTROL = 'public, max-age=0, s-maxage=3600, stale-if-error=86400'
 // Respostas com s-maxage não levam o nonce da requisição para o cache.
 const NO_SCRIPTS = "script-src 'none'"
 // Grupo dos robôs de treinamento de IA: começa em GPTBot e termina bloqueando tudo.
 const AI_BOTS_GROUP =
   /\nUser-agent: GPTBot\n(?:User-agent: [^\n]+\n)*Disallow: \/\n/u
+const SEO_ROUTES = nodePath.resolve(
+  import.meta.dirname,
+  '../../../routes/(seo)'
+)
+
+// Pastas e módulos colocalizados em src/routes/(seo)/, exceto os endpoints,
+// lidos da árvore para que um helper novo entre na verificação.
+function localModulePath(entry: string): string | undefined {
+  const parts = entry.split(nodePath.sep)
+  if (parts.length === 1 || parts.includes('__tests__')) return undefined
+  if (nodePath.basename(entry) === 'index.ts') return undefined
+  return `/${parts.join('/').replace(/\.ts$/u, '')}`
+}
+
+const SEO_ENTRIES = await readdir(SEO_ROUTES, {
+  recursive: true,
+  encoding: 'utf8'
+})
+const LOCAL_MODULES = SEO_ENTRIES.flatMap(
+  entry => localModulePath(entry) ?? []
+).toSorted()
 
 test.describe('índices na árvore real de produção', () => {
   test('serve sitemap.xml sem redirecionamento', async ({ request }) => {
@@ -73,7 +97,6 @@ test.describe('índices na árvore real de produção', () => {
     const markdown = await response.text()
     expect(markdown).toMatch(/^# .+\n/u)
     const useCases = markdown.split('## When to use\n\n')[1]?.split('\n## ')[0]
-    expect(useCases).toBeDefined()
     expect(useCases).toContain(`](${readSiteOrigin()}/en/index.md): `)
     expect(useCases).toContain(`](${readSiteOrigin()}/en/about.md): `)
     expect(useCases?.trim().split('\n')).toEqual([
@@ -94,20 +117,14 @@ test.describe('índices na árvore real de produção', () => {
     expect(markdown).not.toContain('(seo)')
   })
 
-  for (const path of [
-    '/llms.txt/helpers',
-    '/llms.txt/helpers/buildLlmsText',
-    '/llms.txt/helpers/collectLlmsPages',
-    '/robots.txt/buildRobotsText',
-    '/sitemap.xml/helpers',
-    '/sitemap.xml/helpers/buildSitemap',
-    '/sitemap.xml/helpers/buildSitemapResponse',
-    '/sitemap.xml/helpers/collectSitemapEntries',
-    '/sitemap.xml/helpers/normalizeSitemapEntries'
-  ]) {
-    test(`não publica o helper ${path}`, async ({ request }) => {
-      const response = await request.get(`/pt${path}`, { maxRedirects: 0 })
-      expect(response.status()).toBe(HTTP_NOT_FOUND)
+  for (const path of LOCAL_MODULES) {
+    test(`não publica o módulo local ${path}`, async ({ request }) => {
+      // O createAPIHandler casa o pathname cru, antes do prefixo de idioma:
+      // um módulo publicado por engano responderia sem o prefixo.
+      const raw = await request.get(path, { maxRedirects: 0 })
+      expect(raw.status()).not.toBe(HTTP_OK)
+      const localized = await request.get(`/pt${path}`, { maxRedirects: 0 })
+      expect(localized.status()).toBe(HTTP_NOT_FOUND)
     })
   }
 

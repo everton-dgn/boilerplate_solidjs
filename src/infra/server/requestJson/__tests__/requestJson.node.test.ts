@@ -60,14 +60,20 @@ describe('transporte JSON protegido', () => {
 
   it('cancela o corpo de uma falha HTTP sem lê-lo', async () => {
     const cancel = vi.fn<() => void>()
-    const response = new Response(new ReadableStream({ cancel }), {
-      status: 500
-    })
-    const json = vi.spyOn(response, 'json')
-    fetchMock(response)
+    const pull = vi.fn<(controller: ReadableStreamDefaultController) => void>(
+      controller => {
+        controller.enqueue(new TextEncoder().encode('{"message":"PRIVATE"}'))
+      }
+    )
+    // Sem fila inicial, o stream só chama pull quando alguém lê o corpo.
+    const body = new ReadableStream(
+      { pull, cancel },
+      new CountQueuingStrategy({ highWaterMark: 0 })
+    )
+    fetchMock(new Response(body, { status: 500 }))
     await expect(requestJson(options)).rejects.toThrow(PUBLIC_MESSAGE)
     expect(cancel).toHaveBeenCalledOnce()
-    expect(json).not.toHaveBeenCalled()
+    expect(pull).not.toHaveBeenCalled()
   })
 
   it('recusa corpos acima do limite sem lê-los inteiros', async () => {

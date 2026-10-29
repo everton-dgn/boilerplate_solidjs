@@ -14,7 +14,7 @@ export function createOutsideDismiss(menu: DropdownMenuState): void {
   }
 
   createEffect(
-    () => menu.open(),
+    () => menu.isOpen(),
     isOpen => {
       if (isOpen) {
         document.addEventListener('pointerdown', handlePointerDown, true)

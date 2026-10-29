@@ -1,7 +1,13 @@
 /* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
+import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { env } from 'node:process'
 import { test } from 'node:test'
+import { promisify } from 'node:util'
 
 import { decideReuse } from '../decideReuse/index.ts'
 import type { Ports } from '../types.ts'
@@ -33,6 +39,21 @@ const ROOT = `repos/${REPOSITORY}`
 const DEPENDENCY_KEY = `vite-plus-Linux-x64-bun-${HASH}`
 const VALIDATION_PREFIX = `ci-validation-v2-Linux-X64-node-24.22.0-bun-1.4.3-${HASH}-`
 const MAIN_REF = 'refs/heads/main'
+const exec = promisify(execFile)
+// Hooks do Git exportam GIT_DIR e afins, e a configuração do usuário pode mudar
+// o diff; os repositórios temporários não herdam nenhum dos dois.
+const GIT_ENV = {
+  ...Object.fromEntries(
+    Object.entries(env).filter(([key]) => !key.startsWith('GIT_'))
+  ),
+  GIT_CONFIG_GLOBAL: '/dev/null',
+  GIT_CONFIG_NOSYSTEM: '1'
+}
+const IDENTITY = ['-c', 'user.email=ci@example.com', '-c', 'user.name=CI']
+const WORKFLOW = await readFile(
+  new URL('../../../.github/workflows/ci.yml', import.meta.url),
+  'utf8'
+)
 
 type Repository = { full_name: string }
 type RepositoryWithId = { id: number; full_name: string }
@@ -239,17 +260,22 @@ function gitOutput(world: World, args: string[]): string {
   if (command === `rev-list --parents -n 1 ${MERGE}`) return world.parents
   if (command === `rev-parse ${MERGE}^{tree}`) return TREE
   if (command === `show ${MERGE}:package.json`) return MANIFEST
-  if (command.startsWith('diff ')) return world.files.join('\0')
+  // O comando exato prende a base do merge e a lista sem detecção de renames.
+  if (command === `diff --no-renames --name-only -z ${BASE} ${MERGE} --`) {
+    return world.files.join('\0')
+  }
   throw new Error(`Git inesperado: ${command}`)
 }
 
 function ports(world: World): Ports {
   const table = routes(world)
   return {
-    api<T>(path: string): Promise<T> {
-      world.calls.push(path)
-      const route = table.get(path)
-      if (!route) return Promise.reject(new Error(`Rota inesperada: ${path}`))
+    api<T>(apiPath: string): Promise<T> {
+      world.calls.push(apiPath)
+      const route = table.get(apiPath)
+      if (!route) {
+        return Promise.reject(new Error(`Rota inesperada: ${apiPath}`))
+      }
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Respostas sintéticas do GitHub.
       return Promise.resolve(route() as T)
     },
@@ -501,4 +527,77 @@ test('qualquer falha de API ou de leitura resulta em CI completo', async () => {
     ports: { api: fail, git: fail, readBlob: fail, readEvidence: fail }
   })
   assert.equal(invalid.shouldReuse, false)
+})
+
+// O workflow dispensa estes jobs com a prova aprovada; decideReuse precisa
+// exigir exatamente os mesmos nomes no run do PR.
+function reusableJobNames(): string[] {
+  return WORKFLOW.split(/^ {2}(?=[\w-]+:$)/mu).flatMap(block => {
+    const name = /^ {4}name: (?<name>.+)$/mu.exec(block)?.groups?.name
+    const isSkippable = block.includes("needs.proof.outputs.reuse != 'true'")
+    return name && isSkippable ? [name] : []
+  })
+}
+
+test('exige no run do PR exatamente os jobs que o ci.yml dispensa', async () => {
+  const names = reusableJobNames()
+  assert.ok(names.length > 0)
+  const world = createWorld()
+  world.jobs = [...names, 'E2E (production)'].map(name => job(name))
+  world.jobCount = world.jobs.length
+  const decision = await decide(world)
+  assert.equal(decision.shouldReuse, true)
+  for (const name of names) {
+    const missing = createWorld()
+    missing.jobs = world.jobs.filter(item => item.name !== name)
+    missing.jobCount = missing.jobs.length
+    await assertFull({ world: missing, reason: /job/u })
+  }
+})
+
+test('um rename de .github/ para fora da pasta força o CI completo no Git real', async context => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'ci-reuse-rename-'))
+  // Sandbox criado pelo próprio teste: a remoção direta é o descarte correto.
+  context.after(() => rm(directory, { recursive: true, force: true }))
+  async function git(...args: string[]) {
+    const result = await exec('git', [...IDENTITY, '-C', directory, ...args], {
+      env: GIT_ENV
+    })
+    return result.stdout.trimEnd()
+  }
+  await git('init', '-q', '-b', 'main')
+  await mkdir(path.join(directory, '.github/workflows'), { recursive: true })
+  await writeFile(
+    path.join(directory, '.github/workflows/ci.yml'),
+    'name: CI\n'
+  )
+  await git('add', '.')
+  await git('commit', '-q', '-m', 'base')
+  await git('switch', '-q', '-c', 'feature')
+  await mkdir(path.join(directory, 'docs'))
+  await git('mv', '.github/workflows/ci.yml', 'docs/ci.yml')
+  await git('commit', '-q', '-m', 'move workflow')
+  await git('switch', '-q', 'main')
+  await writeFile(path.join(directory, 'other.txt'), 'main\n')
+  await git('add', 'other.txt')
+  await git('commit', '-q', '-m', 'main')
+  await git('merge', '-q', '--no-ff', '-m', 'merge', 'feature')
+  const calls: string[] = []
+  const decision = await decideReuse({
+    repository: REPOSITORY,
+    sha: await git('rev-parse', 'HEAD'),
+    runner: RUNNER,
+    ports: {
+      api<T>(apiPath: string): Promise<T> {
+        calls.push(apiPath)
+        return Promise.reject(new Error('API inesperada'))
+      },
+      git: args => git(...args),
+      readBlob: fail,
+      readEvidence: fail
+    }
+  })
+  assert.equal(decision.shouldReuse, false)
+  assert.equal(decision.reason, 'O merge altera .github/workflows/ci.yml.')
+  assert.deepEqual(calls, [])
 })

@@ -28,6 +28,9 @@ test('propaga a escolha temporária quando a escrita no cookie é ignorada', asy
   await page.goto('/')
   const other = await context.newPage()
   await other.goto('/')
+  await expect(
+    other.getByRole('button', { name: 'Selecionar tema' })
+  ).toBeEnabled()
   await page.getByRole('button', { name: 'Selecionar tema' }).click()
   await page.getByRole('menuitemradio', { name: 'Escuro' }).click()
   await expect(other.locator('html')).toHaveClass('dark')

@@ -1,3 +1,4 @@
+import type { APIEvent } from 'filesystem-routing/api'
 import { pageRoutes } from 'virtual:file-routes'
 
 import { memoizeOnce } from '@/helpers/memoizeOnce/index.ts'
@@ -9,13 +10,14 @@ import { collectSitemapEntries } from './helpers/collectSitemapEntries/index.ts'
 // Só a leitura do manifesto é memoizada: as fontes das rotas com parâmetros
 // rodam a cada request, porque seus dados mudam sem novo build.
 const readManifest = memoizeOnce({
-  enabled: import.meta.env.PROD,
+  isEnabled: import.meta.env.PROD,
   render: () => collectSitemapEntries(pageRoutes)
 })
 
-export function GET(): Promise<Response> {
+export function GET({ request }: APIEvent): Promise<Response> {
   return buildSitemapResponse({
     manifest: readManifest(),
-    siteUrl: resolveSiteUrl('/')
+    siteUrl: resolveSiteUrl('/'),
+    signal: request.signal
   })
 }

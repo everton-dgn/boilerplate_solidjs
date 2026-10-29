@@ -1,0 +1,144 @@
+diff --git a/dist/server.dev.js b/dist/server.dev.js
+index af9dc5064eef6c6303286580967a6f62a2756213..14a501952f4cc3ad3f4c56f0577786ddca3350bb 100644
+--- a/dist/server.dev.js
++++ b/dist/server.dev.js
+@@ -1975,6 +1975,7 @@ function renderToStream(code, options = {}) {
+   };
+   let dispose;
+   let dead = false;
++  let serializationFailed = false;
+   let render;
+   let rootOwner;
+   let serializer;
+@@ -2156,7 +2157,7 @@ function renderToStream(code, options = {}) {
+     }
+   };
+   const onDone = () => {
+-    if (dead) return;
++    if (dead || serializationFailed) return;
+     writeTasks();
+     lastBlockingSize = blockingPromises.size;
+     doShell();
+@@ -2217,9 +2218,16 @@ function renderToStream(code, options = {}) {
+   serializer = (options.serializer || createHydrationSerializer)({
+     scopeId: options.renderId,
+     plugins: options.plugins,
+-    onData: payload => sink.data(payload),
++    onData: payload => {
++      if (!serializationFailed) sink.data(payload);
++    },
+     onDone,
+-    onError: err => reportFailure(err, "serialize")
++    onError: options.serializer ? err => reportFailure(err, "serialize") : err => {
++      if (dead || serializationFailed) return;
++      serializationFailed = true;
++      reportFailure(err, "serialize");
++      queue(abandon);
++    }
+   });
+   let rootAssetsSerialized = false;
+   const serializeRootAssets = () => {
+@@ -2685,6 +2693,7 @@ function renderToStream(code, options = {}) {
+     }
+     serializeRootAssets();
+     flushStubBatch();
++    if (serializationFailed) return;
+     const head = renderShellHead(headRegistry, nonce, k => registry.has(k), noScripts, traceMetaMarkup(context.trace));
+     if (render) render.shell();
+     sink.shell(resolveSSRSelectValues(html), {
+diff --git a/dist/server.js b/dist/server.js
+index 79582a37adf3328d81e7ff17356c7da5ef021abe..c0721f5a6e6b9b5e492a5aff1d3a5febced7ac5d 100644
+--- a/dist/server.js
++++ b/dist/server.js
+@@ -1710,6 +1710,7 @@ function renderToStream(code, options = {}) {
+   };
+   let dispose;
+   let dead = false;
++  let serializationFailed = false;
+   let render;
+   let rootOwner;
+   let serializer;
+@@ -1870,7 +1871,7 @@ function renderToStream(code, options = {}) {
+     }
+   };
+   const onDone = () => {
+-    if (dead) return;
++    if (dead || serializationFailed) return;
+     writeTasks();
+     lastBlockingSize = blockingPromises.size;
+     doShell();
+@@ -1931,9 +1932,16 @@ function renderToStream(code, options = {}) {
+   serializer = (options.serializer || createHydrationSerializer)({
+     scopeId: options.renderId,
+     plugins: options.plugins,
+-    onData: payload => sink.data(payload),
++    onData: payload => {
++      if (!serializationFailed) sink.data(payload);
++    },
+     onDone,
+-    onError: err => reportFailure(err, "serialize")
++    onError: options.serializer ? err => reportFailure(err, "serialize") : err => {
++      if (dead || serializationFailed) return;
++      serializationFailed = true;
++      reportFailure(err, "serialize");
++      queue(abandon);
++    }
+   });
+   let rootAssetsSerialized = false;
+   const serializeRootAssets = () => {
+@@ -2383,6 +2391,7 @@ function renderToStream(code, options = {}) {
+     }
+     serializeRootAssets();
+     flushStubBatch();
++    if (serializationFailed) return;
+     const head = renderShellHead(headRegistry, nonce, k => registry.has(k), noScripts, traceMetaMarkup(context.trace));
+     if (render) render.shell();
+     sink.shell(resolveSSRSelectValues(html), {
+diff --git a/dist/server.observe.js b/dist/server.observe.js
+index ce6ed4402637a3412610c8e124becd8953423cc2..2593a88fd37c79a2b851df326d451832d43d35f6 100644
+--- a/dist/server.observe.js
++++ b/dist/server.observe.js
+@@ -1806,6 +1806,7 @@ function renderToStream(code, options = {}) {
+   };
+   let dispose;
+   let dead = false;
++  let serializationFailed = false;
+   let render;
+   let rootOwner;
+   let serializer;
+@@ -1987,7 +1988,7 @@ function renderToStream(code, options = {}) {
+     }
+   };
+   const onDone = () => {
+-    if (dead) return;
++    if (dead || serializationFailed) return;
+     writeTasks();
+     lastBlockingSize = blockingPromises.size;
+     doShell();
+@@ -2048,9 +2049,16 @@ function renderToStream(code, options = {}) {
+   serializer = (options.serializer || createHydrationSerializer)({
+     scopeId: options.renderId,
+     plugins: options.plugins,
+-    onData: payload => sink.data(payload),
++    onData: payload => {
++      if (!serializationFailed) sink.data(payload);
++    },
+     onDone,
+-    onError: err => reportFailure(err, "serialize")
++    onError: options.serializer ? err => reportFailure(err, "serialize") : err => {
++      if (dead || serializationFailed) return;
++      serializationFailed = true;
++      reportFailure(err, "serialize");
++      queue(abandon);
++    }
+   });
+   let rootAssetsSerialized = false;
+   const serializeRootAssets = () => {
+@@ -2516,6 +2524,7 @@ function renderToStream(code, options = {}) {
+     }
+     serializeRootAssets();
+     flushStubBatch();
++    if (serializationFailed) return;
+     const head = renderShellHead(headRegistry, nonce, k => registry.has(k), noScripts, traceMetaMarkup(context.trace));
+     if (render) render.shell();
+     sink.shell(resolveSSRSelectValues(html), {

@@ -21,7 +21,7 @@ campo. Os textos do formulário pertencem ao catálogo da página.
 atributos ARIA; o botão de fechar já tem tradução. Escape e esse botão solicitam
 o fechamento; clicar no fundo mantém o modal aberto. O navegador confina o foco
 ao modal e o devolve ao controle de origem ao fechar. Um modal inicialmente
-aberto entra na modalidade após a hidratação; sem JavaScript, permanece fechado.
+aberto entra na modalidade após a hidratação.
 
 `Provider` já instala um `ToastProvider` para a aplicação. Chame `useToast()` de
 `@/components/atoms/ToastProvider/useToast/index.ts` durante a criação do
@@ -39,33 +39,48 @@ idiomas. A API aceita texto simples e as variantes `info`, `success`, `warning`,
 `error` e `loading`. O prazo padrão é de cinco segundos; `loading` sem prazo e
 `duration: 0` permanecem até o fechamento. Atualizar a variante ou a duração
 reinicia o prazo; atualizar apenas o texto preserva o tempo restante. Hover,
-foco e aba oculta pausam o cronômetro. A fila mantém até cinco notificações e
-remove a mais antiga quando esse limite é excedido. Os anúncios de leitores de
-tela são agrupados por prioridade; erros usam a região assertiva. A notificação
-não desloca o foco ao aparecer. Cada provider tem estado próprio e libera os
-temporizadores ao desmontar.
+foco e aba oculta pausam o cronômetro. A fila mantém até cinco notificações e,
+quando esse limite é excedido, remove a mais antiga que não esteja com hover nem
+com foco. Os anúncios de leitores de tela são agrupados por prioridade; erros
+usam a região assertiva. A notificação não desloca o foco ao aparecer. Se a
+notificação removida contém o foco, ele passa ao botão de fechar da vizinha ou,
+sem vizinha, volta ao elemento focado antes de entrar na região. Cada provider
+tem estado próprio e libera os temporizadores ao desmontar.
+
+## Menus suspensos
+
+`DropdownMenu`, em `components/atoms/`, segue o padrão de menu do APG: setas,
+`Home` e `End` navegam entre os itens, `Escape` fecha, e `Tab` fecha sem prender
+o foco. Selecionar um item, pelo teclado ou pelo ponteiro, devolve o foco ao
+gatilho; com o ponteiro, o navegador não mostra o anel de `:focus-visible`.
+Clicar fora fecha o menu e preserva o destino do foco.
+
+Os gatilhos de tema e de idioma incluem o estado atual no nome acessível: o de
+idioma começa pelo código mostrado no botão, como "EN, select language", e o de
+tema informa a preferência atual depois da hidratação. Os dois dependem de
+JavaScript.
 
 ## Tema e persistência
 
 O tema começa em `system`. O cookie `app-theme` guarda a preferência por um ano,
 com `Path=/`, `SameSite=Lax` e `Secure` em HTTPS, restrito ao host atual. O
-`Document` lê esse cookie na requisição e entrega o tema explícito no HTML,
-mesmo sem JavaScript. O script diretamente no `head` resolve a preferência do
-sistema antes da hidratação, e `Provider` mantém uma instância de estado por
-árvore. O seletor aplica a escolha imediatamente, antes de tentar persistir o
-cookie. `BroadcastChannel` sincroniza abas da mesma origem; ao recuperar foco,
-ficar visível ou receber `pageshow`, a aba relê o cookie. Sem o canal, a
-sincronização acontece nesses eventos. Se o cookie não puder ser gravado, a
-escolha fica em memória e ainda pode ser propagada pelo canal. Ela é preservada
-ao retornar à aba enquanto o cookie não mudar e é perdida ao recarregar. O tema
-não usa `localStorage`. `infra/adapters/themeStorage/` lê e grava o cookie,
+`Document` lê esse cookie na requisição e entrega o tema explícito no HTML. O
+script diretamente no `head` resolve a preferência do sistema antes da
+hidratação, e `Provider` mantém uma instância de estado por árvore. O seletor
+aplica a escolha imediatamente, antes de tentar persistir o cookie.
+`BroadcastChannel` sincroniza abas da mesma origem; ao recuperar foco, ficar
+visível ou receber `pageshow`, a aba relê o cookie. Sem o canal, a sincronização
+acontece nesses eventos. Se o cookie não puder ser gravado, a escolha fica em
+memória e ainda pode ser propagada pelo canal. Ela é preservada ao retornar à
+aba enquanto o cookie não mudar e é perdida ao recarregar. O tema não usa
+`localStorage`. `infra/adapters/themeStorage/` lê e grava o cookie,
 `infra/adapters/applyTheme/` aplica o tema no DOM,
 `infra/adapters/makeBroadcastChannel/` encapsula o canal entre abas para
 qualquer domínio, `infra/adapters/makeThemeChannel/` concentra a regra de tema
 sobre esse canal, `infra/adapters/makeSystemTheme/` observa a preferência do
 sistema e `@types/theme.ts` define os tipos compartilhados, mantendo `theme/` só
-com CSS. As cores usam `light-dark()` com `color-scheme`, para definir cada par
-uma vez e seguir o sistema também quando JavaScript está desabilitado.
+com CSS. As cores usam `light-dark()` com `color-scheme` para definir cada par
+uma vez e seguir o tema do documento.
 
 ## Regras de CSS
 

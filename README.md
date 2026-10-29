@@ -41,18 +41,19 @@ vp run test:browser:install
 
 ## Comandos essenciais
 
-| Comando                      | Uso                                                        |
-| ---------------------------- | ---------------------------------------------------------- |
-| `vp run dev`                 | Iniciar o servidor de desenvolvimento                      |
-| `vp run build`               | Gerar o build de produção                                  |
-| `vp run start`               | Conferir o build localmente                                |
-| `vp run validate`            | Verificar formato, lint, tipos, cobertura, tooling e build |
-| `vp run test:e2e`            | Testar a aplicação com as fixtures E2E                     |
-| `vp run test:e2e:production` | Testar as rotas reais de produção                          |
+| Comando                      | Uso                                                                               |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| `vp run dev`                 | Iniciar o servidor de desenvolvimento                                             |
+| `vp run build`               | Gerar o build de produção                                                         |
+| `vp run start`               | Conferir o build localmente                                                       |
+| `vp run validate`            | Verificar formato, lint, tipos, código morto, cobertura, tooling, release e build |
+| `vp run test:e2e`            | Testar a aplicação com as fixtures E2E                                            |
+| `vp run test:e2e:production` | Testar as rotas reais de produção                                                 |
 
 Use `vp run dev` e `vp run build` para executar os scripts com Bun. Vitest,
-testes de tooling e SSR de produção permanecem em Node. Execute as duas suítes
-E2E em sequência, pois compartilham porta e artefatos de build. A
+testes de tooling e SSR de produção permanecem em Node; os testes da automação
+de release rodam em Bun. Execute as duas suítes E2E em sequência, pois
+compartilham porta e artefatos de build. A
 [referência de desenvolvimento](docs/development.md#scripts) contém os demais
 scripts e as restrições de runtime.
 

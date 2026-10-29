@@ -25,25 +25,25 @@ export function Dialog(props: DialogProps) {
   const id = createUniqueId()
   let element: HTMLDialogElement | undefined
   let opener: HTMLElement | undefined
-  let disposed = false
+  let isDisposed = false
 
   const synchronize = (open: boolean) => {
-    if (!element || disposed) return
-    if (open && !element.open) {
-      const active = document.activeElement
-      if (active instanceof HTMLElement && !element.contains(active)) {
-        opener = active
-      }
-      element.showModal()
-    } else if (!open && element.open) {
+    if (!element || isDisposed || open === element.open) return
+    if (!open) {
       element.close()
+      return
     }
+    const active = document.activeElement
+    if (active instanceof HTMLElement && !element.contains(active)) {
+      opener = active
+    }
+    element.showModal()
   }
 
   createEffect(() => props.open, synchronize)
 
   onCleanup(() => {
-    disposed = true
+    isDisposed = true
     if (!element?.open) return
     element.close()
     if (opener?.isConnected) opener.focus()
@@ -51,7 +51,7 @@ export function Dialog(props: DialogProps) {
 
   const handleClose = () => {
     // close é assíncrono: uma notificação antiga não pode fechar a reabertura.
-    if (disposed || element?.open || !props.open) return
+    if (isDisposed || element?.open || !props.open) return
     props.onOpenChange(false)
     // Aguarda o signal antes de reabrir caso o consumidor recuse o fechamento.
     queueMicrotask(() => synchronize(untrack(() => props.open)))

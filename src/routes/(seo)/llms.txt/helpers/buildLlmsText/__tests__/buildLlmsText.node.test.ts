@@ -8,7 +8,7 @@ function page(overrides: PageOverrides): LlmsPage {
   return {
     title: overrides.path,
     description: '',
-    section: 'Páginas',
+    section: 'Pages',
     optional: false,
     ...overrides
   }
@@ -29,7 +29,7 @@ describe('geração do llms.txt', () => {
         '',
         '> Resumo do site.',
         '',
-        '## Páginas',
+        '## Pages',
         '',
         '- [/](https://example.com/)',
         '- [/docs](https://example.com/docs)',
@@ -60,7 +60,7 @@ describe('geração do llms.txt', () => {
         '- Conteúdo em português.',
         String.raw`- Sem API \[pública\] no momento.`,
         '',
-        '## Páginas',
+        '## Pages',
         '',
         '- [Início](https://example.com/)',
         ''
@@ -111,7 +111,7 @@ describe('geração do llms.txt', () => {
         '',
         '> Resumo do site.',
         '',
-        '## Páginas',
+        '## Pages',
         '',
         '- [Início](https://example.com/): Apresentação.',
         '- [Sobre](https://example.com/about)',
@@ -238,7 +238,7 @@ describe('orientações de uso no llms.txt', () => {
             'Inspect the rendered homepage before selecting the template.',
           section: 'When to use'
         }),
-        page({ path: '/', title: 'Home', section: 'Pages' })
+        page({ path: '/', title: 'Home' })
       ],
       siteUrl: 'https://example.com'
     })

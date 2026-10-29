@@ -10,7 +10,10 @@ export type SitemapEntry = {
 // Fonte das URLs de uma rota com parâmetros, declarada em
 // `route.info.sitemap`. O módulo da rota entra no bundle do cliente, então
 // banco e SDK entram por server function. Roda a cada request do sitemap;
-// cache de dados, quando necessário, fica dentro da fonte.
-export type SitemapRouteInfo = () =>
-  | readonly SitemapEntry[]
-  | Promise<readonly SitemapEntry[]>
+// cache de dados, quando necessário, fica dentro da fonte. O sinal aborta no
+// prazo das fontes, na desconexão do cliente e ao fim da leitura, inclusive
+// quando outra fonte falha: repasse-o à leitura para que ela seja cancelada, e
+// não só deixe de ser esperada.
+export type SitemapRouteInfo = (
+  signal: AbortSignal
+) => readonly SitemapEntry[] | Promise<readonly SitemapEntry[]>

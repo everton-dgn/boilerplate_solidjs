@@ -1,13 +1,13 @@
 type MemoizeOnceOptions<Value> = {
   render: () => Value
-  enabled: boolean
+  isEnabled: boolean
 }
 
 export function memoizeOnce<Value>({
   render,
-  enabled
+  isEnabled
 }: MemoizeOnceOptions<Value>): () => Value {
-  if (!enabled) return render
+  if (!isEnabled) return render
   let cache: { value: Value } | undefined
   return () => {
     cache ??= { value: render() }

@@ -3,4 +3,3 @@ env = false
 [install]
 exact = true
 linker = "isolated"
-minimumReleaseAge = 0

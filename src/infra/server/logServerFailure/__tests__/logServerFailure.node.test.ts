@@ -124,7 +124,8 @@ describe('linha fixa do log de falhas', () => {
       '[server-error] Unexpected failure; private details omitted'
     ],
     ['middleware', MESSAGE],
-    ['error-page', '[error-page] Unexpected failure; private details omitted']
+    ['error-page', '[error-page] Unexpected failure; private details omitted'],
+    ['sitemap', '[sitemap] Unexpected failure; private details omitted']
   ] as const)('registra %s só com a linha fixa sem erro', (source, message) => {
     logServerFailure({ source })
     expect(console.error).toHaveBeenCalledExactlyOnceWith(message)
@@ -214,6 +215,57 @@ describe('falhas do destino de log', () => {
     } finally {
       Object.defineProperty(console, 'error', descriptor)
     }
+  })
+})
+
+describe('erro original em desenvolvimento', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+
+  it('imprime o erro depois da linha fixa quando pedido em desenvolvimento', () => {
+    vi.stubEnv('DEV', true)
+    const error = new Error('PRIVATE')
+
+    logServerFailure({ source: 'middleware', error, shouldPrintOriginal: true })
+
+    expect(readLog(console.error).heads[0]).toStrictEqual([MESSAGE, 'Error'])
+    expect(vi.mocked(console.error).mock.calls.slice(1)).toStrictEqual([
+      [error]
+    ])
+  })
+
+  it.each([
+    ['fora de desenvolvimento', false, true],
+    ['sem pedido do chamador', true, false]
+  ])('não imprime o erro original %s', (_label, isDevelopment, shouldPrint) => {
+    vi.stubEnv('DEV', isDevelopment)
+
+    logServerFailure({
+      source: 'middleware',
+      error: new Error('PRIVATE'),
+      shouldPrintOriginal: shouldPrint
+    })
+
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[MESSAGE, 'Error']],
+      leaks: []
+    })
+  })
+
+  it('contém a falha ao imprimir o erro original', () => {
+    vi.stubEnv('DEV', true)
+    vi.mocked(console.error)
+      .mockImplementationOnce(vi.fn())
+      .mockImplementationOnce(() => {
+        throw new Error('PRIVATE_DESTINATION')
+      })
+
+    expect(() =>
+      logServerFailure({
+        source: 'middleware',
+        error: new Error('PRIVATE'),
+        shouldPrintOriginal: true
+      })
+    ).not.toThrow()
   })
 })
 
@@ -483,6 +535,27 @@ describe('limites da leitura do stack', () => {
     ],
     ['o U+202E, que inverte a direção do texto', '    at /PRIVATE‮gnp.js:1:1']
   ])('descarta um frame com %s no local', (_label, line) => {
+    logServerFailure({
+      source: 'middleware',
+      error: withStack([line, PLAIN_FRAME])
+    })
+
+    expect(loggedLines()).toStrictEqual([MESSAGE, 'Error', PLAIN_FRAME])
+  })
+
+  // Parênteses no local deixariam um frame com função terminar antes da hora;
+  // por isso arquivos em pastas de grupo de rotas saem do log.
+  it.each([
+    [
+      'em pasta de grupo de rotas',
+      '    at GET (/app/src/routes/(seo)/sitemap.xml/index.ts:1:1)'
+    ],
+    ['sem função', '    at /a(b):1:1'],
+    [
+      'em file:// com grupo de rotas',
+      '    at file:///app/src/routes/(seo)/x.ts:1:1'
+    ]
+  ])('descarta um frame com parênteses no local %s', (_label, line) => {
     logServerFailure({
       source: 'middleware',
       error: withStack([line, PLAIN_FRAME])

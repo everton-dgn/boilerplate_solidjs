@@ -52,13 +52,13 @@ export function collectSitemapEntries(
   const sources: SitemapRouteInfo[] = []
   walkStaticRoutes<RouteState>({
     routes,
-    dynamic: true,
+    shouldVisitDynamic: true,
     initialState: INITIAL_STATE,
-    visit: ({ route, path, parentState, dynamic }) => {
+    visit: ({ route, path, parentState, isDynamic }) => {
       const info = route.$$route?.require().route?.info
       const state = resolveState({ parent: parentState, seo: info?.seo })
       if (!route.page) return state
-      if (dynamic) {
+      if (isDynamic) {
         if (!state.noindex && info?.sitemap) sources.push(info.sitemap)
         return state
       }

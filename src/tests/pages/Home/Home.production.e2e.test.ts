@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 
 const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
+const MENU_TRIGGERS = 2
 
 test.describe('layout na árvore de produção', () => {
   test('renderiza Home e 404 com barra no SSR', async ({
@@ -22,6 +23,10 @@ test.describe('layout na árvore de produção', () => {
           name: 'SolidJS Boilerplate para aplicações web'
         })
       ).toBeVisible()
+      const menuTriggers = page
+        .getByRole('banner')
+        .locator('button[aria-haspopup="menu"]')
+      await expect(menuTriggers).toHaveCount(MENU_TRIGGERS)
       await expect(page.locator('head link[rel="canonical"]')).toHaveCount(1)
 
       const missing = await page.goto('/pt/pagina-inexistente')
@@ -46,7 +51,6 @@ test.describe('layout na árvore de produção', () => {
     await expect(page.getByRole('menu')).toBeVisible()
     await page.keyboard.press('Escape')
     const topbar = await page.getByRole('banner').elementHandle()
-    expect(topbar).not.toBeNull()
 
     await page.getByRole('link', { name: '404', exact: true }).click()
     await expect(

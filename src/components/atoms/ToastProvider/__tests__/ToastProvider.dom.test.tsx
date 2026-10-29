@@ -7,10 +7,16 @@ import type { ToastApi } from '../types.ts'
 import { useToast } from '../useToast/index.ts'
 
 const SHORT_WAIT = 180
+const ANNOUNCEMENT_DELAY = 150
 const ANNOUNCEMENT_WAIT = 220
 const TWO_TOASTS = 2
-const PERSISTENCE_WAIT = 5200
-const PERSISTENCE_TIMEOUT = 10_000
+const DEFAULT_DURATION = 5000
+const MAX_TOASTS = 5
+const SHORT_DURATION = 100
+const PAUSED_DURATION = 120
+const TEXT_DURATION = 200
+const BEFORE_TEXT_UPDATE = 150
+const AFTER_TEXT_UPDATE = 60
 
 function mountToast() {
   const host = document.createElement('div')
@@ -20,7 +26,7 @@ function mountToast() {
     api = useToast()
     return <button type="button">Outside</button>
   }
-  let disposed = false
+  let isDisposed = false
   const unmount = render(
     () => (
       <ToastProvider>
@@ -30,8 +36,8 @@ function mountToast() {
     host
   )
   function dispose() {
-    if (disposed) return
-    disposed = true
+    if (isDisposed) return
+    isDisposed = true
     unmount()
     host.remove()
   }
@@ -40,10 +46,20 @@ function mountToast() {
   return { host, api, dispose }
 }
 
-function wait(milliseconds: number) {
-  const { promise, resolve } = Promise.withResolvers<boolean>()
-  setTimeout(() => resolve(true), milliseconds)
-  return promise
+function useFakeClock() {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] })
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+}
+
+function advance(milliseconds: number) {
+  vi.advanceTimersByTime(milliseconds)
+  flush()
+}
+
+function readMessages(host: HTMLElement) {
+  return Array.from(host.querySelectorAll('li p'), item => item.textContent)
 }
 
 describe('notificações temporárias', () => {
@@ -86,84 +102,130 @@ describe('notificações temporárias', () => {
     api.update({ id: newest, message: 'Updated', variant: 'success' })
     api.dismiss(middle)
     flush()
-    expect(
-      Array.from(host.querySelectorAll('li p'), item => item.textContent)
-    ).toStrictEqual(['Item 3', 'Item 5', 'Item 6', 'Updated'])
+    expect(readMessages(host)).toStrictEqual([
+      'Item 3',
+      'Item 5',
+      'Item 6',
+      'Updated'
+    ])
     api.update({ id: oldest, message: 'Removed' })
     flush()
     expect(host).not.toHaveTextContent('Removed')
   })
 
-  it(
-    'mantém loading e duração zero, atualiza o mesmo nó e expira após atualização',
-    async () => {
-      const { host, api } = mountToast()
-      const id = api.show({ message: 'Working', variant: 'loading' })
-      api.show({ message: 'Persistent', duration: 0 })
-      api.show({ message: 'Default expiry' })
-      api.update({ id, message: 'Still working' })
-      flush()
-      const item = host.querySelector('li')
-      await wait(PERSISTENCE_WAIT)
-      expect(host.querySelectorAll('li')).toHaveLength(TWO_TOASTS)
-      api.update({ id, message: 'Finished', variant: 'success', duration: 100 })
-      flush()
-      expect(host.querySelector('li')).toBe(item)
-      expect(item).toHaveTextContent('Finished')
-      await expect.poll(() => host.querySelectorAll('li').length).toBe(1)
-      expect(host.querySelector('li')).toHaveTextContent('Persistent')
-    },
-    PERSISTENCE_TIMEOUT
-  )
-
-  it('pausa por hover e foco juntos e retoma somente ao sair dos dois', async () => {
+  it('preserva na fila cheia as notificações com hover ou foco', () => {
     const { host, api } = mountToast()
-    api.show({ message: 'Paused', duration: 120 })
+    for (let index = 0; index < MAX_TOASTS; index += 1) {
+      api.show({ message: `Item ${index}`, duration: 0 })
+    }
+    flush()
+    const [hovered, focused] = host.querySelectorAll('li')
+    const close = focused?.querySelector('button')
+    assert(hovered && close)
+    hovered.dispatchEvent(new PointerEvent('pointerenter'))
+    close.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
+    api.show({ message: 'Newest', duration: 0 })
+    flush()
+    expect(readMessages(host)).toStrictEqual([
+      'Item 0',
+      'Item 1',
+      'Item 3',
+      'Item 4',
+      'Newest'
+    ])
+  })
+
+  it('mantém loading e duração zero, atualiza o mesmo nó e expira após atualização', () => {
+    useFakeClock()
+    const { host, api } = mountToast()
+    const id = api.show({ message: 'Working', variant: 'loading' })
+    api.show({ message: 'Persistent', duration: 0 })
+    api.show({ message: 'Default expiry' })
+    api.update({ id, message: 'Still working' })
+    flush()
+    const item = host.querySelector('li')
+    advance(DEFAULT_DURATION)
+    expect(host.querySelectorAll('li')).toHaveLength(TWO_TOASTS)
+    api.update({
+      id,
+      message: 'Finished',
+      variant: 'success',
+      duration: SHORT_DURATION
+    })
+    flush()
+    expect(host.querySelector('li')).toBe(item)
+    expect(item).toHaveTextContent('Finished')
+    advance(SHORT_DURATION)
+    expect(readMessages(host)).toStrictEqual(['Persistent'])
+  })
+
+  it('preserva o prazo restante quando atualiza só o texto', () => {
+    useFakeClock()
+    const { host, api } = mountToast()
+    const id = api.show({ message: 'Saving', duration: TEXT_DURATION })
+    flush()
+    advance(BEFORE_TEXT_UPDATE)
+    api.update({ id, message: 'Almost saved' })
+    flush()
+    expect(readMessages(host)).toStrictEqual(['Almost saved'])
+    advance(AFTER_TEXT_UPDATE)
+    expect(host.querySelector('li')).toBeNull()
+  })
+
+  it('pausa por hover e foco juntos e retoma somente ao sair dos dois', () => {
+    useFakeClock()
+    const { host, api } = mountToast()
+    api.show({ message: 'Paused', duration: PAUSED_DURATION })
     flush()
     const item = host.querySelector('li')
     const close = item?.querySelector('button')
     assert(item && close)
     item.dispatchEvent(new PointerEvent('pointerenter'))
     close.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
-    await wait(SHORT_WAIT)
+    advance(SHORT_WAIT)
     item.dispatchEvent(new PointerEvent('pointerleave'))
-    await wait(SHORT_WAIT)
+    advance(SHORT_WAIT)
     expect(item.isConnected).toBe(true)
     close.dispatchEvent(
       new FocusEvent('focusout', { bubbles: true, relatedTarget: host })
     )
-    await expect.poll(() => host.querySelector('li')).toBeNull()
+    advance(PAUSED_DURATION)
+    expect(host.querySelector('li')).toBeNull()
   })
 
-  it('suspende timers em aba oculta, inclusive quando atualizados', async () => {
+  it('suspende timers em aba oculta, inclusive quando atualizados', () => {
+    useFakeClock()
     const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
-    onTestFinished(() => hidden.mockRestore())
     const { host, api } = mountToast()
-    const id = api.show({ message: 'Hidden', duration: 100 })
-    api.update({ id, duration: 120 })
+    const id = api.show({ message: 'Hidden', duration: SHORT_DURATION })
+    api.update({ id, duration: PAUSED_DURATION })
     flush()
-    await wait(SHORT_WAIT)
+    advance(SHORT_WAIT)
     expect(host.querySelector('li')).not.toBeNull()
     hidden.mockReturnValue(false)
     document.dispatchEvent(new Event('visibilitychange'))
-    await expect.poll(() => host.querySelector('li')).toBeNull()
+    advance(PAUSED_DURATION)
+    expect(host.querySelector('li')).toBeNull()
   })
+})
 
-  it('anuncia a última atualização por prioridade e suprime repetição consecutiva', async () => {
+describe('anúncios das notificações', () => {
+  it('anuncia a última atualização por prioridade e suprime repetição consecutiva', () => {
+    useFakeClock()
     const { host, api } = mountToast()
     const id = api.show({ message: 'First', duration: 0 })
     api.update({ id, message: 'Latest' })
     api.show({ message: 'Failure', variant: 'error', duration: 0 })
-    await expect
-      .poll(() => host.querySelector('output')?.textContent)
-      .toBe(`${m.toast_info()}: Latest`)
+    advance(ANNOUNCEMENT_DELAY)
+    const output = host.querySelector('output')
+    assert(output)
+    expect(output).toHaveTextContent(`${m.toast_info()}: Latest`)
     expect(host.querySelector('[role="alert"]')).toHaveTextContent(
       `${m.toast_error()}: Failure`
     )
-    const changes = vi.fn<MutationCallback>()
-    const observer = new MutationObserver(changes)
-    const output = host.querySelector('output')
-    assert(output)
+    const observer = new MutationObserver(() => {
+      /* Os registros são lidos com takeRecords. */
+    })
     observer.observe(output, {
       childList: true,
       subtree: true,
@@ -171,9 +233,33 @@ describe('notificações temporárias', () => {
     })
     onTestFinished(() => observer.disconnect())
     api.update({ id, message: 'Latest' })
-    await wait(ANNOUNCEMENT_WAIT)
-    expect(changes).not.toHaveBeenCalled()
+    advance(ANNOUNCEMENT_WAIT)
+    expect(observer.takeRecords()).toStrictEqual([])
     api.dismiss(id)
+  })
+
+  it('não reanuncia quando o texto volta ao último anúncio no mesmo lote', () => {
+    useFakeClock()
+    const { host, api } = mountToast()
+    const id = api.show({ message: 'A', duration: 0 })
+    advance(ANNOUNCEMENT_DELAY)
+    const output = host.querySelector('output')
+    assert(output)
+    expect(output).toHaveTextContent(`${m.toast_info()}: A`)
+    const observer = new MutationObserver(() => {
+      /* Os registros são lidos com takeRecords. */
+    })
+    observer.observe(output, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    })
+    onTestFinished(() => observer.disconnect())
+    api.update({ id, message: 'B' })
+    api.update({ id, message: 'A' })
+    advance(ANNOUNCEMENT_WAIT)
+    expect(observer.takeRecords()).toStrictEqual([])
+    expect(output).toHaveTextContent(`${m.toast_info()}: A`)
   })
 
   it.each([
@@ -183,30 +269,34 @@ describe('notificações temporárias', () => {
     { variant: 'error', dismissFirst: false }
   ] as const)(
     'reanuncia toast independente com texto igual: $variant, dismiss=$dismissFirst',
-    async ({ variant, dismissFirst }) => {
+    ({ variant, dismissFirst }) => {
+      useFakeClock()
       const { host, api } = mountToast()
       const region = host.querySelector(
         variant === 'error' ? '[role="alert"]' : 'output'
       )
       assert(region)
       const id = api.show({ message: 'Saved', variant, duration: 0 })
-      await expect.poll(() => region.textContent).toContain('Saved')
+      advance(ANNOUNCEMENT_DELAY)
+      expect(region.textContent).toContain('Saved')
       const previousText = region.textContent
       if (dismissFirst) api.dismiss(id)
       api.show({ message: 'Saved', variant, duration: 0 })
       flush()
       expect(region.textContent).toBe('')
-      await expect.poll(() => region.textContent).toBe(previousText)
+      advance(ANNOUNCEMENT_DELAY)
+      expect(region.textContent).toBe(previousText)
     }
   )
 
-  it('não anuncia toast removido ou a prioridade anterior de uma atualização', async () => {
+  it('não anuncia toast removido ou a prioridade anterior de uma atualização', () => {
+    useFakeClock()
     const { host, api } = mountToast()
     const removed = api.show({ message: 'Removed', duration: 0 })
     api.dismiss(removed)
     const changed = api.show({ message: 'Changed', duration: 0 })
     api.update({ id: changed, variant: 'error' })
-    await wait(ANNOUNCEMENT_WAIT)
+    advance(ANNOUNCEMENT_WAIT)
     expect(host.querySelector('output')).toHaveTextContent('')
     expect(host.querySelector('[role="alert"]')).toHaveTextContent(
       `${m.toast_error()}: Changed`
@@ -218,12 +308,6 @@ describe('notificações temporárias', () => {
     const clear = vi.spyOn(globalThis, 'clearTimeout')
     const add = vi.spyOn(document, 'addEventListener')
     const remove = vi.spyOn(document, 'removeEventListener')
-    onTestFinished(() => {
-      timers.mockRestore()
-      clear.mockRestore()
-      add.mockRestore()
-      remove.mockRestore()
-    })
     const { api, dispose, host } = mountToast()
     const id = api.show({ message: 'Dispose', duration: 1000 })
     const scheduled = timers.mock.results.map(result => {

@@ -40,34 +40,34 @@
     "dead-code": "vp run i18n:generate && vp run dead-code-project",
     "dead-code:fix": "knip-bun --config tooling/knip.ts --fix --format",
     "scan:secrets": "kingfisher scan . --git-history none --no-validate --redact --exclude node_modules --exclude dist --exclude dist-ssr --exclude .nitro --exclude .output --exclude .vercel --exclude .tsbuild --exclude playwright-report --exclude test-results --exclude coverage --exclude .vitest",
-    "validate": "vp run check:ci && vp run typecheck:node && vp run test:coverage && vp run test:tooling && vp run test:release && vp run build",
+    "validate": "vp run check:ci && vp run typecheck:node && vp run dead-code && vp run test:coverage && vp run test:tooling && vp run test:release && vp run build",
     "commitlint": "commitlint"
   },
   "dependencies": {
-    "@inlang/paraglide-js": "2.29.0",
+    "@inlang/paraglide-js": "2.29.2",
     "@mdream/js": "2.0.3",
-    "@solidjs/router": "2.0.0-next.40",
-    "@solidjs/web": "2.0.0-rc.15",
-    "filesystem-routing": "0.4.0",
-    "solid-js": "2.0.0-rc.15",
+    "@solidjs/router": "2.0.0-next.42",
+    "@solidjs/web": "2.0.0-rc.18",
+    "filesystem-routing": "0.4.1",
+    "solid-js": "2.0.0-rc.18",
     "valibot": "1.5.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "21.2.3",
-    "@commitlint/config-conventional": "21.2.3",
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
     "@iconify-json/hugeicons": "1.2.35",
-    "@inlang/plugin-message-format": "4.5.4",
+    "@inlang/plugin-message-format": "4.5.5",
     "@inlang/sdk": "4.0.4",
     "@playwright/test": "1.64.1",
-    "@solidjs/vite-plugin": "3.0.0-next.50",
+    "@solidjs/vite-plugin": "3.0.0-next.51",
     "@testing-library/jest-dom": "7.0.1",
     "@types/node": "24.19.2",
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
     "eslint-plugin-solid": "0.18.1",
-    "happy-dom": "21.0.3",
-    "knip": "6.41.0",
+    "happy-dom": "21.0.4",
+    "knip": "6.43.0",
     "lefthook": "2.2.2",
     "nitro": "3.0.260903-beta",
     "playwright": "1.64.1",
@@ -82,42 +82,40 @@
     "vitest": "catalog:"
   },
   "type": "module",
-  "packageManager": "bun@1.4.3",
+  "packageManager": "bun@1.4.4",
   "engines": {
-    "node": ">=24.22.0 <25"
+    "node": ">=24.22.1 <25"
   },
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "24.22.0",
+      "version": "24.22.1",
       "onFail": "download"
     }
   },
   "trustedDependencies": [
-    "esbuild",
     "lefthook"
   ],
   "workspaces": {
     "packages": [],
     "catalog": {
-      "vite": "npm:@voidzero-dev/vite-plus-core@1.2.0",
-      "vitest": "5.0.4",
-      "vite-plus": "1.2.0",
-      "@vitest/browser-playwright": "5.0.4",
-      "@vitest/coverage-v8": "5.0.4",
-      "@vitest/ui": "5.0.4"
+      "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0",
+      "vitest": "5.0.5",
+      "vite-plus": "1.4.0",
+      "@vitest/browser-playwright": "5.0.5",
+      "@vitest/coverage-v8": "5.0.5",
+      "@vitest/ui": "5.0.5"
     }
   },
   "overrides": {
-    "@solidjs/babel-plugin": "2.0.0-rc.15",
-    "@solidjs/compiler": "2.0.0-rc.15",
+    "@solidjs/babel-plugin": "2.0.0-rc.18",
+    "@solidjs/compiler": "2.0.0-rc.18",
     "vite@*": "catalog:",
     "vitest@*": "catalog:"
   },
   "patchedDependencies": {
     "@mdream/js@2.0.3": "patches/@mdream%2Fjs@2.0.3.patch",
-    "@voidzero-dev/vite-plus-core@1.2.0": "patches/@voidzero-dev%2Fvite-plus-core@1.2.0.patch",
-    "@solidjs/web@2.0.0-rc.15": "patches/@solidjs%2Fweb@2.0.0-rc.15.patch",
-    "solid-js@2.0.0-rc.15": "patches/solid-js@2.0.0-rc.15.patch"
+    "@voidzero-dev/vite-plus-core@1.4.0": "patches/@voidzero-dev%2Fvite-plus-core@1.4.0.patch",
+    "@solidjs/web@2.0.0-rc.18": "patches/@solidjs%2Fweb@2.0.0-rc.18.patch"
   }
 }

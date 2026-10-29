@@ -1,5 +1,6 @@
 import { getRequestEvent } from '@solidjs/web'
 
+import { isHtmlResponse } from '../helpers/isHtmlResponse/index.ts'
 import type { Next } from '../types.ts'
 import { CSP_DIRECTIVES, SECURITY_HEADERS } from './constants.ts'
 
@@ -20,14 +21,6 @@ function contentSecurityPolicy(nonce: string | undefined): string {
     ? `script-src 'nonce-${nonce}' 'strict-dynamic'`
     : "script-src 'none'"
   return [...CSP_DIRECTIVES, scriptSrc].join('; ')
-}
-
-// Só documentos HTML executam scripts. Texto, XML, JSON e redirects saem com
-// script-src 'none', e o nonce da requisição não fica guardado no cache
-// compartilhado das respostas com s-maxage.
-function isHtml(response: Response): boolean {
-  const contentType = response.headers.get('content-type') ?? ''
-  return contentType.toLowerCase().includes('text/html')
 }
 
 // Respostas de controle aceitam cópia de headers; um corpo upstream exige contenção.
@@ -57,6 +50,9 @@ export function requestNonce(): string | undefined {
 }
 
 // O desenvolvimento usa estilos inline do HMR; a política de produção só permite folhas externas.
+// Só documentos HTML executam scripts. Texto, XML, JSON e redirects saem com
+// script-src 'none', e o nonce da requisição não fica guardado no cache
+// compartilhado das respostas com s-maxage.
 export function applySecurityHeaders({
   response,
   nonce
@@ -68,7 +64,7 @@ export function applySecurityHeaders({
       : {
           ...SECURITY_HEADERS,
           'content-security-policy': contentSecurityPolicy(
-            isHtml(response) ? nonce : undefined
+            isHtmlResponse(response) ? nonce : undefined
           )
         }
   })

@@ -1,14 +1,19 @@
 import { getRequestEvent, renderToStream } from '@solidjs/web'
 import manifest from 'virtual:solid-manifest'
 
+import { createRenderIntegrity } from '@/infra/server/renderIntegrity/index.ts'
+
 import App from './App.tsx'
 import Document from './Document.tsx'
 
 export function render() {
   const event = getRequestEvent()
   const nonce = event?.nonce ?? undefined
-  let hasCompleted = false
-  const stream = renderToStream(
+  // O hook global de configureServerErrors marca hasErrors durante o render,
+  // então o estado precisa existir antes do primeiro passe.
+  const integrity = createRenderIntegrity()
+  if (event) event.locals.ssrRenderState = integrity.state
+  return renderToStream(
     () => (
       <Document>
         <App />
@@ -18,20 +23,7 @@ export function render() {
       manifest,
       nonce,
       signal: event?.request.signal,
-      onCompleteAll() {
-        hasCompleted = true
-      }
+      onCompleteAll: integrity.complete
     }
   )
-  if (event) {
-    event.locals.ssrRenderState = {
-      get hasErrors() {
-        return stream.hasErrors
-      },
-      get hasCompleted() {
-        return hasCompleted
-      }
-    }
-  }
-  return stream
 }

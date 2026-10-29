@@ -1,7 +1,17 @@
-import { expect, type Page, test, type TestInfo } from '@playwright/test'
+import {
+  expect,
+  type APIRequestContext,
+  type Page,
+  test,
+  type TestInfo
+} from '@playwright/test'
 import * as v from 'valibot'
 
 import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
+import {
+  readGatedBody,
+  releaseFixtureGate
+} from '@/tests/helpers/fixtureGate/index.ts'
 import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 
 test.use({ locale: 'pt-BR' })
@@ -9,6 +19,7 @@ test.use({ locale: 'pt-BR' })
 const HTTP_OK = 200
 const PAGE_URL = '/structured-data-stream'
 const PRODUCT_NAME = 'Produto em streaming'
+const LOADING_TEXT = 'Carregando produto...'
 const JSON_LD = 'script[type="application/ld+json"]'
 const SCRIPTS_WITH_PRODUCT = 2
 
@@ -17,9 +28,22 @@ type HtmlEvidence = {
   name: string
   html: string
 }
+type GatedVisit = { page: Page; request: APIRequestContext }
 
 async function saveHtml({ testInfo, name, html }: HtmlEvidence): Promise<void> {
   await testInfo.attach(name, { body: html, contentType: 'text/html' })
+}
+
+function productId(): string {
+  return `structured-data:${crypto.randomUUID()}`
+}
+
+// Navega com um gate novo e só o libera quando o fallback do shell aparece.
+async function visitGated({ page, request }: GatedVisit): Promise<void> {
+  const id = productId()
+  await page.goto(`${PAGE_URL}?id=${id}`, { waitUntil: 'commit' })
+  await expect(page.getByText(LOADING_TEXT, { exact: true })).toBeVisible()
+  await releaseFixtureGate({ request, id })
 }
 
 async function expectSafeProduct(page: Page): Promise<void> {
@@ -39,11 +63,21 @@ async function expectSafeProduct(page: Page): Promise<void> {
 }
 
 test('envia o JSON-LD assíncrono como atualização de head após o HTML inicial', async ({
-  request
+  request,
+  baseURL
 }, testInfo) => {
-  const response = await request.get(PAGE_URL)
-  expect(response.status()).toBe(HTTP_OK)
-  const html = await response.text()
+  if (!baseURL) throw new Error('baseURL is required')
+  const id = productId()
+  const response = await fetch(`${baseURL}${PAGE_URL}?id=${id}`, {
+    headers: { accept: 'text/html' }
+  })
+  const html = await readGatedBody({
+    request,
+    id,
+    response,
+    shellText: LOADING_TEXT
+  })
+  expect(response.status).toBe(HTTP_OK)
   await saveHtml({ testInfo, name: 'stream-response.html', html })
 
   const headEnd = html.indexOf('</head>')
@@ -53,7 +87,7 @@ test('envia o JSON-LD assíncrono como atualização de head após o HTML inicia
 
   expect(head).toContain('application/ld+json')
   expect(head).not.toContain(PRODUCT_NAME)
-  expect(tail).toContain('Carregando produto...')
+  expect(tail).toContain(LOADING_TEXT)
   expect(tail).toContain('"a","script:key:structured-data:')
   // O runtime repassa o nonce CSP da requisição à tag criada no head.
   expect(tail).toMatch(
@@ -70,12 +104,12 @@ test.describe('streaming sem JavaScript', () => {
   test.use({ javaScriptEnabled: false })
 
   test('mantém apenas o JSON-LD inicial no head', async ({
-    page
+    page,
+    request
   }, testInfo) => {
-    await page.goto(PAGE_URL)
-    await expect(
-      page.getByText('Carregando produto...', { exact: true })
-    ).toBeVisible()
+    await visitGated({ page, request })
+    await page.waitForLoadState('load')
+    await expect(page.getByText(LOADING_TEXT, { exact: true })).toBeVisible()
     await expect(page.locator(`head ${JSON_LD}`)).toHaveCount(1)
     const scripts = await page.locator(`head ${JSON_LD}`).allTextContents()
     expect(scripts.join('')).not.toContain(PRODUCT_NAME)
@@ -89,11 +123,12 @@ test.describe('streaming sem JavaScript', () => {
 })
 
 test('insere o JSON-LD tardio no head antes de carregar o JavaScript da aplicação', async ({
-  page
+  page,
+  request
 }, testInfo) => {
   const violations = await watchCspViolations(page)
   await page.route(/\/assets\/.*\.js(?:\?.*)?$/u, route => route.abort())
-  await page.goto(PAGE_URL)
+  await visitGated({ page, request })
   await expect(page.getByRole('heading', { name: PRODUCT_NAME })).toBeVisible()
   await expect(
     page.getByRole('button', { name: 'Selecionar tema' })
@@ -114,12 +149,13 @@ test('insere o JSON-LD tardio no head antes de carregar o JavaScript da aplicaç
 })
 
 test('hidrata sem duplicar o JSON-LD e o remove ao sair da rota', async ({
-  page
+  page,
+  request
 }, testInfo) => {
   const errors: string[] = []
   const violations = await watchCspViolations(page)
   page.on('pageerror', error => errors.push(error.message))
-  await page.goto(PAGE_URL)
+  await visitGated({ page, request })
   await page.getByRole('button', { name: 'Incrementar', exact: true }).click()
   await expect(page.getByText('Cliques: 1', { exact: true })).toBeVisible()
   await expect(page.locator(`head ${JSON_LD}`)).toHaveCount(

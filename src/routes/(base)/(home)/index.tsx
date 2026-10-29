@@ -3,6 +3,7 @@ import type { RouteDefinition } from '@solidjs/router'
 import SolidLogo from '~icons/my-images/solid'
 
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
+import { SITE } from '@/constants/site.ts'
 
 import { content, seo } from './seo.ts'
 
@@ -23,7 +24,7 @@ export default function Home() {
         <span class={S.glow} aria-hidden="true" />
 
         <section class={S.hero}>
-          <PageBadge>SolidJS Boilerplate</PageBadge>
+          <PageBadge>{SITE.title}</PageBadge>
 
           <h1 class={S.title}>{content.title}</h1>
 

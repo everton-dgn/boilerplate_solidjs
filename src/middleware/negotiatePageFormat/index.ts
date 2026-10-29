@@ -5,23 +5,54 @@ type MediaRange = {
 }
 type MediaPreferenceOptions = { ranges: MediaRange[]; type: string }
 type MediaPreference = { quality: number; specificity: number }
+type SplitOptions = { value: string; separator: string }
 
 const QUALITY = /^q\s*=\s*(?<quality>0(?:\.\d{0,3})?|1(?:\.0{0,3})?)$/iu
 const EXACT_SPECIFICITY = 4
 const TYPE_SPECIFICITY = 2
 const UTF8 = /^charset\s*=\s*(?:utf-8|"utf-8")$/iu
-const RANGE_SEPARATOR = /,(?=(?:[^"]*"[^"]*")*[^"]*$)/u
-const PARAMETER_SEPARATOR = /;(?=(?:[^"]*"[^"]*")*[^"]*$)/u
+// RFC 7763: a resposta é CommonMark com extensões GFM, então as duas variantes
+// são atendidas.
+const MARKDOWN_VARIANT = /^variant\s*=\s*"?(?:gfm|commonmark)"?$/iu
+const PARAMETERS = [UTF8, MARKDOWN_VARIANT]
+
+// Varredura linear: uma regex com lookahead até o fim da string custava O(n²)
+// num Accept longo, enviado por qualquer cliente.
+function splitOutsideQuotes({ value, separator }: SplitOptions): string[] {
+  const parts: string[] = []
+  let start = 0
+  let isQuoted = false
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index]
+    if (isQuoted && character === '\\') {
+      index += 1
+      continue
+    }
+    if (character === '"') {
+      isQuoted = !isQuoted
+      continue
+    }
+    if (!isQuoted && character === separator) {
+      parts.push(value.slice(start, index))
+      start = index + 1
+    }
+  }
+  parts.push(value.slice(start))
+  return parts
+}
 
 function parseRange(value: string): MediaRange[] {
-  const [rawType, ...parameters] = value.split(PARAMETER_SEPARATOR)
+  const [rawType, ...parameters] = splitOutsideQuotes({
+    value,
+    separator: ';'
+  })
   const type = rawType?.trim().toLowerCase() ?? ''
   if (!['text/html', 'text/markdown', 'text/*', '*/*'].includes(type)) {
     return []
   }
   let quality = 1
   let hasQuality = false
-  let parameterCount = 0
+  const seen = new Set<RegExp>()
   for (const rawParameter of parameters) {
     const parameter = rawParameter.trim()
     const match = QUALITY.exec(parameter)
@@ -31,10 +62,12 @@ function parseRange(value: string): MediaRange[] {
       hasQuality = true
       continue
     }
-    if (!UTF8.test(parameter) || hasQuality || parameterCount > 0) return []
-    parameterCount += 1
+    const accepted = PARAMETERS.find(pattern => pattern.test(parameter))
+    if (!accepted || hasQuality || seen.has(accepted)) return []
+    if (accepted === MARKDOWN_VARIANT && type !== 'text/markdown') return []
+    seen.add(accepted)
   }
-  return [{ type, quality, parameterCount }]
+  return [{ type, quality, parameterCount: seen.size }]
 }
 
 function preference({ ranges, type }: MediaPreferenceOptions): MediaPreference {
@@ -66,9 +99,9 @@ export function negotiatePageFormat(
   accept: string | null
 ): 'html' | 'markdown' | undefined {
   if (accept === null) return 'html'
-  const ranges = accept
-    .split(RANGE_SEPARATOR)
-    .flatMap(range => parseRange(range))
+  const ranges = splitOutsideQuotes({ value: accept, separator: ',' }).flatMap(
+    range => parseRange(range)
+  )
   const html = preference({ ranges, type: 'text/html' })
   const markdown = preference({ ranges, type: 'text/markdown' })
   if (
@@ -86,7 +119,9 @@ export function acceptsMarkdown(accept: string | null): boolean {
   if (accept === null) return true
   return (
     preference({
-      ranges: accept.split(RANGE_SEPARATOR).flatMap(range => parseRange(range)),
+      ranges: splitOutsideQuotes({ value: accept, separator: ',' }).flatMap(
+        range => parseRange(range)
+      ),
       type: 'text/markdown'
     }).quality > 0
   )

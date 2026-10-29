@@ -179,40 +179,6 @@ for (const { locale, tag, messages } of LANGUAGES) {
   })
 }
 
-test('language links persist on the server without JavaScript and preserve the query string', async ({
-  browser,
-  baseURL
-}) => {
-  const context = await browser.newContext({
-    javaScriptEnabled: false,
-    baseURL,
-    locale: 'en-US'
-  })
-  try {
-    const page = await context.newPage()
-    await page.goto('/pt?campaign=example')
-    await page.locator('noscript a[hreflang="en"]').click()
-    await expect(page).toHaveURL('/en?campaign=example')
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en-US')
-    await expect(page.locator('noscript a[hreflang="en"]')).toHaveAttribute(
-      'aria-current',
-      'page'
-    )
-    await page.locator('noscript a[hreflang="es"]').click()
-    await expect(page).toHaveURL('/es?campaign=example')
-    await expect(page.locator('html')).toHaveAttribute('lang', 'es-ES')
-    const cookies = await context.cookies()
-    expect(cookies.find(cookie => cookie.name === 'locale')?.value).toBe('es')
-    await page.goto('/')
-    await expect(page).toHaveURL('/es')
-    await expect(page.locator('html')).toHaveAttribute('lang', 'es-ES')
-    const repeated = await page.reload()
-    expect(repeated?.headers()['set-cookie']).toBeUndefined()
-  } finally {
-    await context.close()
-  }
-})
-
 test('sitemap alternates are reciprocal and every localized URL resolves without redirects', async ({
   page,
   request

@@ -1,10 +1,4 @@
-import {
-  action,
-  createRouter,
-  memoryHistory,
-  query,
-  useAction
-} from '@solidjs/router'
+import { createRouter, formAction, memoryHistory, query } from '@solidjs/router'
 import { createMemo, createSignal, Loading } from 'solid-js'
 
 import { localizedRedirect } from '@/i18n/localizedRedirect/index.ts'
@@ -13,13 +7,13 @@ import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 import { createLocaleNavigationGuard } from '../index.ts'
 
 describe('locale guard with Router response processing', () => {
-  it('turns an action Response redirect into a document replacement', async () => {
+  it('turns a form action Response redirect into a document replacement', async () => {
     const replace = vi
       .spyOn(globalThis.location, 'replace')
       .mockImplementation(() => {
         /* Observa a chamada sem sair do teste. */
       })
-    const submit = action(
+    const submit = formAction(
       () =>
         Promise.resolve(
           localizedRedirect({
@@ -29,10 +23,14 @@ describe('locale guard with Router response processing', () => {
         ),
       'locale-guard-action-test'
     )
-    let run: ReturnType<typeof useAction<[], Response, unknown>> | undefined
+    // A ação do router só recebe o contexto dele quando está ligada a um
+    // formulário; o envio passa pelo mesmo tratamento de redirect.
     function Page() {
-      run = useAction(submit)
-      return <p>Ready</p>
+      return (
+        <form action={submit} method="post">
+          <button type="submit">Ready</button>
+        </form>
+      )
     }
     const Router = createRouter({
       history: memoryHistory('/en/start'),
@@ -50,11 +48,12 @@ describe('locale guard with Router response processing', () => {
       { providers: false }
     )
     await expect.poll(() => host.textContent).toBe('Ready')
-    assert(run)
-    await run()
-    expect(replace).toHaveBeenCalledWith(
-      `${globalThis.location.origin}/es/destination?q=action#part`
-    )
+    const button = host.querySelector('button')
+    assert(button)
+    button.click()
+    await expect
+      .poll(() => replace.mock.lastCall?.[0])
+      .toBe(`${globalThis.location.origin}/es/destination?q=action#part`)
   })
 
   it('turns a query Response redirect into a document replacement', async () => {

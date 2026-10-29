@@ -18,8 +18,11 @@ Os testes em `tooling/**/__tests__/` usam a API `node:test`. O comando
 `vp run test:tooling` executa os módulos em Node, exceto `tooling/release/`, que
 roda em Bun com `vp run test:release`, o mesmo runtime da publicação. Ambos os
 comandos rodam em `validate` e no `pre-push`, fora dos comandos do Vitest:
-teste, cobertura, UI e watch. No CI, a suíte Node roda sempre; os testes de
-release rodam somente quando a automação ou suas dependências mudam, conforme o
+teste, cobertura, UI e watch. No CI, a suíte Node roda em toda execução, exceto
+no push da `main` cuja
+[prova de reaproveitamento](development.md#reutilização-da-validação-do-pr-na-main)
+dispensa o job `Tooling`; os testes de release rodam somente quando a automação
+ou suas dependências mudam, conforme o
 [guia de release](../tooling/release/README.md#validação-local-e-no-ci).
 
 ## Ambientes
@@ -85,14 +88,15 @@ exceto os arquivos `*.production.e2e.test.ts`, com Chromium. O Playwright gera o
 build e inicia o servidor de produção em `http://127.0.0.1:4317`, encerrando-o
 ao terminar. A porta precisa estar livre. Os cenários cobrem a página inicial,
 hidratação do seletor de tema, teclado, persistência e sincronização entre abas,
-cores sem JavaScript, layout e resposta 404 com navegação de volta ao início.
+cores no HTML inicial, layout e resposta 404 com navegação de volta ao início.
 Também cobrem a confidencialidade de erros do servidor: HTTP 500 de um backend
 local, exceção após a leitura, `Error` dentro do resultado, erro público e
 sucesso, cada um em SSR inicial, chamada pelo navegador e streaming, além de
 recarregamento ainda com falha, recuperação após o backend voltar e isolamento
 do bundle cliente. O SSR inicial também é verificado com JavaScript desativado.
 O detalhe está em [docs/server-errors.md](server-errors.md); o CI executa a
-suíte inteira.
+suíte inteira, exceto quando a prova de reaproveitamento dispensa
+`E2E (fixtures)` no push da `main`.
 
 `hydrationFinished()` lê o atributo `data-hydration-ended` do `<html>`,
 publicado pela API pública experimental `onHydrationEnd` do Solid. O registro
@@ -121,11 +125,16 @@ conferir resolução fora de ordem, erro contido, descarte por navegação e
 recuperação após truncamento. As provas usam o build real, sem mock do Solid, e
 verificam a CSP nos caminhos de streaming.
 
-O build E2E usa `--mode e2e` com otimizações de produção e acrescenta a página
-de teste pelo diretório `src/tests/fixtures/e2e/routes/`. O backend simulado
-escuta somente em `127.0.0.1:4318` e é iniciado e encerrado pelo Playwright. O
-build normal (`vp run build`) usa apenas `src/routes/` e não inclui essa página
-nem o backend simulado. As portas 4317 e 4318 precisam estar livres.
+O build E2E usa `--mode e2e` com otimizações de produção e substitui
+`src/routes/` pela árvore `src/tests/fixtures/e2e/routes/`. As páginas e os
+endpoints reais que os E2E exercitam entram nela por reexport, como
+`export { default, route } from '@/routes/(base)/(home)/index.tsx'` e
+`export { GET } from '@/routes/(seo)/robots.txt/index.ts'`; uma página nova de
+`src/routes/` só aparece nessa suíte depois de ganhar o reexport correspondente.
+O backend simulado escuta somente em `127.0.0.1:4318` e é iniciado e encerrado
+pelo Playwright. O build normal (`vp run build`) usa apenas `src/routes/` e não
+inclui as fixtures nem o backend simulado. As portas 4317 e 4318 precisam estar
+livres.
 
 `vp run test:e2e:production` executa os arquivos `*.production.e2e.test.ts`
 contra um build normal, com a árvore real de `src/routes/`. Essa suíte verifica
@@ -140,19 +149,23 @@ filtros semânticos, links relativos, links com esquema de script ou de dados,
 imagens sem `alt`, negociação, HEAD, erros, limites de tamanho e cancelamento. A
 elegibilidade compartilhada tem regressão para herança de noindex com override
 explícito do filho. As fixtures E2E exercitam páginas parametrizadas, resolução
-assíncrona e isolamento de idiomas. A suíte definitiva precisa incluir o hook
-SSR que sinaliza render incompleto.
+assíncrona e isolamento de idiomas. O teste de serialização do Markdown roda o
+render real com o hook instalado e cobre falhas de serialização, `onCleanup` que
+lança e fallback de `<Errored>` com HTML 200, inclusive por um `redirect()`; os
+E2E de streaming do Markdown cobrem renders com falha no servidor.
 
 Essas verificações cobrem o build e o preview local. Cache e regras de domínio
 da Vercel continuam exigindo conferência no site publicado.
 
 `AgentReadiness.content.production.e2e.test.ts` verifica a apresentação compacta
-da home, sem artigo ou rodapé, e preserva a exigência de conteúdo detalhado nas
-páginas internas. A navegação usa os links da topbar nos três idiomas, em telas
-estreitas e largas, inclusive sem JavaScript. Em telas estreitas, os links da
-barra rolam horizontalmente sem alargar o documento; tema e idioma permanecem
-acessíveis fora da área rolável. O Markdown da home contém a mesma apresentação
-autoral do HTML.
+da home, sem subtítulos nem rodapé no `main`, e preserva a exigência de conteúdo
+detalhado, com subtítulos, nas páginas internas. O HTML inicial e os links da
+topbar são inspecionados nos três idiomas. Após a hidratação, os links ficam
+visíveis e nomeados; a navegação, em telas estreitas e largas, mantém tema,
+idioma e o mesmo cabeçalho, sem alargar o documento. Em 375 px, os links
+transbordam e rolam dentro da barra, e os botões de tema e idioma, fora dela,
+continuam visíveis. O Markdown da home traz o título e nenhuma seção de segundo
+nível.
 
 `Home.csp.production.e2e.test.ts` confere que a CSP traz um nonce que muda a
 cada requisição, que todos os `<script>` e `modulepreload` do HTML bruto trazem
@@ -162,7 +175,8 @@ usa a mesma `BASE_URL_TEST`, carrega as variáveis públicas no modo `production
 e dispensa o backend simulado. No mesmo checkout local, execute as duas suítes
 em sequência, pois compartilham a porta e os artefatos de build. O CI executa
 ambas em paralelo, em runners separados para isolar portas e builds; a suíte de
-produção também valida o build final.
+produção também valida o build final e é a única que roda quando a prova de
+reaproveitamento dispensa `E2E (fixtures)`.
 
 No push para `main`, o job de E2E de produção executa `vercel build --prod` com
 as configurações obtidas da Vercel. O Playwright recebe somente as variáveis
@@ -182,10 +196,16 @@ com um CLI simulado e verificam a quantidade de builds em cada modo.
 
 Use `vp exec playwright test --config tooling/playwright.ts --ui` para abrir a
 interface interativa do Playwright. Com `CI=true`, os E2E usam dois workers;
-localmente, mantêm o paralelismo padrão. O grupo que confere a contagem de logs
-do middleware continua em ordem dentro de um worker. Para comparar tempos ou
-investigar uma falha de concorrência, use `CI=true vp run test:e2e --workers=1`
-e `CI=true vp run test:e2e --workers=2`.
+localmente, mantêm o paralelismo padrão. `OutsideError.e2e.test.ts`, que confere
+a contagem exata de linhas no log do servidor, roda no projeto `server-logs`,
+declarado como `teardown` do `chromium` em `tooling/playwright.ts`: começa
+depois que os demais testes terminam, mesmo quando algum falha, e executa o
+arquivo em ordem num único worker. Uma execução filtrada com testes do
+`chromium` também roda esse arquivo no fim, e `--no-deps` o dispensa; para rodar
+só ele, passe o caminho do arquivo ou da pasta `OutsideError`. Uma linha gravada
+com atraso por uma requisição anterior ainda alteraria a contagem. Para comparar
+tempos ou investigar uma falha de concorrência, use
+`CI=true vp run test:e2e --workers=1` e `CI=true vp run test:e2e --workers=2`.
 
 Os relatórios HTML ficam em `playwright-report/e2e/` e
 `playwright-report/production/`. Os traces de falhas ficam em

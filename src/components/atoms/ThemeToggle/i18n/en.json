@@ -1,6 +1,7 @@
 {
   "themeToggle_label": "Theme",
   "themeToggle_select": "Select theme",
+  "themeToggle_current": "Select theme, current: {theme}",
   "themeToggle_light": "Light",
   "themeToggle_dark": "Dark",
   "themeToggle_system": "System"

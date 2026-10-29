@@ -143,6 +143,9 @@ async function readRawDocument({
   }
 }
 
+// O projeto server-logs roda este arquivo sozinho e em ordem, depois dos demais
+// (tooling/playwright.ts): nenhuma outra requisição grava linhas durante uma
+// contagem.
 async function countLogLines({ file, message }: LogCount): Promise<number> {
   const log = await readFile(file, 'utf8')
   return log.split('\n').filter(line => line.includes(message)).length
@@ -158,8 +161,7 @@ for (const fixture of CASES) {
       const id = `outside:${crypto.randomUUID()}`
       const { marker } = await readState({ request, id })
       // O throw no render da raiz passa pelo hook de erros de produção, que
-      // grava a linha fixa [server-error]. Outros casos do arquivo gravam a
-      // mesma linha em paralelo, então a conferência é de crescimento.
+      // grava uma linha fixa [server-error] por requisição.
       const logFile =
         fixture.name === 'render-root' ? env.SERVER_LOG_FILE : undefined
       if (fixture.name === 'render-root' && !logFile) {
@@ -176,7 +178,7 @@ for (const fixture of CASES) {
           .poll(async () =>
             countLogLines({ file: logFile, message: SERVER_ERROR_LOG })
           )
-          .toBeGreaterThan(hookLogBefore)
+          .toBe(hookLogBefore + 1)
       }
 
       expect(raw.status).toBe(fixture.status)
@@ -251,10 +253,6 @@ const MIDDLEWARE_CASES: MiddlewareCase[] = [
 ]
 
 test.describe('exceções no middleware', () => {
-  // Em ordem num único worker, para que cada caso atribua a si as linhas de
-  // log que produziu. Diferente de serial, uma falha não pula o caso seguinte.
-  test.describe.configure({ mode: 'default' })
-
   for (const { phase, navigation, errorPage } of MIDDLEWARE_CASES) {
     test(`exceção ${phase === 'before' ? 'antes' : 'depois'} de next() ${navigation ? 'numa navegação' : 'fora de navegação'} ${errorPage ? 'mostra a página de erro' : 'vira 500 em texto'}`, async ({
       request,

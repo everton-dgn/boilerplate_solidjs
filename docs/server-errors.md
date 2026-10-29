@@ -1,5 +1,7 @@
 # Erros no servidor e chamadas de backend
 
+[Voltar ao README](../README.md)
+
 Toda chamada de backend deve entregar dados públicos ou um erro público novo
 antes de chegar ao Solid. Essa regra vale também para fixtures e código gerado
 por IA. O contrato abaixo deve ser preservado nas atualizações de dependências.
@@ -16,8 +18,8 @@ O [registro central](../src/infra/server/configureServerErrors/index.ts) usa
 `configureServerFunctionsServer({ wrapInvocation })`. O
 [Vite](../vite.config.ts) o carrega por `serverFunctions.configure`, cobrindo
 server functions chamadas diretamente no SSR e pelo transporte HTTP. O mesmo
-módulo instala, só nos builds de produção, o hook
-`configureServerErrors({ onError })` de `@solidjs/web`.
+módulo instala, em todos os modos, o hook `configureServerErrors({ onError })`
+de `@solidjs/web`; a troca pelo erro público acontece só em produção.
 
 - [requestJson](../src/infra/server/requestJson/index.ts) verifica o status
   HTTP, lê o JSON de sucesso e aplica o schema de saída dentro da proteção.
@@ -45,37 +47,39 @@ status 204, 205 e 304. Depois reconstrói a resposta com os dados verificados.
 fronteira usa `isResponseEnvelope()` para reconhecer seu envelope em runtime.
 Chamadas diretas no SSR recebem os dados desembrulhados pelo Solid.
 
-O hook `onError` é aditivo. Ele troca qualquer falha que chega ao runtime,
-inclusive de render e de rejeições fora de server functions, por um
-`createPublicError()` novo e registra o log `[server-error]` quando o erro não
-era público. Sinais de controle (`Response` sem corpo, envelopes e
-`NotReadyError`) seguem a política padrão do runtime. `Response.error()` também
-não tem corpo, mas o status 0 não sai como HTTP, então ela vira falha pública.
-Um envelope lançado por uma query durante o SSR chega primeiro ao hook como
-controle; depois o router lança o valor do envelope no render, e esse valor é
-tratado como falha de render, com ou sem o hook. O retorno do hook vai ao
-cliente sem nova sanitização, então ele nunca devolve o objeto recebido, nem um
-erro público, que pode ter ganhado campos depois de criado. O hook é síncrono e
-não lança, nem quando o log falha: uma falha dele faria o runtime registrar o
-erro do hook.
+O hook `onError` é aditivo. Em produção, ele troca qualquer falha que chega ao
+runtime, inclusive de render e de rejeições fora de server functions, por um
+`createPublicError()` novo. Nos dois modos, registra o log `[server-error]`
+quando o erro não era público. Sinais de controle (`Response` sem corpo,
+envelopes e `NotReadyError`) seguem a política padrão do runtime.
+`Response.error()` também não tem corpo, mas o status 0 não sai como HTTP, então
+ela vira falha pública. Um envelope lançado por uma query durante o SSR chega
+primeiro ao hook como controle; depois o router lança o valor do envelope no
+render, e esse valor é tratado como falha de render, com ou sem o hook. O
+retorno do hook vai ao cliente sem nova sanitização, então ele nunca devolve o
+objeto recebido, nem um erro público, que pode ter ganhado campos depois de
+criado. O hook é síncrono e não lança, nem quando o log falha: uma falha dele
+faria o runtime registrar o erro do hook.
 
 Limites do hook:
 
 - A rejeição de uma fonte assíncrona é serializada com a política padrão antes
   de qualquer hook. O mesmo corpo leva "Internal Server Error" para a fonte e a
   mensagem pública para o boundary.
-- Em desenvolvimento o hook não é instalado, para que o runtime mostre o erro
-  original.
+- Em desenvolvimento o hook devolve `undefined`, para que o runtime envie o erro
+  original ao navegador. Ele registra o log filtrado seguido do erro original e
+  marca o estado usado pelo Markdown.
 - Valores primitivos lançados não têm veredito por objeto; o hook roda e
   registra o log a cada vez que o runtime os encontra.
 
 O handler nativo do plugin contém exceções que escapam dos middlewares, chama o
-hook e responde com 500 sem corpo. Ele também aceita uma `Response` ou um
-envelope lançado com corpo, portanto essa contenção não substitui a política de
-dados públicos nem a página de erro do app. O export padrão de
-[`src/middleware/index.ts`](../src/middleware/index.ts) é `createMiddleware()`,
-que adapta o evento do plugin à cadeia de `Request` do `filesystem-routing` e de
-`composeMiddleware`, entregando essa cadeia a `containFailures`. A contenção, em
+hook com `kind: "request"` e responde com 500 sem corpo. Ele também aceita uma
+`Response` ou um envelope lançado com corpo, portanto essa contenção não
+substitui a política de dados públicos nem a página de erro do app. O export
+padrão de [`src/middleware/index.ts`](../src/middleware/index.ts) é
+`createMiddleware()`, que adapta o evento do plugin à cadeia de `Request` do
+`filesystem-routing` e de `composeMiddleware`, entregando essa cadeia a
+`containFailures`. A contenção, em
 [`src/middleware/containFailures/index.ts`](../src/middleware/containFailures/index.ts),
 compõe a cadeia inteira dentro de si, e uma exceção nos middlewares, nas rotas
 de API ou no handler de páginas vira 500 com os headers de segurança e o log
@@ -184,6 +188,13 @@ O logger é síncrono e não propaga falhas de inspeção, montagem ou acesso ao
 destino. Os consumidores mantêm a resposta pública mesmo sem log disponível. Se
 o destino escrever e depois lançar, a mensagem fixa pode aparecer duas vezes.
 
+No servidor de desenvolvimento, o hook de `configureServerErrors` passa
+`shouldPrintOriginal: true`, e o logger imprime o erro original numa segunda
+chamada de `console.error`, depois da linha filtrada. Com o hook instalado, o
+runtime deixa de imprimir essas falhas, e sem esse pedido a mensagem só chegaria
+ao navegador. O logger confere `import.meta.env.DEV` por conta própria e ignora
+o pedido em produção. Uma falha ao formatar o erro original é descartada.
+
 Limites conhecidos:
 
 - Um stack forjado que imite o cabeçalho e a gramática passa pelo filtro. O
@@ -202,10 +213,10 @@ Limites conhecidos:
 ## Como adicionar uma chamada
 
 Use `requestJson` dentro de uma server function, com um schema que selecione os
-campos públicos. A
-[fixture readBackend](../src/tests/fixtures/e2e/backend-error/readBackend/index.ts)
-é a chamada de referência e, como as demais fixtures que usam o transporte, só
-entra no build E2E:
+campos públicos. O bloco abaixo é a forma simplificada da
+[fixture readBackend](../src/tests/fixtures/e2e/backend-error/readBackend/index.ts),
+a chamada de referência; a fixture acrescenta os cenários de falha que o E2E
+provoca e, como as demais fixtures que usam o transporte, só entra no build E2E:
 
 ```ts
 import * as v from 'valibot'
@@ -238,8 +249,13 @@ lint, com exceção apenas para o adapter e teste da proteção.
 
 As fontes do sitemap (`route.info.sitemap`) seguem a mesma regra: a função
 declarada na rota chama uma server function, que faz a leitura protegida e
-devolve só `path` e `lastmod`. A rota do sitemap responde 503 sem corpo a
-qualquer falha; ela não registra o erro original.
+devolve só `path` e `lastmod`. A fonte recebe um `AbortSignal` que aborta no
+prazo de 10 s, na desconexão do cliente e ao fim da leitura das fontes;
+repasse-o à leitura (por exemplo, em `init.signal` do `requestJson`) para
+cancelá-la. A rota do sitemap responde 503 sem corpo a qualquer falha e registra
+pela origem `sitemap` a linha fixa
+`[sitemap] Unexpected failure; private details omitted`, com a classe e os
+frames descritos em [Log de falhas](#log-de-falhas), sem a mensagem do erro.
 
 Nunca copie `error.message`, `cause`, propriedades, corpo upstream ou issues do
 validador para a saída. Para uma falha pública, use `createPublicError()`.
@@ -284,6 +300,11 @@ exigem uma integração própria.
   `configureServerErrors` pela raiz `@solidjs/web` também fica restrito a esse
   módulo, inclusive em `publicErrors`: cada chamada substitui o hook global de
   erros do servidor.
+- Reserva `observeRenderFailures`, de
+  [renderIntegrity](../src/infra/server/renderIntegrity/index.ts), a
+  `configureServerErrors`, inclusive por alias, namespace e reexport: depois
+  dessa chamada o estado do render nasce sem erros, e só o registro instala o
+  hook que o marca.
 - Reserva o objeto global `console` a `logServerFailure`, inclusive aliases e
   desestruturação direta. Nesse arquivo, use somente `console.error`
   diretamente; acessos por `globalThis.console`, `window.console`,
@@ -297,8 +318,10 @@ Os testes de regressão exigem que `no-restricted-imports` também recuse
 de restrições por `importNames` para esse carregamento. Por isso,
 [backend/static-solid-imports](../tooling/backendPolicy/plugin.ts) exige imports
 estáticos de `@solidjs/web` e seus subcaminhos, inclusive em `publicErrors` e
-`configureServerErrors`. A regra verifica strings e templates sem interpolação;
-as APIs públicas desse pacote continuam disponíveis por import estático.
+`configureServerErrors`; `backend/static-render-integrity-imports` faz o mesmo
+com `renderIntegrity`, porque a restrição por nome não alcança `import()`. A
+regra verifica strings e templates sem interpolação; as APIs públicas desse
+pacote continuam disponíveis por import estático.
 
 Imports nomeados com alias, reexports e acessos diretos por namespace também são
 verificados. Bibliotecas visuais, métodos locais chamados `fetch` e parâmetros
@@ -312,7 +335,7 @@ de `@solidjs/web`, SDKs desconhecidos e marcação manual por `Symbol.for` exige
 revisão. Ele também não restringe `allowControl` pelo nome nem verifica o
 conteúdo dos argumentos de log em `logServerFailure`. Não use essas lacunas nem
 um disable para contornar o contrato. O padrão de imports relativos é
-compartilhado com `tooling/lint.ts` pela constante
+compartilhado com `tooling/lint/rules/javascript.ts` pela constante
 `RELATIVE_IMPORT_RESTRICTION`, em `tooling/backendPolicy/constants.ts`.
 
 ## Consumo em páginas
@@ -336,13 +359,15 @@ leitura falha. A recuperação por recarga está descrita abaixo.
 ## Validação e recuperação
 
 O [E2E de backend](../src/tests/pages/BackendError/BackendError.e2e.test.ts)
-executa 23 casos no build de produção: cinco cenários (HTTP 500, exceção após
-leitura, `Error` dentro do resultado, erro público e sucesso) em SSR inicial,
-streaming e chamada HTTP; quatro recargas, incluindo SSR sem JavaScript; um
-teste de isolamento do bundle; e três sinais de controle em server functions
-chamadas no SSR: um `redirect()` lançado, um envelope devolvido e um envelope
-lançado. O envelope lançado chega ao hook como controle, mas o router lança o
-valor dele no render e o documento vira 500, com ou sem o hook.
+roda no build de produção: cinco cenários (HTTP 500, exceção após leitura,
+`Error` dentro do resultado, erro público e sucesso) em SSR inicial, streaming e
+chamada HTTP; uma recarga por cenário de navegação, incluindo SSR sem
+JavaScript; um teste de isolamento do bundle; três sinais de controle em server
+functions chamadas no SSR (um `redirect()` lançado, um envelope devolvido e um
+envelope lançado); e a regressão de `content-type` descrita abaixo, com um
+envelope devolvido e outro lançado por `query()`. O envelope lançado chega ao
+hook como controle, mas o router lança o valor dele no render e o documento vira
+500, com ou sem o hook.
 
 Quando uma `query()` lida no SSR devolve ou lança um envelope de `respond()`, o
 `handleResponse` do router copia para a resposta da página só os headers que não
@@ -393,10 +418,11 @@ permanecer 200 após o envio inicial; os testes conferem confidencialidade
 independentemente dele. Fontes adiadas aninhadas e trabalho assíncrono fora do
 retorno aguardado exigem integração e testes próprios.
 
-O link global "Recarregar página" preserva a URL e funciona sem JavaScript.
-Ações iniciadas depois do carregamento precisam ser repetidas. Para retry local
-com query, invalide a chave antes de `reset()`:
-`revalidate(getData.key); reset()`. Confirme uma nova chamada ao backend.
+O link global "Recarregar página" preserva a URL e faz uma navegação de
+documento, independente da hidratação. Ações iniciadas depois do carregamento
+precisam ser repetidas. Para retry local com query, invalide a chave antes de
+`reset()`: `revalidate(getData.key); reset()`. Confirme uma nova chamada ao
+backend.
 
 Após alterar essa fronteira, execute:
 
@@ -466,9 +492,19 @@ automático configurado.
 
 ## Integridade do SSR para Markdown
 
-A entrada mantém em `event.locals.ssrRenderState` somente getters para
-`hasErrors` e `hasCompleted`. O primeiro lê o estado monotônico nativo do
-render; o segundo registra `onCompleteAll`. O callback sozinho não comprova
+A entrada cria o estado com `createRenderIntegrity()`, de
+[renderIntegrity](../src/infra/server/renderIntegrity/index.ts), e o grava em
+`event.locals.ssrRenderState` antes de chamar `renderToStream`. O estado é
+somente leitura: o hook de `configureServerErrors` marca `hasErrors` por
+`markRenderFailure` quando recebe uma falha com `kind: "render"`, e
+`onCompleteAll` marca `hasCompleted` pela função `complete` da mesma fábrica. Um
+estado criado fora dela não é marcado. Sinais de controle também marcam: um
+`redirect()` ou `respond()` lançado no render e capturado por um `<Errored>`
+aninhado vira fallback com HTML 200. Desde o
+[solidjs/solid#4130](https://github.com/solidjs/solid/pull/4130), o hook recebe
+cada erro uma vez por tipo em cada requisição. Uma falha de server function
+contida por um boundary chega primeiro como `server-function` e depois como
+`render`, e só o segundo aviso marca o estado. O callback sozinho não comprova
 integridade: ele também pode ocorrer após falha de fragmento. O adaptador exige
 conclusão e ausência estrita de erros observados pelo render depois de aguardar
 o SSR, antes de publicar HTML convertido. Estado ausente ou inválido resulta em
@@ -476,12 +512,32 @@ erro público 500 sem cache. Redirects e respostas que não são páginas elegí
 preservam seu fluxo anterior. As páginas estáticas passam por esse mesmo
 adaptador no prerender do build, e uma recusa ali interrompe o build.
 
-O serializador padrão informa falhas de parse e de emissão ao render, inclusive
+Como o hook é a fonte desse sinal, ele fica instalado também em desenvolvimento.
+Nesse modo ele marca o estado e registra o log filtrado, mas devolve
+`undefined`, e o runtime continua enviando o erro original ao navegador. Com um
+hook instalado, o runtime deixa de chamar `console.error` com o erro recebido; o
+hook devolve o original ao terminal por `logServerFailure`, depois da linha
+filtrada, como descrito em [Log de falhas](#log-de-falhas). Os diagnósticos de
+desenvolvimento do Solid também imprimem a mensagem, como o de um erro contido
+por `<Errored>`. A entrada continua sem um `onError` local: ele teria
+precedência sobre o hook global, desviaria a sanitização e o log e deixaria o
+estado sem marcação, e o Markdown publicaria com `hasErrors: false`. O registro
+do hook chama `observeRenderFailures()`; até lá a fábrica cria o estado com
+`hasErrors` indefinido, e o Markdown recusa a página. Sem o
+`serverFunctions.configure` do Vite, que carrega o registro, todo `.md` responde
+500 e o prerender interrompe o build.
+
+O hook encontra o estado pelo evento que o runtime associa à falha. As falhas do
+serializador, o `onCleanup` que lança e o fallback de `<Errored>` chegam sem o
+evento, e o runtime o lê do `AsyncLocalStorage`. Uma falha informada fora desse
+contexto não marcaria o estado, e o Markdown publicaria o HTML. Os testes de
+serialização cobrem esses três casos com o contexto presente.
+
+O serializador padrão informa falhas de parse e de emissão ao hook, inclusive
 sem um hook local. A primeira falha marca `hasErrors`, passa pela política de
 `configureServerErrors` e encerra o render sem chamar `onCompleteAll`. Falhas
 síncronas também seguem esse caminho, sem relançar a exceção para o chamador. O
-descarte libera o owner e as fontes assíncronas pendentes. A entrada continua
-sem um `onError` local, preservando a sanitização e o log globais.
+descarte libera o owner e as fontes assíncronas pendentes.
 
 Esse encerramento também vale para HTML em streaming. Uma falha ocorrida
 enquanto o shell é montado impede que ele seja enviado, e a resposta é um 500.
@@ -490,25 +546,41 @@ termina com o conteúdo que já saiu. Markdown aguarda o render e recusa a
 publicação com erro público 500 e `cache-control: private, no-store`. Uma falha
 de serialização não depende do timeout do adaptador para encerrar a resposta.
 
-Serializadores personalizados mantêm seu contrato anterior de callbacks. O
-estado registra lançamentos síncronos nas escritas e falhas informadas ao hook
-local, quando fornecido. Erros suprimidos internamente não são observáveis.
-Qualquer adoção exige validar a relação entre conteúdo, conclusão e falhas.
+Serializadores personalizados mantêm o comportamento do runtime: as falhas que
+eles informam chegam ao hook, mas não encerram o render. Erros suprimidos
+internamente não são observáveis. Qualquer adoção exige validar a relação entre
+conteúdo, conclusão e falhas.
 
-Os patches Bun de `solid-js` e `@solidjs/web` aplicam as mudanças de
-[solidjs/solid#4126](https://github.com/solidjs/solid/pull/4126) às versões
-fixadas no manifest e lock. Cobrem os runtimes padrão, de desenvolvimento e de
-observação, além das duas declarações públicas de web. O patch de web também
-contém a proteção upstream contra exceções durante o descarte do owner,
-inclusive na conclusão normal: a falha é informada à política global como falha
-do render e marca `hasErrors`, a limpeza prossegue e o Markdown recusa a
-publicação. Sem isso, um `onCleanup` que lança deixava uma rejeição não tratada
-e podia publicar o Markdown. O ajuste upstream do codec de frames
-(`createJSONSerializer`) fica fora dos patches, porque o projeto não usa frames.
+O patch Bun de `@solidjs/web` cobre o que o runtime publicado ainda não faz, nos
+runtimes padrão, de desenvolvimento e de observação: encerrar o render na falha
+do serializador padrão, como descrito acima. Sem o patch, o runtime informa a
+falha ao hook e conclui o render pelo fluxo normal, inclusive chamando
+`onCompleteAll`. O Markdown recusa esse resultado pela falha registrada, mas uma
+falha durante a montagem do shell ainda envia o HTML com status 200. O patch
+bloqueia essa saída e a conclusão normal antes de descartar o render. Com um
+`onError` local, o patch também encerra o render, enquanto o runtime só
+informaria o callback e concluiria normalmente. Falhas na fase de serialização
+chegam ao log como `SerovalSerializationError`; a mensagem e a causa continuam
+descartadas. A chave do patch inclui a versão do pacote, então cada atualização
+de `@solidjs/web` exige regenerá-lo com `bun patch`. O teste
+`tooling/__tests__/patched-dependencies.test.ts` falha quando a chave de um
+patch não corresponde a uma versão resolvida no `bun.lock`.
 
-Remova os patches somente quando os pacotes publicados incluírem esse contrato e
-passarem as regressões de erro reutilizado entre requisições, falha de server
-function que escapa de Loading, recuperação local, serialização e cancelamento.
-A issue ou o PR fechado não substitui a verificação dos artefatos instalados. O
-sinal composto de timeout e desconexão chega ao `renderToStream`; o teste Node
-do adaptador verifica o descarte de uma raiz SSR pendente no cancelamento.
+O [solidjs/solid#4193](https://github.com/solidjs/solid/issues/4193) relatou
+três lacunas. O [solidjs/solid#4206](https://github.com/solidjs/solid/pull/4206)
+levou as falhas do serializador ao hook global, passou a conter o `onCleanup`
+que lança no descarte da conclusão normal e fez o core rodar todos os cleanups
+mesmo depois de um que lança; essas partes saíram do patch. O render pendente na
+falha síncrona foi relatado no
+[solidjs/solid#4227](https://github.com/solidjs/solid/issues/4227), com a
+correção no [solidjs/solid#4229](https://github.com/solidjs/solid/pull/4229), já
+incluída no pacote instalado: ela faz o render concluir, mas não o encerra na
+falha. O serializador também passou a encerrar cada escrita no primeiro valor
+que falha, sem enviar os irmãos seguintes dessa escrita. Remova o restante do
+patch quando um pacote publicado encerrar o render na falha do serializador
+padrão e passar as regressões de erro reutilizado entre requisições, falha de
+server function que escapa de Loading, recuperação local, serialização, cleanup
+que lança e cancelamento. A issue ou o PR fechado não substitui a verificação
+dos artefatos instalados. O sinal composto de timeout e desconexão chega ao
+`renderToStream`; o teste Node do adaptador verifica o descarte de uma raiz SSR
+pendente no cancelamento.

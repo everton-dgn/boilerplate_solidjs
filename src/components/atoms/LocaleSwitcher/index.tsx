@@ -5,10 +5,6 @@ import {
   locales,
   setLocale
 } from '@paraglide/runtime.js'
-import { useLocation } from '@solidjs/router'
-import { For, NoHydration } from 'solid-js'
-
-import { localizeHref } from '@/i18n/urls/index.ts'
 
 import { Button } from '../Button/index.tsx'
 import { DropdownMenu } from '../DropdownMenu/index.tsx'
@@ -16,9 +12,8 @@ import { LOCALE_NAMES } from './constants.ts'
 
 import S from './styles.module.css'
 
-export function LocaleSwitcher() {
-  const location = useLocation()
-  const languages = locales.map(locale => ({
+function makeLanguages() {
+  return locales.map(locale => ({
     value: locale,
     label: LOCALE_NAMES[locale],
     icon: (
@@ -27,47 +22,27 @@ export function LocaleSwitcher() {
       </span>
     )
   }))
+}
+
+export function LocaleSwitcher() {
   return (
-    <>
-      <DropdownMenu<Locale>
-        label={m.localeSwitcher_label()}
-        value={getLocale()}
-        onChange={locale => setLocale(locale)}
-        items={languages}
-        trigger={props => (
-          <Button
-            {...props}
-            variant="ghost"
-            size="icon"
-            aria-label={m.localeSwitcher_select()}
-          >
-            {getLocale().toUpperCase()}
-          </Button>
-        )}
-      />
-      <NoHydration>
-        <noscript>
-          <nav class={S.fallback} aria-label={m.localeSwitcher_label()}>
-            <For each={languages}>
-              {language => (
-                <a
-                  href={localizeHref({
-                    href: `${location.pathname}${location.search}`,
-                    locale: language.value
-                  })}
-                  lang={language.value}
-                  hreflang={language.value}
-                  aria-current={
-                    language.value === getLocale() ? 'page' : undefined
-                  }
-                >
-                  {language.label}
-                </a>
-              )}
-            </For>
-          </nav>
-        </noscript>
-      </NoHydration>
-    </>
+    <DropdownMenu<Locale>
+      label={m.localeSwitcher_label()}
+      value={getLocale()}
+      onChange={locale => setLocale(locale)}
+      items={makeLanguages()}
+      trigger={props => (
+        <Button
+          {...props}
+          variant="ghost"
+          size="icon"
+          aria-label={m.localeSwitcher_select({
+            code: getLocale().toUpperCase()
+          })}
+        >
+          {getLocale().toUpperCase()}
+        </Button>
+      )}
+    />
   )
 }

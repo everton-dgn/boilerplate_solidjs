@@ -12,12 +12,12 @@ import { isPageRequest } from '../requestClassification/index.ts'
 import { applySecurityHeaders, requestNonce } from '../securityHeaders/index.ts'
 import type { ChainEntry, Middleware, Render } from '../types.ts'
 
-type RenderState = { rendered: boolean }
+type RenderState = { isRendered: boolean }
 type Containment = {
   error: unknown
   request: Request
   next: Render
-  rendered: boolean
+  isRendered: boolean
 }
 
 function publicTextFailure(): Response {
@@ -55,7 +55,7 @@ async function containedResponse({
   error,
   request,
   next,
-  rendered
+  isRendered
 }: Containment): Promise<Response> {
   if (isControlResponse(error)) {
     try {
@@ -66,7 +66,7 @@ async function containedResponse({
     }
   }
   logServerFailure({ source: 'middleware', error })
-  return isPageRequest(request) && !rendered
+  return isPageRequest(request) && !isRendered
     ? renderErrorPage(next)
     : publicTextFailure()
 }
@@ -77,9 +77,9 @@ export function containFailures(chain: Middleware[]): ChainEntry {
   return async (request, next) => {
     // O plugin só aceita uma chamada ao render por requisição. Se a cadeia já
     // renderizou a página antes de falhar, a página de erro não é possível.
-    const state: RenderState = { rendered: false }
+    const state: RenderState = { isRendered: false }
     const render: Render = override => {
-      state.rendered = true
+      state.isRendered = true
       return next(override)
     }
     try {
@@ -90,7 +90,7 @@ export function containFailures(chain: Middleware[]): ChainEntry {
         error,
         request,
         next,
-        rendered: state.rendered
+        isRendered: state.isRendered
       })
     }
   }

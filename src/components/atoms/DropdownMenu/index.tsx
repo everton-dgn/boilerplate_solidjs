@@ -26,7 +26,7 @@ export function DropdownMenu<Value extends string = string>(
     <div class={[S.root, props.class]}>
       {props.trigger(triggerProps)}
 
-      <Show when={menu.open()}>
+      <Show when={menu.isOpen()}>
         <div
           ref={node => {
             menu.refs.content = node
@@ -42,26 +42,21 @@ export function DropdownMenu<Value extends string = string>(
             props.contentClass
           ]}
           onKeyDown={handleKeyDown}
-          onPointerDown={() => menu.setPointer(true)}
         >
-          <Show when={props.items}>
-            {items => (
-              <For each={[...items()]}>
-                {item => (
-                  <MenuItemBase
-                    menu={menu}
-                    checked={props.value === item.value}
-                    disabled={item.disabled}
-                    onSelect={() => props.onChange?.(item.value)}
-                  >
-                    <span class={S.radio_indicator} />
-                    {item.icon}
-                    {item.label}
-                  </MenuItemBase>
-                )}
-              </For>
+          <For each={props.items}>
+            {item => (
+              <MenuItemBase
+                menu={menu}
+                checked={props.value === item.value}
+                disabled={item.disabled}
+                onSelect={() => props.onChange?.(item.value)}
+              >
+                <span class={S.radio_indicator} />
+                {item.icon}
+                {item.label}
+              </MenuItemBase>
             )}
-          </Show>
+          </For>
         </div>
       </Show>
     </div>
