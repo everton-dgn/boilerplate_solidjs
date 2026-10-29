@@ -150,7 +150,7 @@ no HTML da requisição seguinte.
 | `vp run test:e2e:production`                                  | Testar as rotas reais de produção                                                 |
 | `vp exec playwright test --config tooling/playwright.ts --ui` | Abrir a interface interativa dos E2E                                              |
 | `vp exec playwright codegen`                                  | Abrir o gerador de testes do Playwright                                           |
-| `vp update --interactive --latest`                            | Selecionar atualizações de dependências                                           |
+| `bunx taze newest -l -I`                                      | Selecionar atualizações de dependências                                           |
 | `vp run bun:update`                                           | Atualizar o Bun fixado e reinstalar dependências                                  |
 | `vp run detect:duplicates`                                    | Procurar código duplicado em `src`                                                |
 | `vp run dead-code`                                            | Verificar código sem uso com Knip                                                 |
@@ -171,14 +171,21 @@ tarefa do `vite.config.ts`. Os dois podem divergir, então confira o
 `package.json` antes de rodar direto.
 
 Execute comandos interativos diretamente. Para selecionar atualizações, use
-`vp update --interactive --latest`; `vp outdated` apenas lista as versões
-disponíveis. Observado no macOS: sob `vp run`, o script recebe o stdin em modo
-não bloqueante quando o bloco `run` deste `vite.config.ts` usa constantes, como
-`CSS_CACHE_INPUTS`. Uma leitura bloqueante falha na hora com `EAGAIN`, e o
-seletor do `vp update` fecha com zero pacotes selecionados antes de receber
-entrada. `bun run <script>` não tem o problema. O defeito está registrado em
+`bunx taze newest -l -I`; sem `-I`, o taze apenas lista as versões disponíveis.
+O `vp update --latest` e o `vp outdated` comparam cada pacote só com a dist-tag
+`latest` e omitem versões publicadas apenas em outra tag, como as RCs do Solid
+na `next`. O modo `newest` também oferece pré-releases de pacotes estáveis, e o
+`-l` é necessário porque o `package.json` fixa versões exatas. O seletor abre
+com todas as atualizações marcadas, inclusive o Node do `devEngines` e as GitHub
+Actions; tecle `a` para desmarcar tudo antes de escolher. Observado no macOS:
+sob `vp run`, o script recebe o stdin em modo não bloqueante quando o bloco
+`run` deste `vite.config.ts` usa constantes, como `CSS_CACHE_INPUTS`. Uma
+leitura bloqueante falha na hora com `EAGAIN`, e o seletor do `vp update` fecha
+com zero pacotes selecionados antes de receber entrada. O do taze desenha a
+lista, mas não recebe as teclas. `bun run <script>` não tem o problema. O
+defeito está registrado em
 [vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155); retire
-esta orientação quando `vp run deps:update` voltar a esperar a seleção. A tabela
+esta orientação quando `vp run deps:update` voltar a receber a seleção. A tabela
 acima também mantém Vitest em observação, interfaces de teste e o gerador do
 Playwright fora desse runner. Os scripts `deps:update`, `test:ui`, `test:watch`,
 `test:e2e:ui` e `test:e2e:codegen` continuam no `package.json` para

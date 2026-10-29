@@ -34,7 +34,7 @@
     "test:e2e:production": "TEST_PRODUCTION_ROUTES=true playwright test --config tooling/playwright.ts",
     "test:e2e:ui": "playwright test --config tooling/playwright.ts --ui",
     "test:e2e:codegen": "playwright codegen",
-    "deps:update": "vp update --interactive --latest",
+    "deps:update": "bunx taze newest -l -I",
     "bun:update": "vp env pin bun@latest && vp install",
     "detect:duplicates": "vp dlx jscpd src --pattern '**/*.{ts,tsx}' --reporters console",
     "dead-code": "vp run i18n:generate && vp run dead-code-project",
