@@ -71,6 +71,26 @@ Imports de CSS Modules usam o nome `S`, por exemplo,
 `import S from './styles.module.css'`. A regra local
 `project/css-modules-import` do lint exige esse formato.
 
+## Coesão dos módulos de tooling
+
+Divida por responsabilidades que possam ser lidas e alteradas juntas. O número
+de linhas ajuda a encontrar candidatos, mas não determina a divisão. Fluxos que
+dependem do mesmo contexto local permanecem juntos; funções pequenas que apenas
+repassam chamadas acrescentam caminhos de leitura sem esclarecer a operação.
+
+`tooling/lint.ts` monta a configuração e seus overrides. Os grupos em
+`tooling/lint/rules/` reúnem as regras de JavaScript, imports, TypeScript,
+Unicorn, testes e integrações com o ambiente. Os valores das regras e a ordem
+dos overrides pertencem ao mesmo contrato, mesmo quando vivem em módulos
+distintos.
+
+`tooling/release/automatic-release.ts` coordena a preparação e a publicação. Os
+módulos e os limites dos jobs estão no
+[guia de release](../tooling/release/README.md). Em
+`tooling/ciReuse/decideReuse/`, a validação da evidência fica na entrada;
+`hasMainCaches/` verifica a disponibilidade dos caches, e `types.ts` concentra
+os contratos extensos usados nessa decisão.
+
 ## Dados e infraestrutura
 
 Quando houver consumidores de formatação de datas, moedas ou números, coloque

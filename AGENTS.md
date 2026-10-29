@@ -207,6 +207,22 @@ release. Add a tool name to select part of the graph. For example, run
 - Testes não decidem a localização. Um módulo colocalizado mantém seus
   testes em `__tests__/` ao lado dele.
 
+## Coesão e tamanho dos módulos
+
+- Use o número de linhas como sinal para examinar responsabilidades e custo de
+  leitura, sem impor um teto de linhas para dividir arquivos.
+- Extraia blocos coesos que possam ser compreendidos e alterados juntos, como
+  preparação e publicação de release ou consulta de caches. Mantenha na entrada
+  a sequência que coordena essas operações e as decisões principais do fluxo.
+- Agrupe configurações extensas por responsabilidade, preservando os valores,
+  a precedência dos overrides e a ordem de avaliação que tenha efeito.
+- Preserve juntas as operações que dependem do mesmo contexto local. Evite
+  arquivos com wrappers que apenas encaminham chamadas, fragmentos sem sentido
+  próprio ou um arquivo por função só para reduzir a contagem de linhas.
+- Declare os contratos compartilhados perto da funcionalidade e mantenha os
+  tipos privados junto de seu único consumidor, respeitando as exceções de
+  tamanho da seção "Localização de tipos".
+
 ## Módulos de página
 
 - Metadados próprios da página ficam em `seo.ts`, ao lado de `index.tsx`.
