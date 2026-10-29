@@ -123,6 +123,8 @@ jobs:
       - name: Set up project
         id: toolchain
         uses: ./.github/actions/setup-project
+        with:
+          cache-toolchain: 'true'
 
       - name: Check commit messages
         if: github.event_name == 'pull_request'
@@ -217,6 +219,7 @@ jobs:
         uses: ./.github/actions/setup-project
         with:
           cache-save: false
+          cache-toolchain: 'true'
 
       - name: Run tooling tests
         run: vp run test:tooling
@@ -240,6 +243,7 @@ jobs:
         uses: ./.github/actions/setup-project
         with:
           cache-save: false
+          cache-toolchain: 'true'
 
       - name: Run end-to-end tests
         run: vp run test:e2e

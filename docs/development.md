@@ -247,18 +247,23 @@ com o custo de transferir o cache.
 
 No CI, só `Quality` envia o cache de pacotes, e apenas quando a chave do
 lockfile não existe e o job termina com sucesso. `Tooling` e E2E passam
-`cache-save: false` à ação `setup-project` e só restauram. `Reuse proof` e
-deploy passam também `install-dependencies: false`: a ação prepara Vite+, Node e
-Bun do `package.json`, sem cache de pacotes nem `vp install`. O deploy só
-executa `vp dlx` sobre o artefato testado. Com `cache: false`, o `setup-vp` não
-restaura nem salva o cache, e `cache-save` e `cache-dependency-path` não têm
-efeito. Num run experimental, sem token nem deploy real, o preparo somado à
-primeira chamada `vercel --version` levou 8,1 s contra 18,6 s do preparo
-completo, cerca de 10 s a menos, com as mesmas versões de Node, Bun, Vite+ e
-Vercel CLI e sem `node_modules`. Foi uma única amostra, que mede só essa chamada
-do CLI; acompanhe o tempo do deploy real depois do merge. A automação de release
-usa a mesma ação: o job de plano, sem permissão de escrita, instala as
-dependências e restaura o cache sem enviá-lo; os jobs com escrita passam
+`cache-save: false` à ação `setup-project` e só restauram. `Quality`, `Tooling`
+e `E2E (fixtures)` também passam `cache-toolchain: 'true'`: o `setup-vp` guarda
+Vite+, Node e Bun no cache do Actions, e só `Quality` envia esse cache.
+`E2E (production)`, que recebe o `VERCEL_TOKEN`, `Reuse proof`, o deploy e a
+automação de release não o usam, para não restaurar binários num job com segredo
+ou permissão de escrita. `Reuse proof` e deploy passam também
+`install-dependencies: false`: a ação prepara Vite+, Node e Bun do
+`package.json`, sem cache de pacotes nem `vp install`. O deploy só executa
+`vp dlx` sobre o artefato testado. Com `cache: false`, o `setup-vp` não restaura
+nem salva o cache, e `cache-save` e `cache-dependency-path` não têm efeito. Num
+run experimental, sem token nem deploy real, o preparo somado à primeira chamada
+`vercel --version` levou 8,1 s contra 18,6 s do preparo completo, cerca de 10 s
+a menos, com as mesmas versões de Node, Bun, Vite+ e Vercel CLI e sem
+`node_modules`. Foi uma única amostra, que mede só essa chamada do CLI;
+acompanhe o tempo do deploy real depois do merge. A automação de release usa a
+mesma ação: o job de plano, sem permissão de escrita, instala as dependências e
+restaura o cache sem enviá-lo; os jobs com escrita passam
 `install-dependencies: false` e não instalam nem importam pacotes, conforme o
 [guia de release](../tooling/release/README.md#ativação-no-github).
 

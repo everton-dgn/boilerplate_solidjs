@@ -12,6 +12,10 @@ inputs:
     description: Save the package cache after the job succeeds
     required: false
     default: 'true'
+  cache-toolchain:
+    description: Restore Vite+, Node and Bun from the Actions cache
+    required: false
+    default: 'false'
 
 outputs:
   node:
@@ -44,6 +48,7 @@ runs:
         node-version: ${{ steps.toolchain.outputs.node }}
         cache: ${{ inputs.install-dependencies == 'true' }}
         cache-save: ${{ inputs.cache-save }}
+        cache-toolchain: ${{ inputs.cache-toolchain }}
         cache-dependency-path: bun.lock
         run-install: false
 
