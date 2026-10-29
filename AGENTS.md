@@ -179,6 +179,11 @@ release. Add a tool name to select part of the graph. For example, run
   consumidor, como `DropdownMenu/constants.ts` e
   `(seo)/robots.txt/constants.ts`. Nunca em `src/constants/` antes do segundo
   consumidor.
+- Extraia constantes para expressar significado de domínio, configuração ou
+  um contrato compartilhado. Dois consumidores, por si só, não justificam um
+  módulo compartilhado: valores idiomáticos como o `-1` de `.at(-1)` ficam no
+  ponto de uso. Não crie um nome, arquivo ou comentário apenas para explicar
+  a semântica evidente de uma API nativa.
 - Códigos HTTP usados pela aplicação ficam em `src/constants/http.ts`, mesmo
   quando um código ainda tiver um único consumidor. O arquivo reúne os status
   do protocolo; acrescente apenas códigos efetivamente usados. Testes podem

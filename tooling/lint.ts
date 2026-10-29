@@ -272,7 +272,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'eslint/no-magic-numbers': [
       'error',
       {
-        ignore: [0, 1],
+        ignore: [-1, 0, 1],
         ignoreNumericLiteralTypes: true,
         ignoreDefaultValues: true,
         ignoreArrayIndexes: true

@@ -10,7 +10,6 @@ import {
   HTTP_NOT_FOUND,
   HTTP_OK
 } from '@/constants/http.ts'
-import { LAST_MATCH } from '@/constants/router.ts'
 import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { delocalizePathname } from '@/i18n/urls/index.ts'
@@ -135,8 +134,7 @@ function canConvert({ response, isPublished }: Publication): boolean {
 function isUnpublished({ request, url, isPublished }: RouteRequest): boolean {
   return (
     request.headers.has('authorization') ||
-    (!isPublished &&
-      !Router.match(url.href).at(LAST_MATCH)?.pattern.includes('*'))
+    (!isPublished && !Router.match(url.href).at(-1)?.pattern.includes('*'))
   )
 }
 
