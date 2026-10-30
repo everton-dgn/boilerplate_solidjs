@@ -82,8 +82,9 @@ declarado no projeto permitem alterar os headers. `Response.redirect()` já
 preserva o corpo nulo, mas a proteção do servidor também depende da
 imutabilidade dos headers de respostas de rede. Com `engines.node` definido e
 sem `engines.bun`, o Nitro gera a função em Node mesmo quando o build executa em
-Bun. Não acrescente `engines.bun` nem `bunVersion` ao `vercel.json`: os dois
-juntos trocam a função para Bun. Antes de migrar o SSR, preserve os contratos de
+Bun. Não acrescente `engines.bun` ao `package.json` junto com `bunVersion` no
+`vercel.json`: com `engines.node` definido, só os dois juntos trocam a função
+para Bun. Antes de migrar o SSR, preserve os contratos de
 [erros de servidor](server-errors.md) e rode os testes da fronteira no runtime
 de destino, além dos E2E completos.
 
