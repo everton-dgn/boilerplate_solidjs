@@ -43,6 +43,6 @@ it('keeps CSS Module classes when importing the stylesheet inline', async contex
       stylesheet.includes(`.${badge.dot}`),
     'Inline CSS must contain the classes used by the normal CSS Module import'
   )
-  assert.ok(button.variant_default && input.variant_default)
-  assert.notEqual(button.variant_default, input.variant_default)
+  assert.ok(button.variant_destructive && input.variant_destructive)
+  assert.notEqual(button.variant_destructive, input.variant_destructive)
 })
