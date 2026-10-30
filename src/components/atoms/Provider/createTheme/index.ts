@@ -58,7 +58,7 @@ export function createTheme(): ThemeState {
       setThemePreference(next)
       apply(next === 'system' ? untrack(systemTheme) : next)
       const isPersisted = saveTheme(next)
-      connection?.publish({ theme: next, persisted: isPersisted })
+      connection?.publish({ theme: next, isPersisted })
     }
   }
 }

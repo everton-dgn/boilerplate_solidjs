@@ -122,7 +122,7 @@ describe('primitive de tema', () => {
       new MessageEvent('message', {
         data: {
           theme: 'dark',
-          persisted: false,
+          isPersisted: false,
           changedAt: 1,
           origin: 'remote'
         }
