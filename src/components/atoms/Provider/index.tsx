@@ -1,9 +1,8 @@
 import type { ParentProps } from 'solid-js'
 
-import { createTheme } from '@/primitives/createTheme/index.ts'
-
 import { ToastProvider } from '../ToastProvider/index.tsx'
 import { ThemeContext } from './context.ts'
+import { createTheme } from './createTheme/index.ts'
 
 export function Provider(props: ParentProps) {
   return (

@@ -1,6 +1,7 @@
 /* oxlint-disable unicorn/no-document-cookie -- Os testes exercitam a persistência e o bloqueio de cookie diretamente. */
-import { useContext } from 'solid-js'
+import { flush, useContext } from 'solid-js'
 
+import type { ResolvedTheme } from '@/@types/theme.ts'
 import { ThemeContext } from '@/components/atoms/Provider/context.ts'
 import { THEME_COOKIE_NAME } from '@/constants/theme.ts'
 import { readTheme, saveTheme } from '@/infra/adapters/themeStorage/index.ts'
@@ -11,17 +12,13 @@ import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import type { ThemeState } from '../types.ts'
 
-function resetDocumentTheme(): void {
-  document.documentElement.classList.remove('light', 'dark')
-  document.documentElement.style.colorScheme = ''
-}
-
 describe('primitive de tema', () => {
   let state: ThemeState
   let media: EventTarget & { matches: boolean }
 
   beforeEach(() => {
-    resetDocumentTheme()
+    document.documentElement.classList.remove('light', 'dark')
+    document.documentElement.style.colorScheme = ''
     clearThemeCookie()
     media = Object.assign(new EventTarget(), { matches: true })
     vi.stubGlobal('matchMedia', () => media)
@@ -33,27 +30,42 @@ describe('primitive de tema', () => {
   function mount(): void {
     renderComponent(() => {
       state = useContext(ThemeContext)
-      return <span>{state.resolvedTheme()}</span>
+      return <span>{state.theme()}</span>
     })
+  }
+
+  function changeSystemTheme(theme: ResolvedTheme): void {
+    media.matches = theme === 'dark'
+    media.dispatchEvent(new Event('change'))
+    flush()
   }
 
   it('segue o sistema sem preferência salva', async () => {
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     expect(state.theme()).toBe('system')
-    expect(state.resolvedTheme()).toBe('dark')
     expect(document.documentElement).toHaveClass('dark')
     expect(document.cookie).not.toContain(`${THEME_COOKIE_NAME}=`)
+  })
+
+  it('acompanha a mudança do sistema com a preferência system', async () => {
+    mount()
+    await expect.poll(() => state.isReady()).toBe(true)
+    changeSystemTheme('light')
+    expect(document.documentElement).toHaveClass('light')
+    expect(document.documentElement.style.colorScheme).toBe('light')
   })
 
   it('mantém escolha explícita quando o sistema muda', async () => {
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     state.setTheme('light')
-    media.dispatchEvent(new Event('change'))
-    await expect.poll(() => state.resolvedTheme()).toBe('light')
+    changeSystemTheme('light')
+    changeSystemTheme('dark')
+    expect(document.documentElement).toHaveClass('light')
     expect(readTheme()).toBe('light')
-    expect(document.documentElement.style.colorScheme).toBe('light')
+    state.setTheme('system')
+    expect(document.documentElement).toHaveClass('dark')
   })
 
   it('reconcilia mudança de outra aba e remoção da preferência', async () => {
@@ -65,7 +77,7 @@ describe('primitive de tema', () => {
     clearThemeCookie()
     globalThis.dispatchEvent(new Event('pageshow'))
     await expect.poll(() => state.theme()).toBe('system')
-    expect(state.resolvedTheme()).toBe('dark')
+    await expect.poll(() => document.documentElement).toHaveClass('dark')
   })
 
   it('continua alternando quando o armazenamento é bloqueado', async () => {
@@ -73,7 +85,7 @@ describe('primitive de tema', () => {
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     state.setTheme('light')
-    await expect.poll(() => state.resolvedTheme()).toBe('light')
+    expect(document.documentElement).toHaveClass('light')
     expect(readTheme()).toBeUndefined()
     restore()
   })
@@ -99,30 +111,11 @@ describe('primitive de tema', () => {
     state.setTheme('light')
     expect(applied).toStrictEqual([true])
   })
-})
-
-describe('primitive de tema com canal entre abas', () => {
-  let state: ThemeState
-  let channel: ReturnType<typeof stubBroadcastChannel>
-
-  beforeEach(() => {
-    resetDocumentTheme()
-    clearThemeCookie()
-    channel = stubBroadcastChannel()
-    vi.stubGlobal('matchMedia', () => ({
-      matches: false,
-      addEventListener: vi.fn<() => void>(),
-      removeEventListener: vi.fn<() => void>()
-    }))
-  })
-
-  afterEach(clearThemeCookie)
 
   it('aplica no DOM o tema recebido de outra aba', async () => {
-    renderComponent(() => {
-      state = useContext(ThemeContext)
-      return <span>{state.resolvedTheme()}</span>
-    })
+    media.matches = false
+    const channel = stubBroadcastChannel()
+    mount()
     await expect.poll(() => state.isReady()).toBe(true)
     expect(document.documentElement).toHaveClass('light')
     channel.dispatchEvent(
@@ -135,7 +128,7 @@ describe('primitive de tema com canal entre abas', () => {
         }
       })
     )
-    await expect.poll(() => state.resolvedTheme()).toBe('dark')
+    await expect.poll(() => state.theme()).toBe('dark')
     expect(document.documentElement).toHaveClass('dark')
     expect(document.documentElement.style.colorScheme).toBe('dark')
   })

@@ -66,7 +66,8 @@ O tema começa em `system`. O cookie `app-theme` guarda a preferência por um an
 com `Path=/`, `SameSite=Lax` e `Secure` em HTTPS, restrito ao host atual. O
 `Document` lê esse cookie na requisição e entrega o tema explícito no HTML. O
 script diretamente no `head` resolve a preferência do sistema antes da
-hidratação, e `Provider` mantém uma instância de estado por árvore. O seletor
+hidratação, e `Provider` mantém uma instância de estado por árvore, criada pela
+primitive colocalizada em `components/atoms/Provider/createTheme/`. O seletor
 aplica a escolha imediatamente, antes de tentar persistir o cookie.
 `BroadcastChannel` sincroniza abas da mesma origem; ao recuperar foco, ficar
 visível ou receber `pageshow`, a aba relê o cookie. Sem o canal, a sincronização
