@@ -323,7 +323,7 @@ release. Add a tool name to select part of the graph. For example, run
   módulo próprio, como `tooling/backendPolicy/constants.ts`, em vez de
   exportar os helpers.
 - A regra `project/no-export-list` (`tooling/noExportList/index.ts`,
-  registrada no plugin de `tooling/css-modules-plugin.ts`) aplica a
+  registrada no plugin de `tooling/project-plugin.ts`) aplica a
   convenção. Valide com `vp run check:ci` e, ao mudar a regra, com
   `vp run test:tooling`.
 

@@ -28,7 +28,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
     suspicious: 'off'
   },
   jsPlugins: [
-    { name: 'project', specifier: './tooling/css-modules-plugin.ts' },
+    { name: 'project', specifier: './tooling/project-plugin.ts' },
     { name: 'backend', specifier: './tooling/backendPolicy/plugin.ts' },
     {
       name: 'architecture',

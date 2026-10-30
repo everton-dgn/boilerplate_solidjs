@@ -4,7 +4,7 @@ import { describe, it } from 'node:test'
 
 import { RuleTester } from 'vite-plus/lint/plugins-dev'
 
-import plugin from '../css-modules-plugin.ts'
+import plugin from '../project-plugin.ts'
 import { testFilenameError } from '../test-filename.ts'
 
 describe('test filename policy', () => {

@@ -6,7 +6,9 @@ import stylelint from 'stylelint'
 import { RuleTester } from 'vite-plus/lint/plugins-dev'
 
 import { cssFilenameError } from '../../css-filename.ts'
-import plugin from '../../css-modules-plugin.ts'
+import plugin from '../../project-plugin.ts'
+
+const ROOT = fileURLToPath(new URL('../../../', import.meta.url))
 
 describe('css filenames', () => {
   it('checks theme boundaries and module names', () => {
@@ -27,9 +29,7 @@ describe('css filenames', () => {
   it('checks imports, reexports and dynamic imports through the Oxlint rule', () => {
     const rule = plugin.rules['css-filename']
     assert.ok(rule)
-    new RuleTester({
-      cwd: fileURLToPath(new URL('../../../', import.meta.url))
-    }).run('css-filename', rule, {
+    new RuleTester({ cwd: ROOT }).run('css-filename', rule, {
       valid: [
         'import S from "@/routes/styles.module.css"',
         'import "/src/theme/tokens/zIndex.css"',
@@ -54,6 +54,31 @@ describe('css filenames', () => {
               'Use styles.module.css fora de src/theme/, inclusive nas rotas.'
           }
         ]
+      }))
+    })
+  })
+})
+
+describe('css module imports', () => {
+  it('requires a single default import named S', () => {
+    const rule = plugin.rules['css-modules-import']
+    assert.ok(rule)
+    new RuleTester({ cwd: ROOT }).run('css-modules-import', rule, {
+      valid: [
+        'import S from "./styles.module.css"',
+        'import S from "./styles.module.css?inline"',
+        'import "./global.css"',
+        'import styles from "./global.css"'
+      ].map(code => ({ filename: 'src/App.tsx', code })),
+      invalid: [
+        'import styles from "./styles.module.css"',
+        'import "./styles.module.css"',
+        'import S, { root } from "./styles.module.css"',
+        'import * as S from "./styles.module.css"'
+      ].map(code => ({
+        filename: 'src/App.tsx',
+        code,
+        errors: [{ messageId: 'useS' }]
       }))
     })
   })

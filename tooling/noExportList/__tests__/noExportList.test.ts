@@ -4,8 +4,8 @@ import { test } from 'node:test'
 
 import { RuleTester } from 'vite-plus/lint/plugins-dev'
 
-import plugin from '../../css-modules-plugin.ts'
 import { lint } from '../../lint.ts'
+import plugin from '../../project-plugin.ts'
 import { noExportList } from '../index.ts'
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')
