@@ -1,5 +1,5 @@
 import { BOT, REQUIRED_CHECK } from './constants.ts'
-import { postpone, requiredEnv } from './context.ts'
+import { appendOutput, postpone, requiredEnv } from './context.ts'
 import { api, git, mutate, optionalApi, requireSha } from './github.ts'
 import { assertMainProtection, mainSha } from './repository.ts'
 import type {
@@ -183,5 +183,6 @@ export async function publishRelease({
       }
     })
   }
+  await appendOutput({ tag: plan.tag, version: plan.version })
   await cleanupBranch({ ctx, prepared })
 }
