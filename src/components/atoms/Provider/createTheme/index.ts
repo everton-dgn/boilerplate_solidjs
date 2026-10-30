@@ -8,6 +8,7 @@ import {
 
 import type { ResolvedTheme, Theme } from '@/@types/theme.ts'
 import { DEFAULT_THEME, THEME_COLORS } from '@/constants/theme.ts'
+import { isTheme } from '@/helpers/isTheme/index.ts'
 import { applyTheme } from '@/infra/adapters/applyTheme/index.ts'
 import { makeSystemTheme } from '@/infra/adapters/makeSystemTheme/index.ts'
 import { makeThemeChannel } from '@/infra/adapters/makeThemeChannel/index.ts'
@@ -55,6 +56,7 @@ export function createTheme(): ThemeState {
     resolvedTheme,
     isReady,
     setTheme(next) {
+      if (!isTheme(next)) return
       setThemePreference(next)
       apply(next === 'system' ? untrack(systemTheme) : next)
       const isPersisted = saveTheme(next)

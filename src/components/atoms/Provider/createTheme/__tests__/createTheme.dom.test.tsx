@@ -1,7 +1,7 @@
 /* oxlint-disable unicorn/no-document-cookie -- Os testes exercitam a persistência e o bloqueio de cookie diretamente. */
 import { flush, useContext } from 'solid-js'
 
-import type { ResolvedTheme } from '@/@types/theme.ts'
+import type { ResolvedTheme, Theme } from '@/@types/theme.ts'
 import { ThemeContext } from '@/components/atoms/Provider/context.ts'
 import { THEME_COOKIE_NAME } from '@/constants/theme.ts'
 import { readTheme, saveTheme } from '@/infra/adapters/themeStorage/index.ts'
@@ -88,6 +88,19 @@ describe('primitive de tema', () => {
     state.setTheme('light')
     expect(document.documentElement).toHaveClass('light')
     expect(readTheme()).toBeUndefined()
+  })
+
+  it('ignora um tema inválido recebido por cast', async () => {
+    mount()
+    await expect.poll(() => state.isReady()).toBe(true)
+    state.setTheme('light')
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Simula um valor externo que chega ao setTheme sem validação de tipo.
+    const invalid = 'sepia' as unknown as Theme
+    state.setTheme(invalid)
+    expect(state.theme()).toBe('light')
+    expect(document.documentElement).toHaveClass('light')
+    expect(document.documentElement).not.toHaveClass('dark')
+    expect(readTheme()).toBe('light')
   })
 
   it('mantém a escolha feita logo após a montagem', async () => {
