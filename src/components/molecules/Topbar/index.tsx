@@ -1,5 +1,4 @@
 import { m } from '@paraglide/messages.js'
-import type { JSX } from '@solidjs/web'
 import { For } from 'solid-js'
 import IconGithub from '~icons/hugeicons/github'
 
@@ -13,14 +12,9 @@ import { NavItem } from './NavItem/index.tsx'
 
 import S from './styles.module.css'
 
-type TopbarProps = {
-  children?: JSX.Element
-  class?: string
-}
-
-export function Topbar(props: TopbarProps) {
+export function Topbar() {
   return (
-    <header class={[S.topbar, props.class]}>
+    <header class={S.topbar}>
       <LocalizedLink href="/" class={S.brand}>
         {SITE.title}
       </LocalizedLink>
@@ -33,7 +27,6 @@ export function Topbar(props: TopbarProps) {
       </nav>
 
       <div class={S.actions}>
-        {props.children}
         <a
           class={S.github_link}
           href={SITE.repositoryUrl}

@@ -6,6 +6,7 @@
 .content {
   position: absolute;
   inset-block-start: calc(100% + 4px);
+  inset-inline-end: 0;
   z-index: var(--z-index-dropdown);
   min-width: 128px;
   padding: 4px;
@@ -15,14 +16,6 @@
   color: var(--color-popover-foreground);
   box-shadow: var(--shadow-sm);
   text-align: start;
-}
-
-.align_start {
-  inset-inline-start: 0;
-}
-
-.align_end {
-  inset-inline-end: 0;
 }
 
 .item {

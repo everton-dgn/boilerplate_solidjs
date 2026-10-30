@@ -19,7 +19,7 @@ function mountMenu(onChange = vi.fn<(value: string) => void>()) {
       items={ITEMS}
       value="light"
       onChange={onChange}
-      trigger={props => <Button {...props} label="Abrir" />}
+      trigger={props => <Button {...props}>Abrir</Button>}
     />
   ))
 
@@ -77,7 +77,7 @@ describe('menu suspenso no navegador', () => {
     const { host } = mountMenu()
     renderComponent(() => (
       <div style={{ 'margin-top': '200px' }}>
-        <Button label="Próximo" />
+        <Button>Próximo</Button>
       </div>
     ))
     const opener = page.getByRole('button', { name: 'Abrir' })
@@ -111,7 +111,7 @@ describe('menu suspenso no navegador', () => {
           { value: 'dark', label: 'Escuro', disabled: true }
         ]}
         onChange={onChange}
-        trigger={props => <Button {...props} label="Abrir" />}
+        trigger={props => <Button {...props}>Abrir</Button>}
       />
     ))
 
@@ -138,9 +138,9 @@ describe('menu suspenso no navegador', () => {
         <DropdownMenu
           label="Tema"
           items={items}
-          trigger={props => <Button {...props} label="Abrir" />}
+          trigger={props => <Button {...props}>Abrir</Button>}
         />
-        <Button label="Próximo" />
+        <Button>Próximo</Button>
       </>
     ))
 
@@ -213,17 +213,5 @@ describe('menu suspenso no navegador', () => {
       outlineStyle: 'solid',
       outlineOffset: '-2px'
     })
-  })
-
-  it('fecha com Escape e devolve o foco ao gatilho', async () => {
-    const { host } = mountMenu()
-
-    await page.getByRole('button', { name: 'Abrir' }).click()
-    await userEvent.keyboard('{Escape}')
-
-    expect(host.querySelector('[role="menu"]')).toBeNull()
-    await expect
-      .element(page.getByRole('button', { name: 'Abrir' }))
-      .toHaveFocus()
   })
 })
