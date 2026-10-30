@@ -35,7 +35,7 @@ test('a política distingue dependências permitidas e inversões de camada', ()
         code: 'import { applyTheme } from "@/infra/adapters/applyTheme/index.ts"'
       },
       {
-        filename: 'src/components/atoms/DropdownMenu/primitives/menu.ts',
+        filename: 'src/components/atoms/DropdownMenu/createMenuState/index.ts',
         code: 'import { Button } from "@/components/atoms/Button/index.tsx"'
       },
       {

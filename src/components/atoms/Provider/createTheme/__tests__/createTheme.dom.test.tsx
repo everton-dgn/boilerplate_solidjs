@@ -87,7 +87,7 @@ describe('primitive de tema', () => {
     expect(readTheme()).toBeUndefined()
   })
 
-  it('mantém a escolha feita antes do canal iniciar', async () => {
+  it('mantém a escolha feita logo após a montagem', async () => {
     document.cookie = `${THEME_COOKIE_NAME}=dark; Path=/`
     mount()
     state.setTheme('light')
