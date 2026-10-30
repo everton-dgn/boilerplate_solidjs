@@ -4,7 +4,7 @@ import process from 'node:process'
 
 import stylelint from 'stylelint'
 
-import { cssFilenameError } from '../css-filename.ts'
+import { cssFilenameError } from './css-filename.ts'
 
 type Diagnostic = {
   file: string
@@ -14,6 +14,8 @@ type Diagnostic = {
 const root = path.resolve(import.meta.dirname, '../..')
 const diagnostics: Diagnostic[] = []
 
+// O glob do Stylelint pula dotfiles, node_modules e o .stylelintignore; a
+// varredura própria mantém todo CSS de src na verificação de nome.
 const entries = await readdir(path.join(root, 'src'), {
   recursive: true,
   withFileTypes: true
