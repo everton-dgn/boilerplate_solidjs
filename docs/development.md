@@ -303,12 +303,13 @@ aguardar os checks de `Quality` nem compartilhar CPU com a cobertura. Os quatro
 jobs rodam em paralelo, cada um com seu checkout, portas e artefatos de build
 isolados; no push da `main`, os três reutilizáveis começam depois do
 `Reuse proof`, e o E2E de produção não espera por ele. A ação local
-`setup-project` compartilha a instalação entre os jobs e o deploy. Esse
-paralelismo reduz a espera, mas repete a preparação nos runners e pode aumentar
-o consumo de minutos do GitHub Actions. O build de produção aprovado nos E2E é
-transferido ao deploy na mesma execução do CI. Assim, tanto o PR quanto o push
-para `main` compilam duas aplicações: uma com fixtures e outra com as rotas
-reais. Os testes de tooling também compilam suas próprias fixtures menores.
+`setup-project` concentra a preparação da toolchain: os jobs de validação também
+instalam as dependências, e o deploy não. Esse paralelismo reduz a espera, mas
+repete a preparação nos runners e pode aumentar o consumo de minutos do GitHub
+Actions. O build de produção aprovado nos E2E é transferido ao deploy na mesma
+execução do CI. Assim, tanto o PR quanto o push para `main` compilam duas
+aplicações: uma com fixtures e outra com as rotas reais. Os testes de tooling
+também compilam suas próprias fixtures menores.
 
 `CI required` aguarda todos os jobs e exige sucesso de `Quality`, `Tooling`,
 `E2E (fixtures)` e `E2E (production)`; falhas, cancelamentos e jobs pulados

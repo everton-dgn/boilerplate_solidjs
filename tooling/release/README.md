@@ -107,11 +107,8 @@ exigência de CI estrito, a preparação para sem criar commit, branch ou PR. As
 versões de Node, Bun e Vite+ vêm do `package.json`; só o job `plan` instala as
 dependências, com lockfile congelado.
 
-Os testes mantêm os projetos node, dom e browser. No CI, o provider usa o canal
-`chrome` disponível no runner definido no
-[workflow do CI](../../.github/workflows/ci.yml), sem baixar Chromium.
-Localmente, continua usando o Chromium gerenciado pelo Playwright. O checkout
-usa o SHA do evento.
+Os três jobs fazem checkout da ponta da `main`, e o script confere que ela
+contém o SHA de origem e o próprio código em execução.
 
 Novos PRs podem cancelar seu CI anterior. Pushes não cancelam o workflow em
 andamento, preservando o deploy. A release aceita somente a branch `main` no
@@ -122,10 +119,11 @@ substitui a pendente anterior, preservando a execução já em andamento.
 
 ## Integração com a Vercel
 
-O projeto `boilerplate-solidjs`, no escopo `verton-toffanettos-projects`, recebe
-deploys de produção pelo job `deploy` do CI. Ele depende de `check` e do E2E de
-produção e executa somente em push na `main`. O CI de PRs valida o código sem
-publicar na Vercel.
+O projeto da Vercel recebe deploys de produção pelo job `deploy` do CI. Nesta
+instância, é o projeto `boilerplate-solidjs`, no escopo
+`verton-toffanettos-projects`; uma cópia do boilerplate usa o próprio projeto. O
+job depende de `check` e do E2E de produção e executa somente em push na `main`.
+O CI de PRs valida o código sem publicar na Vercel.
 
 No push para `main`, o job de E2E de produção usa a versão do Vercel CLI fixada
 em `VERCEL_CLI_VERSION`, no `env` do
@@ -171,11 +169,12 @@ Actions:
 | Variable | `VERCEL_ORG_ID`     | Identificar a equipe da conta pessoal    |
 | Variable | `VERCEL_PROJECT_ID` | Identificar o projeto de destino         |
 
-Os IDs e o secret `VERCEL_TOKEN` estão cadastrados no GitHub. A credencial
-`github-boilerplate-solidjs-ci` está restrita ao projeto `boilerplate-solidjs`,
-sem expiração. Ela pode ser gerenciada em
-[Tokens da Vercel](https://vercel.com/account/tokens). O valor fica somente no
-secret do repositório, sem ser adicionado aos arquivos de ambiente.
+Nesta instância, os IDs e o secret `VERCEL_TOKEN` estão cadastrados no GitHub, e
+a credencial `github-boilerplate-solidjs-ci` está restrita ao projeto
+`boilerplate-solidjs`, sem expiração. Numa cópia, crie em
+[Tokens da Vercel](https://vercel.com/account/tokens) um token restrito ao
+próprio projeto. O valor fica somente no secret do repositório, sem ser
+adicionado aos arquivos de ambiente.
 
 O vínculo Git também foi desconectado no projeto remoto. O `vercel.json`
 desativa deploys disparados pela integração Git com
