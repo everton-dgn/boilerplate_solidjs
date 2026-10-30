@@ -52,8 +52,9 @@ tem estado próprio e libera os temporizadores ao desmontar.
 `DropdownMenu`, em `components/atoms/`, segue o padrão de menu do APG: setas,
 `Home` e `End` navegam entre os itens, `Escape` fecha, e `Tab` fecha sem prender
 o foco. Selecionar um item, pelo teclado ou pelo ponteiro, devolve o foco ao
-gatilho; com o ponteiro, o navegador não mostra o anel de `:focus-visible`.
-Clicar fora fecha o menu e preserva o destino do foco.
+gatilho; com o ponteiro, o navegador não mostra o anel de `:focus-visible`. Na
+navegação por teclado, o item focado recebe o anel de foco global, além do fundo
+de destaque. Clicar fora fecha o menu e preserva o destino do foco.
 
 Os gatilhos de tema e de idioma incluem o estado atual no nome acessível: o de
 idioma começa pelo código mostrado no botão, como "EN, select language", e o de

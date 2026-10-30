@@ -46,7 +46,7 @@
   text-align: start;
   cursor: pointer;
   user-select: none;
-  outline: none;
+  outline-offset: -2px;
   transition:
     background-color 0.15s ease,
     color 0.15s ease;

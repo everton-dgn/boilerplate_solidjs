@@ -48,7 +48,7 @@
 
 .variant_destructive {
   background: var(--color-destructive);
-  color: var(--color-white);
+  color: var(--color-destructive-foreground);
 
   &:hover {
     background: var(--color-destructive-hover);

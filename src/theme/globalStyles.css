@@ -158,7 +158,7 @@ mark {
 }
 
 @media (forced-colors: active) {
-  :focus {
+  :focus-visible {
     outline: 3px solid Highlight !important;
     outline-offset: 1px;
   }
