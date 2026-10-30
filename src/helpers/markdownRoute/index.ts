@@ -2,13 +2,19 @@ import type { RouteInfo } from '@solidjs/router'
 
 import { delocalizePathname } from '@/i18n/urls/index.ts'
 
-export function isMarkdownRoute(
+export function hasMarkdownOptIn(
   info: readonly (RouteInfo | undefined)[]
 ): boolean {
   const markdown = info.at(-1)?.markdown
+  return markdown === true || markdown === 'dynamic'
+}
+
+export function isMarkdownRoute(
+  info: readonly (RouteInfo | undefined)[]
+): boolean {
   let isNoindex = false
   for (const route of info) isNoindex = route?.seo?.noindex ?? isNoindex
-  return (markdown === true || markdown === 'dynamic') && !isNoindex
+  return hasMarkdownOptIn(info) && !isNoindex
 }
 
 export function markdownPath(pathname: string): string {

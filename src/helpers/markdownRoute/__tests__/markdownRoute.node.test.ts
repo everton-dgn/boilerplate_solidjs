@@ -1,4 +1,4 @@
-import { isMarkdownRoute, markdownPath } from '../index.ts'
+import { hasMarkdownOptIn, isMarkdownRoute, markdownPath } from '../index.ts'
 
 describe('markdown derivado do HTML', () => {
   it('exige opt-in na folha e SEO indexável', () => {
@@ -23,6 +23,16 @@ describe('markdown derivado do HTML', () => {
       isMarkdownRoute([{ markdown: 'dynamic', seo: { noindex: true } }])
     ).toBe(false)
     expect(isMarkdownRoute([{ markdown: false }])).toBe(false)
+  })
+
+  it('lê o opt-in da folha sem resolver o SEO', () => {
+    expect(hasMarkdownOptIn([{ markdown: true, seo: { noindex: true } }])).toBe(
+      true
+    )
+    expect(hasMarkdownOptIn([{ markdown: 'dynamic' }])).toBe(true)
+    expect(hasMarkdownOptIn([{ markdown: true }, {}])).toBe(false)
+    expect(hasMarkdownOptIn([{ markdown: false }])).toBe(false)
+    expect(hasMarkdownOptIn([])).toBe(false)
   })
 
   it.each([

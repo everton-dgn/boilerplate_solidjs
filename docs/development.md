@@ -97,7 +97,8 @@ output sem recompilar e envia o artefato ao job `deploy`. Este publica o mesmo
 build com `vercel deploy --prebuilt --prod`, usando a variável `VERCEL_ORG_ID`,
 a variável `VERCEL_PROJECT_ID` e o secret `VERCEL_TOKEN` cadastrados no GitHub.
 O `vercel.json` desativa os deploys pela integração Git
-(`git.deploymentEnabled: false`) e guarda o cache imutável de `/images/` e os
+(`git.deploymentEnabled: false`) e guarda o cache imutável de `/images/` (uma
+imagem trocada precisa de nome novo, como explica o [guia de SEO](seo.md)) e os
 cabeçalhos `nosniff` e `Cross-Origin-Resource-Policy` dos estáticos; os demais
 cabeçalhos de segurança saem do middleware. A configuração da Vercel e o fluxo
 de releases automáticas estão no

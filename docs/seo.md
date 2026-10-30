@@ -68,11 +68,16 @@ export const seo = {
 Em `index.tsx`, importe `seo` e use `info: { seo }` na definição da rota, junto
 dos demais controles que a página declarar. Getters preservam o idioma da
 requisição; não copie os textos traduzidos para valores no topo do módulo. Os
-catálogos ficam em `i18n/{pt,en,es}.json` ao lado desses arquivos. O mesmo
-`seo.ts` pode exportar `content` com os dados que o componente renderiza (as
-páginas que usam `SiteArticle` o tipam com `satisfies SitePage`), e os getters
-de `seo` podem ler esse objeto. É dado de UI: o Markdown não o lê, porque sai do
-HTML renderizado.
+catálogos ficam em `i18n/{pt,en,es}.json` ao lado desses arquivos. Os dados que
+o componente renderiza ficam em `index.tsx`, numa constante não exportada com
+getters (as páginas que usam `SiteArticle` a tipam com `satisfies SitePage`), ou
+em chamadas de `m` no próprio JSX. O manifesto de rotas importa o `route` de
+cada página no bundle inicial, e tudo o que `seo.ts` importa entra junto. Por
+isso os getters de `seo` chamam as mensagens diretamente, sem ler o objeto da
+página, e o corpo fica só no módulo da rota, baixado na navegação. Uma página
+que ainda exporte `content` de `seo.ts` deve movê-lo para `index.tsx` e trocar
+as leituras de `seo` pelas mensagens. É dado de UI: o Markdown não o lê, porque
+sai do HTML renderizado.
 
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
 JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (nó
@@ -217,10 +222,9 @@ ocorrência (a página estática antes da fonte). A comparação usa a URL local
 que vai para o XML, então `/a/../b` e `/b`, `/café` e `/caf%C3%A9` ou
 `/pt/blog/x` e `/blog/x` contam como a mesma página. `lastmod` fora do W3C
 Datetime é omitido. Falha de qualquer fonte, entrada inválida, prazo estourado
-ou sitemap acima do limite do protocolo (a quantidade fica em
-`sitemap.xml/constants.ts` e o limite de bytes em
-`sitemap.xml/helpers/buildSitemapResponse/index.ts`) respondem 503 sem corpo e
-com `no-store`, e o servidor registra a linha fixa `[sitemap]` descrita em
+ou sitemap acima dos limites do protocolo (de URLs e de bytes, em
+`sitemap.xml/constants.ts`) respondem 503 sem corpo e com `no-store`, e o
+servidor registra a linha fixa `[sitemap]` descrita em
 [erros no servidor](server-errors.md#log-de-falhas). O crawler tenta de novo, e
 o CDN não guarda um sitemap parcial por uma hora. A resposta de sucesso traz
 `stale-if-error=86400`: depois que a cópia em cache expira, se a função
@@ -278,24 +282,29 @@ server functions (`/_server` por padrão, lido do
 com `Disallow: /`, e o link do sitemap. Buscadores e agentes que leem páginas a
 pedido do usuário continuam liberados, porque são o público do llms.txt.
 `Disallow` é um pedido que robôs mal comportados ignoram e não remove URL do
-índice; para isso, use `noindex` em `route.info.seo`. Em produção o processo
-guarda em memória a resposta do robots e do llms.txt e a leitura do manifesto do
-sitemap, porque o manifesto, os grupos e a URL do site são fixos no build; as
-fontes do sitemap rodam a cada request. O llms.txt é montado dentro do contexto
-Paraglide do idioma base (`baseLocale` do runtime), inclusive a descrição do
-site e os metadados das páginas, para que nem a requisição que preenche a
-memória nem um contexto de outro idioma mudem o texto; a nota sobre o idioma do
-índice deriva do mesmo `baseLocale`. Os três arquivos saem com
-`public, max-age=0, s-maxage=3600, stale-if-error=86400` em produção (o CDN
-reutiliza por uma hora; a Vercel só cacheia resposta de função com `s-maxage` e
-consome `s-maxage` e `stale-if-error` sem repassá-los ao navegador) e com
-`no-store` em desenvolvimento. Com `stale-if-error`, um erro da função depois
-que a cópia expira não derruba o arquivo por até um dia. As URLs absolutas dos
-três arquivos partem da origem de `VITE_SITE_URL`; um site servido em um
-subcaminho não é suportado por essa geração. A página 404 declara
+índice; para isso, use `noindex` em `route.info.seo`. O texto do robots é
+montado uma vez, ao carregar o módulo, porque os grupos e a URL do site são
+fixos no build. Em produção o processo guarda em memória a resposta do llms.txt
+e a leitura do manifesto do sitemap, porque o manifesto também é fixo no build;
+as fontes do sitemap rodam a cada request. O llms.txt é montado dentro do
+contexto Paraglide do idioma base (`baseLocale` do runtime), inclusive a
+descrição do site e os metadados das páginas, para que nem a requisição que
+preenche a memória nem um contexto de outro idioma mudem o texto. A nota que
+lista os idiomas e declara o idioma do índice é texto fixo: ao mudar os idiomas
+ou o idioma base em `project.inlang/settings.json`, reescreva-a. Os três
+arquivos saem com `public, max-age=0, s-maxage=3600, stale-if-error=86400` em
+produção (o CDN reutiliza por uma hora; a Vercel só cacheia resposta de função
+com `s-maxage` e consome `s-maxage` e `stale-if-error` sem repassá-los ao
+navegador) e com `no-store` em desenvolvimento. Com `stale-if-error`, um erro da
+função depois que a cópia expira não derruba o arquivo por até um dia. As URLs
+absolutas dos três arquivos partem da origem de `VITE_SITE_URL`; um site servido
+em um subcaminho não é suportado por essa geração. A página 404 declara
 `robots: noindex`. A imagem social fica em `public/images/og.png`, com cache
-imutável configurado em `vercel.json`; o logo do JSON-LD reutiliza
-`public/favicon/apple-touch-icon.png`.
+imutável de um ano configurado em `vercel.json` para `/images/`. Como esse cache
+não revalida, publique uma imagem nova com outro nome (por exemplo,
+`og-2026-10.png`) e atualize `SITE.image.path`: sobrescrever `og.png` deixa
+navegadores e caches intermediários com a versão antiga por até um ano. O logo
+do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
 
 ## Leitura por agentes
 

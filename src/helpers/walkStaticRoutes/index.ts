@@ -1,4 +1,12 @@
-import type { WalkFrame, WalkStaticRoutesOptions } from './types.ts'
+import type { StaticRoute, WalkStaticRoutesOptions } from './types.ts'
+
+type WalkFrame<State> = {
+  routes: readonly StaticRoute[]
+  index: number
+  parent: string
+  state: State
+  isDynamic: boolean
+}
 
 const DYNAMIC_SEGMENT = /[:*]/u
 
