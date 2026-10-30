@@ -1,9 +1,8 @@
-import { expect, test } from '@playwright/test'
 import * as v from 'valibot'
 
 import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 import { parseStructuredData } from '@/tests/helpers/parseStructuredData/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 
 const JSON_LD = 'script[type="application/ld+json"]'
 const EXPECTED_SCRIPTS = 2
@@ -16,9 +15,9 @@ for (const javaScriptEnabled of [false, true]) {
     test.use({ javaScriptEnabled, locale: 'pt-BR' })
 
     test('preserva HTML malicioso como dados no grafo base e no JSON da página', async ({
-      page
+      page,
+      cspViolations
     }) => {
-      const violations = await watchCspViolations(page)
       await page.goto('/structured-data')
       await expect(
         page.getByRole('heading', { name: 'Perguntas frequentes' })
@@ -49,7 +48,7 @@ for (const javaScriptEnabled of [false, true]) {
           page.getByRole('button', { name: 'Selecionar tema' })
         ).toBeEnabled()
       }
-      expect(violations).toStrictEqual([])
+      expect(cspViolations).toStrictEqual([])
     })
   })
 }

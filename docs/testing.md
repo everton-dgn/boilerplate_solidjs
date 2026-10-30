@@ -120,6 +120,12 @@ sem ele. Não o use para controlar a UI: preserve `isHydrating()` e `onSettled`
 nos componentes que precisam distinguir SSR e estado do cliente. O contrato
 atual considera uma única raiz de hidratação.
 
+Os E2E que conferem erros da página ou violações de CSP importam `test` e
+`expect` de `src/tests/helpers/pageWatchers/`. Os fixtures `pageErrors` e
+`cspViolations` começam a coletar antes do corpo do teste, então nenhum erro da
+primeira navegação escapa, e o teste só confere as listas. Páginas abertas com
+`context.newPage()` registram a própria coleta.
+
 Um fragmento cortado pelo truncamento é renderizado do zero no cliente e adota
 por id o que o servidor já tinha enviado
 ([solidjs/solid#4319](https://github.com/solidjs/solid/pull/4319)). Os registros

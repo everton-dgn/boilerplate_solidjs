@@ -1,10 +1,8 @@
-import { expect, test } from '@playwright/test'
-
 import {
   readGatedBody,
   releaseFixtureGate
 } from '@/tests/helpers/fixtureGate/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const HTTP_OK = 200
 const PAGE_URL = '/pt/late-redirect'
@@ -39,9 +37,9 @@ test('o script do redirect depois do shell leva o nonce da CSP', async ({
 
 test('o navegador segue o redirect depois do shell sem violação de CSP', async ({
   page,
-  request
+  request,
+  cspViolations
 }) => {
-  const violations = await watchCspViolations(page)
   const id = `late-redirect:${crypto.randomUUID()}`
 
   await page.goto(`${PAGE_URL}?id=${id}`, { waitUntil: 'commit' })
@@ -49,5 +47,5 @@ test('o navegador segue o redirect depois do shell sem violação de CSP', async
   await releaseFixtureGate({ request, id })
   await expect(page).toHaveURL(/\/pt\?from=late-redirect$/u)
 
-  expect(violations).toStrictEqual([])
+  expect(cspViolations).toStrictEqual([])
 })

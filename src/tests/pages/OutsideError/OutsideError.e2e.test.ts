@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { env } from 'node:process'
 
-import { expect, test, type APIRequestContext } from '@playwright/test'
+import type { APIRequestContext } from '@playwright/test'
 
 import {
   readBackendState,
@@ -10,6 +10,7 @@ import {
   waitForGate
 } from '@/tests/helpers/fixtureGate/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 test.use({ locale: 'pt-BR' })
 
@@ -180,12 +181,11 @@ for (const fixture of CASES) {
 
     test('o navegador mostra o fallback sem o marcador', async ({
       page,
-      request
+      request,
+      pageErrors
     }) => {
       const id = `outside:${crypto.randomUUID()}`
       const { marker } = await readBackendState({ request, id })
-      const browserErrors: string[] = []
-      page.on('pageerror', error => browserErrors.push(error.message))
       if (fixture.gate === 'before') await releaseFixtureGate({ request, id })
 
       const response = await page.goto(
@@ -200,9 +200,9 @@ for (const fixture of CASES) {
 
       await expect(page.getByText(fixture.content)).toBeVisible()
       expect(await page.content()).not.toContain(marker)
-      expect(browserErrors.join(' ')).not.toContain(marker)
+      expect(pageErrors.join(' ')).not.toContain(marker)
       expect(
-        browserErrors.filter(message => !fixture.pageErrors.includes(message))
+        pageErrors.filter(message => !fixture.pageErrors.includes(message))
       ).toStrictEqual([])
       const state = await readBackendState({ request, id })
       if (fixture.gate === 'none') {
@@ -301,12 +301,11 @@ test.describe('exceções no middleware', () => {
 
   test('a página de erro do middleware hidrata no navegador', async ({
     page,
-    request
+    request,
+    pageErrors
   }) => {
     const id = `outside:${crypto.randomUUID()}`
     const { marker } = await readBackendState({ request, id })
-    const browserErrors: string[] = []
-    page.on('pageerror', error => browserErrors.push(error.message))
 
     const response = await page.goto(
       `/outside-error?case=middleware-before&id=${id}`
@@ -320,7 +319,7 @@ test.describe('exceções no middleware', () => {
     expect(await page.content()).not.toContain(marker)
     // Só a mensagem pública pode reaparecer ao hidratar o fallback.
     expect(
-      browserErrors.filter(message => message !== PUBLIC_MESSAGE)
+      pageErrors.filter(message => message !== PUBLIC_MESSAGE)
     ).toStrictEqual([])
   })
 })

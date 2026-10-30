@@ -1,11 +1,12 @@
 import { readdir, readFile } from 'node:fs/promises'
 
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 import {
   markBackendRecovered,
   readBackendState
 } from '@/tests/helpers/fixtureGate/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 test.use({ locale: 'pt-BR' })
 
@@ -120,13 +121,12 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
 
     test('recarrega a página com falha e após o backend voltar', async ({
       page,
-      request
+      request,
+      pageErrors
     }) => {
       const id = crypto.randomUUID()
       const { marker: privateMarker } = await readBackendState({ request, id })
-      const browserErrors: string[] = []
       const serverResponses = await captureServerFunctions(page)
-      page.on('pageerror', error => browserErrors.push(error.message))
 
       const response = await page.goto(`/backend-error?phase=${phase}&id=${id}`)
       expect(await response?.text()).not.toContain(privateMarker)
@@ -179,13 +179,13 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       // erro não chegar mais ao navegador.
       const rendersOnServer = phase !== 'action'
       expect(
-        browserErrors.filter(
+        pageErrors.filter(
           message =>
             !rendersOnServer ||
             message !== 'Não foi possível concluir a solicitação.'
         )
       ).toStrictEqual([])
-      browserErrors.length = 0
+      pageErrors.length = 0
 
       await markBackendRecovered({ request, id })
       const recoveryResponse = page.waitForResponse(candidate =>
@@ -205,7 +205,7 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       await expect(page.locator('[data-error-variant="runtime"]')).toHaveCount(
         0
       )
-      expect(browserErrors).toStrictEqual([])
+      expect(pageErrors).toStrictEqual([])
       if (phase === 'action') {
         expect(serverResponses).toHaveLength(ATTEMPTS_AFTER_RETRY + 1)
       }
@@ -219,13 +219,12 @@ for (const phase of ['ssr', 'stream', 'action']) {
   for (const failure of ['http', 'throw', 'result', 'public', 'success']) {
     test(`confidencialidade: ${phase}, ${failure}`, async ({
       page,
-      request
+      request,
+      pageErrors
     }) => {
       const id = `${failure}:${crypto.randomUUID()}`
       const { marker } = await readBackendState({ request, id })
-      const browserErrors: string[] = []
       const serverResponses = await captureServerFunctions(page)
-      page.on('pageerror', error => browserErrors.push(error.message))
       const response = await page.goto(`/backend-error?phase=${phase}&id=${id}`)
       const document = await response?.text()
       expect(document).not.toContain(marker)
@@ -252,10 +251,10 @@ for (const phase of ['ssr', 'stream', 'action']) {
         )
       }
       expect(JSON.stringify(serverResponses)).not.toContain(marker)
-      expect(browserErrors.join(' ')).not.toContain(marker)
+      expect(pageErrors.join(' ')).not.toContain(marker)
       // A hidratação tolera somente a repetição da mensagem pública fixa.
       expect(
-        browserErrors.filter(
+        pageErrors.filter(
           message =>
             phase === 'action' ||
             message !== 'Não foi possível concluir a solicitação.'

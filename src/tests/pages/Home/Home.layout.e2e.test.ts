@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 test.use({ locale: 'pt-BR' })
 
@@ -8,11 +8,12 @@ const DESKTOP_WIDTH = 1280
 test.describe('layout responsivo', () => {
   for (const width of [MOBILE_WIDTH, DESKTOP_WIDTH]) {
     for (const colorScheme of ['light', 'dark'] as const) {
-      test(`${width}px no tema ${colorScheme}`, async ({ page }) => {
+      test(`${width}px no tema ${colorScheme}`, async ({
+        page,
+        pageErrors
+      }) => {
         await page.setViewportSize({ width, height: 800 })
         await page.emulateMedia({ colorScheme })
-        const errors: string[] = []
-        page.on('pageerror', error => errors.push(error.message))
         await page.goto('/')
         await page.getByRole('button', { name: 'Selecionar tema' }).waitFor()
         await expect(page.locator('html')).toHaveClass(colorScheme)
@@ -39,7 +40,7 @@ test.describe('layout responsivo', () => {
         await expect(
           page.getByRole('link', { name: '404', exact: true }).locator('span')
         ).toHaveCSS('opacity', '1')
-        expect(errors).toEqual([])
+        expect(pageErrors).toEqual([])
       })
     }
   }

@@ -1,8 +1,8 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 import { holdRoute } from '@/tests/helpers/holdRoute/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const HTTP_OK = 200
 const PAGE_URL = '/en'
@@ -61,11 +61,10 @@ test.describe('without JavaScript', () => {
 })
 
 test('marks hydration only after the bundle runs, on every document load', async ({
-  page
+  page,
+  pageErrors,
+  cspViolations
 }) => {
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
-  const violations = await watchCspViolations(page)
   let gate = await holdRoute({ page, url: SCRIPTS })
   try {
     await page.goto(PAGE_URL, { waitUntil: 'commit' })
@@ -80,8 +79,8 @@ test('marks hydration only after the bundle runs, on every document load', async
     await expectServerDocument(page)
     await gate.release()
     await expectInteractiveDocument(page)
-    expect(errors).toEqual([])
-    expect(violations).toEqual([])
+    expect(pageErrors).toEqual([])
+    expect(cspViolations).toEqual([])
   } finally {
     await gate.release()
   }
@@ -102,11 +101,10 @@ test('does not mark hydration when the bundle fails to load', async ({
 })
 
 test('keeps the marker and interactivity across client-side navigation', async ({
-  page
+  page,
+  pageErrors,
+  cspViolations
 }) => {
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
-  const violations = await watchCspViolations(page)
   let documentRequests = 0
   page.on('request', request => {
     if (request.resourceType() === 'document') documentRequests += 1
@@ -128,15 +126,14 @@ test('keeps the marker and interactivity across client-side navigation', async (
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_TITLE)
   await expectInteractiveDocument(page)
   expect(documentRequests).toBe(1)
-  expect(errors).toEqual([])
-  expect(violations).toEqual([])
+  expect(pageErrors).toEqual([])
+  expect(cspViolations).toEqual([])
 })
 
 test('replays a click captured before hydration after the bundle is released', async ({
-  page
+  page,
+  pageErrors
 }) => {
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
   const gate = await holdRoute({ page, url: SCRIPTS })
   try {
     await page.goto(PAGE_URL, { waitUntil: 'commit' })
@@ -153,7 +150,7 @@ test('replays a click captured before hydration after the bundle is released', a
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menu')).not.toBeVisible()
     await expectInteractiveDocument(page)
-    expect(errors).toEqual([])
+    expect(pageErrors).toEqual([])
   } finally {
     await gate.release()
   }

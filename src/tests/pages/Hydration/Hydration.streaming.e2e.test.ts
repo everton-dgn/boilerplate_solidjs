@@ -1,11 +1,11 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 import {
   releaseFixtureGate,
   releaseFixtureGateQuietly
 } from '@/tests/helpers/fixtureGate/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 type Stream = { page: Page; id: string; shouldReject?: boolean }
 
@@ -50,12 +50,11 @@ async function expectPanel(page: Page, panel: string): Promise<void> {
 
 test('espera todos os fragmentos, mesmo resolvidos fora de ordem', async ({
   page,
-  request
+  request,
+  pageErrors,
+  cspViolations
 }) => {
   const id = crypto.randomUUID()
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
-  const violations = await watchCspViolations(page)
   try {
     await openStream({ page, id })
     await releaseFixtureGate({ request, id: `${id}-second` })
@@ -68,8 +67,8 @@ test('espera todos os fragmentos, mesmo resolvidos fora de ordem', async ({
     await releaseFixtureGate({ request, id: `${id}-first` })
     await expect.poll(() => hydrationFinished(page)).toBe(true)
     await expectPanel(page, 'First')
-    expect(errors).toStrictEqual([])
-    expect(violations).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
   } finally {
     await releaseFixtureGateQuietly({ request, id: `${id}-first` })
     await releaseFixtureGateQuietly({ request, id: `${id}-second` })
@@ -78,11 +77,11 @@ test('espera todos os fragmentos, mesmo resolvidos fora de ordem', async ({
 
 test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
   page,
-  request
+  request,
+  pageErrors,
+  cspViolations
 }) => {
   const id = crypto.randomUUID()
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
   // A rejeição enviada pelo servidor é adotada na hidratação, sem nova busca.
   let clientLoads = 0
   page.on('request', resource => {
@@ -93,7 +92,6 @@ test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
       clientLoads += 1
     }
   })
-  const violations = await watchCspViolations(page)
   try {
     await openStream({ page, id, shouldReject: true })
     await releaseFixtureGate({ request, id: `${id}-first` })
@@ -112,8 +110,8 @@ test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
       page.getByText('First stream failed', { exact: true })
     ).toBeVisible()
     expect(clientLoads).toBe(0)
-    expect(violations).toStrictEqual([])
-    expect(errors).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
   } finally {
     await releaseFixtureGateQuietly({ request, id: `${id}-first` })
     await releaseFixtureGateQuietly({ request, id: `${id}-second` })
@@ -122,12 +120,11 @@ test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
 
 test('encerra a fase quando a navegação descarta fragmentos pendentes', async ({
   page,
-  request
+  request,
+  pageErrors,
+  cspViolations
 }) => {
   const id = crypto.randomUUID()
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
-  const violations = await watchCspViolations(page)
   let documentRequests = 0
   page.on('request', resource => {
     if (resource.resourceType() === 'document') documentRequests += 1
@@ -145,8 +142,8 @@ test('encerra a fase quando a navegação descarta fragmentos pendentes', async 
     await page.getByRole('button', { name: 'Select theme' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
     expect(documentRequests).toBe(1)
-    expect(errors).toStrictEqual([])
-    expect(violations).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
   } finally {
     await releaseFixtureGateQuietly({ request, id: `${id}-first` })
     await releaseFixtureGateQuietly({ request, id: `${id}-second` })

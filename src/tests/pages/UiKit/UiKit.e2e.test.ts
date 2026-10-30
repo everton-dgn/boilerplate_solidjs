@@ -1,7 +1,5 @@
-import { expect, test } from '@playwright/test'
-
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const LANGUAGES = [
   { locale: 'pt', dialog: 'Fechar diálogo', toast: 'Fechar notificação' },
@@ -13,11 +11,10 @@ const MOBILE_WIDTH = 375
 // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const language of LANGUAGES) {
   test(`fields, modal and notifications work in ${language.locale} after SSR`, async ({
-    page
+    page,
+    pageErrors,
+    cspViolations
   }) => {
-    const errors: string[] = []
-    page.on('pageerror', error => errors.push(error.message))
-    const csp = await watchCspViolations(page)
     await page.goto(`/${language.locale}/ui-kit`)
     await expect.poll(() => hydrationFinished(page)).toBe(true)
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Ada')
@@ -78,8 +75,8 @@ for (const language of LANGUAGES) {
       page.getByText('<strong>Plain text</strong>', { exact: true }).first()
     ).toBeVisible()
     await expect(page.locator('strong')).toHaveCount(0)
-    expect(errors).toEqual([])
-    expect(csp).toEqual([])
+    expect(pageErrors).toEqual([])
+    expect(cspViolations).toEqual([])
   })
 }
 
@@ -100,19 +97,18 @@ test.describe('without JavaScript', () => {
 })
 
 test('initially open dialog hydrates modally with CSP enabled', async ({
-  page
+  page,
+  pageErrors,
+  cspViolations
 }) => {
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
-  const csp = await watchCspViolations(page)
   await page.goto('/en/ui-kit?open=1')
   const dialog = page.getByRole('dialog', { name: 'Fixture dialog' })
   await expect(dialog).toBeVisible()
   expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true)
   await page.keyboard.press('Escape')
   await expect(dialog).not.toBeVisible()
-  expect(errors).toEqual([])
-  expect(csp).toEqual([])
+  expect(pageErrors).toEqual([])
+  expect(cspViolations).toEqual([])
 })
 
 test.describe('narrow dark viewport', () => {

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const HTTP_NOT_FOUND = 404
 const SOCIAL_TAGS = 'head meta[property^="og:"], head meta[name^="twitter:"]'
@@ -30,10 +30,9 @@ test.describe('página inexistente', () => {
 
 test.describe('página inexistente hidratada', () => {
   test('responde 404, mantém só robots, título e descrição depois de hidratar e volta ao início', async ({
-    page
+    page,
+    pageErrors
   }) => {
-    const errors: string[] = []
-    page.on('pageerror', error => errors.push(error.message))
     const response = await page.goto('/pagina-inexistente')
     expect(response?.status()).toBe(HTTP_NOT_FOUND)
 
@@ -57,6 +56,6 @@ test.describe('página inexistente hidratada', () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'SolidJS Boilerplate for web applications'
     )
-    expect(errors).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
   })
 })

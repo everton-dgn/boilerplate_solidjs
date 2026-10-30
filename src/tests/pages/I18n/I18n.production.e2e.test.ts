@@ -1,9 +1,9 @@
 import { readdir, readFile } from 'node:fs/promises'
 
-import { expect, test } from '@playwright/test'
 import * as v from 'valibot'
 
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 const HTTP_OK = 200
@@ -41,7 +41,8 @@ const LANGUAGES = [
 
 test('switches language and hydrates when cookie access is blocked', async ({
   page,
-  context
+  context,
+  pageErrors
 }) => {
   await context.addInitScript(() => {
     Object.defineProperty(document, 'cookie', {
@@ -54,8 +55,6 @@ test('switches language and hydrates when cookie access is blocked', async ({
       }
     })
   })
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
   await page.goto('/en')
   await page.getByRole('button', { name: 'Select language' }).click()
   await page
@@ -67,7 +66,7 @@ test('switches language and hydrates when cookie access is blocked', async ({
   )
   await page.getByRole('button', { name: 'Seleccionar tema' }).click()
   await expect(page.getByRole('menu')).toBeVisible()
-  expect(errors).toEqual([])
+  expect(pageErrors).toEqual([])
 })
 
 test('loads the home route implementation only when visiting the home page', async ({
@@ -129,7 +128,8 @@ test('loads the home route implementation only when visiting the home page', asy
 for (const language of LANGUAGES) {
   test(`renders ${language.locale} in SSR and hydrates without changing its locale`, async ({
     page,
-    request
+    request,
+    pageErrors
   }) => {
     const response = await request.get(`/${language.locale}`, {
       headers: { 'accept-language': 'de-DE', cookie: 'locale=es' }
@@ -139,8 +139,6 @@ for (const language of LANGUAGES) {
     const html = await response.text()
     expect(html).toContain(`lang="${language.tag}"`)
     expect(html).toContain(language.title)
-    const errors: string[] = []
-    page.on('pageerror', error => errors.push(error.message))
     await page.goto(`/${language.locale}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       language.title
@@ -173,7 +171,7 @@ for (const language of LANGUAGES) {
       language.title
     )
     expect(await isSameHeader()).toBe(true)
-    expect(errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 }
 

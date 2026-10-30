@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 test.use({ locale: 'pt-BR' })
 
@@ -130,7 +130,8 @@ test.describe('tema da aplicação', () => {
       test(`resolve ${preference} como ${colorScheme} no script antes da hidratação`, async ({
         page,
         context,
-        baseURL
+        baseURL,
+        pageErrors
       }) => {
         if (!baseURL) throw new Error('Missing test base URL')
         if (preference === 'system') {
@@ -138,8 +139,6 @@ test.describe('tema da aplicação', () => {
             { name: THEME_KEY, value: preference, url: baseURL }
           ])
         }
-        const scriptErrors: string[] = []
-        page.on('pageerror', error => scriptErrors.push(error.message))
         await page.emulateMedia({ colorScheme })
         await page.route(/\/assets\/.*\.js(?:\?.*)?$/u, route => route.abort())
         await page.goto('/')
@@ -155,7 +154,7 @@ test.describe('tema da aplicação', () => {
         await expect(
           page.getByRole('button', { name: 'Selecionar tema' })
         ).toBeDisabled()
-        expect(scriptErrors).toStrictEqual([])
+        expect(pageErrors).toStrictEqual([])
       })
     }
   }

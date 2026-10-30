@@ -1,9 +1,4 @@
-import {
-  expect,
-  type APIRequestContext,
-  type Page,
-  test
-} from '@playwright/test'
+import type { APIRequestContext, Page } from '@playwright/test'
 import * as v from 'valibot'
 
 import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
@@ -11,7 +6,7 @@ import {
   readGatedBody,
   releaseFixtureGate
 } from '@/tests/helpers/fixtureGate/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 test.use({ locale: 'pt-BR' })
 
@@ -105,9 +100,9 @@ test.describe('streaming sem JavaScript', () => {
 
 test('insere o JSON-LD tardio no head antes de carregar o JavaScript da aplicação', async ({
   page,
-  request
+  request,
+  cspViolations
 }) => {
-  const violations = await watchCspViolations(page)
   await page.route(/\/assets\/.*\.js(?:\?.*)?$/u, route => route.abort())
   await visitGated({ page, request })
   await expect(page.getByRole('heading', { name: PRODUCT_NAME })).toBeVisible()
@@ -120,17 +115,16 @@ test('insere o JSON-LD tardio no head antes de carregar o JavaScript da aplicaç
   const scripts = await page.locator(`head ${JSON_LD}`).allTextContents()
   expect(scripts.filter(text => text.includes(PRODUCT_NAME))).toHaveLength(1)
   await expectSafeProduct(page)
-  expect(violations).toStrictEqual([])
+  expect(cspViolations).toStrictEqual([])
   await expect(page.locator(`body ${JSON_LD}`)).toHaveCount(0)
 })
 
 test('hidrata sem duplicar o JSON-LD e o remove ao sair da rota', async ({
   page,
-  request
+  request,
+  pageErrors,
+  cspViolations
 }) => {
-  const errors: string[] = []
-  const violations = await watchCspViolations(page)
-  page.on('pageerror', error => errors.push(error.message))
   await visitGated({ page, request })
   await page.getByRole('button', { name: 'Incrementar', exact: true }).click()
   await expect(page.getByText('Cliques: 1', { exact: true })).toBeVisible()
@@ -147,6 +141,6 @@ test('hidrata sem duplicar o JSON-LD e o remove ao sair da rota', async ({
   await expect(page.locator(`head ${JSON_LD}`)).toHaveCount(1)
   const remaining = await page.locator(JSON_LD).allTextContents()
   expect(remaining.join('')).not.toContain(PRODUCT_NAME)
-  expect(errors).toStrictEqual([])
-  expect(violations).toStrictEqual([])
+  expect(pageErrors).toStrictEqual([])
+  expect(cspViolations).toStrictEqual([])
 })

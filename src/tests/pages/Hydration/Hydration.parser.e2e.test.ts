@@ -7,14 +7,12 @@ import {
   type ServerResponse
 } from 'node:http'
 
-import { expect, test } from '@playwright/test'
-
 import {
   releaseFixtureGate,
   releaseFixtureGateQuietly
 } from '@/tests/helpers/fixtureGate/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 import { watchEntryLoad } from '@/tests/helpers/watchEntryLoad/index.ts'
 
 type DocumentStream = {
@@ -161,13 +159,12 @@ async function stopProxy(server: Server): Promise<void> {
 
 test('não marca antes do shell quando a entrada async já executou', async ({
   page,
-  baseURL
+  baseURL,
+  pageErrors,
+  cspViolations
 }) => {
   if (!baseURL) throw new Error('Missing test base URL')
   const proxy = await startParserProxy(baseURL)
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
-  const violations = await watchCspViolations(page)
   await watchEntryLoad(page)
   try {
     const address = proxy.server.address()
@@ -191,8 +188,8 @@ test('não marca antes do shell quando a entrada async já executou', async ({
     )
     await page.getByRole('button', { name: 'Select theme' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
-    expect(errors).toStrictEqual([])
-    expect(violations).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
   } finally {
     proxy.release()
     await page.close()
@@ -203,13 +200,13 @@ test('não marca antes do shell quando a entrada async já executou', async ({
 test('encerra a hidratação e recupera dados pelo cliente após truncamento', async ({
   page,
   baseURL,
-  request
+  request,
+  pageErrors,
+  cspViolations
 }) => {
   if (!baseURL) throw new Error('Missing test base URL')
   const proxy = await startParserProxy(baseURL)
   const id = crypto.randomUUID()
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
   let clientLoads = 0
   page.on('request', resource => {
     if (
@@ -219,7 +216,6 @@ test('encerra a hidratação e recupera dados pelo cliente após truncamento', a
       clientLoads += 1
     }
   })
-  const violations = await watchCspViolations(page)
   await watchEntryLoad(page)
   try {
     const address = proxy.server.address()
@@ -272,8 +268,8 @@ test('encerra a hidratação e recupera dados pelo cliente após truncamento', a
     await expect(
       page.getByRole('button', { name: 'Shell count: 2', exact: true })
     ).toBeVisible()
-    expect(violations).toStrictEqual([])
-    expect(errors).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
   } finally {
     await releaseFixtureGateQuietly({ request, id: `${id}-first` })
     await releaseFixtureGateQuietly({ request, id: `${id}-second` })
@@ -285,13 +281,13 @@ test('encerra a hidratação e recupera dados pelo cliente após truncamento', a
 test('recupera dados pelo cliente quando o truncamento antecede o fim do shell', async ({
   page,
   baseURL,
-  request
+  request,
+  pageErrors,
+  cspViolations
 }) => {
   if (!baseURL) throw new Error('Missing test base URL')
   const proxy = await startParserProxy(baseURL)
   const id = crypto.randomUUID()
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
   let clientLoads = 0
   page.on('request', resource => {
     if (
@@ -301,7 +297,6 @@ test('recupera dados pelo cliente quando o truncamento antecede o fim do shell',
       clientLoads += 1
     }
   })
-  const violations = await watchCspViolations(page)
   await watchEntryLoad(page)
   try {
     const address = proxy.server.address()
@@ -340,8 +335,8 @@ test('recupera dados pelo cliente quando o truncamento antecede o fim do shell',
     await expect(
       page.getByRole('button', { name: 'Shell count: 1', exact: true })
     ).toBeVisible()
-    expect(violations).toStrictEqual([])
-    expect(errors).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
   } finally {
     await releaseFixtureGateQuietly({ request, id: `${id}-first` })
     await releaseFixtureGateQuietly({ request, id: `${id}-second` })

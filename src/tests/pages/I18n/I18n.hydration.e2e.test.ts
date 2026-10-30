@@ -1,8 +1,6 @@
-import { expect, test } from '@playwright/test'
-
 import { holdRoute } from '@/tests/helpers/holdRoute/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const LOCALES = [
   {
@@ -24,11 +22,10 @@ const LOCALES = [
 // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const language of LOCALES) {
   test(`recovers the selected ${language.locale} history entry when its locale changes before hydration`, async ({
-    page
+    page,
+    pageErrors,
+    cspViolations
   }) => {
-    const errors: string[] = []
-    page.on('pageerror', error => errors.push(error.message))
-    const violations = await watchCspViolations(page)
     await page.goto(`/${language.locale}/i18n-redirect`)
     await expect.poll(() => hydrationFinished(page)).toBe(true)
     await page.evaluate(({ locale, other }) => {
@@ -82,8 +79,8 @@ for (const language of LOCALES) {
       })
       await page.getByRole('button', { name: language.theme }).click()
       await expect(page.getByRole('menu')).toBeVisible()
-      expect(errors).toEqual([])
-      expect(violations).toEqual([])
+      expect(pageErrors).toEqual([])
+      expect(cspViolations).toEqual([])
     } finally {
       await scripts.release()
     }
@@ -126,11 +123,10 @@ test('keeps the SSR document when history changes within its locale before hydra
 })
 
 test('does not reload an unchanged URL when its SSR language differs', async ({
-  page
+  page,
+  pageErrors,
+  cspViolations
 }) => {
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
-  const violations = await watchCspViolations(page)
   let documentRequests = 0
   await page.route('**/pt/i18n-redirect', async route => {
     documentRequests += 1
@@ -146,6 +142,6 @@ test('does not reload an unchanged URL when its SSR language differs', async ({
   await expect(page.getByRole('menu')).toBeVisible()
   await expect(page).toHaveURL('/pt/i18n-redirect')
   expect(documentRequests).toBe(1)
-  expect(errors).toEqual([])
-  expect(violations).toEqual([])
+  expect(pageErrors).toEqual([])
+  expect(cspViolations).toEqual([])
 })

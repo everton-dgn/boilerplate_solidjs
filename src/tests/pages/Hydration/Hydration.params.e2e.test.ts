@@ -1,7 +1,6 @@
-import { expect, test } from '@playwright/test'
-
 import { holdRoute } from '@/tests/helpers/holdRoute/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const HTTP_OK = 200
 const HTTP_BAD_REQUEST = 400
@@ -14,10 +13,9 @@ const PARAMETERS = [
 // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const { encoded, decoded } of PARAMETERS) {
   test(`preserves the encoded URL and decoded parameter ${encoded} through SSR and hydration`, async ({
-    page
+    page,
+    pageErrors
   }) => {
-    const errors: string[] = []
-    page.on('pageerror', error => errors.push(error.message))
     const scripts = await holdRoute({ page, url: '**/*.js' })
 
     try {
@@ -37,7 +35,7 @@ for (const { encoded, decoded } of PARAMETERS) {
         `Post ${decoded}`
       )
       await expect(page).toHaveURL(path)
-      expect(errors).toEqual([])
+      expect(pageErrors).toEqual([])
     } finally {
       await scripts.release()
     }

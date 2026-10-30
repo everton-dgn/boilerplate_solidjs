@@ -1,10 +1,11 @@
 import { readFile } from 'node:fs/promises'
 
-import { expect, test, type APIRequestContext } from '@playwright/test'
+import type { APIRequestContext } from '@playwright/test'
 import * as v from 'valibot'
 
 import { holdRoute } from '@/tests/helpers/holdRoute/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 import { watchEntryLoad } from '@/tests/helpers/watchEntryLoad/index.ts'
 
 const chunkSchema = v.object({
@@ -34,11 +35,10 @@ async function readHomeModule(request: APIRequestContext): Promise<string> {
 
 test('espera o módulo da rota depois de a entrada executar', async ({
   page,
-  request
+  request,
+  pageErrors
 }) => {
   const path = await readHomeModule(request)
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
   await watchEntryLoad(page)
   const homeModule = await holdRoute({ page, url: `**${path}` })
   try {
@@ -52,7 +52,7 @@ test('espera o módulo da rota depois de a entrada executar', async ({
     await expect.poll(() => hydrationFinished(page)).toBe(true)
     await page.getByRole('button', { name: 'Select theme' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
-    expect(errors).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
   } finally {
     await homeModule.release()
   }
@@ -60,21 +60,20 @@ test('espera o módulo da rota depois de a entrada executar', async ({
 
 test('mantém o HTML sem marcador quando o preload da raiz falha', async ({
   page,
-  request
+  request,
+  pageErrors
 }) => {
   const path = await readHomeModule(request)
   const failed = page.waitForEvent(
     'requestfailed',
     resource => new URL(resource.url()).pathname === path
   )
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
   await watchEntryLoad(page)
   await page.route(`**${path}`, route => route.abort('failed'))
   await page.goto('/en')
   await failed
   await expect(page.locator('html')).toHaveAttribute('data-entry-loaded')
-  await expect.poll(() => errors.length).toBeGreaterThan(0)
+  await expect.poll(() => pageErrors.length).toBeGreaterThan(0)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_TITLE)
   expect(await hydrationFinished(page)).toBe(false)
   await expect(

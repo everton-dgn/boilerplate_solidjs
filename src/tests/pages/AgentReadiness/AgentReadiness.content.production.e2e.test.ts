@@ -1,8 +1,6 @@
-import { expect, test } from '@playwright/test'
-
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 
 test.use({ headless: true })
 
@@ -159,11 +157,10 @@ for (const language of LANGUAGES) {
       })
 
       test(`${language.locale} content fits ${width}px and keeps theme and locale during navigation`, async ({
-        page
+        page,
+        pageErrors,
+        cspViolations
       }) => {
-        const errors: string[] = []
-        page.on('pageerror', error => errors.push(error.message))
-        const violations = await watchCspViolations(page)
         await page.goto(`/${language.locale}`)
         await expect.poll(() => hydrationFinished(page)).toBe(true)
         const markdownAlternate = page.locator(
@@ -244,8 +241,8 @@ for (const language of LANGUAGES) {
             exact: true
           })
         ).toHaveAttribute('aria-checked', 'true')
-        expect(errors).toEqual([])
-        expect(violations).toEqual([])
+        expect(pageErrors).toEqual([])
+        expect(cspViolations).toEqual([])
       })
     })
   }
