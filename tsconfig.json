@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2024",
-    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "lib": ["ES2024", "DOM"],
     "module": "esnext",
     "moduleResolution": "bundler",
     "noUncheckedIndexedAccess": true,
@@ -14,12 +14,10 @@
     "allowUnusedLabels": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "isolatedModules": true,
     "moduleDetection": "force",
     "verbatimModuleSyntax": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "allowArbitraryExtensions": true,
     "erasableSyntaxOnly": true,
     "paths": {
       "@/*": ["./src/*"],

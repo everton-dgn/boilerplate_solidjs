@@ -15,9 +15,6 @@ export const lint: NonNullable<UserConfig['lint']> = {
     'public/**',
     'src/assets/**',
     'src/@types/routes.d.ts',
-    'paraglide/**',
-    'project.inlang/cache/**',
-    '.paraglide/**',
     '.agents/**',
     '.claude/**'
   ],
