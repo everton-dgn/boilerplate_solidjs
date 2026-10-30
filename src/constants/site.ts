@@ -5,6 +5,12 @@ import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
 
 const REPOSITORY_URL = 'https://github.com/everton-dgn/boilerplate_solidjs'
 
+const AUTHOR_PROFILES = [
+  'https://x.com/toffanettodev',
+  'https://www.linkedin.com/in/everton-toffanetto/',
+  'https://www.youtube.com/@toffanettodev'
+]
+
 export const SITE = {
   title: 'SolidJS Boilerplate',
   get description(): string {
@@ -14,11 +20,7 @@ export const SITE = {
     name: 'Éverton Toffanetto',
     url: 'https://github.com/everton-dgn',
     twitter: '@toffanettodev',
-    sameAs: [
-      'https://x.com/toffanettodev',
-      'https://www.linkedin.com/in/everton-toffanetto/',
-      'https://www.youtube.com/@toffanettodev'
-    ]
+    sameAs: AUTHOR_PROFILES
   },
   twitter: '@toffanettodev',
   // BCP 47: `lang` do documento e `inLanguage` do JSON-LD; o `og:locale`
@@ -28,12 +30,7 @@ export const SITE = {
   },
   url: import.meta.env.VITE_SITE_URL,
   repositoryUrl: REPOSITORY_URL,
-  socialLinks: [
-    REPOSITORY_URL,
-    'https://x.com/toffanettodev',
-    'https://www.linkedin.com/in/everton-toffanetto/',
-    'https://www.youtube.com/@toffanettodev'
-  ],
+  socialLinks: [REPOSITORY_URL, ...AUTHOR_PROFILES],
   // Caminho do logo do publisher no JSON-LD; o Google pede ao menos 112x112.
   logo: '/favicon/apple-touch-icon.png',
   image: {
