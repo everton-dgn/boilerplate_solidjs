@@ -1,6 +1,3 @@
-import { collectLlmsPages } from '@/routes/(seo)/llms.txt/helpers/collectLlmsPages/index.ts'
-import { collectSitemapEntries } from '@/routes/(seo)/sitemap.xml/helpers/collectSitemapEntries/index.ts'
-
 import { walkStaticRoutes } from '../index.ts'
 import type { StaticRoute, WalkStaticRoutesOptions } from '../types.ts'
 
@@ -28,6 +25,19 @@ function visitPath(visited: Visited[]): Visit<string> {
 
 function flatten(visited: readonly Visited[]): VisitedFlat[] {
   return visited.map(({ path, parentState }) => [path, parentState])
+}
+
+function collectPagePaths(routes: readonly StaticRoute[]): string[] {
+  const pages: string[] = []
+  walkStaticRoutes<null>({
+    routes,
+    initialState: null,
+    visit: ({ route, path }) => {
+      if (route.page) pages.push(path)
+      return null
+    }
+  })
+  return pages
 }
 
 describe('travessia das rotas estáticas', () => {
@@ -132,23 +142,12 @@ describe('travessia das rotas estáticas', () => {
 
 describe('travessia das rotas em casos extremos', () => {
   it('atravessa dez mil layouts sem estourar a pilha de chamadas', () => {
-    let routes: StaticRoute[] = [
-      {
-        path: '/leaf',
-        page: true,
-        $$route: { require: () => ({ route: { info: { llms: true } } }) }
-      }
-    ]
+    let routes: StaticRoute[] = [{ path: '/leaf', page: true }]
     for (let depth = 0; depth < EXTREME_DEPTH; depth += 1) {
       routes = [{ path: '/', children: routes }]
     }
 
-    expect(collectSitemapEntries(routes).entries).toStrictEqual([
-      { path: '/leaf' }
-    ])
-    expect(collectLlmsPages(routes).map(page => page.path)).toStrictEqual([
-      '/leaf'
-    ])
+    expect(collectPagePaths(routes)).toStrictEqual(['/leaf'])
   })
 
   it('preserva a ordem de dez mil rotas irmãs e normaliza as barras', () => {
@@ -156,10 +155,11 @@ describe('travessia das rotas em casos extremos', () => {
       path: `//page-${index}//`,
       page: true
     }))
-    const expected = Array.from({ length: WIDE_COUNT }, (_, index) => ({
-      path: `/page-${index}`
-    }))
+    const expected = Array.from(
+      { length: WIDE_COUNT },
+      (_, index) => `/page-${index}`
+    )
 
-    expect(collectSitemapEntries(routes).entries).toStrictEqual(expected)
+    expect(collectPagePaths(routes)).toStrictEqual(expected)
   })
 })
