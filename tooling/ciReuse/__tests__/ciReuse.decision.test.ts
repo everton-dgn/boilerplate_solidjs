@@ -29,12 +29,13 @@ const LOCK = new TextEncoder().encode('lockfile')
 const HASH = createHash('sha256')
   .update(createHash('sha256').update(LOCK).digest())
   .digest('hex')
-const RUNNER = { os: 'Linux', arch: 'X64' }
+const RUNNER = { os: 'Linux', arch: 'X64', nodeArch: 'x64' }
 const MANIFEST = JSON.stringify({
   devEngines: { runtime: { version: '24.22.0' } },
   packageManager: 'bun@1.4.3'
 })
 const ROOT = `repos/${REPOSITORY}`
+const DEPENDENCY_KEY = `vite-plus-Linux-x64-bun-${HASH}`
 const VALIDATION_PREFIX = `ci-validation-v2-Linux-X64-node-24.22.0-bun-1.4.3-${HASH}-`
 const MAIN_REF = 'refs/heads/main'
 const exec = promisify(execFile)
@@ -106,6 +107,7 @@ type World = {
   jobCount: number
   artifacts: ArtifactFixture[]
   tested: CommitFixture
+  dependencyCaches: CacheFixture[]
   validationCaches: CacheFixture[]
   evidence: Record<string, unknown>
   calls: string[]
@@ -183,6 +185,7 @@ function createWorld(): World {
       tree: { sha: TREE },
       parents: [{ sha: BASE }, { sha: HEAD }]
     },
+    dependencyCaches: [{ key: DEPENDENCY_KEY, ref: MAIN_REF }],
     validationCaches: [{ key: `${VALIDATION_PREFIX}1-1`, ref: MAIN_REF }],
     evidence: { version: 2, tested_sha: TESTED },
     calls: []
@@ -209,6 +212,10 @@ function routes(world: World): Map<string, () => unknown> {
       })
     ],
     [`${ROOT}/git/commits/${TESTED}`, () => world.tested],
+    [
+      `${caches}${encodeURIComponent(DEPENDENCY_KEY)}&per_page=${PAGE_SIZE}`,
+      () => ({ actions_caches: world.dependencyCaches })
+    ],
     [
       `${caches}${encodeURIComponent(VALIDATION_PREFIX)}&per_page=${PAGE_SIZE}`,
       () => ({ actions_caches: world.validationCaches })
@@ -302,7 +309,24 @@ test('mantém o Quality sem cache aplicável da main', async () => {
   ]
   const missing = createWorld()
   missing.validationCaches = []
-  for (const world of [foreign, missing]) {
+  const foreignDependency = createWorld()
+  foreignDependency.dependencyCaches = [
+    { key: DEPENDENCY_KEY, ref: 'refs/pull/1/merge' }
+  ]
+  const missingDependency = createWorld()
+  missingDependency.dependencyCaches = []
+  // O filtro key da API compara por prefixo e também devolve chaves mais longas.
+  const longerDependency = createWorld()
+  longerDependency.dependencyCaches = [
+    { key: `${DEPENDENCY_KEY}-1`, ref: MAIN_REF }
+  ]
+  for (const world of [
+    foreign,
+    missing,
+    foreignDependency,
+    missingDependency,
+    longerDependency
+  ]) {
     const decision = await decide(world)
     assert.equal(decision.shouldReuse, true)
     assert.equal(decision.shouldRunQuality, true)

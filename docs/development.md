@@ -359,11 +359,11 @@ somente com a prova aprovada no mesmo run. Checks sintetizados pela release não
 contam como prova.
 
 `Quality` também roda quando o merge altera `bun.lock`, `package.json` ou
-`bunfig.toml`, ou quando a `main` não tem uma entrada de cache de validação para
-o lockfile e a toolchain atuais. Ele é o único job que grava esse cache e o de
-pacotes. A prova não consulta a chave de pacotes, que segue o formato interno do
-`setup-vp`: se essa entrada sumir antes da de validação, os PRs restauram pelo
-prefixo um cache de pacotes anterior até a próxima mudança de lockfile. A chave
+`bunfig.toml`, ou quando a `main` não tem as entradas de cache de pacotes e de
+validação para o lockfile e a toolchain atuais. Ele é o único job que grava
+esses caches. A prova monta a chave de pacotes no formato documentado no README
+do `setup-vp`; se esse formato mudar, a consulta deixa de encontrá-la e o
+`Quality` passa a rodar na `main` em todo merge, sem perder validação. A chave
 de pacotes e o prefixo de restauração da validação só mudam nesses casos; com o
 `Quality` dispensado, os PRs continuam restaurando a última entrada de validação
 da `main` com o mesmo prefixo, que envelhece conforme a árvore muda e pode
