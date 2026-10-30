@@ -30,3 +30,17 @@ export type DropdownMenuProps<Value extends string = string> = {
   value?: Value
   onChange?: (value: Value) => void
 }
+
+export type DropdownMenuRefs = {
+  trigger?: HTMLButtonElement
+  content?: HTMLElement
+}
+
+export type DropdownMenuState = {
+  id: string
+  isOpen: () => boolean
+  refs: DropdownMenuRefs
+  close: (shouldRestoreFocus: boolean) => void
+  focusAt: (index: number) => void
+  openAt: (index: number) => void
+}
