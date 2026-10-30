@@ -84,8 +84,9 @@ armazenada no cache do navegador, sem modificar o HTML da aplicação.
 
 - Na Vercel, arquivos estáticos (`/assets/`, `/images/` e `/favicon/`) saem do
   CDN sem passar pela função. O `vercel.json` grava neles só
-  `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`; a CSP e as
-  políticas de frame só têm efeito em documentos, que passam pelo middleware.
+  `X-Content-Type-Options` e `Cross-Origin-Resource-Policy` (e, em `/images/`, o
+  cache imutável); a CSP e as políticas de frame só têm efeito em documentos,
+  que passam pelo middleware.
 - `Cross-Origin-Embedder-Policy: require-corp` bloqueia recursos de outra origem
   sem `Cross-Origin-Resource-Policy` ou CORS. Ao adicionar fontes, imagens ou
   scripts externos, confira se o provedor envia esses cabeçalhos ou revise a
