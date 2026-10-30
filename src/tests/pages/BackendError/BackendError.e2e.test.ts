@@ -121,7 +121,7 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
     test('recarrega a página com falha e após o backend voltar', async ({
       page,
       request
-    }, testInfo) => {
+    }) => {
       const id = crypto.randomUUID()
       const { marker: privateMarker } = await readBackendState({ request, id })
       const browserErrors: string[] = []
@@ -144,10 +144,6 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
         page.getByRole('heading', { name: 'Algo deu errado!' })
       ).toBeVisible()
       await expect(page.locator('header')).toHaveCount(0)
-      await page.screenshot({
-        path: testInfo.outputPath('backend-error.png'),
-        fullPage: true
-      })
 
       // Uma navegação completa precisa funcionar sem hidratação nem invalidação de query.
       const retryResponse = page.waitForResponse(candidate =>

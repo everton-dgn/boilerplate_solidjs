@@ -161,7 +161,7 @@ for (const language of LANGUAGES) {
 
       test(`${language.locale} content fits ${width}px and keeps theme and locale during navigation`, async ({
         page
-      }, testInfo) => {
+      }) => {
         const errors: string[] = []
         page.on('pageerror', error => errors.push(error.message))
         const violations = await watchCspViolations(page)
@@ -233,17 +233,6 @@ for (const language of LANGUAGES) {
               element => element === document.querySelector('header')
             )
           ).toBe(true)
-          if (language.locale === 'pt') {
-            await page.evaluate(() =>
-              globalThis.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-            )
-            await page.screenshot({
-              path: testInfo.outputPath(
-                `${path.slice(1) || 'home'}-${width}.png`
-              ),
-              fullPage: true
-            })
-          }
         }
         await page.reload()
         await expect.poll(() => hydrationFinished(page)).toBe(true)
