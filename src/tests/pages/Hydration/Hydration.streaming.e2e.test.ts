@@ -1,26 +1,13 @@
-import {
-  expect,
-  test,
-  type APIRequestContext,
-  type Page
-} from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
+import {
+  releaseFixtureGate,
+  releaseFixtureGateQuietly
+} from '@/tests/helpers/fixtureGate/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 
-type Gate = {
-  request: APIRequestContext
-  id: string
-  panel: 'first' | 'second'
-}
 type Stream = { page: Page; id: string; shouldReject?: boolean }
-
-const BACKEND = 'http://127.0.0.1:4318'
-
-async function release({ request, id, panel }: Gate): Promise<void> {
-  const response = await request.post(`${BACKEND}/release?id=${id}-${panel}`)
-  expect(response.ok()).toBeTruthy()
-}
 
 async function openStream({
   page,
@@ -71,21 +58,21 @@ test('espera todos os fragmentos, mesmo resolvidos fora de ordem', async ({
   const violations = await watchCspViolations(page)
   try {
     await openStream({ page, id })
-    await release({ request, id, panel: 'second' })
+    await releaseFixtureGate({ request, id: `${id}-second` })
     await expectPanel(page, 'Second')
     await expect(
       page.getByText('Waiting for First', { exact: true })
     ).toBeVisible()
     expect(await hydrationFinished(page)).toBeFalsy()
 
-    await release({ request, id, panel: 'first' })
+    await releaseFixtureGate({ request, id: `${id}-first` })
     await expect.poll(() => hydrationFinished(page)).toBeTruthy()
     await expectPanel(page, 'First')
     expect(errors).toStrictEqual([])
     expect(violations).toStrictEqual([])
   } finally {
-    await release({ request, id, panel: 'first' })
-    await release({ request, id, panel: 'second' })
+    await releaseFixtureGateQuietly({ request, id: `${id}-first` })
+    await releaseFixtureGateQuietly({ request, id: `${id}-second` })
   }
 })
 
@@ -109,7 +96,7 @@ test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
   const violations = await watchCspViolations(page)
   try {
     await openStream({ page, id, shouldReject: true })
-    await release({ request, id, panel: 'first' })
+    await releaseFixtureGate({ request, id: `${id}-first` })
     await expect(
       page.getByText('First stream failed', { exact: true })
     ).toBeVisible()
@@ -118,7 +105,7 @@ test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
     ).toBeVisible()
     expect(await hydrationFinished(page)).toBeFalsy()
 
-    await release({ request, id, panel: 'second' })
+    await releaseFixtureGate({ request, id: `${id}-second` })
     await expect.poll(() => hydrationFinished(page)).toBeTruthy()
     await expectPanel(page, 'Second')
     await expect(
@@ -128,8 +115,8 @@ test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
     expect(violations).toStrictEqual([])
     expect(errors).toStrictEqual([])
   } finally {
-    await release({ request, id, panel: 'first' })
-    await release({ request, id, panel: 'second' })
+    await releaseFixtureGateQuietly({ request, id: `${id}-first` })
+    await releaseFixtureGateQuietly({ request, id: `${id}-second` })
   }
 })
 
@@ -161,7 +148,7 @@ test('encerra a fase quando a navegação descarta fragmentos pendentes', async 
     expect(errors).toStrictEqual([])
     expect(violations).toStrictEqual([])
   } finally {
-    await release({ request, id, panel: 'first' })
-    await release({ request, id, panel: 'second' })
+    await releaseFixtureGateQuietly({ request, id: `${id}-first` })
+    await releaseFixtureGateQuietly({ request, id: `${id}-second` })
   }
 })

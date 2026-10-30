@@ -9,6 +9,10 @@ import {
 
 import { expect, test } from '@playwright/test'
 
+import {
+  releaseFixtureGate,
+  releaseFixtureGateQuietly
+} from '@/tests/helpers/fixtureGate/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 import { watchEntryLoad } from '@/tests/helpers/watchEntryLoad/index.ts'
@@ -254,8 +258,8 @@ test('encerra a hidratação e recupera dados pelo cliente após truncamento', a
     await expect(
       page.getByText('Waiting for Second', { exact: true })
     ).toBeVisible()
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-first`)
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-second`)
+    await releaseFixtureGate({ request, id: `${id}-first` })
+    await releaseFixtureGate({ request, id: `${id}-second` })
     await expect(
       page.getByRole('heading', { name: 'First', exact: true })
     ).toBeVisible()
@@ -271,8 +275,8 @@ test('encerra a hidratação e recupera dados pelo cliente após truncamento', a
     expect(violations).toStrictEqual([])
     expect(errors).toStrictEqual([])
   } finally {
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-first`)
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-second`)
+    await releaseFixtureGateQuietly({ request, id: `${id}-first` })
+    await releaseFixtureGateQuietly({ request, id: `${id}-second` })
     await page.close()
     await stopProxy(proxy.server)
   }
@@ -322,8 +326,8 @@ test('recupera dados pelo cliente quando o truncamento antecede o fim do shell',
     await page.waitForLoadState('domcontentloaded')
     await expect.poll(() => clientLoads).toBe(PANEL_COUNT)
     await expect.poll(() => hydrationFinished(page)).toBeTruthy()
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-first`)
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-second`)
+    await releaseFixtureGate({ request, id: `${id}-first` })
+    await releaseFixtureGate({ request, id: `${id}-second` })
     await expect(
       page.getByRole('heading', { name: 'First', exact: true })
     ).toBeVisible()
@@ -339,8 +343,8 @@ test('recupera dados pelo cliente quando o truncamento antecede o fim do shell',
     expect(violations).toStrictEqual([])
     expect(errors).toStrictEqual([])
   } finally {
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-first`)
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-second`)
+    await releaseFixtureGateQuietly({ request, id: `${id}-first` })
+    await releaseFixtureGateQuietly({ request, id: `${id}-second` })
     await page.close()
     await stopProxy(proxy.server)
   }

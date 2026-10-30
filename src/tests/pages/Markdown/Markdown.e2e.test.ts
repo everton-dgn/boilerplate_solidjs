@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { releaseFixtureGate } from '@/tests/helpers/fixtureGate/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
@@ -15,7 +16,6 @@ const HTTP_INTERNAL_SERVER_ERROR = 500
 
 const PAGE = '/pt/markdown-contract/sample'
 const LOCALES = ['pt', 'en', 'es']
-const BACKEND = 'http://127.0.0.1:4318'
 
 function expectPublicMarkdown(body: string) {
   expect(body).toContain('# HTML Markdown contract: sample')
@@ -184,10 +184,7 @@ test('isolates simultaneous locale cookies in settled content', async ({
       const other = LOCALES[(index + 1) % LOCALES.length]
       const id = crypto.randomUUID()
       for (const label of ['first', 'second']) {
-        const released = await request.post(
-          `${BACKEND}/release?id=${id}:${label}`
-        )
-        expect(released.ok()).toBe(true)
+        await releaseFixtureGate({ request, id: `${id}:${label}` })
       }
       const response = await request.get(
         `/${locale}/markdown-contract/sample.md?id=${id}`,

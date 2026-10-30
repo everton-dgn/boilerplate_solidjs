@@ -1,16 +1,18 @@
 import { readdir, readFile } from 'node:fs/promises'
 
 import { expect, test, type Page } from '@playwright/test'
-import * as v from 'valibot'
+
+import {
+  markBackendRecovered,
+  readBackendState
+} from '@/tests/helpers/fixtureGate/index.ts'
 
 test.use({ locale: 'pt-BR' })
 
-const BACKEND = 'http://127.0.0.1:4318'
 const HTTP_OK = 200
 const HTTP_FOUND = 302
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const ATTEMPTS_AFTER_RETRY = 2
-const backendState = v.object({ attempts: v.number(), marker: v.string() })
 type ServerResponse = {
   body: string
   headers: Record<string, string>
@@ -98,8 +100,7 @@ test('um envelope lançado por server function no SSR vira falha de render sem e
   request
 }) => {
   const id = `throw:${crypto.randomUUID()}`
-  const state = await request.get(`${BACKEND}/control?id=${id}`)
-  const { marker } = v.parse(backendState, await state.json())
+  const { marker } = await readBackendState({ request, id })
   const response = await request.get(
     `/control-signal?kind=envelope-throw&id=${id}`
   )
@@ -109,8 +110,8 @@ test('um envelope lançado por server function no SSR vira falha de render sem e
   expect(response.headers()['content-language']).toBe('en')
   expect(document).toContain('Something went wrong!')
   // Controle positivo: a server function leu o marcador antes de lançar.
-  const after = await request.get(`${BACKEND}/control?id=${id}`)
-  expect(v.parse(backendState, await after.json()).attempts).toBe(1)
+  const after = await readBackendState({ request, id })
+  expect(after.attempts).toBe(1)
 })
 
 for (const { phase, javaScriptEnabled } of SCENARIOS) {
@@ -122,11 +123,7 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       request
     }, testInfo) => {
       const id = crypto.randomUUID()
-      const initialState = await request.get(`${BACKEND}/control?id=${id}`)
-      const privateMarker = v.parse(
-        backendState,
-        await initialState.json()
-      ).marker
+      const { marker: privateMarker } = await readBackendState({ request, id })
       const browserErrors: string[] = []
       const serverResponses = await captureServerFunctions(page)
       page.on('pageerror', error => browserErrors.push(error.message))
@@ -172,8 +169,8 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       }
       await expect
         .poll(async () => {
-          const state = await request.get(`${BACKEND}/control?id=${id}`)
-          return v.parse(backendState, await state.json()).attempts
+          const state = await readBackendState({ request, id })
+          return state.attempts
         })
         .toBe(ATTEMPTS_AFTER_RETRY)
       await expect(
@@ -194,7 +191,7 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       ).toStrictEqual([])
       browserErrors.length = 0
 
-      await request.post(`${BACKEND}/control?id=${id}`)
+      await markBackendRecovered({ request, id })
       const recoveryResponse = page.waitForResponse(candidate =>
         candidate.request().isNavigationRequest()
       )
@@ -229,8 +226,7 @@ for (const phase of ['ssr', 'stream', 'action']) {
       request
     }) => {
       const id = `${failure}:${crypto.randomUUID()}`
-      const state = await request.get(`${BACKEND}/control?id=${id}`)
-      const { marker } = v.parse(backendState, await state.json())
+      const { marker } = await readBackendState({ request, id })
       const browserErrors: string[] = []
       const serverResponses = await captureServerFunctions(page)
       page.on('pageerror', error => browserErrors.push(error.message))
