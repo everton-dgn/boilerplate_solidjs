@@ -116,7 +116,8 @@ do app: `containFailures` grava um `createPublicError()` em
 [`App.tsx`](../src/App.tsx) lança esse erro antes do Router, o `Errored` raiz
 mostra o `ErrorFallback` e o cliente hidrata o fallback pelo erro serializado.
 Como o erro já é público, o hook não registra outro log. O status é forçado para
-500 na resposta.
+500 na resposta. Se o render devolver algo que não seja HTML, como o redirect de
+idioma de um caminho sem prefixo, a resposta é o 500 em texto.
 
 O render recebido pelo middleware é o dispatcher do plugin, que atende o
 endpoint de server functions (`/_server`) antes da página. Por isso esse

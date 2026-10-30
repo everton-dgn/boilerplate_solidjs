@@ -45,6 +45,8 @@ describe('page representation negotiation', () => {
     ['text/markdown;variant=GFM', 'markdown'],
     ['text/markdown;variant="CommonMark";charset=utf-8', 'markdown'],
     ['text/markdown;variant=Original', undefined],
+    ['text/markdown;variant=GFM"', undefined],
+    ['text/markdown;variant="GFM', undefined],
     ['text/markdown;variant=GFM;variant=GFM', undefined],
     ['text/html;variant=GFM', undefined],
     ['text/markdown;charset=utf-8;charset=utf-8', undefined],
