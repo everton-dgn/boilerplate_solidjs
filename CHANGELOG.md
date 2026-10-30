@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.13.1 - 2026-10-30
+
+### Fixed
+
+- update the Solid Vite plugin to next.53 (db56831)
+
 ## 1.13.0 - 2026-10-30
 
 ### Added
