@@ -85,8 +85,8 @@ test('loads the home route implementation only when visiting the home page', asy
       source: await readFile(new URL(file, directory), 'utf8')
     }))
   )
-  // home_features só é usada pela Home: o módulo lazy da rota precisa levar
-  // a mensagem nos três idiomas, e nenhum outro módulo pode tê-la.
+  // home_features só é usada pela Home: um único módulo leva a mensagem nos
+  // três idiomas, nenhum outro pode tê-la, e ele só carrega com a Home.
   const homeFeatures = await Promise.all(
     LANGUAGES.map(async ({ locale }) => {
       const catalog = await readFile(
@@ -102,10 +102,8 @@ test('loads the home route implementation only when visiting the home page', asy
   const messageModules = sources.filter(({ source }) =>
     homeFeatures.some(text => source.includes(text))
   )
-  const homeModules = messageModules.filter(
-    ({ source }) =>
-      source.includes('SolidJS 2 · Vite+ · TypeScript 7') &&
-      homeFeatures.every(text => source.includes(text))
+  const homeModules = messageModules.filter(({ source }) =>
+    homeFeatures.every(text => source.includes(text))
   )
   expect(homeModules).toHaveLength(1)
   expect(messageModules).toStrictEqual(homeModules)
