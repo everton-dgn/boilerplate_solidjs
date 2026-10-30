@@ -94,9 +94,11 @@ describe('primitive de tema', () => {
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     state.setTheme('light')
+    flush()
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Simula um valor externo que chega ao setTheme sem validação de tipo.
     const invalid = 'sepia' as unknown as Theme
     state.setTheme(invalid)
+    flush()
     expect(state.theme()).toBe('light')
     expect(document.documentElement).toHaveClass('light')
     expect(document.documentElement).not.toHaveClass('dark')
