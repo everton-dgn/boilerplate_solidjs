@@ -101,8 +101,7 @@ imagem trocada precisa de nome novo, como explica o [guia de SEO](seo.md)), o
 `Content-Type` dos `.md` gerados no build e os cabeçalhos `nosniff` e
 `Cross-Origin-Resource-Policy` dos estáticos; os demais cabeçalhos de segurança
 saem do middleware. A configuração da Vercel e o fluxo de releases automáticas
-estão no
-[guia de releases](../tooling/release/README.md).
+estão no [guia de releases](../tooling/release/README.md).
 
 O Nitro é definido no [package.json](../package.json). Ao atualizá-lo, valide o
 build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
