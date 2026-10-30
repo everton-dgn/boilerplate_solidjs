@@ -16,6 +16,9 @@ test.use({ locale: 'pt-BR' })
 
 const HTTP_OK = 200
 const HTTP_INTERNAL_SERVER_ERROR = 500
+// Um servidor que pare de emitir bytes falha na leitura, e não no timeout
+// genérico do runner.
+const REQUEST_TIMEOUT = 15_000
 const LOADING_TEXT = 'Carregando fixture...'
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 // Mensagens que o navegador pode lançar ao hidratar, conforme a ordem entre a
@@ -101,7 +104,8 @@ async function readRawDocument({
 }: RawRequest): Promise<RawResponse> {
   if (fixture.gate === 'before') await releaseFixtureGate({ request, id })
   const response = await fetch(
-    `${baseURL}/outside-error?case=${fixture.name}&id=${id}`
+    `${baseURL}/outside-error?case=${fixture.name}&id=${id}`,
+    { signal: AbortSignal.timeout(REQUEST_TIMEOUT) }
   )
   const body =
     fixture.gate === 'stream'
