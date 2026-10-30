@@ -102,12 +102,17 @@ test.describe('without JavaScript', () => {
 test('initially open dialog hydrates modally with CSP enabled', async ({
   page
 }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  const csp = await watchCspViolations(page)
   await page.goto('/en/ui-kit?open=1')
   const dialog = page.getByRole('dialog', { name: 'Fixture dialog' })
   await expect(dialog).toBeVisible()
   expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true)
   await page.keyboard.press('Escape')
   await expect(dialog).not.toBeVisible()
+  expect(errors).toEqual([])
+  expect(csp).toEqual([])
 })
 
 test.describe('narrow dark viewport', () => {
