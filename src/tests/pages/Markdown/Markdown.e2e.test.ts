@@ -4,8 +4,6 @@ import { releaseFixtureGate } from '@/tests/helpers/fixtureGate/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
-test.use({ headless: true })
-
 const HTTP_OK = 200
 const HTTP_REDIRECT = 307
 const HTTP_BAD_REQUEST = 400

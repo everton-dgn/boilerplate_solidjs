@@ -2,6 +2,7 @@ import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
+// Com --headed, o viewport dos blocos por largura redimensionaria a janela do navegador.
 test.use({ headless: true })
 
 const HTTP_OK = 200

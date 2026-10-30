@@ -39,11 +39,12 @@ pre-push:
 
     # O Vitest tem janelas curtas (timeout por teste e waitFor). Rodá-lo sem
     # disputar a CPU com o tooling evita estouros sem falha de lógica; o tooling
-    # e o release usam timeouts de 60 s e seguem em paralelo.
+    # e o release usam timeouts de 60 s e seguem em paralelo com o Knip, o único
+    # do grupo que restaura o Paraglide.
     - name: test
       run: vp run test:ci
 
-    - name: tooling-and-release
+    - name: tooling-release-and-dead-code
       group:
         parallel: true
         jobs:
@@ -52,3 +53,6 @@ pre-push:
 
           - name: release
             run: vp run test:release
+
+          - name: dead-code
+            run: vp run dead-code

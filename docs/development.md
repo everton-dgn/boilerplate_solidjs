@@ -256,19 +256,23 @@ com o custo de transferir o cache.
 No CI, só `Quality` envia o cache de pacotes, e apenas quando a chave do
 lockfile não existe e o job termina com sucesso. `Tooling` e E2E passam
 `cache-save: false` à ação `setup-project` e só restauram. `Quality`, `Tooling`
-e `E2E (fixtures)` também passam `cache-toolchain: 'true'`: o `setup-vp` guarda
-Vite+, Node e Bun no cache do Actions, e só `Quality` envia esse cache.
-`E2E (production)`, que recebe o `VERCEL_TOKEN`, `Reuse proof`, o deploy e a
-automação de release não o usam, para não restaurar binários num job com segredo
-ou permissão de escrita. `Reuse proof` e deploy passam também
-`install-dependencies: false`: a ação prepara Vite+, Node e Bun do
-`package.json`, sem cache de pacotes nem `vp install`. O deploy só executa
-`vp dlx` sobre o artefato testado. Com `cache: false`, o `setup-vp` não restaura
-nem salva o cache, e `cache-save` e `cache-dependency-path` não têm efeito. A
-automação de release usa a mesma ação: o job de plano, sem permissão de escrita,
-instala as dependências e restaura o cache sem enviá-lo; os jobs com escrita
-passam `install-dependencies: false` e não instalam nem importam pacotes,
-conforme o [guia de release](../tooling/release/README.md#ativação-no-github).
+e os dois E2E também passam `cache-toolchain: 'true'`: o `setup-vp` guarda
+Vite+, Node e Bun no cache do Actions, e só `Quality` envia esse cache. O
+projeto trata como confiável o escopo de cache da `main`: na `main` só se
+restauram caches gravados pela própria `main`, porque o GitHub grava os caches
+de um PR no ref de merge, que a `main` não lê. Por isso `E2E (production)`, que
+recebe o `VERCEL_TOKEN` só no push da `main` e gera o artefato do deploy,
+restaura pacotes e toolchain como os demais E2E. `Reuse proof`, o deploy e a
+automação de release não passam `cache-toolchain` e preparam a toolchain sem
+esse cache. `Reuse proof` e deploy passam também `install-dependencies: false`:
+a ação prepara Vite+, Node e Bun do `package.json`, sem cache de pacotes nem
+`vp install`. O deploy só executa `vp dlx` sobre o artefato testado. Com
+`cache: false`, o `setup-vp` não restaura nem salva o cache, e `cache-save` e
+`cache-dependency-path` não têm efeito. A automação de release usa a mesma ação:
+o job de plano, sem permissão de escrita, instala as dependências e restaura o
+cache de pacotes da `main` sem enviá-lo; os jobs com escrita passam
+`install-dependencies: false` e não instalam nem importam pacotes, conforme o
+[guia de release](../tooling/release/README.md#ativação-no-github).
 
 A tarefa `lint-css` combina os arquivos lidos automaticamente com entradas
 explícitas para CSS, ferramentas de CSS, `package.json`, `bun.lock` e
@@ -405,11 +409,11 @@ mesma execução.
 Instalados pelo Lefthook no `vp install`, autorizado em `trustedDependencies` do
 `package.json`:
 
-| Hook         | O que roda                                                                                                                                                |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `scan:secrets --staged` quando Kingfisher está disponível                                                |
-| `commit-msg` | `commitlint` (header até 100 caracteres; linha em branco antes do rodapé; aviso para linhas do corpo e rodapé acima de 100)                               |
-| `pre-push`   | `check:ci`, `typecheck:node` e `test:ci` em sequência; depois, `test:tooling` e `test:release` em paralelo; a primeira falha interrompe os jobs seguintes |
+| Hook         | O que roda                                                                                                                                                                    |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `scan:secrets --staged` quando Kingfisher está disponível                                                                    |
+| `commit-msg` | `commitlint` (header até 100 caracteres; linha em branco antes do rodapé; aviso para linhas do corpo e rodapé acima de 100)                                                   |
+| `pre-push`   | `check:ci`, `typecheck:node` e `test:ci` em sequência; depois, `test:tooling`, `test:release` e `dead-code` (Knip) em paralelo; a primeira falha interrompe os jobs seguintes |
 
 O `pre-commit` é pulado durante `merge` e `rebase`. Em CI o Lefthook não instala
 os hooks; o job `Quality` repete o commitlint nos commits de cada PR. O
