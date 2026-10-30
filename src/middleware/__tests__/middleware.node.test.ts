@@ -8,6 +8,7 @@ import { readLog } from '@/tests/helpers/readLog/index.ts'
 
 import middleware, { createMiddleware } from '../index.ts'
 import { localizeRequest } from '../localizeRequest/index.ts'
+import { MAX_HTML_BYTES } from '../markdownContent/constants.ts'
 
 const TEST_ORIGIN = 'http://localhost'
 // vi.mock é içado para o topo do arquivo; o caminho sobe junto.
@@ -142,7 +143,11 @@ describe('contenção do adaptador Markdown', () => {
       const event = pageEvent(`/${locale}/about`)
       const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
         expect(isPublicError(event.locals.serverFailure)).toBe(true)
-        return Promise.resolve(new Response(`${getLocale()}:${PUBLIC_MESSAGE}`))
+        return Promise.resolve(
+          new Response(`${getLocale()}:${PUBLIC_MESSAGE}`, {
+            headers: { 'content-type': 'text/html' }
+          })
+        )
       })
 
       const response = await provideRequestEvent(event, () =>
@@ -233,7 +238,9 @@ describe('contenção do adaptador Markdown', () => {
       .mockRejectedValue(new Error('PRIVATE_MIDDLEWARE'))
     const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
       expect(isPublicError(event.locals.serverFailure)).toBe(true)
-      return Promise.resolve(new Response(getLocale()))
+      return Promise.resolve(
+        new Response(getLocale(), { headers: { 'content-type': 'text/html' } })
+      )
     })
 
     const response = await provideRequestEvent(event, () =>
@@ -287,6 +294,68 @@ describe('contenção do adaptador Markdown', () => {
     )
     await expect(response.text()).resolves.toContain('# Public content')
     expect(console.error).not.toHaveBeenCalled()
+  })
+})
+
+describe('falhas próprias do adaptador Markdown', () => {
+  beforeEach(mockProductionLog)
+
+  // Sem prefixo de idioma, o fallback devolve o redirect em vez da página.
+  it('troca por 500 em texto o redirect de idioma do fallback', async () => {
+    vi.spyOn(Router, 'match').mockImplementation(() => {
+      throw new Error('PRIVATE_MATCH')
+    })
+    const event = pageEvent('/about')
+    const next = vi.fn<() => Promise<Response>>()
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event, next)
+    )
+
+    expect(next).not.toHaveBeenCalled()
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    expect(response.headers.has('location')).toBe(false)
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
+  })
+
+  it('registra a falha da conversão acima do limite de bytes', async () => {
+    vi.spyOn(Router, 'match').mockReturnValue([
+      {
+        path: '/about',
+        pattern: '/about',
+        match: '/about',
+        params: {},
+        info: { markdown: true }
+      }
+    ])
+    const event = pageEvent('/en/about.md')
+    event.request = new Request(event.request, {
+      headers: { accept: 'text/markdown' }
+    })
+    const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
+      event.locals.ssrRenderState = { hasCompleted: true, hasErrors: false }
+      return Promise.resolve(
+        new Response('x'.repeat(MAX_HTML_BYTES + 1), {
+          headers: { 'content-type': 'text/html' }
+        })
+      )
+    })
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event, next)
+    )
+
+    expect(next).toHaveBeenCalledExactlyOnceWith()
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
   })
 })
 

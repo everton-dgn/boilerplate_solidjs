@@ -277,7 +277,9 @@ async function boundedRender(
       renderMarkdown({ ...options, signal }),
       aborted.promise
     ])
-  } catch {
+  } catch (error) {
+    // As demais falhas seguem para a contenção, que registra o log.
+    if (!signal.aborted) throw error
     return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
   } finally {
     clearTimeout(timeout)

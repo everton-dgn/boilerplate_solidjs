@@ -592,11 +592,11 @@ describe('markdown resource bounds', () => {
     await expect(response.text()).resolves.not.toContain('Partial fallback')
   })
 
+  // A contenção do middleware registra o log e responde 500 público.
   it('bounds conversion input', async () => {
-    const response = await markdownContent(event(), () =>
-      html('x'.repeat(MAX_HTML_BYTES + 1))
-    )
-    expect(response.status).toBe(HTTP_SERVER_ERROR)
+    await expect(
+      markdownContent(event(), () => html('x'.repeat(MAX_HTML_BYTES + 1)))
+    ).rejects.toThrow('Markdown document limit exceeded')
   })
 
   it('propagates client cancellation to the render request', async () => {

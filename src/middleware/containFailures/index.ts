@@ -8,6 +8,7 @@ import {
   PUBLIC_ERROR_MESSAGE
 } from '@/infra/server/publicErrors/index.ts'
 
+import { isHtmlResponse } from '../helpers/isHtmlResponse/index.ts'
 import { isPageRequest } from '../requestClassification/index.ts'
 import { applySecurityHeaders, requestNonce } from '../securityHeaders/index.ts'
 import type { ChainEntry, Middleware, Render } from '../types.ts'
@@ -38,6 +39,11 @@ async function renderErrorPage(render: Render): Promise<Response> {
   const nonce = requestNonce()
   try {
     const page = await render()
+    // Com o status forçado, um redirect de idioma sairia com Location e sem corpo.
+    if (!isHtmlResponse(page)) {
+      await page.body?.cancel()
+      return publicTextFailure()
+    }
     return applySecurityHeaders({
       response: new Response(page.body, {
         status: HTTP_INTERNAL_SERVER_ERROR,
