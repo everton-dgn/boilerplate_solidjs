@@ -16,6 +16,9 @@ const HTTP_OK = 200
 const HTTP_FOUND = 302
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const ATTEMPTS_AFTER_RETRY = 2
+// A mensagem pública segue o idioma da requisição; o navegador, com pt-BR, abre
+// a página e chama as server functions em pt.
+const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 type ServerResponse = {
   body: string
   headers: Record<string, string>
@@ -181,9 +184,7 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       const rendersOnServer = phase !== 'action'
       expect(
         pageErrors.filter(
-          message =>
-            !rendersOnServer ||
-            message !== 'Não foi possível concluir a solicitação.'
+          message => !rendersOnServer || message !== PUBLIC_MESSAGE
         )
       ).toStrictEqual([])
       pageErrors.length = 0
@@ -269,9 +270,7 @@ for (const phase of ['ssr', 'stream', 'action']) {
       // A hidratação tolera somente a repetição da mensagem pública fixa.
       expect(
         pageErrors.filter(
-          message =>
-            phase === 'action' ||
-            message !== 'Não foi possível concluir a solicitação.'
+          message => phase === 'action' || message !== PUBLIC_MESSAGE
         )
       ).toStrictEqual([])
     })

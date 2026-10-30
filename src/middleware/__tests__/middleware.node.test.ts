@@ -19,7 +19,10 @@ const { API_PATH, FORM_PATH } = vi.hoisted(() => ({
 const HTTP_FOUND = 302
 const HTTP_METHOD_NOT_ALLOWED = 405
 const HTTP_INTERNAL_SERVER_ERROR = 500
-const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+// A cadeia interna responde no idioma da página. As contenções externas e o
+// adaptador Markdown, fora do contexto de idioma, respondem no idioma base.
+const PUBLIC_MESSAGE_PT = 'Não foi possível concluir a solicitação.'
+const PUBLIC_MESSAGE_EN = 'The request could not be completed.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
 const ERROR_PAGE_LOG =
   '[error-page] Unexpected failure; private details omitted'
@@ -119,7 +122,7 @@ describe('export padrão do middleware', () => {
     )
 
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_PT)
     expect(Object.fromEntries(response.headers)).toMatchObject({
       'x-content-type-options': 'nosniff',
       'referrer-policy': 'strict-origin-when-cross-origin'
@@ -144,7 +147,7 @@ describe('contenção do adaptador Markdown', () => {
       const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
         expect(isPublicError(event.locals.serverFailure)).toBe(true)
         return Promise.resolve(
-          new Response(`${getLocale()}:${PUBLIC_MESSAGE}`, {
+          new Response(getLocale(), {
             headers: { 'content-type': 'text/html' }
           })
         )
@@ -156,7 +159,7 @@ describe('contenção do adaptador Markdown', () => {
 
       expect(next).toHaveBeenCalledExactlyOnceWith()
       expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-      await expect(response.text()).resolves.toBe(`${locale}:${PUBLIC_MESSAGE}`)
+      await expect(response.text()).resolves.toBe(locale)
       expect(Object.fromEntries(response.headers)).toMatchObject({
         'content-language': locale,
         'x-content-type-options': 'nosniff'
@@ -184,7 +187,7 @@ describe('contenção do adaptador Markdown', () => {
 
     expect(next).not.toHaveBeenCalled()
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_EN)
     expect(readLog(console.error)).toStrictEqual({
       heads: [
         [LOG_MESSAGE, 'Error'],
@@ -223,7 +226,7 @@ describe('contenção do adaptador Markdown', () => {
 
     expect(next).toHaveBeenCalledExactlyOnceWith()
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_EN)
     expect(response.headers.get('x-content-type-options')).toBe('nosniff')
     expect(readLog(console.error)).toStrictEqual({
       heads: [[LOG_MESSAGE, 'Error']],
@@ -314,7 +317,7 @@ describe('falhas próprias do adaptador Markdown', () => {
 
     expect(next).not.toHaveBeenCalled()
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_EN)
     expect(response.headers.has('location')).toBe(false)
     expect(readLog(console.error)).toStrictEqual({
       heads: [[LOG_MESSAGE, 'Error']],
@@ -351,7 +354,7 @@ describe('falhas próprias do adaptador Markdown', () => {
 
     expect(next).toHaveBeenCalledExactlyOnceWith()
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_EN)
     expect(readLog(console.error)).toStrictEqual({
       heads: [[LOG_MESSAGE, 'Error']],
       leaks: []
@@ -400,7 +403,7 @@ describe('respostas com headers imutáveis', () => {
     )
 
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_PT)
     // Headers imutáveis lançam um TypeError; o corpo upstream fica fora do log.
     expect(readLog(console.error)).toStrictEqual({
       heads: [[LOG_MESSAGE, 'TypeError']],

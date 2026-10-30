@@ -1,11 +1,22 @@
 import 'server-only'
+import { m } from '@paraglide/messages.js'
+import { baseLocale, type Locale } from '@paraglide/runtime.js'
 import { markSafeError } from '@solidjs/web'
 
 const errors = new WeakSet<object>()
-export const PUBLIC_ERROR_MESSAGE = 'Não foi possível concluir a solicitação.'
+
+// O hook de erros é síncrono e não pode lançar: se o idioma não resolver, a
+// mensagem sai no idioma base.
+export function publicErrorMessage(locale?: Locale): string {
+  try {
+    return m.publicErrors_message({}, { locale })
+  } catch {
+    return m.publicErrors_message({}, { locale: baseLocale })
+  }
+}
 
 export function createPublicError(): Error {
-  const error = markSafeError(new Error(PUBLIC_ERROR_MESSAGE))
+  const error = markSafeError(new Error(publicErrorMessage()))
   errors.add(error)
   return error
 }

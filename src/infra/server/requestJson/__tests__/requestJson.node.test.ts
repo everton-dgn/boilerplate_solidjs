@@ -6,7 +6,8 @@ const options = {
   url: 'https://backend.invalid/data',
   schema: v.object({ message: v.string() })
 }
-const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+// Sem o contexto de idioma do paraglide, a mensagem sai no idioma base.
+const PUBLIC_MESSAGE = 'The request could not be completed.'
 const TIMEOUT_MS = 10_000
 const OVERSIZED_LENGTH = '1000001'
 const CHUNK_BYTES = 600_000

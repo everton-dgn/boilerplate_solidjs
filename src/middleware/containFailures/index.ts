@@ -5,7 +5,7 @@ import { isControlResponse } from '@/infra/server/isControlResponse/index.ts'
 import { logServerFailure } from '@/infra/server/logServerFailure/index.ts'
 import {
   createPublicError,
-  PUBLIC_ERROR_MESSAGE
+  publicErrorMessage
 } from '@/infra/server/publicErrors/index.ts'
 
 import { isHtmlResponse } from '../helpers/isHtmlResponse/index.ts'
@@ -24,7 +24,7 @@ type Containment = {
 
 function publicTextFailure(): Response {
   return applySecurityHeaders(
-    new Response(PUBLIC_ERROR_MESSAGE, {
+    new Response(publicErrorMessage(), {
       status: HTTP_INTERNAL_SERVER_ERROR,
       headers: { 'content-type': 'text/plain; charset=utf-8' }
     })

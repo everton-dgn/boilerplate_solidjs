@@ -1,4 +1,5 @@
 import { m } from '@paraglide/messages.js'
+import { extractLocaleFromRequest } from '@paraglide/runtime.js'
 import type { RequestEvent } from '@solidjs/web'
 import { pageRoutes } from 'virtual:file-routes'
 
@@ -12,7 +13,7 @@ import {
 } from '@/constants/http.ts'
 import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
-import { PUBLIC_ERROR_MESSAGE } from '@/infra/server/publicErrors/index.ts'
+import { publicErrorMessage } from '@/infra/server/publicErrors/index.ts'
 import { Router } from '@/router.ts'
 
 import { appendVary } from '../helpers/appendVary/index.ts'
@@ -43,6 +44,7 @@ type TextOptions = {
   body: string | null
   headers: Record<string, string>
 }
+type PublicOptions = { status: number; request: Request }
 type Publication = { response: Response; isPublished: boolean }
 type RedirectOptions = { response: Response; url: URL; request: Request }
 type RouteRequest = { request: Request; url: URL; isPublished: boolean }
@@ -65,10 +67,15 @@ function textResponse({ status, body, headers }: TextOptions): Response {
   )
 }
 
-function publicResponse(status: number): Response {
+// O adaptador roda fora do contexto de idioma do paraglide; o idioma da
+// mensagem vem da requisição original, na ordem do localizeRequest.
+function publicResponse({ status, request }: PublicOptions): Response {
   return textResponse({
     status,
-    body: status === HTTP_INTERNAL_SERVER_ERROR ? PUBLIC_ERROR_MESSAGE : null,
+    body:
+      status === HTTP_INTERNAL_SERVER_ERROR
+        ? publicErrorMessage(extractLocaleFromRequest(request))
+        : null,
     headers: { vary: VARY_HEADERS }
   })
 }
@@ -167,7 +174,7 @@ async function resolveRedirect({
   // cliente comum que envie o header só troca o redirect por 500 público.
   if (request.headers.has('x-nitro-prerender')) {
     await response.body?.cancel()
-    return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
+    return publicResponse({ status: HTTP_INTERNAL_SERVER_ERROR, request })
   }
   // A resposta do render já saiu do securityHeaders; falta só o cache.
   const redirect = appendVary({
@@ -221,7 +228,7 @@ async function renderMarkdown({
     !canPublish({ response, isPublished })
   ) {
     await response.body?.cancel()
-    return publicResponse(HTTP_NOT_FOUND)
+    return publicResponse({ status: HTTP_NOT_FOUND, request: original })
   }
   const state = event.locals.ssrRenderState
   if (
@@ -230,12 +237,18 @@ async function renderMarkdown({
     state?.hasErrors === true
   ) {
     await response.body?.cancel()
-    return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
+    return publicResponse({
+      status: HTTP_INTERNAL_SERVER_ERROR,
+      request: original
+    })
   }
   if (!canConvert({ response, isPublished })) return response
   if (state?.hasCompleted !== true || state.hasErrors !== false) {
     await response.body?.cancel()
-    return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
+    return publicResponse({
+      status: HTTP_INTERNAL_SERVER_ERROR,
+      request: original
+    })
   }
   // A origem pública resolve os links: no prerender a requisição é local.
   const markdown = await convertHtml({
@@ -282,7 +295,10 @@ async function boundedRender(
   } catch (error) {
     // As demais falhas seguem para a contenção, que registra o log.
     if (!signal.aborted) throw error
-    return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
+    return publicResponse({
+      status: HTTP_INTERNAL_SERVER_ERROR,
+      request: original
+    })
   } finally {
     clearTimeout(timeout)
     signal.removeEventListener('abort', onAbort)
@@ -303,10 +319,10 @@ export async function markdownContent(
   try {
     decodeURI(url.pathname)
   } catch {
-    return publicResponse(HTTP_BAD_REQUEST)
+    return publicResponse({ status: HTTP_BAD_REQUEST, request: original })
   }
   if (!isPagePath({ pathname: url.pathname, method: original.method })) {
-    return publicResponse(HTTP_NOT_FOUND)
+    return publicResponse({ status: HTTP_NOT_FOUND, request: original })
   }
   const format = negotiatePageFormat(original.headers.get('accept'))
   const isPublished = isEligible(url)
