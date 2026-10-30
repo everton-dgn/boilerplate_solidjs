@@ -1,4 +1,4 @@
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import type { StaticRoute } from '@/helpers/walkStaticRoutes/types.ts'
 
 import { collectLlmsPages } from '../index.ts'

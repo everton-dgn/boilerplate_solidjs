@@ -7,7 +7,7 @@ import {
 } from '@solidjs/web'
 import { createMemo, Loading, onCleanup } from 'solid-js'
 
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import { Router } from '@/router.ts'
 
 import {

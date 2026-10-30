@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
 
-import english from '@/i18n/en.json' with { type: 'json' }
-import spanish from '@/i18n/es.json' with { type: 'json' }
-import portuguese from '@/i18n/pt.json' with { type: 'json' }
+import english from '@/constants/site/i18n/en.json' with { type: 'json' }
+import spanish from '@/constants/site/i18n/es.json' with { type: 'json' }
+import portuguese from '@/constants/site/i18n/pt.json' with { type: 'json' }
 import { parseStructuredData } from '@/tests/helpers/parseStructuredData/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 

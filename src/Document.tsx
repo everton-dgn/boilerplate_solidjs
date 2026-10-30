@@ -1,7 +1,7 @@
 import { getRequestEvent, HydrationScript, isServer } from '@solidjs/web'
 import type { ParentProps } from 'solid-js'
 
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import {
   DARK_MEDIA_QUERY,
   DEFAULT_THEME,

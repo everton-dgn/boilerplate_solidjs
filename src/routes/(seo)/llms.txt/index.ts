@@ -3,7 +3,7 @@ import { paraglideMiddleware } from '@paraglide/server.js'
 import { pageRoutes } from 'virtual:file-routes'
 
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
 import { memoizeOnce } from '@/helpers/memoizeOnce/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'

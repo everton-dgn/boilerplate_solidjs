@@ -2,7 +2,7 @@ import { createRouter, memoryHistory } from '@solidjs/router'
 import type { Product } from 'schema-dts'
 import { createSignal, Show } from 'solid-js'
 
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import {
   POLL,
   readCanonical,
