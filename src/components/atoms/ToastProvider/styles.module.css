@@ -65,7 +65,6 @@
   border-radius: var(--radius-8);
   background: transparent;
   color: var(--color-muted-foreground);
-  cursor: pointer;
 
   &:hover {
     background: var(--color-accent);

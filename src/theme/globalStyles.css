@@ -1,5 +1,10 @@
-@import './tokens/index.css';
-@import './class/index.css';
+@import './tokens/colors.css';
+@import './tokens/fonts.css';
+@import './tokens/grids.css';
+@import './tokens/radius.css';
+@import './tokens/shadows.css';
+@import './tokens/zIndex.css';
+@import './class/animation.css';
 
 *,
 *::before,
@@ -103,27 +108,6 @@ optgroup {
 a {
   color: var(--color-foreground);
   text-decoration: none;
-}
-
-/* Anuncia o limite do destaque para leitor de tela, que ignora
-   a cor de fundo do mark. Texto fica fora do fluxo visual. */
-mark {
-  position: relative;
-
-  &::before,
-  &::after {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    white-space: nowrap;
-    clip-path: inset(100%);
-    content: ' [início do texto destacado] ';
-  }
-
-  &::after {
-    content: ' [fim do texto destacado] ';
-  }
 }
 
 :where(button, a, [role='button']) {

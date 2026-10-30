@@ -3,11 +3,6 @@
 
   --color-background: light-dark(oklch(1 0 0), oklch(0.141 0.005 285.823));
   --color-foreground: light-dark(oklch(0.141 0.005 285.823), oklch(0.985 0 0));
-  --color-card: light-dark(oklch(1 0 0), oklch(0.21 0.006 285.885));
-  --color-card-foreground: light-dark(
-    oklch(0.141 0.005 285.823),
-    oklch(0.985 0 0)
-  );
   --color-popover: light-dark(oklch(1 0 0), oklch(0.21 0.006 285.885));
   --color-popover-foreground: light-dark(
     oklch(0.141 0.005 285.823),
