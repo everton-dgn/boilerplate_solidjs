@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { holdRoute } from '@/tests/helpers/holdRoute/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 
 const HTTP_OK = 200
@@ -17,26 +18,20 @@ for (const { encoded, decoded } of PARAMETERS) {
   }) => {
     const errors: string[] = []
     page.on('pageerror', error => errors.push(error.message))
-    const requested = Promise.withResolvers<null>()
-    const released = Promise.withResolvers<null>()
-    await page.route('**/*.js', async route => {
-      requested.resolve(null)
-      await released.promise
-      await route.continue()
-    })
+    const scripts = await holdRoute({ page, url: '**/*.js' })
 
     try {
       const path = `/en/blog/${encoded}`
       const response = await page.goto(path, { waitUntil: 'commit' })
       expect(response?.status()).toBe(HTTP_OK)
-      await requested.promise
+      await scripts.requested
       expect(await hydrationFinished(page)).toBe(false)
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(
         `Post ${decoded}`
       )
       await expect(page).toHaveURL(path)
 
-      released.resolve(null)
+      await scripts.release()
       await expect.poll(() => hydrationFinished(page)).toBe(true)
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(
         `Post ${decoded}`
@@ -44,8 +39,7 @@ for (const { encoded, decoded } of PARAMETERS) {
       await expect(page).toHaveURL(path)
       expect(errors).toEqual([])
     } finally {
-      released.resolve(null)
-      await page.unrouteAll({ behavior: 'wait' })
+      await scripts.release()
     }
   })
 }

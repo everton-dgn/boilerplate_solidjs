@@ -1,5 +1,6 @@
-import { expect, test, type Page, type Route } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
+import { holdRoute } from '@/tests/helpers/holdRoute/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 
@@ -13,31 +14,6 @@ const THEME_BUTTON = 'Select theme'
 // A ordem dos atributos não faz parte do contrato do plugin.
 const ENTRY_SCRIPT =
   /<script\b(?=[^>]*\btype="module")(?=[^>]*\basync\b)[^>]*>/u
-
-type ScriptGate = {
-  requested: Promise<null>
-  release: () => Promise<void>
-}
-
-// Segura todos os scripts até release(): o documento fica no HTML do servidor
-// enquanto o bundle não chega, sem depender de tempo.
-async function holdScripts(page: Page): Promise<ScriptGate> {
-  const requested = Promise.withResolvers<null>()
-  const released = Promise.withResolvers<null>()
-  async function handler(route: Route): Promise<void> {
-    requested.resolve(null)
-    await released.promise
-    await route.continue()
-  }
-  await page.route(SCRIPTS, handler)
-  return {
-    requested: requested.promise,
-    release: async () => {
-      released.resolve(null)
-      await page.unrouteAll({ behavior: 'wait' })
-    }
-  }
-}
 
 async function expectServerDocument(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_TITLE)
@@ -93,7 +69,7 @@ test('marks hydration only after the bundle runs, on every document load', async
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
   const violations = await watchCspViolations(page)
-  let gate = await holdScripts(page)
+  let gate = await holdRoute({ page, url: SCRIPTS })
   try {
     await page.goto(PAGE_URL, { waitUntil: 'commit' })
     await gate.requested
@@ -101,7 +77,7 @@ test('marks hydration only after the bundle runs, on every document load', async
     await gate.release()
     await expectInteractiveDocument(page)
 
-    gate = await holdScripts(page)
+    gate = await holdRoute({ page, url: SCRIPTS })
     await page.reload({ waitUntil: 'commit' })
     await gate.requested
     await expectServerDocument(page)
@@ -166,7 +142,7 @@ test('replays a click captured before hydration after the bundle is released', a
 }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
-  const gate = await holdScripts(page)
+  const gate = await holdRoute({ page, url: SCRIPTS })
   try {
     await page.goto(PAGE_URL, { waitUntil: 'commit' })
     await gate.requested

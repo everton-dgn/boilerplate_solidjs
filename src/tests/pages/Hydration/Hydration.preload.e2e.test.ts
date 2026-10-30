@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import * as v from 'valibot'
 
+import { holdRoute } from '@/tests/helpers/holdRoute/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { watchEntryLoad } from '@/tests/helpers/watchEntryLoad/index.ts'
 
@@ -36,30 +37,24 @@ test('espera o módulo da rota depois de a entrada executar', async ({
   request
 }) => {
   const path = await readHomeModule(request)
-  const requested = Promise.withResolvers<null>()
-  const gate = Promise.withResolvers<null>()
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
   await watchEntryLoad(page)
-  await page.route(`**${path}`, async route => {
-    requested.resolve(null)
-    await gate.promise
-    await route.continue()
-  })
+  const homeModule = await holdRoute({ page, url: `**${path}` })
   try {
     await page.goto('/en', { waitUntil: 'commit' })
-    await requested.promise
+    await homeModule.requested
     await expect(page.locator('html')).toHaveAttribute('data-entry-loaded')
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_TITLE)
     expect(await hydrationFinished(page)).toBeFalsy()
 
-    gate.resolve(null)
+    await homeModule.release()
     await expect.poll(() => hydrationFinished(page)).toBeTruthy()
     await page.getByRole('button', { name: 'Select theme' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
     expect(errors).toStrictEqual([])
   } finally {
-    gate.resolve(null)
+    await homeModule.release()
   }
 })
 
