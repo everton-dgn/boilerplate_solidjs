@@ -1,4 +1,5 @@
 import { m } from '@paraglide/messages.js'
+import { dynamicComponent } from '@solidjs/web'
 import { Show, useContext } from 'solid-js'
 import IconComputer from '~icons/hugeicons/computer'
 import IconLoader from '~icons/hugeicons/loader-circle'
@@ -6,42 +7,35 @@ import IconMoon from '~icons/hugeicons/moon-02'
 import IconSun from '~icons/hugeicons/sun-01'
 
 import type { Theme } from '@/@types/theme.ts'
+import { THEMES } from '@/constants/theme.ts'
 
 import { Button } from '../Button/index.tsx'
 import { DropdownMenu } from '../DropdownMenu/index.tsx'
 import { ThemeContext } from '../Provider/context.ts'
 
-const THEME_LABELS = {
-  light: m.themeToggle_light,
-  dark: m.themeToggle_dark,
-  system: m.themeToggle_system
+const THEME_OPTIONS = {
+  light: { label: m.themeToggle_light, icon: IconSun },
+  dark: { label: m.themeToggle_dark, icon: IconMoon },
+  system: { label: m.themeToggle_system, icon: IconComputer }
 }
 
 export function ThemeToggle() {
   const state = useContext(ThemeContext)
+  const ThemeIcon = dynamicComponent(() => THEME_OPTIONS[state.theme()].icon)
 
   return (
     <DropdownMenu<Theme>
       label={m.themeToggle_label()}
       value={state.theme()}
       onChange={state.setTheme}
-      items={[
-        {
-          value: 'light',
-          label: m.themeToggle_light(),
-          icon: <IconSun />
-        },
-        {
-          value: 'dark',
-          label: m.themeToggle_dark(),
-          icon: <IconMoon />
-        },
-        {
-          value: 'system',
-          label: m.themeToggle_system(),
-          icon: <IconComputer />
+      items={THEMES.map(theme => {
+        const Icon = THEME_OPTIONS[theme].icon
+        return {
+          value: theme,
+          label: THEME_OPTIONS[theme].label(),
+          icon: <Icon />
         }
-      ]}
+      })}
       trigger={props => (
         <Button
           {...props}
@@ -49,7 +43,9 @@ export function ThemeToggle() {
           size="icon"
           aria-label={
             state.isReady()
-              ? m.themeToggle_current({ theme: THEME_LABELS[state.theme()]() })
+              ? m.themeToggle_current({
+                  theme: THEME_OPTIONS[state.theme()].label()
+                })
               : m.themeToggle_select()
           }
           disabled={!state.isReady()}
@@ -58,16 +54,7 @@ export function ThemeToggle() {
             when={state.isReady()}
             fallback={<IconLoader class="spinner" />}
           >
-            <Show
-              when={state.theme() === 'system'}
-              fallback={
-                <Show when={state.theme() === 'dark'} fallback={<IconSun />}>
-                  <IconMoon />
-                </Show>
-              }
-            >
-              <IconComputer />
-            </Show>
+            <ThemeIcon />
           </Show>
         </Button>
       )}
