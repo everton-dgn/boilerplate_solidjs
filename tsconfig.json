@@ -32,7 +32,7 @@
       "vite-plus/test/globals",
       "@testing-library/jest-dom/vitest",
       "@solidjs/vite-plugin/boundary-modules",
-      "@solidjs/vite-plugin/virtual-solid-manifest"
+      "@solidjs/vite-plugin/virtual-modules"
     ],
     "tsBuildInfoFile": ".tsbuild/app.tsbuildinfo",
     "incremental": true

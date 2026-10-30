@@ -101,7 +101,7 @@ const appPlugins = (mode: string) =>
         },
         ssr: true,
         serverFunctions: {
-          configure: './src/infra/server/configureServerErrors/index.ts'
+          serverSetup: './src/infra/server/configureServerErrors/index.ts'
         }
       }),
       modules.fileRoutes(

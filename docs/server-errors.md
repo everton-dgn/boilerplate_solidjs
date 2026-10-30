@@ -16,7 +16,7 @@ quando houver consumidores. Novos imports de erros públicos usam
 
 O [registro central](../src/infra/server/configureServerErrors/index.ts) usa
 `configureServerFunctionsServer({ wrapInvocation })`. O
-[Vite](../vite.config.ts) o carrega por `serverFunctions.configure`, cobrindo
+[Vite](../vite.config.ts) o carrega por `serverFunctions.serverSetup`, cobrindo
 server functions chamadas diretamente no SSR e pelo transporte HTTP. O mesmo
 módulo instala, em todos os modos, o hook `configureServerErrors({ onError })`
 de `@solidjs/web`; a troca pelo erro público acontece só em produção.
@@ -531,7 +531,7 @@ pacote publicado e instalado mudou esse comportamento.
    substituiria sem aviso. O de `renderToStream` fica registrado no render e
    vale também para as server functions chamadas diretamente durante ele.
    Confira se `src/entry-server.tsx` e o plugin continuam sem repassá-lo e se o
-   módulo `configure` ainda carrega antes do primeiro dispatch.
+   módulo `serverSetup` ainda carrega antes do primeiro dispatch.
 3. Rode
    `vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError`
    no build de produção. Os marcadores nos corpos brutos, os controles positivos
@@ -588,8 +588,8 @@ teria precedência sobre o hook global, desviaria a sanitização e o log e
 deixaria o estado sem marcação, e o Markdown publicaria com `hasErrors: false`.
 O registro do hook chama `observeRenderFailures()`; até lá a fábrica cria o
 estado com `hasErrors` indefinido, e o Markdown recusa a página. Sem o
-`serverFunctions.configure` do Vite, que carrega o registro, todo `.md` responde
-500 e o prerender interrompe o build.
+`serverFunctions.serverSetup` do Vite, que carrega o registro, todo `.md`
+responde 500 e o prerender interrompe o build.
 
 O hook encontra o estado pelo evento que o runtime associa à falha. As falhas do
 serializador, o `onCleanup` que lança e o fallback de `<Errored>` chegam sem o
