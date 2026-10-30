@@ -11,6 +11,9 @@ const content = {
   get title() {
     return m.privacy_title()
   },
+  get description() {
+    return m.privacy_description()
+  },
   get intro() {
     return m.privacy_intro()
   },
