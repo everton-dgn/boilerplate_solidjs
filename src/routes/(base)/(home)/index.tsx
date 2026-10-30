@@ -38,9 +38,7 @@ export default function Home() {
 
           <p class={S.description}>{m.home_features()}</p>
 
-          <div class={S.logos}>
-            <SolidLogo class={S.logo} />
-          </div>
+          <SolidLogo class={S.logo} />
 
           <p class={S.subtitle}>SolidJS 2 · Vite+ · TypeScript 7</p>
         </section>
