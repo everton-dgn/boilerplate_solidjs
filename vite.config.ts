@@ -1,4 +1,4 @@
-import { env } from 'node:process'
+import { env, loadEnvFile } from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
@@ -119,6 +119,16 @@ const appPlugins = (mode: string) =>
     ]
   })
 
+function loadTestEnvFile(): void {
+  try {
+    loadEnvFile(fileURLToPath(new URL('.env.test', import.meta.url)))
+  } catch (error) {
+    const isMissing =
+      error instanceof Error && 'code' in error && error.code === 'ENOENT'
+    if (!isMissing) throw error
+  }
+}
+
 // oxlint-disable-next-line eslint/max-lines-per-function -- A configuração declarativa do Vite fica reunida neste callback.
 export default defineConfig(({ mode }) => {
   const localEnv = loadEnv(mode, import.meta.dirname, ['HOST', 'PORT'])
@@ -126,6 +136,20 @@ export default defineConfig(({ mode }) => {
     host: localEnv.HOST,
     port: localEnv.PORT ? Number(localEnv.PORT) : undefined
   }
+
+  if (mode === 'test') {
+    loadTestEnvFile()
+  }
+
+  // O Vitest grava test.env no process.env dos workers, onde um valor ausente
+  // viraria a string "undefined".
+  const testEnv = Object.fromEntries(
+    Object.entries({
+      BASE_URL_TEST: env.BASE_URL_TEST,
+      HOST: env.HOST,
+      PORT: env.PORT
+    }).filter(([, value]) => value !== undefined)
+  )
 
   return {
     run: {
@@ -271,6 +295,7 @@ export default defineConfig(({ mode }) => {
         '**/playwright/**',
         '**/*.e2e.test.{ts,tsx}'
       ],
+      env: testEnv,
       coverage: {
         provider: 'v8',
         reporter: ['text', 'html'],
