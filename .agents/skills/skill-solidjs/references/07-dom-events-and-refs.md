@@ -18,7 +18,7 @@ Receita:
 <div class={['card', { selected: props.selected }]} style={{ 'background-color': color(), '--space': space() }} />
 ```
 
-Armadilha: classList não é API JSX atual. Snapshot de classes não torna cru reativo.
+Armadilha: classList não é API JSX atual. Snapshot de classes não torna cru reativo. Com uma CSP sem `'unsafe-inline'` em `style-src`, o navegador bloqueia o atributo `style` que o SSR grava no HTML (regra da CSP, não do Solid); nesse caso, use classes. Atualização dinâmica no cliente por setProperty (CSSOM) não é bloqueada.
 
 ## Eventos e propagação
 
