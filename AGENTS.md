@@ -249,6 +249,15 @@ release. Add a tool name to select part of the graph. For example, run
   de UI; não precisam implementar um contrato de publicação.
 - `seo.ts` fica ao lado de `index.tsx`, sem entrar na contagem de helpers.
   Não exporte componente padrão nem handlers HTTP nesse módulo.
+- O corpo da página (os textos e dados que o componente renderiza, como o
+  `content` de about, contact e privacy) fica em `index.tsx`, nunca em `seo.ts`.
+  O manifesto de rotas importa o `route` de cada página no bundle inicial, e
+  tudo o que `seo.ts` importa vai junto: um `content` exportado de lá leva os
+  textos de todas as páginas, nos três idiomas, para o bundle inicial. Os getters
+  de `seo` chamam as mensagens direto, sem ler o objeto da página. Não mova o
+  `content` para `seo.ts`, para um módulo que o `seo.ts` importe nem para outro
+  que o `route` alcance. O `I18n.production.e2e` confere isso; detalhes em
+  [SEO](docs/seo.md).
 - Markdown usa main semântico e filtros do conversor. Use `data-md-exclude`
   para excluir conteúdo; CSS calculado não é interpretado. Preserve citações
   contextuais em footer dentro de main.

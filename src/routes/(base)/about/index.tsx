@@ -7,6 +7,8 @@ import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 
 import { seo } from './seo.ts'
 
+// Fica aqui e não em seo.ts: o seo.ts entra no bundle inicial pelo `route`, e o
+// corpo da página iria junto. Ver AGENTS.md, Módulos de página.
 const content = {
   get title() {
     return m.about_title()
