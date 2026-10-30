@@ -26,8 +26,15 @@ export function createLocalizedNavigate() {
     shouldLocalize,
     ...options
   }: LocalizedNavigateOptions): void => {
+    const requestedHref = String(href)
+    // Fragmentos de âncora podem permanecer relativos; a navegação com resolve: false
+    // precisa do caminho completo da página atual, incluindo os parâmetros de consulta.
+    const resolvedHref =
+      requestedHref === '' || requestedHref.startsWith('#')
+        ? `${location.pathname}${location.search}${requestedHref}`
+        : requestedHref
     const target = resolveLocalizedHref({
-      href: String(href),
+      href: shouldLocalize === false ? requestedHref : resolvedHref,
       locale,
       shouldLocalize,
       base: `${location.pathname}${location.search}${location.hash}`

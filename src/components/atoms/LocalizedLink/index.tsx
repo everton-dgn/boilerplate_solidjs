@@ -25,27 +25,15 @@ export function LocalizedLink(props: LocalizedLinkProps) {
     'target',
     'children'
   )
-  const href = (): string => {
-    const requestedHref = String(props.href)
-    // Fragmentos no mesmo idioma ficam relativos, inclusive fora do Router,
-    // onde não há página para resolvê-los.
-    const isSameLocale =
-      props.locale === undefined || props.locale === getLocale()
-    if (
-      isSameLocale &&
-      (requestedHref === '' || requestedHref.startsWith('#'))
-    ) {
-      return requestedHref
-    }
-    return resolveLocalizedHref({
-      href: requestedHref,
+  const href = () =>
+    resolveLocalizedHref({
+      href: String(props.href),
       locale: props.locale,
       shouldLocalize: props.shouldLocalize,
       base: location
         ? `${location.pathname}${location.search}${location.hash}`
         : undefined
     })
-  }
   const shouldUseDocumentNavigation = () =>
     props.shouldLocalize === false ||
     (props.locale !== undefined && props.locale !== getLocale())

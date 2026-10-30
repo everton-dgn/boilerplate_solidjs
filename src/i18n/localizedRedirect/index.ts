@@ -7,18 +7,12 @@ import {
   type ResponseHelperInit
 } from '@solidjs/web'
 
-import { isAbsoluteHref, resolveLocalizedHref } from '@/i18n/urls/index.ts'
+import { resolveLocalizedHref } from '@/i18n/urls/index.ts'
 
 type LocalizedRedirectOptions = ResponseHelperInit & {
   href: Parameters<typeof redirect>[0]
   locale?: Locale
   shouldLocalize?: boolean
-}
-
-function readPageBase(): string | undefined {
-  return isServer
-    ? getRequestEvent()?.locals.localizedPageBase
-    : globalThis.location.href
 }
 
 export function localizedRedirect({
@@ -28,19 +22,24 @@ export function localizedRedirect({
   ...init
 }: LocalizedRedirectOptions): Response {
   const logicalHref = typeof href === 'string' ? href : href[HREF]
-  const target = typeof logicalHref === 'string' ? logicalHref : String(href)
-  // A base só é lida para destinos relativos: getRequestEvent() avisa quando
-  // é chamado fora de uma requisição.
-  const isRelativePage =
-    shouldLocalize !== false &&
-    !target.startsWith('/') &&
-    !isAbsoluteHref(target)
+  let target = typeof logicalHref === 'string' ? logicalHref : String(href)
+  if (shouldLocalize !== false && !/^(?:\/|[a-z][a-z\d+.-]*:)/iu.test(target)) {
+    const base = isServer
+      ? getRequestEvent()?.locals.localizedPageBase
+      : globalThis.location.href
+    if (!base) {
+      throw new Error(
+        'localizedRedirect requires a safe page base for relative hrefs. Use a root-relative href or shouldLocalize: false for endpoints/assets.'
+      )
+    }
+    const url = new URL(target, base)
+    target = `${url.pathname}${url.search}${url.hash}`
+  }
   return redirect(
     resolveLocalizedHref({
       href: target,
       locale,
-      shouldLocalize,
-      base: isRelativePage ? readPageBase() : undefined
+      shouldLocalize
     }),
     init
   )
