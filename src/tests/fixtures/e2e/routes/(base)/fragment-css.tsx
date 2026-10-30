@@ -1,7 +1,7 @@
 import { useSearchParams, type RouteDefinition } from '@solidjs/router'
 import { createMemo, lazy, Loading, Show } from 'solid-js'
 
-import { waitFixtureGate } from '../../outside-error/waitFixtureGate/index.ts'
+import { waitFixtureGate } from '../../backend/waitFixtureGate/index.ts'
 
 type DelayedPanelProps = { id: string }
 

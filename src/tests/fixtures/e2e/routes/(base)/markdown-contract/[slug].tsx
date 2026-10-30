@@ -8,7 +8,7 @@ import { getRequestEvent, httpHeader, httpStatus } from '@solidjs/web'
 import { createMemo, createSignal, Loading } from 'solid-js'
 
 import { readBackend } from '../../../backend-error/readBackend/index.ts'
-import { waitFixtureGate } from '../../../outside-error/waitFixtureGate/index.ts'
+import { waitFixtureGate } from '../../../backend/waitFixtureGate/index.ts'
 
 const HTTP_REDIRECT = 307
 // A identidade persiste entre requisições para exercitar a deduplicação do hook.

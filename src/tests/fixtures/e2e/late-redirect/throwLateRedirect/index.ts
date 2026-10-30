@@ -2,7 +2,7 @@ import { redirect } from '@solidjs/web'
 
 import { localizeHref } from '@/i18n/urls/index.ts'
 
-import { waitFixtureGate } from '../../outside-error/waitFixtureGate/index.ts'
+import { waitFixtureGate } from '../../backend/waitFixtureGate/index.ts'
 
 // Redirect decidido depois do envio do shell: o gate, liberado pelo teste,
 // mantém o Loading pendente, e o runtime só pode seguir o Location pelo script
