@@ -63,6 +63,7 @@ export function Dialog(props: DialogProps) {
         element = value
       }}
       class={[S.dialog, props.class]}
+      closedby="closerequest"
       aria-labelledby={`${id}-title`}
       aria-describedby={props.description ? `${id}-description` : undefined}
       onCancel={event => {

@@ -30,3 +30,11 @@ export type WalkStaticRoutesOptions<State> = {
   // são visitados e marcados como `isDynamic`.
   shouldVisitDynamic?: boolean
 }
+
+export type WalkFrame<State> = {
+  routes: readonly StaticRoute[]
+  index: number
+  parent: string
+  state: State
+  isDynamic: boolean
+}
