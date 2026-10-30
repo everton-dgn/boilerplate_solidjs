@@ -14,13 +14,14 @@ type ButtonVariant =
 type ButtonSize = 'default' | 'xs' | 'sm' | 'lg' | 'icon'
 
 type ButtonProps = Omit<ComponentProps<'button'>, 'class'> & {
+  label?: string
   variant?: ButtonVariant
   size?: ButtonSize
   class?: string
 }
 
 export function Button(props: ButtonProps) {
-  const rest = omit(props, 'variant', 'size', 'class', 'children')
+  const rest = omit(props, 'label', 'variant', 'size', 'class', 'children')
 
   return (
     <button
@@ -33,7 +34,7 @@ export function Button(props: ButtonProps) {
         props.class
       ]}
     >
-      {props.children}
+      {props.label ?? props.children}
     </button>
   )
 }

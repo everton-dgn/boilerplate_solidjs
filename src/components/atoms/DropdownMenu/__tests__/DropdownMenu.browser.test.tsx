@@ -19,7 +19,7 @@ function mountMenu(onChange = vi.fn<(value: string) => void>()) {
       items={ITEMS}
       value="light"
       onChange={onChange}
-      trigger={props => <Button {...props}>Abrir</Button>}
+      trigger={props => <Button {...props} label="Abrir" />}
     />
   ))
 
@@ -77,7 +77,7 @@ describe('menu suspenso no navegador', () => {
     const { host } = mountMenu()
     renderComponent(() => (
       <div style={{ 'margin-top': '200px' }}>
-        <Button>Próximo</Button>
+        <Button label="Próximo" />
       </div>
     ))
     const opener = page.getByRole('button', { name: 'Abrir' })
@@ -111,7 +111,7 @@ describe('menu suspenso no navegador', () => {
           { value: 'dark', label: 'Escuro', disabled: true }
         ]}
         onChange={onChange}
-        trigger={props => <Button {...props}>Abrir</Button>}
+        trigger={props => <Button {...props} label="Abrir" />}
       />
     ))
 
@@ -138,9 +138,9 @@ describe('menu suspenso no navegador', () => {
         <DropdownMenu
           label="Tema"
           items={items}
-          trigger={props => <Button {...props}>Abrir</Button>}
+          trigger={props => <Button {...props} label="Abrir" />}
         />
-        <Button>Próximo</Button>
+        <Button label="Próximo" />
       </>
     ))
 
