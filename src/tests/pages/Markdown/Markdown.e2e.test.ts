@@ -192,7 +192,7 @@ test('isolates simultaneous locale cookies in settled content', async ({
       const response = await request.get(
         `/${locale}/markdown-contract/sample.md?id=${id}`,
         {
-          headers: { cookie: `PARAGLIDE_LOCALE=${other}; locale=${other}` }
+          headers: { cookie: `locale=${other}` }
         }
       )
       expect(response.status()).toBe(HTTP_OK)

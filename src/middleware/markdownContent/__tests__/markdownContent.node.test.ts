@@ -474,8 +474,8 @@ describe('markdown negotiation and redirects', () => {
     async path => {
       vi.spyOn(Router, 'match').mockReturnValue([
         {
-          path: '/*HTTP_NOT_FOUND',
-          pattern: '/*HTTP_NOT_FOUND',
+          path: '/*404',
+          pattern: '/*404',
           match: '/missing',
           params: {},
           info: { seo: { noindex: true } }
@@ -622,9 +622,8 @@ describe('markdown resource bounds', () => {
     }
   )
 
-  it('normalizes a failed SSR response with an existing locale cookie', async () => {
+  it('normalizes an HTML 500 with render errors', async () => {
     const request = event()
-    request.request.headers.set('cookie', 'PARAGLIDE_LOCALE=en')
     request.locals.ssrRenderState = { hasErrors: true, hasCompleted: true }
     const response = await markdownContent(request, () =>
       html('Partial fallback', HTTP_SERVER_ERROR)
