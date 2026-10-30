@@ -182,10 +182,10 @@ test('não marca antes do shell quando a entrada async já executou', async ({
       'loading'
     )
     await expect(page.locator('body')).toHaveCount(0)
-    expect(await hydrationFinished(page)).toBeFalsy()
+    expect(await hydrationFinished(page)).toBe(false)
 
     proxy.release()
-    await expect.poll(() => hydrationFinished(page)).toBeTruthy()
+    await expect.poll(() => hydrationFinished(page)).toBe(true)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'SolidJS Boilerplate for web applications'
     )
@@ -245,13 +245,13 @@ test('encerra a hidratação e recupera dados pelo cliente após truncamento', a
     await expect(
       page.getByRole('button', { name: 'Shell count: 1', exact: true })
     ).toBeVisible()
-    expect(await hydrationFinished(page)).toBeFalsy()
+    expect(await hydrationFinished(page)).toBe(false)
     expect(clientLoads).toBe(0)
 
     proxy.truncate()
     await page.waitForLoadState('domcontentloaded')
     await expect.poll(() => clientLoads).toBe(PANEL_COUNT)
-    await expect.poll(() => hydrationFinished(page)).toBeTruthy()
+    await expect.poll(() => hydrationFinished(page)).toBe(true)
     await expect(
       page.getByText('Waiting for First', { exact: true })
     ).toBeVisible()
@@ -319,13 +319,13 @@ test('recupera dados pelo cliente quando o truncamento antecede o fim do shell',
     await expect(
       page.getByText('Waiting for First', { exact: true })
     ).toBeVisible()
-    expect(await hydrationFinished(page)).toBeFalsy()
+    expect(await hydrationFinished(page)).toBe(false)
     expect(clientLoads).toBe(0)
 
     proxy.truncate()
     await page.waitForLoadState('domcontentloaded')
     await expect.poll(() => clientLoads).toBe(PANEL_COUNT)
-    await expect.poll(() => hydrationFinished(page)).toBeTruthy()
+    await expect.poll(() => hydrationFinished(page)).toBe(true)
     await releaseFixtureGate({ request, id: `${id}-first` })
     await releaseFixtureGate({ request, id: `${id}-second` })
     await expect(

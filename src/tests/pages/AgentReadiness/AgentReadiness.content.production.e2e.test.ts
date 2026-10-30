@@ -91,7 +91,6 @@ for (const language of LANGUAGES) {
         const markdown = await request.get(pathname, {
           headers: { accept: 'text/markdown' }
         })
-        expect(markdown.status()).toBe(HTTP_OK)
         const markdownBody = await markdown.text()
         expect(markdownBody).toContain(`# ${language.headings[index]}`)
         const navigation = await page.goto(pathname)

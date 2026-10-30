@@ -46,10 +46,10 @@ test('espera o módulo da rota depois de a entrada executar', async ({
     await homeModule.requested
     await expect(page.locator('html')).toHaveAttribute('data-entry-loaded')
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_TITLE)
-    expect(await hydrationFinished(page)).toBeFalsy()
+    expect(await hydrationFinished(page)).toBe(false)
 
     await homeModule.release()
-    await expect.poll(() => hydrationFinished(page)).toBeTruthy()
+    await expect.poll(() => hydrationFinished(page)).toBe(true)
     await page.getByRole('button', { name: 'Select theme' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
     expect(errors).toStrictEqual([])
@@ -76,7 +76,7 @@ test('mantém o HTML sem marcador quando o preload da raiz falha', async ({
   await expect(page.locator('html')).toHaveAttribute('data-entry-loaded')
   await expect.poll(() => errors.length).toBeGreaterThan(0)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_TITLE)
-  expect(await hydrationFinished(page)).toBeFalsy()
+  expect(await hydrationFinished(page)).toBe(false)
   await expect(
     page.getByRole('button', { name: 'Select theme' })
   ).toBeDisabled()

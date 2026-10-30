@@ -33,7 +33,7 @@ async function openStream({
   await expect(
     page.getByRole('button', { name: 'Shell count: 1', exact: true })
   ).toBeVisible()
-  expect(await hydrationFinished(page)).toBeFalsy()
+  expect(await hydrationFinished(page)).toBe(false)
 }
 
 async function expectPanel(page: Page, panel: string): Promise<void> {
@@ -63,10 +63,10 @@ test('espera todos os fragmentos, mesmo resolvidos fora de ordem', async ({
     await expect(
       page.getByText('Waiting for First', { exact: true })
     ).toBeVisible()
-    expect(await hydrationFinished(page)).toBeFalsy()
+    expect(await hydrationFinished(page)).toBe(false)
 
     await releaseFixtureGate({ request, id: `${id}-first` })
-    await expect.poll(() => hydrationFinished(page)).toBeTruthy()
+    await expect.poll(() => hydrationFinished(page)).toBe(true)
     await expectPanel(page, 'First')
     expect(errors).toStrictEqual([])
     expect(violations).toStrictEqual([])
@@ -103,10 +103,10 @@ test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
     await expect(
       page.getByText('Waiting for Second', { exact: true })
     ).toBeVisible()
-    expect(await hydrationFinished(page)).toBeFalsy()
+    expect(await hydrationFinished(page)).toBe(false)
 
     await releaseFixtureGate({ request, id: `${id}-second` })
-    await expect.poll(() => hydrationFinished(page)).toBeTruthy()
+    await expect.poll(() => hydrationFinished(page)).toBe(true)
     await expectPanel(page, 'Second')
     await expect(
       page.getByText('First stream failed', { exact: true })
@@ -141,7 +141,7 @@ test('encerra a fase quando a navegação descarta fragmentos pendentes', async 
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'About SolidJS Boilerplate'
     )
-    await expect.poll(() => hydrationFinished(page)).toBeTruthy()
+    await expect.poll(() => hydrationFinished(page)).toBe(true)
     await page.getByRole('button', { name: 'Select theme' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
     expect(documentRequests).toBe(1)

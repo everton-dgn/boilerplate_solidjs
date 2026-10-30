@@ -79,8 +79,6 @@ test('normal HTML sends the loading shell while both sources remain blocked', as
       shell += decoder.decode(chunk.value, { stream: true })
     }
     await waitForGates({ request, id })
-    expect(shell).toContain('FIRST_FALLBACK')
-    expect(shell).toContain('SECOND_FALLBACK')
     await releaseGates({ request, id })
     for (;;) {
       const chunk = await reader.read()

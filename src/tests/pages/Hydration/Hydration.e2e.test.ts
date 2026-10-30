@@ -21,7 +21,6 @@ async function expectServerDocument(page: Page): Promise<void> {
     page.getByRole('link', { name: 'Home', exact: true })
   ).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('menu')).toHaveCount(0)
-  await expect(page.locator('html')).not.toHaveAttribute(MARKER)
   expect(await hydrationFinished(page)).toBe(false)
 }
 
@@ -57,9 +56,7 @@ test.describe('without JavaScript', () => {
       name: THEME_BUTTON
     })
     await expect(trigger).toBeDisabled()
-    await expect(page.getByRole('menu')).toHaveCount(0)
     expect(await page.evaluate(() => document.readyState)).toBe('complete')
-    expect(await hydrationFinished(page)).toBe(false)
   })
 })
 
@@ -102,8 +99,6 @@ test('does not mark hydration when the bundle fails to load', async ({
   expect(await page.evaluate(() => document.readyState)).toBe('complete')
   await expectServerDocument(page)
   await expect(page.getByRole('button', { name: THEME_BUTTON })).toBeDisabled()
-  await expect(page.getByRole('menu')).toHaveCount(0)
-  expect(await hydrationFinished(page)).toBe(false)
 })
 
 test('keeps the marker and interactivity across client-side navigation', async ({

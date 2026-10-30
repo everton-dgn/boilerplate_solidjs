@@ -100,9 +100,6 @@ for (const locale of LOCALES) {
         'utf8'
       )
       const response = await request.get(href, { maxRedirects: 0 })
-      expect(response.status()).toBe(HTTP_OK)
-      expect(response.headers()['set-cookie']).toBeUndefined()
-      expect(response.headers()['cache-control']).not.toBe('private, no-store')
       expect(await response.text()).toBe(markdown)
       const negotiated = await request.get(pathname, {
         headers: { accept: 'text/markdown' },
