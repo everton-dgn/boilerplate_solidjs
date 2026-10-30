@@ -384,7 +384,9 @@ functions chamadas no SSR (um `redirect()` lançado, um envelope devolvido e um
 envelope lançado); e a regressão de `content-type` descrita abaixo, com um
 envelope devolvido e outro lançado por `query()`. O envelope lançado chega ao
 hook como controle, mas o router lança o valor dele no render e o documento vira
-500, com ou sem o hook.
+500, com ou sem o hook. No streaming, os casos de confidencialidade usam um id
+terminado em `:gated`: o backend sintético segura `/data` até o teste ver o
+fallback e liberar o gate, sem depender do atraso fixo do backend.
 
 Quando uma `query()` lida no SSR devolve ou lança um envelope de `respond()`, o
 `handleResponse` do router copia para a resposta da página só os headers que não

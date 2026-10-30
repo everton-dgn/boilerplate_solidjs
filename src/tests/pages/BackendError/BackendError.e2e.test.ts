@@ -4,7 +4,9 @@ import type { Page } from '@playwright/test'
 
 import {
   markBackendRecovered,
-  readBackendState
+  readBackendState,
+  releaseFixtureGate,
+  waitForGate
 } from '@/tests/helpers/fixtureGate/index.ts'
 import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
@@ -220,10 +222,24 @@ for (const phase of ['ssr', 'stream', 'action']) {
       request,
       pageErrors
     }) => {
-      const id = `${failure}:${crypto.randomUUID()}`
+      // No streaming, o backend segura /data até o teste ver o fallback. Uma
+      // resposta anterior ao shell embutiria o conteúdo no documento.
+      const isStream = phase === 'stream'
+      const id = `${failure}:${crypto.randomUUID()}${isStream ? ':gated' : ''}`
       const { marker } = await readBackendState({ request, id })
       const serverResponses = await captureServerFunctions(page)
-      const response = await page.goto(`/backend-error?phase=${phase}&id=${id}`)
+      const response = await page.goto(
+        `/backend-error?phase=${phase}&id=${id}`,
+        { waitUntil: isStream ? 'commit' : 'load' }
+      )
+      if (isStream) {
+        await expect(
+          page.getByText('Carregando dados...', { exact: true })
+        ).toBeVisible()
+        await waitForGate({ request, id })
+        await releaseFixtureGate({ request, id })
+      }
+      // Lido só depois da liberação: o corpo termina quando /data responde.
       const document = await response?.text()
       expect(document).not.toContain(marker)
       expect(JSON.stringify(response?.headers())).not.toContain(marker)
@@ -232,7 +248,7 @@ for (const phase of ['ssr', 'stream', 'action']) {
           ? HTTP_INTERNAL_SERVER_ERROR
           : HTTP_OK
       )
-      if (phase === 'stream') expect(document).toContain('Carregando dados...')
+      if (isStream) expect(document).toContain('Carregando dados...')
       if (phase === 'action') {
         await page.getByRole('button', { name: 'Consultar backend' }).click()
       }

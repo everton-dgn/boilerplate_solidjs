@@ -7,8 +7,9 @@ const DELAY_MS = 100
 const recovered = new Set<string>()
 const attempts = new Map<string, number>()
 const markers = new Map<string, string>()
-// Gates seguram a resposta de /gate até o teste liberar o id, para que uma
-// falha assíncrona aconteça depois do shell sem depender de temporizador.
+// Gates seguram a resposta de /gate, e a de /data quando o id termina em
+// :gated, até o teste liberar o id, para que uma falha ou um dado assíncrono
+// cheguem depois do shell sem depender de temporizador.
 const gates = new Map<string, PromiseWithResolvers<boolean>>()
 const gateStates = new Map<string, 'waiting' | 'released'>()
 // Marca se alguma chamada ao gate veio de uma fixture que ia lançar com o
@@ -28,6 +29,16 @@ type GateAnswer = { id: string; response: ServerResponse }
 async function answerGate({ id, response }: GateAnswer) {
   await gateFor(id).promise
   response.end('{"ready":true}')
+}
+
+type DataAnswer = { id: string; respond: () => void }
+
+async function answerData({ id, respond }: DataAnswer) {
+  if (id.endsWith(':gated')) {
+    if (gateStates.get(id) !== 'released') gateStates.set(id, 'waiting')
+    await gateFor(id).promise
+  }
+  setTimeout(respond, DELAY_MS)
 }
 
 function privateMarker(id: string): string {
@@ -86,7 +97,7 @@ const server = createServer((request, response) => {
     recovered.has(id) ||
     ['throw', 'result', 'public', 'success', 'outside'].includes(scenario ?? '')
   response.setHeader('x-internal-context', marker)
-  setTimeout(() => {
+  const respond = () => {
     if (!ok) response.statusCode = HTTP_INTERNAL_SERVER_ERROR
     response.end(
       JSON.stringify(
@@ -104,7 +115,8 @@ const server = createServer((request, response) => {
             }
       )
     )
-  }, DELAY_MS)
+  }
+  void answerData({ id, respond })
 })
 
 server.listen(PORT, '127.0.0.1')

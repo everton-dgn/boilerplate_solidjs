@@ -183,8 +183,11 @@ redirecionamento, com conteúdo e headers esperados, e que os helpers locais nã
 viram endpoints públicos. Também verifica a ausência de uma rota das fixtures e
 que a Home recebe os cabeçalhos de segurança do middleware real, já que o build
 E2E monta a cadeia pela fábrica `createMiddleware`. Os testes de Markdown
-verificam o conteúdo servido por HTTP a partir do HTML, sem exigir arquivos
-estáticos ou manifestos de publicação. Os testes Node do middleware cobrem
+verificam por HTTP a negociação e o `.md` de cada página.
+`AgentReadiness.build.production.e2e.test.ts` compara essas respostas com os
+arquivos gerados em `.vercel/output/static`, confere a precedência das rotas em
+`.vercel/output/config.json` e os headers dos `.md` no `vercel.json`; por isso,
+depende dos artefatos do build local. Os testes Node do middleware cobrem
 filtros semânticos, links relativos, links com esquema de script ou de dados,
 imagens sem `alt`, negociação, HEAD, erros, limites de tamanho e cancelamento. A
 elegibilidade compartilhada tem regressão para herança de noindex com override
