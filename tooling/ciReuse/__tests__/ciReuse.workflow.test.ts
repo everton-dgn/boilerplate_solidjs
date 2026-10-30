@@ -204,7 +204,7 @@ test('o grafo mantém produção independente e os jobs reutilizáveis atrás do
     )
   )
   const deploy = jobBlock('deploy')
-  assert.ok(deploy.includes('needs: [check, e2e-production]'))
+  assert.ok(deploy.includes('    needs: check\n'))
   // Sem função de status, o success() implícito pula o deploy quando a prova
   // dispensa jobs. A checagem estática não emula o scheduler do GitHub.
   const condition = (
@@ -213,7 +213,6 @@ test('o grafo mantém produção independente e os jobs reutilizáveis atrás do
   for (const clause of [
     '!cancelled()',
     "needs.check.result == 'success'",
-    "needs.e2e-production.result == 'success'",
     "github.event_name == 'push'",
     "github.ref == 'refs/heads/main'"
   ]) {
@@ -270,7 +269,7 @@ test(EVIDENCE_TEST, async context => {
   assert.deepEqual(evidence, { version: 2, tested_sha: tested })
 })
 
-test('pull, build e deploy usam uma única versão fixa do Vercel CLI', async () => {
+test('pull, build e deploy usam uma única versão fixa do Vercel CLI', () => {
   assert.doesNotMatch(WORKFLOW, /vercel@latest|registry\.npmjs\.org/u)
   const pins = [
     ...WORKFLOW.matchAll(/^ {2}VERCEL_CLI_VERSION: '(?<version>.+)'$/gmu)
@@ -285,26 +284,6 @@ test('pull, build e deploy usam uma única versão fixa do Vercel CLI', async ()
     WORKFLOW.split('vp dlx "vercel@$VERCEL_CLI_VERSION"').length - 1,
     VERCEL_COMMAND_COUNT
   )
-  const verify = stepScript('Verify deployment configuration')
-  const configured = {
-    VERCEL_ORG_ID: 'org',
-    VERCEL_PROJECT_ID: 'project',
-    VERCEL_TOKEN: 'token'
-  }
-  for (const [version, isAccepted] of [
-    ['64.5.0', true],
-    ['', false],
-    ['latest', false]
-  ] as const) {
-    assert.equal(
-      await runScript({
-        script: verify,
-        variables: { ...configured, VERCEL_CLI_VERSION: version }
-      }),
-      isAccepted,
-      version
-    )
-  }
 })
 
 test('o token da Vercel chega só aos passos do Vercel CLI', () => {
@@ -315,7 +294,6 @@ test('o token da Vercel chega só aos passos do Vercel CLI', () => {
   assert.deepEqual(withToken, [
     'Pull Vercel production settings',
     'Build deployment with Vercel CLI',
-    'Verify deployment configuration',
     'Deploy tested production artifact'
   ])
   for (const step of steps.filter(item =>

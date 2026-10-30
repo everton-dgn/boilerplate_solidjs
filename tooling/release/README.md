@@ -125,8 +125,8 @@ substitui a pendente anterior, preservando a execução já em andamento.
 O projeto da Vercel recebe deploys de produção pelo job `deploy` do CI. Nesta
 instância, é o projeto `boilerplate-solidjs`, no escopo
 `verton-toffanettos-projects`; uma cópia do boilerplate usa o próprio projeto. O
-job depende de `check` e do E2E de produção e executa somente em push na `main`.
-O CI de PRs valida o código sem publicar na Vercel.
+job depende de `check`, que exige o sucesso do E2E de produção, e executa
+somente em push na `main`. O CI de PRs valida o código sem publicar na Vercel.
 
 No push para `main`, o job de E2E de produção usa a versão do Vercel CLI fixada
 em `VERCEL_CLI_VERSION`, no `env` do
@@ -134,17 +134,16 @@ em `VERCEL_CLI_VERSION`, no `env` do
 `deploy`. Para atualizar, troque esse valor por uma versão estável publicada no
 npm e confira o E2E de produção e o deploy do push na `main`. O job carrega as
 configurações da Vercel e executa `vercel build --prod` uma vez. O secret
-`VERCEL_TOKEN` chega somente aos passos de `pull`, `build` e `deploy` e à
-conferência de configuração do deploy; a inspeção e o empacotamento do output
-rodam sem ele. A documentação da Vercel passa o token também ao `vercel build`,
-por isso o build o mantém. O Playwright testa esse output sem recompilar,
-recebendo apenas as variáveis públicas `VITE_*` daquele arquivo, sem as
-credenciais de backend. O job empacota somente `.vercel/output` em tar,
-preservando permissões e links, e compara o conteúdo e a listagem dos arquivos
-após os testes antes de enviá-lo ao GitHub Actions. O build recusa links que
-saiam do output e funções com `filePathMap`, pois essas referências exigiriam
-publicar arquivos fora do artefato testado. O Nitro atual gera a função com suas
-dependências dentro do output.
+`VERCEL_TOKEN` chega somente aos passos de `pull`, `build` e `deploy`; a
+inspeção e o empacotamento do output rodam sem ele. A documentação da Vercel
+passa o token também ao `vercel build`, por isso o build o mantém. O Playwright
+testa esse output sem recompilar, recebendo apenas as variáveis públicas
+`VITE_*` daquele arquivo, sem as credenciais de backend. O job empacota somente
+`.vercel/output` em tar, preservando permissões e links, e compara o conteúdo e
+a listagem dos arquivos após os testes antes de enviá-lo ao GitHub Actions. O
+build recusa links que saiam do output e funções com `filePathMap`, pois essas
+referências exigiriam publicar arquivos fora do artefato testado. O Nitro atual
+gera a função com suas dependências dentro do output.
 
 O job `deploy` roda sob o grupo de concorrência `vercel-production`. Antes de
 qualquer preparo, consulta o head da `main` pela API e só publica se ele ainda
@@ -184,13 +183,14 @@ desativa deploys disparados pela integração Git com
 `git.deploymentEnabled: false`. Isso preserva a exigência de publicar pelo CI
 mesmo se o repositório for reconectado à Vercel.
 
-O build usa Bun e mantém `ENABLE_EXPERIMENTAL_COREPACK=0`: no ambiente do passo
-`vercel build` do CI e em `build.env` no `vercel.json`. O Corepack não gerencia
-Bun. O valor no passo impede que configurações antigas baixadas por
-`vercel pull` reativem o Corepack no CLI; `build.env` cobre o ambiente do build
-remoto. Preserve também `LEFTHOOK=0` no deploy. As variáveis `HOST`, `PORT` e
-`BASE_URL_TEST` pertencem à execução local e aos testes. O contrato atual em
-`env.ts` não exige segredos de aplicação.
+O build usa Bun e mantém `ENABLE_EXPERIMENTAL_COREPACK=0` no ambiente do passo
+`vercel build` do CI. O Corepack não gerencia Bun, e o valor no passo impede que
+configurações antigas baixadas por `vercel pull` reativem o Corepack no CLI. O
+projeto não usa build remoto: um `vercel deploy` manual sem `--prebuilt`
+precisaria da mesma variável nas configurações do projeto na Vercel. Preserve
+também `LEFTHOOK=0` no deploy. As variáveis `HOST`, `PORT` e `BASE_URL_TEST`
+pertencem à execução local e aos testes. O contrato atual em `env.ts` não exige
+segredos de aplicação.
 
 A automação de release usa o token automático do GitHub. Ela só começa após o CI
 completo passar, incluindo o deploy. O merge de versionamento feito pelo

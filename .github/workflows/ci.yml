@@ -238,6 +238,9 @@ jobs:
     name: E2E (production)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -255,8 +258,6 @@ jobs:
       - name: Pull Vercel production settings
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           test -n "$VERCEL_ORG_ID" || { echo 'Missing VERCEL_ORG_ID variable'; exit 1; }
@@ -267,8 +268,6 @@ jobs:
       - name: Build deployment with Vercel CLI
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           ENABLE_EXPERIMENTAL_COREPACK: '0'
         run: vp dlx "vercel@$VERCEL_CLI_VERSION" build --prod --yes
@@ -379,13 +378,13 @@ jobs:
           accept 'E2E (fixtures)' "$FIXTURES_RESULT" false
 
   deploy:
-    needs: [check, e2e-production]
+    needs: check
     # O success() implícito considera toda a cadeia de needs e pularia o deploy
-    # quando a prova dispensa jobs; check já exige o resultado de cada um.
+    # quando a prova dispensa jobs; check já exige o resultado de cada um,
+    # inclusive o sucesso do E2E de produção.
     if:
-      ${{ !cancelled() && needs.check.result == 'success' &&
-      needs.e2e-production.result == 'success' && github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' }}
+      ${{ !cancelled() && needs.check.result == 'success' && github.event_name
+      == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     concurrency:
@@ -426,16 +425,6 @@ jobs:
         with:
           install-dependencies: false
           cache-save: false
-
-      - name: Verify deployment configuration
-        if: steps.freshness.outputs.should-deploy == 'true'
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          test -n "$VERCEL_ORG_ID" || { echo 'Missing VERCEL_ORG_ID variable'; exit 1; }
-          test -n "$VERCEL_PROJECT_ID" || { echo 'Missing VERCEL_PROJECT_ID variable'; exit 1; }
-          test -n "$VERCEL_TOKEN" || { echo 'Missing VERCEL_TOKEN secret'; exit 1; }
-          [[ "$VERCEL_CLI_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Invalid pinned Vercel CLI version'; exit 1; }
 
       - name: Download tested deployment artifact
         if: steps.freshness.outputs.should-deploy == 'true'
