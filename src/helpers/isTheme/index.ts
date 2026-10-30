@@ -1,11 +1,8 @@
 import type { Theme } from '@/@types/theme.ts'
+import { THEMES } from '@/constants/theme.ts'
 
-const THEME_KEYS = {
-  light: true,
-  dark: true,
-  system: true
-} satisfies Record<Theme, true>
+const themeValues: readonly unknown[] = THEMES
 
 export function isTheme(value: unknown): value is Theme {
-  return typeof value === 'string' && Object.hasOwn(THEME_KEYS, value)
+  return themeValues.includes(value)
 }
