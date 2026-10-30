@@ -158,7 +158,6 @@ test('loads each page body only with its route implementation', async ({
   expect(requested.has(String(homeModule))).toBe(true)
 })
 
-// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const language of LANGUAGES) {
   test(`renders ${language.locale} in SSR and hydrates without changing its locale`, async ({
     page,
@@ -262,7 +261,6 @@ test('negotiates only unprefixed page URLs and does not cache preference redirec
   expect(missing.status()).toBe(HTTP_NOT_FOUND)
 })
 
-// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const { header, locale } of [
   { header: '', locale: 'en' },
   { header: 'de;q=1, es;q=0', locale: 'en' },

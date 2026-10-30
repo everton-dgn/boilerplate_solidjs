@@ -8,7 +8,6 @@ const LANGUAGES = [
 ]
 const MOBILE_WIDTH = 375
 
-// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const language of LANGUAGES) {
   test(`fields, modal and notifications work in ${language.locale} after SSR`, async ({
     page,

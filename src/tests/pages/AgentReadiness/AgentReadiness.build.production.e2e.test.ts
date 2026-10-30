@@ -87,7 +87,6 @@ test('declares the headers of the static Markdown files', async () => {
 })
 
 for (const locale of LOCALES) {
-  // oxlint-disable-next-line vitest/prefer-each -- Playwright não oferece test.each.
   for (const path of PAGES) {
     test(`serves ${locale}${path || '/'} Markdown generated at build time`, async ({
       request,

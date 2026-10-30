@@ -95,42 +95,45 @@ async function startParserProxy(target: string): Promise<ParserProxy> {
   let truncate: (() => void) | undefined
   const server = createServer((incoming, outgoing) => {
     const url = new URL(incoming.url ?? '/', target)
+    const relay = async (response: IncomingMessage): Promise<void> => {
+      outgoing.writeHead(
+        response.statusCode ?? HTTP_BAD_GATEWAY,
+        response.headers
+      )
+      if (url.pathname === '/en') {
+        try {
+          await streamHead({ response, outgoing, released: gate.promise })
+        } catch {
+          outgoing.destroy()
+        }
+        return
+      }
+      if (
+        url.pathname === '/en/hydration' &&
+        url.searchParams.get('cut') === 'shell'
+      ) {
+        truncate = () => outgoing.end()
+        try {
+          await streamUntilShellMarker({ response, outgoing })
+        } catch {
+          outgoing.destroy()
+        }
+        return
+      }
+      if (url.pathname === '/en/hydration') {
+        truncate = () => {
+          response.unpipe(outgoing)
+          outgoing.end()
+        }
+      }
+      response.on('error', () => outgoing.destroy())
+      response.pipe(outgoing)
+    }
     const upstream = proxyRequest(
       url,
       { method: incoming.method, headers: incoming.headers },
-      async response => {
-        outgoing.writeHead(
-          response.statusCode ?? HTTP_BAD_GATEWAY,
-          response.headers
-        )
-        if (url.pathname === '/en') {
-          try {
-            await streamHead({ response, outgoing, released: gate.promise })
-          } catch {
-            outgoing.destroy()
-          }
-          return
-        }
-        if (
-          url.pathname === '/en/hydration' &&
-          url.searchParams.get('cut') === 'shell'
-        ) {
-          truncate = () => outgoing.end()
-          try {
-            await streamUntilShellMarker({ response, outgoing })
-          } catch {
-            outgoing.destroy()
-          }
-          return
-        }
-        if (url.pathname === '/en/hydration') {
-          truncate = () => {
-            response.unpipe(outgoing)
-            outgoing.end()
-          }
-        }
-        response.on('error', () => outgoing.destroy())
-        response.pipe(outgoing)
+      response => {
+        void relay(response)
       }
     )
     upstream.on('error', () => outgoing.destroy())

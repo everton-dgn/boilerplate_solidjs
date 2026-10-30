@@ -43,7 +43,6 @@ function readSitemap(xml: string): SitemapRecord[] {
 
 test.use({ javaScriptEnabled: false })
 
-// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const { locale, tag, messages } of LANGUAGES) {
   test(`publishes complete ${locale} SEO in server HTML without JavaScript`, async ({
     page

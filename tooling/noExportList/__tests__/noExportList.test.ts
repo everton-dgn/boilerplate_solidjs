@@ -1,12 +1,11 @@
-/* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import { test } from 'node:test'
 
 import { RuleTester } from 'vite-plus/lint/plugins-dev'
 
-import plugin from '../../css-modules-plugin.ts'
 import { lint } from '../../lint.ts'
+import plugin from '../../project-plugin.ts'
 import { noExportList } from '../index.ts'
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')

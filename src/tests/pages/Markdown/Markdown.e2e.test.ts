@@ -77,7 +77,6 @@ test('normal HTML hydrates the same ordered fragments and preserves controls', a
   ).toBeVisible()
 })
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright não oferece test.each.
 for (const preference of [
   { accept: 'text/markdown', type: 'text/markdown' },
   { accept: 'text/markdown;q=0, text/html', type: 'text/html' },
@@ -139,7 +138,6 @@ test('matches unenumerated parameter values without a Markdown producer', async 
   expect(await response.text()).toContain(`# HTML Markdown contract: ${slug}`)
 })
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright não oferece test.each.
 for (const locale of LOCALES) {
   test(`preserves the index slug and home Markdown aliases in ${locale}`, async ({
     request
@@ -211,7 +209,6 @@ test('localizes explicit Markdown URLs without losing their suffix', async ({
   )
 })
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright não oferece test.each.
 for (const path of ['/pt/markdown-noindex', '/pt/markdown-optout']) {
   test(`does not publish ${path}`, async ({ request }) => {
     const html = await request.get(path, { headers: { accept: 'text/html' } })

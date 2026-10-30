@@ -1,4 +1,3 @@
-/* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
 import { access, readFile } from 'node:fs/promises'
 import path from 'node:path'

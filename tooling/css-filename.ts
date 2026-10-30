@@ -2,6 +2,11 @@ import path from 'node:path'
 
 import { defineRule, type ESTree } from 'vite-plus/lint/plugins'
 
+import {
+  readStaticSpecifier,
+  resolveProjectPath
+} from './lint/import-specifier.ts'
+
 type CssImportNode =
   | ESTree.ImportDeclaration
   | ESTree.ExportNamedDeclaration
@@ -27,21 +32,14 @@ export const cssFilename = defineRule({
   meta: { type: 'problem', schema: [] },
   create(context) {
     function check(node: CssImportNode): void {
-      const { source } = node
-      if (source?.type !== 'Literal' || typeof source.value !== 'string') return
-      const [specifier = ''] = source.value.split(/[?#]/u)
-      if (!specifier.endsWith('.css')) return
-      const root = context.cwd
-      let absolute
-      if (specifier.startsWith('@/')) {
-        absolute = path.resolve(root, 'src', specifier.slice('@/'.length))
-      } else if (specifier.startsWith('/src/')) {
-        absolute = path.resolve(root, specifier.slice(1))
-      } else if (specifier.startsWith('.')) {
-        absolute = path.resolve(path.dirname(context.filename), specifier)
-      } else return
-      const relative = path.relative(root, absolute).split(path.sep).join('/')
-      if (!relative.startsWith('src/')) return
+      const specifier = readStaticSpecifier(node)
+      if (specifier === undefined) return
+      const relative = resolveProjectPath({
+        specifier,
+        filename: context.filename,
+        root: context.cwd
+      })
+      if (!relative.startsWith('src/') || !relative.endsWith('.css')) return
       const message = cssFilenameError(relative)
       if (message) context.report({ node, message })
     }

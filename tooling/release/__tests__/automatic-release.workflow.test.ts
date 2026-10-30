@@ -1,4 +1,3 @@
-/* oxlint-disable vitest/no-import-node-test -- O Bun executa os testes de release pela API node:test. */
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'

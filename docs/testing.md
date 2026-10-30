@@ -74,8 +74,7 @@ antes de cada teste com `setLocale(baseLocale, { reload: false })`; cada teste
 pode escolher outro idioma durante sua execução. Os projetos DOM e browser
 começam em inglês. No GitHub Actions, o reporter `github-actions` anota as
 falhas no PR. A configuração também exclui arquivos E2E, `node_modules` e
-`playwright`. `passWithNoTests: false` faz a execução falhar quando nenhum teste
-é encontrado. Essas opções ficam na configuração raiz, e os projetos as herdam
+`playwright`. Essas opções ficam na configuração raiz, e os projetos as herdam
 pelo `extends` padrão do Vitest, declarando só o que muda.
 
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra

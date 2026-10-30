@@ -1,5 +1,6 @@
 import { definePlugin, defineRule } from 'vite-plus/lint/plugins'
 
+import { readStaticSpecifier } from '../lint/import-specifier.ts'
 import { RENDER_INTEGRITY_MODULE } from './constants.ts'
 
 type StaticImportRule = {
@@ -21,17 +22,8 @@ function staticImportRule({ matches, message }: StaticImportRule) {
     create(context) {
       return {
         ImportExpression(node) {
-          const { source } = node
-          let specifier
-          if (source.type === 'Literal') {
-            specifier = source.value
-          } else if (
-            source.type === 'TemplateLiteral' &&
-            source.expressions.length === 0
-          ) {
-            specifier = source.quasis[0]?.value.cooked
-          }
-          if (typeof specifier === 'string' && matches(specifier)) {
+          const specifier = readStaticSpecifier(node)
+          if (specifier !== undefined && matches(specifier)) {
             context.report({ node, messageId: 'staticImport' })
           }
         }

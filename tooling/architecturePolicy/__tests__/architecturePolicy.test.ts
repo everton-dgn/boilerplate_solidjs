@@ -1,20 +1,10 @@
-/* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
-/* oxlint-disable node/no-sync -- O teste de integração cria uma fixture isolada e aguarda o CLI real. */
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync
-} from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 
 import { RuleTester } from 'vite-plus/lint/plugins-dev'
 
+import { lintFixture } from '../../testing/lintFixture/index.ts'
 import architecturePolicy from '../index.ts'
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')
@@ -55,10 +45,6 @@ test('a política distingue dependências permitidas e inversões de camada', ()
       {
         filename: 'src/primitives/theme/__tests__/theme.dom.test.tsx',
         code: 'import { Provider } from "@/components/atoms/Provider/index.tsx"'
-      },
-      {
-        filename: 'src/helpers/theme.spec.ts',
-        code: 'import { Button } from "@/components/atoms/Button/index.tsx"'
       },
       {
         filename: 'src/tests/fixtures/e2e/routes/index.tsx',
@@ -273,33 +259,13 @@ test('i18n e módulos gerados pertencem à camada base', () => {
 })
 
 test('o lint completo ativa a regra sem perder as restrições de backend', context => {
-  const directory = mkdtempSync(path.join(tmpdir(), 'solid-architecture-'))
-  // Sandbox criado pelo próprio teste: a remoção direta é o descarte correto.
-  context.after(() => rmSync(directory, { recursive: true, force: true }))
-  for (const name of ['node_modules', 'tooling']) {
-    symlinkSync(path.join(ROOT, name), path.join(directory, name), 'dir')
-  }
-  writeFileSync(
-    path.join(directory, 'package.json'),
-    JSON.stringify({ type: 'module' }),
-    { flag: 'wx' }
-  )
-  writeFileSync(
-    path.join(directory, 'vite.config.ts'),
-    'import { lint } from "./tooling/lint.ts"; export default { lint: { ...lint, options: { typeAware: false, typeCheck: false } } }',
-    { flag: 'wx' }
-  )
-  mkdirSync(path.join(directory, 'src/helpers'), { recursive: true })
-  writeFileSync(
-    path.join(directory, 'src/helpers/probe.ts'),
-    'export { Button } from "@/components/atoms/Button/index.tsx"; export const response = fetch("/private")',
-    { flag: 'wx' }
-  )
-  const result = spawnSync(
-    path.join(ROOT, 'node_modules/.bin/vp'),
-    ['lint', 'src', '--format', 'json'],
-    { cwd: directory, encoding: 'utf8', timeout: 30_000 }
-  )
+  const result = lintFixture({
+    context,
+    sources: {
+      'src/helpers/probe.ts':
+        'export { Button } from "@/components/atoms/Button/index.tsx"; export const response = fetch("/private")'
+    }
+  })
   assert.equal(result.status, 1, result.stderr)
   assert.match(result.stdout, /"code":\s*"architecture\(layer-imports\)"/u)
   assert.match(result.stdout, /"code":\s*"eslint\(no-restricted-globals\)"/u)
