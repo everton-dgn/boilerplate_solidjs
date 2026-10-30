@@ -32,7 +32,8 @@ vi.mock(import('@solidjs/web/server-functions/server'), () => ({
   configureServerFunctionsServer: vi.fn<typeof configureServerFunctionsServer>()
 }))
 
-const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+// Sem o contexto de idioma do paraglide, a mensagem sai no idioma base.
+const PUBLIC_MESSAGE = 'The request could not be completed.'
 const LOG_MESSAGE = '[server-error] Unexpected failure; private details omitted'
 const HTTP_NOT_FOUND = 404
 

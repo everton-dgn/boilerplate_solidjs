@@ -26,7 +26,8 @@ de `@solidjs/web`; a troca pelo erro público acontece só em produção.
 - [protectServerOperation](../src/infra/server/protectServerOperation/index.ts)
   captura lançamentos e rejeições e verifica a estrutura do resultado.
 - [publicErrors](../src/infra/server/publicErrors/index.ts) cria um erro novo
-  com a mensagem fixa "Não foi possível concluir a solicitação.".
+  com a mensagem pública do catálogo colocalizado, no idioma da requisição, como
+  descrito em [Idioma da mensagem pública](#idioma-da-mensagem-pública).
 - [logServerFailure](../src/infra/server/logServerFailure/index.ts) é o único
   ponto de log: grava a mensagem fixa da origem e, para um `Error`, só a classe
   e os frames filtrados descritos em [Log de falhas](#log-de-falhas).
@@ -141,6 +142,30 @@ A contenção só alcança a janela da cadeia de middleware. A criação do even
 commit da resposta e falhas do corpo depois que a `Response` sai ficam fora
 dela. O comportamento foi medido no preview do Nitro; o runtime da Vercel não
 foi medido localmente.
+
+## Idioma da mensagem pública
+
+A mensagem de `createPublicError()` e dos 500 em texto vem do ID
+`publicErrors_message`, em `src/infra/server/publicErrors/i18n/`, com os três
+idiomas. `publicErrorMessage()` lê o idioma na hora da chamada, pelo contexto
+que o `paraglideMiddleware` abre em `localizeRequest`: páginas usam URL, cookie,
+`Accept-Language` e idioma base, e server functions chamadas por HTTP usam antes
+o `Referer` de mesma origem. O render, as server functions chamadas no SSR, o
+hook de `configureServerErrors` e a contenção da cadeia interna rodam dentro
+desse contexto.
+
+Fora dele, a mensagem sai no idioma base. Isso vale para as contenções externas,
+que tratam falhas do próprio `localizeRequest` e do adaptador Markdown antes do
+render, e para caminhos que não passam pela localização, como `robots.txt`. Numa
+navegação tratada por essas contenções, o erro público nasce antes do render e
+leva o idioma base no payload serializado, enquanto a página de erro renderiza
+no idioma da requisição. O adaptador Markdown também roda fora do contexto e,
+por isso, resolve o idioma do seu 500 pela requisição original, na mesma ordem
+do `localizeRequest`.
+
+O hook é síncrono e não pode lançar: se a resolução do idioma falhar, a mensagem
+sai no idioma base. O texto vem só do catálogo, sem nada do erro original. Os
+testes Node e E2E conferem o texto esperado no idioma de cada caso.
 
 ## Log de falhas
 
@@ -429,13 +454,13 @@ A captura HTTP usa `route.fetch()` e entrega a resposta ao browser com
 captura aguarda o corpo completo e não mede cancelamento ou latência. O
 streaming do documento SSR não é interceptado.
 
-Os testes toleram em `pageerror` só a mensagem pública fixa e, nos casos que
-passam por uma fonte assíncrona ou por streaming, a mensagem genérica do
-runtime; cada caso declara as mensagens admitidas, que dependem da ordem entre a
-hidratação e a chegada do fragmento rejeitado. O status do streaming pode
-permanecer 200 após o envio inicial; os testes conferem confidencialidade
-independentemente dele. Fontes adiadas aninhadas e trabalho assíncrono fora do
-retorno aguardado exigem integração e testes próprios.
+Os testes toleram em `pageerror` só a mensagem pública no idioma da página e,
+nos casos que passam por uma fonte assíncrona ou por streaming, a mensagem
+genérica do runtime; cada caso declara as mensagens admitidas, que dependem da
+ordem entre a hidratação e a chegada do fragmento rejeitado. O status do
+streaming pode permanecer 200 após o envio inicial; os testes conferem
+confidencialidade independentemente dele. Fontes adiadas aninhadas e trabalho
+assíncrono fora do retorno aguardado exigem integração e testes próprios.
 
 O link global "Recarregar página" preserva a URL e faz uma navegação de
 documento, independente da hidratação. Ações iniciadas depois do carregamento

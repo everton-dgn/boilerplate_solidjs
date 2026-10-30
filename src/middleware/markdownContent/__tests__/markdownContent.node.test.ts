@@ -7,7 +7,7 @@ import {
 } from '@solidjs/web'
 import { createMemo, Loading, onCleanup } from 'solid-js'
 
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import { Router } from '@/router.ts'
 
 import {
@@ -632,6 +632,22 @@ describe('markdown resource bounds', () => {
     expect(response.headers.get('cache-control')).toBe('private, no-store')
     await expect(response.text()).resolves.not.toContain('Partial fallback')
   })
+
+  // O adaptador roda fora do contexto de idioma; o idioma vem da requisição.
+  it.each([
+    ['/pt/about.md', 'Não foi possível concluir a solicitação.'],
+    ['/en/about.md', 'The request could not be completed.'],
+    ['/es/about.md', 'No se pudo completar la solicitud.']
+  ])(
+    'answers the public 500 of %s in the request locale',
+    async (path, message) => {
+      const request = event({ path })
+      Object.assign(request.locals, { ssrRenderState: undefined })
+      const response = await markdownContent(request, () => html())
+      expect(response.status).toBe(HTTP_SERVER_ERROR)
+      await expect(response.text()).resolves.toBe(message)
+    }
+  )
 
   // A contenção do middleware registra o log e responde 500 público.
   it('bounds conversion input', async () => {

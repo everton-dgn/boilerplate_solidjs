@@ -4,7 +4,7 @@ import { type HeadTag, useHead } from '@solidjs/web'
 import type { Thing } from 'schema-dts'
 import { type Accessor, createMemo, createUniqueId } from 'solid-js'
 
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import {
   hasMarkdownOptIn,
   markdownPath

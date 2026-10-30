@@ -20,6 +20,8 @@ const DIAMOND_DEPTH = 16
 const REJECTED_SHAPES = 4
 const LOG_MESSAGE =
   '[server-operation] Unexpected failure; private details omitted'
+// Sem o contexto de idioma do paraglide, a mensagem sai no idioma base.
+const PUBLIC_MESSAGE = 'The request could not be completed.'
 
 function thrownValue(invocation: Invocation): unknown {
   try {
@@ -47,7 +49,7 @@ function logUnavailable(): never {
 function expectPublicFailure(error: unknown): void {
   expect(error).toBeInstanceOf(Error)
   if (!(error instanceof Error)) throw new TypeError('Expected Error')
-  expect(error.message).toBe('Não foi possível concluir a solicitação.')
+  expect(error.message).toBe(PUBLIC_MESSAGE)
   expect(error.cause).toBeUndefined()
   expect(Object.keys(error)).toStrictEqual([])
   expect(Object.getOwnPropertyNames(error).toSorted()).toStrictEqual([
@@ -89,7 +91,7 @@ describe('proteção de operações no servidor', () => {
     })
     await expect(
       protectServerOperation({ run: () => Promise.reject(error) })
-    ).rejects.toThrow('Não foi possível concluir a solicitação.')
+    ).rejects.toThrow(PUBLIC_MESSAGE)
     await expect(
       protectServerOperation({ run: () => Promise.resolve({ ok: true }) })
     ).resolves.toStrictEqual({ ok: true })
@@ -112,7 +114,7 @@ describe('proteção de operações no servidor', () => {
       expectPublicFailure(thrownValue({ run: () => value }))
       await expect(
         protectServerOperation({ run: () => Promise.resolve({ value }) })
-      ).rejects.toThrow('Não foi possível concluir a solicitação.')
+      ).rejects.toThrow(PUBLIC_MESSAGE)
     }
   })
 
@@ -148,7 +150,7 @@ describe('proteção de operações no servidor', () => {
           run: () => Promise.resolve(value),
           allowControl: true
         })
-      ).rejects.toThrow('Não foi possível concluir a solicitação.')
+      ).rejects.toThrow(PUBLIC_MESSAGE)
     }
     expect(serialize).not.toHaveBeenCalled()
     const plain = ['public']
@@ -328,7 +330,7 @@ describe('log da proteção de operações', () => {
       protectServerOperation({
         run: () => Promise.reject(new Error('PRIVATE_ASYNC'))
       })
-    ).rejects.toThrow('Não foi possível concluir a solicitação.')
+    ).rejects.toThrow(PUBLIC_MESSAGE)
     expect(readLog(console.error)).toStrictEqual({
       heads: [
         [LOG_MESSAGE, 'Error'],

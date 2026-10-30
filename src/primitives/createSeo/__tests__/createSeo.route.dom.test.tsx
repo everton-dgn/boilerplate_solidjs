@@ -5,7 +5,7 @@ import {
 } from '@solidjs/router'
 import { render } from '@solidjs/web'
 
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import { POLL, readCanonical } from '@/tests/helpers/headTags/index.ts'
 import {
   parseStructuredData,

@@ -20,7 +20,11 @@ const HTTP_INTERNAL_SERVER_ERROR = 500
 // genérico do runner.
 const REQUEST_TIMEOUT = 15_000
 const LOADING_TEXT = 'Carregando fixture...'
-const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+// A mensagem pública segue o idioma da requisição. O fetch do Node não pede um
+// idioma suportado e recebe o idioma base; o navegador, com pt-BR, abre a
+// página em pt.
+const PUBLIC_MESSAGE = 'The request could not be completed.'
+const PAGE_PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 // Mensagens que o navegador pode lançar ao hidratar, conforme a ordem entre a
 // hidratação e a chegada do fragmento rejeitado: a lista admite cada uma sem
 // exigi-la. A rejeição da fonte assíncrona é serializada com a política
@@ -69,7 +73,7 @@ const CASES: FixtureCase[] = [
     gate: 'stream',
     status: HTTP_OK,
     content: 'Algo deu errado!',
-    pageErrors: [PUBLIC_MESSAGE]
+    pageErrors: [PAGE_PUBLIC_MESSAGE]
   },
   {
     name: 'async-ssr',
@@ -83,14 +87,14 @@ const CASES: FixtureCase[] = [
     gate: 'stream',
     status: HTTP_OK,
     content: 'Algo deu errado!',
-    pageErrors: [RUNTIME_MESSAGE, PUBLIC_MESSAGE]
+    pageErrors: [RUNTIME_MESSAGE, PAGE_PUBLIC_MESSAGE]
   },
   {
     name: 'async-element',
     gate: 'stream',
     status: HTTP_OK,
     content: 'Algo deu errado!',
-    pageErrors: [RUNTIME_MESSAGE, PUBLIC_MESSAGE]
+    pageErrors: [RUNTIME_MESSAGE, PAGE_PUBLIC_MESSAGE]
   }
 ]
 
@@ -323,7 +327,7 @@ test.describe('exceções no middleware', () => {
     expect(await page.content()).not.toContain(marker)
     // Só a mensagem pública pode reaparecer ao hidratar o fallback.
     expect(
-      pageErrors.filter(message => message !== PUBLIC_MESSAGE)
+      pageErrors.filter(message => message !== PAGE_PUBLIC_MESSAGE)
     ).toStrictEqual([])
   })
 })

@@ -50,7 +50,8 @@ type ContainedCase = {
 }
 
 const PRIVATE_MARKER = 'PRIVATE_SERIALIZATION_FAILURE'
-const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+// O adaptador tira o idioma da requisição, e as requisições usam /en.
+const PUBLIC_MESSAGE = 'The request could not be completed.'
 const LOG_MESSAGE = '[server-error] Unexpected failure; private details omitted'
 const FAILURE_LOG_CLASSES = {
   parse: 'Error',
