@@ -6,6 +6,7 @@ export const environmentRules: LintRules = {
   'project/css-filename': 'error',
   'project/test-filename': 'error',
   'project/no-export-list': 'error',
+  'project/seo-module': 'error',
   'jsx-a11y/alt-text': 'error',
   'jsx-a11y/anchor-ambiguous-text': 'error',
   'jsx-a11y/anchor-has-content': 'error',

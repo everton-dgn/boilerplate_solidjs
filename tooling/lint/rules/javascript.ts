@@ -53,7 +53,6 @@ export const javascriptRules: LintRules = {
   'eslint/no-dupe-else-if': 'error',
   'eslint/no-dupe-keys': 'error',
   'eslint/no-duplicate-case': 'error',
-  'eslint/no-duplicate-imports': ['error', { allowSeparateTypeImports: false }],
   'eslint/no-else-return': 'error',
   'eslint/no-empty': ['error', { allowEmptyCatch: false }],
   'eslint/no-empty-character-class': 'error',

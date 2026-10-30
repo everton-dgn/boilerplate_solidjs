@@ -6,7 +6,8 @@ const options = {
   url: 'https://backend.invalid/data',
   schema: v.object({ message: v.string() })
 }
-const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+// Sem o contexto de idioma do paraglide, a mensagem sai no idioma base.
+const PUBLIC_MESSAGE = 'The request could not be completed.'
 const TIMEOUT_MS = 10_000
 const OVERSIZED_LENGTH = '1000001'
 const CHUNK_BYTES = 600_000
@@ -56,6 +57,21 @@ describe('transporte JSON protegido', () => {
     expect(
       vi.mocked<typeof fetch>(fetch).mock.lastCall?.[1]?.signal?.aborted
     ).toBe(true)
+  })
+
+  it('mantém o timeout quando o chamador informa um signal que não aborta', async () => {
+    const timeoutController = new AbortController()
+    const timeout = vi
+      .spyOn(AbortSignal, 'timeout')
+      .mockReturnValue(timeoutController.signal)
+    const mock = fetchMock(Response.json({ message: 'ok' }))
+    const caller = new AbortController()
+    const pending = requestJson({ ...options, init: { signal: caller.signal } })
+    timeoutController.abort()
+    await expect(pending).resolves.toStrictEqual({ message: 'ok' })
+    expect(timeout).toHaveBeenCalledExactlyOnceWith(TIMEOUT_MS)
+    expect(caller.signal.aborted).toBe(false)
+    expect(mock.mock.lastCall?.[1]?.signal?.aborted).toBe(true)
   })
 
   it('cancela o corpo de uma falha HTTP sem lê-lo', async () => {

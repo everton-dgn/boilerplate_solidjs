@@ -44,22 +44,22 @@
     "commitlint": "commitlint"
   },
   "dependencies": {
-    "@inlang/paraglide-js": "2.29.2",
+    "@inlang/paraglide-js": "2.29.3",
     "@mdream/js": "2.0.3",
-    "@solidjs/router": "2.0.0-next.42",
-    "@solidjs/web": "2.0.0-rc.18",
-    "filesystem-routing": "0.4.1",
-    "solid-js": "2.0.0-rc.18",
+    "@solidjs/router": "2.0.0-next.43",
+    "@solidjs/web": "2.0.0-rc.20",
+    "filesystem-routing": "0.4.2",
+    "solid-js": "2.0.0-rc.20",
     "valibot": "1.5.0"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
     "@commitlint/config-conventional": "21.2.4",
     "@iconify-json/hugeicons": "1.2.35",
-    "@inlang/plugin-message-format": "4.5.5",
-    "@inlang/sdk": "4.0.4",
+    "@inlang/plugin-message-format": "4.5.6",
+    "@inlang/sdk": "4.1.0",
     "@playwright/test": "1.64.1",
-    "@solidjs/vite-plugin": "3.0.0-next.51",
+    "@solidjs/vite-plugin": "3.0.0-next.52",
     "@testing-library/jest-dom": "7.0.1",
     "@types/node": "24.19.2",
     "@vitest/browser-playwright": "catalog:",
@@ -67,9 +67,9 @@
     "@vitest/ui": "catalog:",
     "eslint-plugin-solid": "0.18.1",
     "happy-dom": "21.0.4",
-    "knip": "6.43.0",
+    "knip": "6.44.0",
     "lefthook": "2.2.2",
-    "nitro": "3.0.260903-beta",
+    "nitro": "3.0.261029-rc",
     "playwright": "1.64.1",
     "schema-dts": "2.1.0",
     "stylelint": "17.16.0",
@@ -89,7 +89,7 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "24.22.1",
+      "version": "24.22.2",
       "onFail": "download"
     }
   },
@@ -108,14 +108,14 @@
     }
   },
   "overrides": {
-    "@solidjs/babel-plugin": "2.0.0-rc.18",
-    "@solidjs/compiler": "2.0.0-rc.18",
+    "@solidjs/babel-plugin": "2.0.0-rc.20",
+    "@solidjs/compiler": "2.0.0-rc.20",
+    "@solidjs/signals": "2.0.0-rc.20",
     "vite@*": "catalog:",
     "vitest@*": "catalog:"
   },
   "patchedDependencies": {
     "@mdream/js@2.0.3": "patches/@mdream%2Fjs@2.0.3.patch",
-    "@voidzero-dev/vite-plus-core@1.4.0": "patches/@voidzero-dev%2Fvite-plus-core@1.4.0.patch",
-    "@solidjs/web@2.0.0-rc.18": "patches/@solidjs%2Fweb@2.0.0-rc.18.patch"
+    "@solidjs/web@2.0.0-rc.20": "patches/@solidjs%2Fweb@2.0.0-rc.20.patch"
   }
 }

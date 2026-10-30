@@ -1,7 +1,7 @@
-import { expect, test, type APIRequestContext } from '@playwright/test'
+import type { APIRequestContext } from '@playwright/test'
 
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 test.use({ locale: 'pt-BR' })
 
@@ -87,13 +87,11 @@ test.describe('CSP com nonce na entrada de produção', () => {
     ])
   })
 
-  test('hidrata a Home sem violação de CSP', async ({ page }) => {
-    const errors: string[] = []
-    const violations = await watchCspViolations(page)
-    page.on('pageerror', error => {
-      errors.push(error.message)
-    })
-
+  test('hidrata a Home sem violação de CSP', async ({
+    page,
+    pageErrors,
+    cspViolations
+  }) => {
     const response = await page.goto('/')
     expect(response?.status()).toBe(HTTP_OK)
     await expect.poll(async () => hydrationFinished(page)).toBe(true)
@@ -101,8 +99,8 @@ test.describe('CSP com nonce na entrada de produção', () => {
     await page.getByRole('button', { name: 'Selecionar tema' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
 
-    expect(violations).toStrictEqual([])
-    expect(errors).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
   })
 
   // Sem 'unsafe-inline' no style-src, um atributo style no HTML é bloqueado. O
@@ -112,7 +110,9 @@ test.describe('CSP com nonce na entrada de produção', () => {
     test(`aplica o tema ${theme} do cookie no SSR sem violação de CSP`, async ({
       page,
       context,
-      baseURL
+      baseURL,
+      pageErrors,
+      cspViolations
     }) => {
       if (!baseURL) throw new Error('Missing test base URL')
       await context.addCookies([
@@ -121,11 +121,6 @@ test.describe('CSP com nonce na entrada de produção', () => {
       // Com o sistema no tema oposto, a classe só pode vir do cookie.
       await page.emulateMedia({
         colorScheme: theme === 'dark' ? 'light' : 'dark'
-      })
-      const errors: string[] = []
-      const violations = await watchCspViolations(page)
-      page.on('pageerror', error => {
-        errors.push(error.message)
       })
 
       const response = await page.goto('/')
@@ -137,8 +132,8 @@ test.describe('CSP com nonce na entrada de produção', () => {
       await expect(page.locator('html')).toHaveClass(theme)
       await expect(page.locator('html')).toHaveCSS('color-scheme', theme)
 
-      expect(violations).toStrictEqual([])
-      expect(errors).toStrictEqual([])
+      expect(cspViolations).toStrictEqual([])
+      expect(pageErrors).toStrictEqual([])
     })
   }
 })

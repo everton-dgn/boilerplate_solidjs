@@ -28,10 +28,15 @@ function digest(value: Uint8Array): Buffer {
   return createHash('sha256').update(value).digest()
 }
 
-async function hasMainCache({ repository, key, isPrefix, ports }: CacheLookup) {
-  const query = encodeURIComponent(key)
+// O filtro key da API compara por prefixo; a chave exata exige conferir a igualdade.
+async function hasMainCache({
+  repository,
+  key,
+  isPrefix,
+  ports
+}: CacheLookup): Promise<boolean> {
   const caches = await ports.api<ActionsCaches>(
-    `repos/${repository}/actions/caches?ref=${encodeURIComponent(MAIN_REF)}&key=${query}&per_page=${PAGE_SIZE}`
+    `repos/${repository}/actions/caches?ref=${encodeURIComponent(MAIN_REF)}&key=${encodeURIComponent(key)}&per_page=${PAGE_SIZE}`
   )
   return caches.actions_caches.some(
     cache =>
@@ -60,6 +65,8 @@ export async function hasMainCaches({
   if (typeof node !== 'string' || !bun) {
     throw new Error('Versões de Node ou Bun ausentes no package.json.')
   }
+  // Formato documentado no README do setup-vp, com a arquitetura do Node:
+  // vite-plus-{OS}-{arch}-{pm}-{lockfile-hash}.
   const dependencies = `${DEPENDENCY_CACHE_PREFIX}${runner.os}-${runner.nodeArch}-bun-${hash}`
   const validation = `${VALIDATION_CACHE_PREFIX}${runner.os}-${runner.arch}-node-${node}-bun-${bun}-${hash}-`
   const lookups = [

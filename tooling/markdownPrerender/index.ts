@@ -34,7 +34,7 @@ type PrerenderNitro = {
 type RoutingOptions = { outputDir: string; paths: string[] }
 type InitialRoutes = {
   routes: v.InferOutput<typeof RouteSchema>[]
-  paths: string[]
+  directories: string[]
 }
 
 const MARKDOWN_FILE = /^\/[^?#]+\.md$/u
@@ -63,13 +63,10 @@ function readPaths(contents: string | undefined): string[] | undefined {
   }
 }
 
-function assertInitialRoutes({ routes, paths }: InitialRoutes): void {
-  const pages = paths
-    .filter(path => path.endsWith(INDEX_FILE))
-    .flatMap(path => {
-      const directory = path.slice(0, -INDEX_FILE.length)
-      return directory ? [directory, `${directory}/`] : ['/']
-    })
+function assertInitialRoutes({ routes, directories }: InitialRoutes): void {
+  const pages = directories.flatMap(directory =>
+    directory ? [directory, `${directory}/`] : ['/']
+  )
   for (const route of routes) {
     if (
       route.src === undefined ||
@@ -97,21 +94,19 @@ async function protectDirectoryPages({
 }: RoutingOptions): Promise<void> {
   const directories = paths
     .filter(path => path.endsWith(INDEX_FILE))
-    .map(path => {
-      const directory = path.slice(0, -INDEX_FILE.length)
-      const pattern = directory.replaceAll(
-        /[.*+?^${}()|[\]\\]/gu,
-        String.raw`\$&`
-      )
-      return directory ? `${pattern}/?` : '/'
-    })
+    .map(path => path.slice(0, -INDEX_FILE.length))
   if (directories.length === 0) return
   const file = nodePath.join(outputDir, 'config.json')
   const config = v.parse(
     BuildConfigSchema,
     JSON.parse(await readFile(file, 'utf8'))
   )
-  const prefix = `^(?=(?:${directories.join('|')})$)`
+  const patterns = directories.map(directory =>
+    directory
+      ? `${directory.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`)}/?`
+      : '/'
+  )
+  const prefix = `^(?=(?:${patterns.join('|')})$)`
   let phase: string | undefined
   const routes = config.routes.flatMap(route => {
     if (route.handle !== undefined) {
@@ -126,7 +121,10 @@ async function protectDirectoryPages({
   if (boundary === NOT_FOUND || routes.length === 0) {
     throw new Error('Vercel output has no filesystem routes for Markdown pages')
   }
-  assertInitialRoutes({ routes: config.routes.slice(0, boundary), paths })
+  assertInitialRoutes({
+    routes: config.routes.slice(0, boundary),
+    directories
+  })
   config.routes.splice(boundary, 0, ...routes)
   await writeFile(file, `${JSON.stringify(config, null, JSON_INDENT)}\n`)
 }

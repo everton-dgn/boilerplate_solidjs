@@ -12,6 +12,10 @@ inputs:
     description: Save the package cache after the job succeeds
     required: false
     default: 'true'
+  cache-toolchain:
+    description: Restore Vite+, Node and Bun from the Actions cache
+    required: false
+    default: 'false'
 
 outputs:
   node:
@@ -38,12 +42,13 @@ runs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Set up Vite+
-      uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+      uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
       with:
         version: ${{ steps.toolchain.outputs.vite-plus }}
         node-version: ${{ steps.toolchain.outputs.node }}
         cache: ${{ inputs.install-dependencies == 'true' }}
         cache-save: ${{ inputs.cache-save }}
+        cache-toolchain: ${{ inputs.cache-toolchain }}
         cache-dependency-path: bun.lock
         run-install: false
 

@@ -1,6 +1,9 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
+import { BOT } from './constants.ts'
+import type { PullRequest } from './types.ts'
+
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
 type Mutation = {
   path: string
@@ -11,6 +14,7 @@ type ApiRequest = {
   path: string
   method: string
   payload?: Json
+  allowMissing?: boolean
 }
 type SourceRun = {
   conclusion: string
@@ -40,7 +44,6 @@ type ReleasePullRequestCheck = OpenPullRequestCheck & {
 const execute = promisify(execFile)
 const MAX_OUTPUT_BYTES = 16_777_216
 const RELEASE_FILE_COUNT = 2
-const RELEASE_BOT = 'github-actions[bot]'
 
 // Branches de release criadas pela automação: release/vX.Y.Z-<12 hex do SHA>.
 function isReleaseBranch(ref: string): boolean {
@@ -49,8 +52,13 @@ function isReleaseBranch(ref: string): boolean {
   )
 }
 
-async function request<T>({ path, method, payload }: ApiRequest): Promise<T> {
-  const args = ['api', path, '--method', method]
+async function request<T>({
+  path,
+  method,
+  payload,
+  allowMissing = false
+}: ApiRequest): Promise<T> {
+  const args = ['api', path, '--method', method, '--include']
   if (payload !== undefined) args.push('--input', '-')
   // oxlint-disable-next-line promise/avoid-new -- Faz a ponte entre o stdin do execFile e o callback de conclusão.
   const output = await new Promise<string>((resolve, reject) => {
@@ -59,37 +67,52 @@ async function request<T>({ path, method, payload }: ApiRequest): Promise<T> {
       args,
       { maxBuffer: MAX_OUTPUT_BYTES },
       (error, stdout) => {
+        if (!error) {
+          resolve(stdout)
+          return
+        }
+        // O status HTTP vem no stdout mesmo quando o gh falha; só o 404 esperado
+        // vira ausência, nunca uma falha de autenticação ou de rede.
+        if (allowMissing && /^HTTP\/\S+ 404\b/mu.test(stdout)) {
+          resolve('')
+          return
+        }
         // Erros da API podem conter dados da requisição; não ecoe payloads nem tokens.
-        if (error) {
-          reject(
-            new Error(
-              `GitHub API ${method} ${path} failed. Check workflow permissions and repository rules.`
-            )
+        reject(
+          new Error(
+            `GitHub API ${method} ${path} failed. Check workflow permissions and repository rules.`
           )
-        } else resolve(stdout)
+        )
       }
     )
     child.stdin?.end(
       payload === undefined ? undefined : JSON.stringify(payload)
     )
   })
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Quem chama valida as identidades e o estado usados nas mutações.
-  return JSON.parse(output) as T
-}
-
-export type PullRequest = {
-  number: number
-  state: string
-  merged: boolean
-  merge_commit_sha: string | null
-  user: { login: string }
-  head: { sha: string; ref: string; repo: { full_name: string } }
-  base: { ref: string; repo: { full_name: string } }
+  const separator = output.search(/\r?\n\r?\n/u)
+  if (output && separator < 0) {
+    throw new Error('Missing GitHub HTTP response headers.')
+  }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Quem chama valida os campos usados; só optionalApi recebe a ausência.
+  return (output ? JSON.parse(output.slice(separator)) : undefined) as T
 }
 
 export async function command(file: string, args: string[]): Promise<string> {
   const result = await execute(file, args, { maxBuffer: MAX_OUTPUT_BYTES })
   return result.stdout.trim()
+}
+
+// O checkout não guarda o token (persist-credentials: false). Fetch e push se
+// autenticam pelo helper do gh com o GH_TOKEN do passo, o que vale também para
+// repositório privado.
+export function git(...args: string[]): Promise<string> {
+  return command('git', [
+    '-c',
+    'credential.helper=',
+    '-c',
+    'credential.helper=!gh auth git-credential',
+    ...args
+  ])
 }
 
 export function api<T>(path: string): Promise<T> {
@@ -100,34 +123,8 @@ export function mutate<T>(mutation: Mutation): Promise<T> {
   return request<T>(mutation)
 }
 
-export async function optionalApi<T>(path: string): Promise<T | undefined> {
-  // Inspecione o status HTTP explicitamente para que falha de autenticação ou de rede nunca seja tratada como ausência.
-  // oxlint-disable-next-line promise/avoid-new -- O HTTP 404 vem no stdout mesmo quando o execFile falha.
-  const output = await new Promise<string>((resolve, reject) => {
-    execFile(
-      'gh',
-      ['api', path, '--include'],
-      { maxBuffer: MAX_OUTPUT_BYTES },
-      (error, stdout) => {
-        if (!error) {
-          resolve(stdout)
-          return
-        }
-        if (/^HTTP\/\S+ 404\b/mu.test(stdout)) {
-          resolve('')
-          return
-        }
-        reject(
-          new Error(`Cannot read ${path}: ${error.code ?? 'unknown error'}`)
-        )
-      }
-    )
-  })
-  if (!output) return undefined
-  const separator = output.search(/\r?\n\r?\n/u)
-  if (separator < 0) throw new Error('Missing GitHub HTTP response headers.')
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Quem chama valida os campos relevantes para a mutação.
-  return JSON.parse(output.slice(separator).trim()) as T
+export function optionalApi<T>(path: string): Promise<T | undefined> {
+  return request<T | undefined>({ path, method: 'GET', allowMissing: true })
 }
 
 export function requireSha(value: string): string {
@@ -165,7 +162,7 @@ export function isOpenReleasePullRequest({
   repository
 }: OpenPullRequestCheck): boolean {
   return (
-    pr.user.login === RELEASE_BOT &&
+    pr.user.login === BOT.name &&
     pr.state === 'open' &&
     !pr.merged &&
     isReleaseBranch(pr.head.ref) &&
@@ -182,7 +179,7 @@ export function assertReleasePullRequest({
   head
 }: ReleasePullRequestCheck): void {
   if (
-    pr.user.login !== RELEASE_BOT ||
+    pr.user.login !== BOT.name ||
     pr.head.sha !== head ||
     pr.head.ref !== branch ||
     pr.head.repo.full_name !== repository ||

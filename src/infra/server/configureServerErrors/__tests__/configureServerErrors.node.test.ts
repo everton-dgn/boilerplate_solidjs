@@ -32,7 +32,8 @@ vi.mock(import('@solidjs/web/server-functions/server'), () => ({
   configureServerFunctionsServer: vi.fn<typeof configureServerFunctionsServer>()
 }))
 
-const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+// Sem o contexto de idioma do paraglide, a mensagem sai no idioma base.
+const PUBLIC_MESSAGE = 'The request could not be completed.'
 const LOG_MESSAGE = '[server-error] Unexpected failure; private details omitted'
 const HTTP_NOT_FOUND = 404
 
@@ -113,7 +114,12 @@ describe('registro central da política de erros', () => {
     ;({ createRenderIntegrity: createIntegrity } =
       await import('@/infra/server/renderIntegrity/index.ts'))
   })
-  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+  // O unstubEnvs desfaz o stub do beforeAll antes de cada caso; ele só fixa o
+  // modo lido na carga do registro.
+  beforeEach(() => {
+    vi.stubEnv('DEV', false)
+    vi.spyOn(console, 'error').mockImplementation(vi.fn())
+  })
 
   it('registra somente wrapInvocation e preserva sinais de controle', () => {
     expect(Object.keys(config ?? {})).toStrictEqual(['wrapInvocation'])

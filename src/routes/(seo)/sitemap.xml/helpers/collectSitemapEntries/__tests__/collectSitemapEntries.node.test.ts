@@ -217,4 +217,66 @@ describe('fontes das rotas com parâmetro', () => {
 
     expect(manifest).toStrictEqual({ entries: [], sources: [listUserPosts] })
   })
+
+  it('retira a fonte do layout quando o índice filho na mesma URL declara noindex', () => {
+    const listPosts = vi.fn<() => never[]>(() => [])
+    const listComments = vi.fn<() => never[]>(() => [])
+    const listTags = vi.fn<() => never[]>(() => [])
+    const listPrivate = vi.fn<() => never[]>(() => [])
+    const manifest = collectSitemapEntries([
+      page({
+        path: '/blog/:slug',
+        info: { sitemap: listPosts },
+        children: [
+          page({ path: '/', info: { seo: { noindex: true } } }),
+          page({ path: '/comments', info: { sitemap: listComments } })
+        ]
+      }),
+      page({
+        path: '/tags/:tag',
+        info: { sitemap: listTags },
+        children: [
+          page({
+            path: '/private',
+            info: { seo: { noindex: true }, sitemap: listPrivate }
+          })
+        ]
+      })
+    ])
+
+    expect(manifest.sources).toStrictEqual([listComments, listTags])
+  })
+
+  it('troca a fonte do layout pela do índice filho e herda a do layout sem declaração', () => {
+    const listPosts = vi.fn<() => never[]>(() => [])
+    const listIndexPosts = vi.fn<() => never[]>(() => [])
+    const listTags = vi.fn<() => never[]>(() => [])
+    const manifest = collectSitemapEntries([
+      page({
+        path: '/blog/:slug',
+        info: { sitemap: listPosts },
+        children: [page({ path: '/', info: { sitemap: listIndexPosts } })]
+      }),
+      page({
+        path: '/tags/:tag',
+        info: { sitemap: listTags },
+        children: [page({ path: '/' })]
+      })
+    ])
+
+    expect(manifest.sources).toStrictEqual([listIndexPosts, listTags])
+  })
+
+  it('publica a fonte do layout com noindex quando o índice filho reativa a página', () => {
+    const listDrafts = vi.fn<() => never[]>(() => [])
+    const manifest = collectSitemapEntries([
+      page({
+        path: '/drafts/:id',
+        info: { seo: { noindex: true }, sitemap: listDrafts },
+        children: [page({ path: '/', info: { seo: { noindex: false } } })]
+      })
+    ])
+
+    expect(manifest.sources).toStrictEqual([listDrafts])
+  })
 })

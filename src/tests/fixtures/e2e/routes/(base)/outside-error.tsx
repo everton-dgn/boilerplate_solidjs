@@ -1,10 +1,10 @@
 import { useSearchParams, type RouteDefinition } from '@solidjs/router'
 import { createMemo, Errored, Loading, Match, Switch } from 'solid-js'
 
-import { fixtureError } from '../../outside-error/fixtureError/index.ts'
+import { fixtureError } from '../../backend/fixtureError/index.ts'
+import { waitFixtureGate } from '../../backend/waitFixtureGate/index.ts'
 import { readFixtureMarker } from '../../outside-error/readFixtureMarker/index.ts'
 import { recordFixtureThrow } from '../../outside-error/recordFixtureThrow/index.ts'
-import { waitFixtureGate } from '../../outside-error/waitFixtureGate/index.ts'
 
 type GateProps = { id: string }
 type RejectionProps = { id: string; inElement?: boolean }

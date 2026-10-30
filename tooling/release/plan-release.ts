@@ -33,7 +33,6 @@ const expected = await readSourcePlan(ctx)
 if (expected) {
   const artifact = createPlanArtifact({
     ctx,
-    expected,
     packageJson: await formatted({
       path: 'package.json',
       content: manifestContent({ ctx, version: expected.version })

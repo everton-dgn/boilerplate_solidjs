@@ -34,20 +34,17 @@ continuam indicando parâmetros dinâmicos. Uma rota pode devolver
 `Response.redirect()`: como os headers dessa resposta são imutáveis, o
 middleware grava os cabeçalhos de segurança numa cópia.
 
-O middleware `requestContext` cria um UUID por requisição e o guarda em
-`locals.requestId`, disponível no evento de requisição do Solid.
+Para correlacionar os eventos de uma requisição, use `getTraceContext()` de
+`@solidjs/web`: ele continua o `traceparent` W3C recebido ou cria um trace para
+a requisição.
 
 O plugin gera `src/@types/routes.d.ts` com os caminhos tipados durante o build
 ou desenvolvimento. Mantenha essa declaração versionada e atualizada ao mudar as
 rotas, para permitir typecheck antes de iniciar o Vite.
 
 O `filesystem-routing` mantém a ordem da varredura quando o watcher atualiza ou
-recria uma rota. Antes da correção, editar um arquivo de rota no servidor de
-desenvolvimento movia a rota para o fim do manifesto, e a declaração gerada
-mudava de ordem sem mudança de conteúdo. O problema foi relatado em
-[solidjs/filesystem-routing#27](https://github.com/solidjs/filesystem-routing/issues/27)
-e corrigido em [#28](https://github.com/solidjs/filesystem-routing/pull/28); o
-teste de `PageFileSystemRouter` continua cobrindo esse caso como regressão.
+recria uma rota, e o teste de `PageFileSystemRouter` cobre esse caso
+([solidjs/filesystem-routing#27](https://github.com/solidjs/filesystem-routing/issues/27)).
 
 O [tsconfig.json](../tsconfig.json) mantém TypeScript em modo estrito, com
 `erasableSyntaxOnly` para restringir a sintaxe TypeScript que exige
@@ -73,11 +70,8 @@ Imports de CSS Modules usam o nome `S`, por exemplo,
 
 ## Coesão dos módulos de tooling
 
-Divida por responsabilidades que possam ser lidas e alteradas juntas. O número
-de linhas ajuda a encontrar candidatos, mas não determina a divisão. Fluxos que
-dependem do mesmo contexto local permanecem juntos; funções pequenas que apenas
-repassam chamadas acrescentam caminhos de leitura sem esclarecer a operação.
-
+A divisão segue a
+[regra de coesão do AGENTS.md](../AGENTS.md#coesão-e-tamanho-dos-módulos).
 `tooling/lint.ts` monta a configuração e seus overrides. Os grupos em
 `tooling/lint/rules/` reúnem as regras de JavaScript, imports, TypeScript,
 Unicorn, testes e integrações com o ambiente. Os valores das regras e a ordem
@@ -93,14 +87,13 @@ os contratos extensos usados nessa decisão.
 
 ## Dados e infraestrutura
 
-Quando houver consumidores de formatação de datas, moedas ou números, coloque
-essas funções em `data/formatters/`, com testes junto delas. Normalização de
-erros de domínio de APIs, quando necessária, fica em `data/errorApi/`. Essas
-pastas de `data/` são convenções para novos consumidores; atualmente não contêm
-módulos. A criação de erros públicos exclusivos do servidor fica em
+`data/formatters/` (formatação de datas, moedas e números) e `data/errorApi/`
+(normalização de erros de domínio de APIs) são convenções para os primeiros
+consumidores e ainda não contêm módulos. Erros públicos exclusivos do servidor
+ficam em
 [`infra/server/publicErrors/`](../src/infra/server/publicErrors/index.ts), junto
-da proteção das operações de backend. Requisições e persistência continuam em
-`infra/`. Validação de tema continua em `helpers/isTheme/`.
+da proteção das operações de backend; requisições e persistência ficam em
+`infra/`.
 
 ## Dependências entre camadas
 
@@ -119,9 +112,8 @@ restrições são:
 As entradas são `App`, `Document`, `entry-server`, `entry-client`, `router` e
 `middleware`. A classificação parte da raiz de `src`: primitives colocalizadas
 dentro de um componente continuam na camada desse componente. Testes
-(`*.test.*`, `*.spec.*`, `__tests__` e `src/tests`) podem importar as camadas
-que verificam. A declaração gerada `src/@types/routes.d.ts` continua excluída do
-lint.
+(`*.test.*`, `__tests__` e `src/tests`) podem importar as camadas que verificam.
+A declaração gerada `src/@types/routes.d.ts` continua excluída do lint.
 
 Nos diagnósticos, `base` identifica as pastas da primeira linha, `entry`
 identifica as entradas e `source` os demais módulos de `src`.

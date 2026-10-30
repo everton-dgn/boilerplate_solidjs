@@ -34,22 +34,25 @@ release. Add a tool name to select part of the graph. For example, run
 - Preserve Node no Vitest, nos testes de tooling fora de `tooling/release/` e
   no SSR de produção até as incompatibilidades descritas em
   [desenvolvimento](docs/development.md) serem resolvidas e verificadas.
-  O runtime explícito do Nitro impede que executar o build em Bun troque
-  silenciosamente o runtime da função Vercel.
+  O Nitro escolhe o runtime da função Vercel pelo `engines.node`, então
+  executar o build em Bun não troca a função para Bun.
 - O Knip, o lint de CSS, o backend simulado de E2E e a automação de release executam
   em Bun. Valide a automação com `vp run test:release`, também executado no
   pre-push. No CI, essa suíte roda quando a automação ou suas dependências
   mudam; a publicação mantém as verificações reais sem repetir os testes.
   Só o job de plano da release instala dependências e importa o Vite+
   (`tooling/release/plan-release.ts`); os jobs com escrita usam apenas Git,
-  `gh` e módulos `node:`.
+  `gh` e módulos `node:`. O pre-push roda o Knip (`vp run dead-code`) em
+  paralelo com `test:tooling` e `test:release`; no CI, o Knip roda no job
+  `Quality`.
 - Para validar mudanças, use `vp run check:ci` e `vp run test`, não os
   comandos embutidos `vp check` e `vp test` citados acima: eles pulam o
   `i18n:generate` e o lint de CSS.
 - `vp run` entrega aos scripts um stdin não bloqueante enquanto o bloco `run`
-  do `vite.config.ts` usar constantes
+  do `vite.config.ts` usar constantes, que fazem o Vite+ carregar a configuração
+  de forma dinâmica
   ([vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155)).
-  Prompts interativos fecham sem esperar entrada; rode-os diretamente, como
+  Prompts interativos não recebem a entrada; rode-os diretamente, como
   `vp update --interactive --latest`, ou com `bun run <script>`. Detalhes em
   [desenvolvimento](docs/development.md#execução-e-cache).
 
@@ -115,8 +118,11 @@ release. Add a tool name to select part of the graph. For example, run
   `@paraglide/runtime.js`; não edite `paraglide/` nem `.paraglide/`.
 - Chame mensagens no componente ou em getters. Não capture idioma nem texto
   traduzido no topo de módulo compartilhado entre requisições SSR.
-- Links e redirects de páginas usam `localizeHref({ href })`. `paths` mantém
-  os caminhos tipados sem idioma. Endpoints e assets ficam sem prefixo.
+- Links de páginas usam `LocalizedLink`, a navegação programática usa
+  `createLocalizedNavigate()` e os redirects usam `localizedRedirect()`.
+  `localizeHref()` fica para compor URLs de SEO e de índices. `paths` mantém
+  os caminhos tipados sem idioma. Endpoints e assets ficam sem prefixo
+  (`shouldLocalize: false`).
 - Preserve `AsyncLocalStorage`, o corpo original das server functions, a
   navegação de documento na troca de idioma e a tolerância a cookies bloqueados.
 - Rode `vp run i18n:generate` para conferir paridade, duplicatas e parâmetros.
@@ -139,9 +145,11 @@ release. Add a tool name to select part of the graph. For example, run
   dispensa essa revisão. Siga a seção "Localização de tipos" ao extraí-las.
 - Use `type` para declarar tipos de objetos, props e contratos em código e
   testes. O lint aplica `typescript/consistent-type-definitions` com `type`.
-- Preserve `interface` quando houver necessidade de mesclagem de declarações,
-  como `RequestEventLocals` em `src/@types/solid.d.ts`, que estende `@solidjs/web`.
-  Mantenha a exceção do lint restrita ao arquivo que precisa desse comportamento.
+- Preserve `interface` quando houver necessidade de mesclagem de declarações:
+  `RequestEventLocals` em `src/@types/solid.d.ts`, `ImportMetaEnv` em
+  `src/@types/env.d.ts` e `RouteInfo` em `src/@types/router.d.ts` estendem
+  interfaces de terceiros. Mantenha a exceção do lint restrita aos arquivos
+  que precisam desse comportamento.
 - Não edite declarações geradas para trocar `interface` por `type`.
   `src/@types/routes.d.ts` pertence ao gerador `filesystem-routing` e permanece
   excluído do lint.
@@ -241,6 +249,18 @@ release. Add a tool name to select part of the graph. For example, run
   de UI; não precisam implementar um contrato de publicação.
 - `seo.ts` fica ao lado de `index.tsx`, sem entrar na contagem de helpers.
   Não exporte componente padrão nem handlers HTTP nesse módulo.
+- O corpo da página (os textos e dados que o componente renderiza, como o
+  `content` de about, contact e privacy) fica em `index.tsx`, nunca em `seo.ts`.
+  O manifesto de rotas importa o `route` de cada página no bundle inicial, e
+  tudo o que `seo.ts` importa vai junto: um `content` exportado de lá leva os
+  textos de todas as páginas, nos três idiomas, para o bundle inicial. Os getters
+  de `seo` chamam as mensagens direto, sem ler o objeto da página. Não mova o
+  `content` para `seo.ts`, para um módulo que o `seo.ts` importe nem para outro
+  que o `route` alcance. A regra `project/seo-module`
+  (`tooling/seoModule/index.ts`) recusa no lint qualquer export além de `seo` e
+  qualquer import local como valor em `seo.ts`, e o `I18n.production.e2e`
+  confere o resultado no build; detalhes em [SEO](docs/seo.md). Ao mudar a
+  regra, rode `vp run test:tooling`.
 - Markdown usa main semântico e filtros do conversor. Use `data-md-exclude`
   para excluir conteúdo; CSS calculado não é interpretado. Preserve citações
   contextuais em footer dentro de main.
@@ -313,14 +333,14 @@ release. Add a tool name to select part of the graph. For example, run
   fixtures E2E, porque não há declaração local para marcar.
 - `export {}` vazio também é recusado. Para transformar em módulo um `.d.ts`
   que só tem `declare global`, use um `import` real, como
-  `import '@solidjs/web'` em `src/@types/solid.d.ts`.
+  `import 'vite/client'` em `src/@types/env.d.ts`.
 - `import/exports-last` exige os exports no fim do arquivo. Declare antes
   deles os tipos, constantes e helpers privados. Quando um valor exportado
   precisar existir antes do código privado que o consome, mova-o para um
   módulo próprio, como `tooling/backendPolicy/constants.ts`, em vez de
   exportar os helpers.
 - A regra `project/no-export-list` (`tooling/noExportList/index.ts`,
-  registrada no plugin de `tooling/css-modules-plugin.ts`) aplica a
+  registrada no plugin de `tooling/project-plugin.ts`) aplica a
   convenção. Valide com `vp run check:ci` e, ao mudar a regra, com
   `vp run test:tooling`.
 
@@ -393,9 +413,9 @@ release. Add a tool name to select part of the graph. For example, run
 ## Dependências entre camadas
 
 - Preserve `architecture/layer-imports` em `tooling/architecturePolicy/index.ts`.
-  `helpers`, `constants`, `@types`, `data` e `infra` não dependem de UI,
-  primitives, rotas ou entradas (`App`, `Document`, `entry-server`,
-  `entry-client`, `router`, `middleware`).
+  `helpers`, `constants`, `@types`, `data`, `infra`, `theme`, `i18n` e
+  `paraglide` não dependem de UI, primitives, rotas ou entradas (`App`,
+  `Document`, `entry-server`, `entry-client`, `router`, `middleware`).
   Primitives globais não dependem de UI, rotas ou entradas; atoms não dependem
   de molecules/organisms, e molecules não dependem de organisms.
 - Produção em `src` não importa testes, fixtures de `src/tests` ou `tooling`.
@@ -411,34 +431,20 @@ release. Add a tool name to select part of the graph. For example, run
 
 ## Cabeçalhos de segurança e CSP
 
-- Os cabeçalhos de segurança e a Content-Security-Policy saem do middleware,
-  com os valores em `src/middleware/securityHeaders/constants.ts`.
-  O `vercel.json` guarda o cache de `/images/`, o `Content-Type` dos `.md`
-  gerados no build e só `nosniff` e `Cross-Origin-Resource-Policy` para os
-  estáticos, que não passam pela função; não devolva a CSP nem os demais
-  cabeçalhos a ele.
-- O `script-src` usa o nonce da requisição com `'strict-dynamic'`. Não
-  acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts para scripts.
-- O `style-src` é `'self'`, também sem `'unsafe-inline'`: um `<style>` ou um
-  atributo `style` no HTML do servidor é bloqueado. Não use a prop `style` em
-  JSX renderizado no SSR: qualquer valor não nulo vira um atributo bloqueado;
-  use classes. O tema do SSR vai só pela classe `light` ou `dark` do `<html>`.
-- O nonce fica no campo nativo `event.nonce`, criado por `requestNonce` antes
-  do render e preservado quando o host já o fornece. O handler nativo do plugin
-  o usa nos redirects depois do shell. Todo `<script>` do `Document` recebe
-  `nonce={nonce}` com o valor dos scripts; o `src/entry-server.tsx` repassa
-  `event.nonce` ao `renderToStream`. Preserve o par de entradas autorais:
-  `entry-client.tsx` configura o idioma antes da hidratação, e o plugin exige
-  uma entrada de servidor correspondente.
-- Mantenha a mesma árvore em `src/entry-server.tsx` e `src/entry-client.tsx`.
-- Só respostas `text/html` recebem o nonce na CSP; as demais saem com
-  `script-src 'none'`.
-- Componentes `lazy()` com CSS própria podem aparecer depois que o dado
-  assíncrono de um `Loading` resolve. Preserve a regressão `FragmentCss`:
-  template antes da folha, liberação por script com nonce, renderização
-  estilizada e ausência de violações de CSP, inclusive com a CSS em cache.
-- Em desenvolvimento a CSP não é enviada: o HMR usa estilos inline, que a
-  política de produção bloqueia. Confira mudanças de CSP com
+- Antes de alterar cabeçalhos, CSP, nonce ou as entradas de renderização, leia
+  [docs/security.md](docs/security.md). Os cabeçalhos saem do middleware, com
+  os valores em `src/middleware/securityHeaders/constants.ts`; não devolva a
+  CSP nem os demais cabeçalhos ao `vercel.json`.
+- Não acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts ao `script-src`,
+  nem `'unsafe-inline'` ao `style-src`.
+- Não renderize `<style>` nem use a prop `style` em JSX renderizado no SSR: a
+  CSP bloqueia o atributo. Use classes.
+- Todo `<script>` do `Document` recebe `nonce={nonce}`, e o
+  `src/entry-server.tsx` repassa `event.nonce` ao `renderToStream`.
+- Preserve o par de entradas autorais, com a mesma árvore em
+  `src/entry-server.tsx` e `src/entry-client.tsx`, e a regressão `FragmentCss`,
+  da fixture `/fragment-css` descrita no guia.
+- A CSP não é enviada em desenvolvimento. Confira mudanças de CSP com
   `vp run test:e2e:production`.
 
 ## Erros no servidor e chamadas de backend
@@ -446,52 +452,28 @@ release. Add a tool name to select part of the graph. For example, run
 - Antes de alterar backend, server functions ou tratamento SSR, leia
   [docs/server-errors.md](docs/server-errors.md). Toda operação deve terminar em
   dados públicos ou em um erro público novo antes de chegar ao Solid.
-- HTTP usa `requestJson`. SDK e banco exigem adapter com `server-only` e
-  `protectServerOperation({ run })` envolvendo leitura, validação e saída.
-  `allowControl` pertence somente ao registro global de server functions.
-- Mantenha transporte, proteção de operações e criação de erros públicos em
-  `src/infra/server/`. `data/errorApi/` fica reservado à normalização de erros
-  de domínio, quando houver consumidores.
-- Importe `createPublicError()` de `@/infra/server/publicErrors/index.ts`;
-  somente esse módulo pode chamar `markSafeError`. Nunca publique mensagem,
-  causa, propriedades, corpo ou headers de um erro upstream, inclusive dentro
-  de um resultado.
-- O schema seleciona os campos públicos. A verificação estrutural do wrapper
+- HTTP usa `requestJson`. SDK e banco exigem adapter em `src/infra/server/`,
+  com `server-only` e `protectServerOperation({ run })` envolvendo leitura,
+  validação e saída. `allowControl` pertence somente ao registro global de
+  server functions.
+- O schema seleciona os campos públicos: a verificação estrutural do wrapper
   não identifica dados confidenciais em strings. Não retorne erros, promises
   aninhadas ou trabalho adiado sem contrato específico.
-- Mantenha o registro global e os sinais de controle do Solid. O
-  `wrapInvocation` cobre server functions e o hook `onError`, instalado em
-  todos os modos, marca o estado de integridade do render e, em produção,
-  uniformiza a mensagem pública das demais falhas; ele nunca devolve o objeto
-  recebido. `containFailures` continua envolvendo a cadeia inteira
-  para que exceções não cheguem ao log do host; numa navegação ele renderiza a
-  página de erro do app pelo `ServerFailureGate` de `App.tsx`. Um fallback visual não
-  protege o payload.
-  O log grava a mensagem fixa da origem e, para um `Error`, só a classe e os
-  frames filtrados, sem mensagem, `cause` nem propriedades. Em desenvolvimento
-  o hook pede também o erro original, numa segunda chamada; em produção o log
-  ignora o pedido.
+- Erro público só nasce de `createPublicError()`, importado de
+  `@/infra/server/publicErrors/index.ts`; somente esse módulo pode chamar
+  `markSafeError`. Nunca publique mensagem, causa, propriedades, corpo ou
+  headers de um erro upstream, inclusive dentro de um resultado.
 - Não registre erro original, headers, cookies, argumentos, corpos ou
-  credenciais. Logs detalhados exigem remoção de dados sensíveis definida antes;
-  a de `logServerFailure` está em "Log de falhas", no guia.
-  O lint reserva `console` a `logServerFailure`, onde se usa `console.error`
-  diretamente. Acessos como `globalThis.console` continuam proibidos. Preserve
-  o argumento único da linha filtrada coberto pelos testes: uma string que
-  começa pela mensagem fixa da origem.
-- Preserve as restrições de lint em `tooling/backendPolicy`: o módulo inteiro
-  de configuração do servidor, o hook `configureServerErrors` de
-  `@solidjs/web` e `observeRenderFailures` de `renderIntegrity` pertencem a
-  `configureServerErrors`. Use imports estáticos de `@solidjs/web`, de seus
-  subcaminhos e de `renderIntegrity`, inclusive nos módulos privilegiados.
-  SDKs novos exigem restrição por pacote e exceção por adapter.
-  Revise fontes de import calculadas, templates dos outros pacotes e demais
-  limites do guia; não contorne o contrato com disable. Fixtures seguem
-  protegidas; as exceções de backend cobrem só testes e declarações de tipos.
+  credenciais; logs detalhados exigem remoção de dados sensíveis definida antes.
+  O `console` fica reservado a `logServerFailure`.
+- Preserve as restrições de `tooling/backendPolicy`. Um SDK novo exige
+  restrição do pacote no lint, com exceção só para o adapter. Não contorne o
+  contrato com disable, imports calculados ou as demais lacunas listadas no
+  guia.
 - Após mudar essa fronteira, rode `vp run test:tooling`, os testes Node
   pertinentes e `vp run test:e2e src/tests/pages/BackendError
-  src/tests/pages/OutsideError`. Preserve no CI
-  a verificação do corpo completo em SSR inicial, streaming e chamada HTTP.
-- Em atualizações do Solid/plugin, siga o roteiro do guia. O wrapper fica
-  enquanto o runtime publicado não recusar um `Error` devolvido como dado; só
-  retire o que uma reprodução sem essa interceptação provar coberto. Uma issue
-  fechada ou commit integrado não comprova a correção na versão instalada.
+  src/tests/pages/OutsideError`. Preserve no CI a verificação do corpo completo
+  em SSR inicial, streaming e chamada HTTP.
+- Em atualizações do Solid ou do plugin, siga o roteiro "Atualizar o Solid" do
+  guia: só retire o wrapper quando uma reprodução sem essa interceptação provar
+  a cobertura na versão instalada.

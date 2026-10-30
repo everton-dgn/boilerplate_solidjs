@@ -7,6 +7,7 @@ import { HTTP_SERVICE_UNAVAILABLE } from '@/constants/http.ts'
 import { logServerFailure } from '@/infra/server/logServerFailure/index.ts'
 
 import {
+  SITEMAP_BYTE_LIMIT,
   SITEMAP_SOURCES_TIMEOUT_MS,
   SITEMAP_URL_LIMIT
 } from '../../constants.ts'
@@ -25,25 +26,11 @@ type ReadSourcesOptions = {
   signal: AbortSignal
 }
 
-type ReadSourceOptions = {
-  source: SitemapRouteInfo
-  signal: AbortSignal
-}
-
-const SITEMAP_BYTE_LIMIT = 52_428_800
-
 const EntrySchema = v.object({
   path: v.string(),
   lastmod: v.optional(v.string())
 })
 const EntriesSchema = v.array(EntrySchema)
-
-async function readSource({
-  source,
-  signal
-}: ReadSourceOptions): Promise<readonly SitemapEntry[]> {
-  return source(signal)
-}
 
 // O sinal das fontes junta o prazo e a desconexão do cliente. A corrida contra
 // o abort cobre a fonte que ignora o sinal; o abort ao fim da leitura cancela
@@ -65,9 +52,8 @@ async function readSources({
     sourceSignal.throwIfAborted()
     sourceSignal.addEventListener('abort', onAbort, { once: true })
     const results = await Promise.race([
-      Promise.all(
-        sources.map(source => readSource({ source, signal: sourceSignal }))
-      ),
+      // O `async` converte a exceção síncrona de uma fonte em rejeição.
+      Promise.all(sources.map(async source => source(sourceSignal))),
       aborted.promise
     ])
     return results.flatMap(result => v.parse(EntriesSchema, result))
@@ -84,7 +70,7 @@ export async function buildSitemapResponse({
   siteUrl,
   signal
 }: BuildSitemapResponseOptions): Promise<Response> {
-  let xml: string
+  let body: Uint8Array<ArrayBuffer>
   try {
     const dynamic = await readSources({ sources: manifest.sources, signal })
     const entries = normalizeSitemapEntries({
@@ -94,18 +80,22 @@ export async function buildSitemapResponse({
     if (entries.length * locales.length > SITEMAP_URL_LIMIT) {
       throw new Error('Sitemap acima do limite de URLs após localização')
     }
-    xml = buildSitemap({ entries, siteUrl })
-    if (new TextEncoder().encode(xml).byteLength > SITEMAP_BYTE_LIMIT) {
+    body = new TextEncoder().encode(buildSitemap({ entries, siteUrl }))
+    if (body.byteLength > SITEMAP_BYTE_LIMIT) {
       throw new Error('Sitemap acima do limite de bytes')
     }
   } catch (error) {
-    logServerFailure({ source: 'sitemap', error })
+    logServerFailure({
+      source: 'sitemap',
+      error,
+      shouldPrintOriginal: import.meta.env.DEV
+    })
     return new Response(null, {
       status: HTTP_SERVICE_UNAVAILABLE,
       headers: { 'cache-control': 'no-store' }
     })
   }
-  return new Response(xml, {
+  return new Response(body, {
     headers: {
       'content-type': 'application/xml; charset=utf-8',
       'cache-control': SITE_CACHE_CONTROL

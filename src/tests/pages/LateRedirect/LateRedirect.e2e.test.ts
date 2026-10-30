@@ -1,12 +1,13 @@
-import { expect, test } from '@playwright/test'
-
 import {
   readGatedBody,
   releaseFixtureGate
 } from '@/tests/helpers/fixtureGate/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const HTTP_OK = 200
+// Um servidor que pare de emitir bytes falha na leitura, e não no timeout
+// genérico do runner.
+const REQUEST_TIMEOUT = 15_000
 const PAGE_URL = '/pt/late-redirect'
 const LOADING_TEXT = 'Carregando...'
 const LATE_REDIRECT_SCRIPT =
@@ -21,7 +22,8 @@ test('o script do redirect depois do shell leva o nonce da CSP', async ({
   if (!baseURL) throw new Error('baseURL is required')
   const id = `late-redirect:${crypto.randomUUID()}`
   const response = await fetch(`${baseURL}${PAGE_URL}?id=${id}`, {
-    headers: { accept: 'text/html' }
+    headers: { accept: 'text/html' },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT)
   })
   const body = await readGatedBody({
     request,
@@ -39,9 +41,9 @@ test('o script do redirect depois do shell leva o nonce da CSP', async ({
 
 test('o navegador segue o redirect depois do shell sem violação de CSP', async ({
   page,
-  request
+  request,
+  cspViolations
 }) => {
-  const violations = await watchCspViolations(page)
   const id = `late-redirect:${crypto.randomUUID()}`
 
   await page.goto(`${PAGE_URL}?id=${id}`, { waitUntil: 'commit' })
@@ -49,5 +51,5 @@ test('o navegador segue o redirect depois do shell sem violação de CSP', async
   await releaseFixtureGate({ request, id })
   await expect(page).toHaveURL(/\/pt\?from=late-redirect$/u)
 
-  expect(violations).toStrictEqual([])
+  expect(cspViolations).toStrictEqual([])
 })

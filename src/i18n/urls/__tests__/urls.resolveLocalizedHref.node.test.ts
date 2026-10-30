@@ -15,6 +15,7 @@ describe('resolveLocalizedHref contracts', () => {
   it.each([
     'https://example.com/docs',
     '//example.com/docs',
+    String.raw`/\example.com/docs`,
     'mailto:a@example.com',
     'tel:123'
   ])('preserves external href %s', href => {

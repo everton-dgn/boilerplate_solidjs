@@ -20,6 +20,8 @@ const DIAMOND_DEPTH = 16
 const REJECTED_SHAPES = 4
 const LOG_MESSAGE =
   '[server-operation] Unexpected failure; private details omitted'
+// Sem o contexto de idioma do paraglide, a mensagem sai no idioma base.
+const PUBLIC_MESSAGE = 'The request could not be completed.'
 
 function thrownValue(invocation: Invocation): unknown {
   try {
@@ -47,7 +49,7 @@ function logUnavailable(): never {
 function expectPublicFailure(error: unknown): void {
   expect(error).toBeInstanceOf(Error)
   if (!(error instanceof Error)) throw new TypeError('Expected Error')
-  expect(error.message).toBe('Não foi possível concluir a solicitação.')
+  expect(error.message).toBe(PUBLIC_MESSAGE)
   expect(error.cause).toBeUndefined()
   expect(Object.keys(error)).toStrictEqual([])
   expect(Object.getOwnPropertyNames(error).toSorted()).toStrictEqual([
@@ -56,8 +58,14 @@ function expectPublicFailure(error: unknown): void {
   ])
 }
 
+// O Vitest roda com DEV verdadeiro; os casos conferem o log de produção.
+function mockProductionLog(): void {
+  vi.stubEnv('DEV', false)
+  vi.spyOn(console, 'error').mockImplementation(vi.fn())
+}
+
 describe('proteção de operações no servidor', () => {
-  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+  beforeEach(mockProductionLog)
 
   it('preserva o retorno síncrono e remove detalhes de exceções', () => {
     const data = { ok: true }
@@ -83,7 +91,7 @@ describe('proteção de operações no servidor', () => {
     })
     await expect(
       protectServerOperation({ run: () => Promise.reject(error) })
-    ).rejects.toThrow('Não foi possível concluir a solicitação.')
+    ).rejects.toThrow(PUBLIC_MESSAGE)
     await expect(
       protectServerOperation({ run: () => Promise.resolve({ ok: true }) })
     ).resolves.toStrictEqual({ ok: true })
@@ -106,7 +114,7 @@ describe('proteção de operações no servidor', () => {
       expectPublicFailure(thrownValue({ run: () => value }))
       await expect(
         protectServerOperation({ run: () => Promise.resolve({ value }) })
-      ).rejects.toThrow('Não foi possível concluir a solicitação.')
+      ).rejects.toThrow(PUBLIC_MESSAGE)
     }
   })
 
@@ -142,7 +150,7 @@ describe('proteção de operações no servidor', () => {
           run: () => Promise.resolve(value),
           allowControl: true
         })
-      ).rejects.toThrow('Não foi possível concluir a solicitação.')
+      ).rejects.toThrow(PUBLIC_MESSAGE)
     }
     expect(serialize).not.toHaveBeenCalled()
     const plain = ['public']
@@ -283,7 +291,7 @@ describe('reconstrução de envelopes', () => {
 })
 
 describe('envelopes sem corpo', () => {
-  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+  beforeEach(mockProductionLog)
 
   it.each([HTTP_NO_CONTENT, HTTP_RESET_CONTENT, HTTP_NOT_MODIFIED])(
     'valida dados privados no envelope com status %s',
@@ -304,7 +312,7 @@ describe('envelopes sem corpo', () => {
 })
 
 describe('log da proteção de operações', () => {
-  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+  beforeEach(mockProductionLog)
 
   it('lança o erro público mesmo quando o log falha', async () => {
     // O log falha no caminho síncrono e no assíncrono; o mock volta ao normal
@@ -322,7 +330,7 @@ describe('log da proteção de operações', () => {
       protectServerOperation({
         run: () => Promise.reject(new Error('PRIVATE_ASYNC'))
       })
-    ).rejects.toThrow('Não foi possível concluir a solicitação.')
+    ).rejects.toThrow(PUBLIC_MESSAGE)
     expect(readLog(console.error)).toStrictEqual({
       heads: [
         [LOG_MESSAGE, 'Error'],
@@ -333,10 +341,24 @@ describe('log da proteção de operações', () => {
       leaks: []
     })
   })
+
+  it('imprime o erro original depois da linha filtrada em desenvolvimento', () => {
+    vi.stubEnv('DEV', true)
+    const failure = new Error('PRIVATE')
+
+    expectPublicFailure(thrownValue({ run: () => throwValue(failure) }))
+    expect(readLog(console.error).heads[0]).toStrictEqual([
+      LOG_MESSAGE,
+      'Error'
+    ])
+    expect(vi.mocked(console.error).mock.calls.slice(1)).toStrictEqual([
+      [failure]
+    ])
+  })
 })
 
 describe('estrutura dos dados públicos', () => {
-  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+  beforeEach(mockProductionLog)
 
   it('inspeciona setters, chaves Symbol e propriedades não enumeráveis', () => {
     const secret = Symbol('secret')

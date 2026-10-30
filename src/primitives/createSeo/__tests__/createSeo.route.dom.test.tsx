@@ -5,7 +5,8 @@ import {
 } from '@solidjs/router'
 import { render } from '@solidjs/web'
 
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
+import { POLL, readCanonical } from '@/tests/helpers/headTags/index.ts'
 import {
   parseStructuredData,
   type StructuredData
@@ -13,9 +14,6 @@ import {
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { createSeo } from '../index.ts'
-
-// vi.waitUntil não lê test.expect.poll e espera 50ms por padrão.
-const POLL = { interval: 10 }
 
 type RenderAtOptions = {
   pathname: string
@@ -38,14 +36,6 @@ function readStructuredData(): StructuredData | null {
 // A ordem dos nós não importa em JSON-LD; localiza pelo `@type`.
 function readNode(type: string): StructuredData['@graph'][number] | undefined {
   return readStructuredData()?.['@graph'].find(node => node['@type'] === type)
-}
-
-function readCanonical(): string | null {
-  return (
-    document.head
-      .querySelector('link[rel="canonical"]')
-      ?.getAttribute('href') ?? null
-  )
 }
 
 // O registro do head aplica e remove as tags em microtask após os efeitos.

@@ -40,6 +40,7 @@ export const testRules: LintRules = {
   'vitest/prefer-hooks-in-order': 'error',
   'vitest/prefer-hooks-on-top': 'error',
   'vitest/prefer-import-in-mock': 'error',
+  // Sem prefixos permitidos, o autofix passa só a primeira letra da sigla
   // para minúscula (HTML vira hTML).
   'vitest/prefer-lowercase-title': [
     'error',

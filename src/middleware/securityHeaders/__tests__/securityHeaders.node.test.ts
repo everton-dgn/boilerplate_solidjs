@@ -19,6 +19,13 @@ const EXPECTED_HEADERS = {
   'cross-origin-resource-policy': 'same-origin'
 }
 
+// applySecurityHeaders lê o nonce do evento da requisição.
+function applyInRequest(response: Response): Response {
+  const event: RequestEvent = createRequestEvent(new Request(TEST_ORIGIN))
+  event.nonce = NONCE
+  return provideRequestEvent(event, () => applySecurityHeaders(response))
+}
+
 // Diretivas da CSP por nome, sem depender da ordem.
 function directives(response: Response): Record<string, string> {
   const policy = response.headers.get('content-security-policy') ?? ''
@@ -37,21 +44,15 @@ describe('cabeçalhos de segurança da resposta', () => {
   })
 
   it('grava os cabeçalhos de segurança', () => {
-    const response = applySecurityHeaders({
-      response: new Response('conteúdo'),
-      nonce: NONCE
-    })
+    const response = applyInRequest(new Response('conteúdo'))
 
     expect(Object.fromEntries(response.headers)).toMatchObject(EXPECTED_HEADERS)
   })
 
   it('monta a CSP com o nonce e strict-dynamic, sem unsafe-inline em scripts e estilos', () => {
-    const response = applySecurityHeaders({
-      response: new Response('<main>conteúdo</main>', {
-        headers: HTML_HEADERS
-      }),
-      nonce: NONCE
-    })
+    const response = applyInRequest(
+      new Response('<main>conteúdo</main>', { headers: HTML_HEADERS })
+    )
 
     expect(directives(response)).toStrictEqual({
       'default-src': "'self'",
@@ -64,13 +65,15 @@ describe('cabeçalhos de segurança da resposta', () => {
     })
   })
 
-  it('bloqueia todos os scripts quando não há nonce', () => {
-    const response = applySecurityHeaders({
-      response: new Response('<main>conteúdo</main>', {
-        headers: HTML_HEADERS
-      }),
-      nonce: undefined
-    })
+  it('bloqueia todos os scripts quando o nonce de scripts está desativado', () => {
+    const event: RequestEvent = createRequestEvent(new Request(TEST_ORIGIN))
+    event.nonce = { script: false, style: false }
+
+    const response = provideRequestEvent(event, () =>
+      applySecurityHeaders(
+        new Response('<main>conteúdo</main>', { headers: HTML_HEADERS })
+      )
+    )
 
     expect(directives(response)['script-src']).toBe("'none'")
   })
@@ -85,24 +88,20 @@ describe('cabeçalhos de segurança da resposta', () => {
     'text/html-sandboxed',
     'application/json; profile=text/html'
   ])('bloqueia scripts em resposta %s mesmo com nonce', contentType => {
-    const response = applySecurityHeaders({
-      response: new Response('conteúdo', {
-        headers: { 'content-type': contentType }
-      }),
-      nonce: NONCE
-    })
+    const response = applyInRequest(
+      new Response('conteúdo', { headers: { 'content-type': contentType } })
+    )
 
     expect(directives(response)['script-src']).toBe("'none'")
     expect(response.headers.get('content-security-policy')).not.toContain(NONCE)
   })
 
   it('reconhece o content-type HTML sem diferenciar maiúsculas', () => {
-    const response = applySecurityHeaders({
-      response: new Response('<main>conteúdo</main>', {
+    const response = applyInRequest(
+      new Response('<main>conteúdo</main>', {
         headers: { 'content-type': 'Text/HTML; charset=UTF-8' }
-      }),
-      nonce: NONCE
-    })
+      })
+    )
 
     expect(directives(response)['script-src']).toBe(
       `'nonce-${NONCE}' 'strict-dynamic'`
@@ -112,10 +111,7 @@ describe('cabeçalhos de segurança da resposta', () => {
   it('omite a CSP em desenvolvimento e mantém os demais cabeçalhos', () => {
     vi.stubEnv('DEV', true)
 
-    const response = applySecurityHeaders({
-      response: new Response('conteúdo'),
-      nonce: NONCE
-    })
+    const response = applyInRequest(new Response('conteúdo'))
 
     expect(response.headers.has('content-security-policy')).toBe(false)
     expect(Object.fromEntries(response.headers)).toMatchObject(EXPECTED_HEADERS)
@@ -124,10 +120,9 @@ describe('cabeçalhos de segurança da resposta', () => {
   // Response.redirect() chega com headers imutáveis e sem corpo. Sem
   // documento, o redirect não executa scripts.
   it('grava os cabeçalhos e a CSP numa cópia de um redirect', () => {
-    const response = applySecurityHeaders({
-      response: Response.redirect(new URL('/destino', TEST_ORIGIN), HTTP_FOUND),
-      nonce: NONCE
-    })
+    const response = applyInRequest(
+      Response.redirect(new URL('/destino', TEST_ORIGIN), HTTP_FOUND)
+    )
 
     expect({
       status: response.status,

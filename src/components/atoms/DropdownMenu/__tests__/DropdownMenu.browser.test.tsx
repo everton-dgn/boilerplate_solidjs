@@ -195,15 +195,23 @@ describe('menu suspenso no navegador', () => {
     await expect.element(opener).toHaveFocus()
   })
 
-  it('fecha com Escape e devolve o foco ao gatilho', async () => {
-    const { host } = mountMenu()
+  it('mostra o anel de foco no item só na navegação por teclado', async () => {
+    mountMenu()
+    const opener = page.getByRole('button', { name: 'Abrir' })
+    const first = page.getByRole('menuitemradio', { name: 'Claro' })
 
-    await page.getByRole('button', { name: 'Abrir' }).click()
+    await opener.click()
+    await expect.element(first).toHaveFocus()
+    expect(first.element().matches(':focus-visible')).toBe(false)
+    expect(getComputedStyle(first.element()).outlineStyle).toBe('none')
+
     await userEvent.keyboard('{Escape}')
-
-    expect(host.querySelector('[role="menu"]')).toBeNull()
-    await expect
-      .element(page.getByRole('button', { name: 'Abrir' }))
-      .toHaveFocus()
+    await userEvent.keyboard('{ArrowDown}')
+    await expect.element(first).toHaveFocus()
+    expect(first.element().matches(':focus-visible')).toBe(true)
+    expect(getComputedStyle(first.element())).toMatchObject({
+      outlineStyle: 'solid',
+      outlineOffset: '-2px'
+    })
   })
 })

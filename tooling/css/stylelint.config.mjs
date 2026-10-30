@@ -9,12 +9,16 @@ const config = {
     'declaration-property-value-no-unknown': true,
     'unit-no-unknown': true,
     'color-no-invalid-hex': true,
+    'color-no-hex': true,
+    'color-named': 'never',
     'declaration-block-no-duplicate-properties': [
       true,
       { ignore: ['consecutive-duplicates-with-different-syntaxes'] }
     ],
     'declaration-block-no-shorthand-property-overrides': true,
     'selector-pseudo-class-no-unknown': true,
+    'selector-pseudo-element-no-unknown': true,
+    'selector-type-no-unknown': true,
     'at-rule-no-unknown': true,
     'no-unknown-animations': true,
     'no-unknown-custom-properties': true,
@@ -28,17 +32,32 @@ const config = {
     'no-invalid-position-at-import-rule': true,
     'no-duplicate-selectors': true,
     'keyframe-block-no-duplicate-selectors': true,
-    'function-disallowed-list': ['color-mix', 'light-dark'],
+    'function-disallowed-list': [
+      'rgb',
+      'rgba',
+      'hsl',
+      'hsla',
+      'hwb',
+      'lab',
+      'lch',
+      'oklab',
+      'oklch',
+      'color',
+      'color-mix',
+      'light-dark'
+    ],
     'scale-unlimited/declaration-strict-value': [
       [
         '/color$/',
         'background',
+        'background-image',
         'border-radius',
         '/^border-(?:(?:top|bottom)-(?:left|right)|(?:start|end)-(?:start|end))-radius$/',
         'fill',
         'stroke',
         'box-shadow',
         'text-shadow',
+        'font',
         'font-size',
         'font-weight',
         'z-index'
@@ -74,8 +93,6 @@ const config = {
           'lch',
           'color'
         ],
-        'color-no-hex': true,
-        'color-named': 'never',
         'scale-unlimited/declaration-strict-value': null
       }
     }

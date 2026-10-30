@@ -22,6 +22,11 @@ type ResolveEntryOptions = {
   state: RouteState
 }
 
+type PageSource = {
+  sitemap: SitemapRouteInfo
+  isIndexable: boolean
+}
+
 const INITIAL_STATE: RouteState = {
   noindex: false,
   article: false,
@@ -45,11 +50,12 @@ function resolveEntry({ path, state }: ResolveEntryOptions): SitemapEntry {
   return lastmod === undefined ? { path } : { path, lastmod }
 }
 
+// O índice filho pode compartilhar a URL do layout; seus metadados prevalecem.
 export function collectSitemapEntries(
   routes: readonly StaticRoute[]
 ): SitemapManifest {
   const entries = new Map<string, SitemapEntry>()
-  const sources: SitemapRouteInfo[] = []
+  const sources = new Map<string, PageSource>()
   walkStaticRoutes<RouteState>({
     routes,
     shouldVisitDynamic: true,
@@ -59,7 +65,8 @@ export function collectSitemapEntries(
       const state = resolveState({ parent: parentState, seo: info?.seo })
       if (!route.page) return state
       if (isDynamic) {
-        if (!state.noindex && info?.sitemap) sources.push(info.sitemap)
+        const sitemap = info?.sitemap ?? sources.get(path)?.sitemap
+        if (sitemap) sources.set(path, { sitemap, isIndexable: !state.noindex })
         return state
       }
       if (state.noindex) entries.delete(path)
@@ -67,5 +74,10 @@ export function collectSitemapEntries(
       return state
     }
   })
-  return { entries: [...entries.values()], sources }
+  return {
+    entries: [...entries.values()],
+    sources: [...sources.values()]
+      .filter(({ isIndexable }) => isIndexable)
+      .map(({ sitemap }) => sitemap)
+  }
 }

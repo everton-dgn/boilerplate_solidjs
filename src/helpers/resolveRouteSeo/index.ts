@@ -4,7 +4,7 @@ import type {
   SeoMetadata,
   SeoRouteInfo
 } from '@/@types/seo.ts'
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 
 type ResolveImageOptions = {
   base: SeoImage

@@ -4,17 +4,15 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
-import packageJson from './package.json'
 import { fmt } from './tooling/fmt.ts'
 import { lint } from './tooling/lint.ts'
 
-const resolve = { tsconfigPaths: true }
 // As entradas explícitas mantêm o cache do lint de CSS independente do
 // rastreamento das leituras feitas pelo runtime em cada sistema operacional.
 const CSS_CACHE_INPUTS = [
   'src/**/*.css',
   'tooling/css/**',
-  'tooling/css-filename.ts',
+  'tooling/lint/import-specifier.ts',
   'package.json',
   'bun.lock',
   'bunfig.toml'
@@ -43,38 +41,26 @@ const TOOLING_TEST_CONCURRENCY = env.CI
 // Os plugins do Vite só são importados quando o Vite roda de fato. vp lint,
 // fmt, check, staged e o tooling do editor leem a config sem pagar esse custo
 // nem receber os logs de inicialização do Nitro no stdout.
-const loadPluginModules = async () => {
-  const [
-    solidModule,
-    routing,
-    nitroModule,
-    iconsModule,
-    loaders,
-    i18n,
-    markdown
-  ] = await Promise.all([
+const loadComponentModules = async () => {
+  const [solidModule, routing, iconsModule, loaders, i18n] = await Promise.all([
     import('@solidjs/vite-plugin'),
     import('filesystem-routing/vite'),
-    import('nitro/vite'),
     import('unplugin-icons/vite'),
     import('unplugin-icons/loaders'),
-    import('./tooling/i18n/i18nPlugin/index.ts'),
-    import('./tooling/markdownPrerender/index.ts')
+    import('./tooling/i18n/i18nPlugin/index.ts')
   ])
   return {
     solid: solidModule.default,
     fileRoutes: routing.fileRoutes,
-    nitro: nitroModule.nitro,
     Icons: iconsModule.default,
     FileSystemIconLoader: loaders.FileSystemIconLoader,
-    i18n: i18n.i18nPlugin,
-    markdownPrerender: markdown.markdownPrerender
+    i18n: i18n.i18nPlugin
   }
 }
 
-type PluginModules = Awaited<ReturnType<typeof loadPluginModules>>
+type ComponentModules = Awaited<ReturnType<typeof loadComponentModules>>
 
-const icons = ({ Icons, FileSystemIconLoader }: PluginModules) =>
+const icons = ({ Icons, FileSystemIconLoader }: ComponentModules) =>
   Icons({
     compiler: 'solid',
     iconCustomizer(_collection, _icon, props) {
@@ -87,7 +73,7 @@ const icons = ({ Icons, FileSystemIconLoader }: PluginModules) =>
 
 const componentPlugins = () =>
   lazyPlugins(async () => {
-    const modules = await loadPluginModules()
+    const modules = await loadComponentModules()
     return [
       modules.i18n(),
       icons(modules),
@@ -98,7 +84,11 @@ const componentPlugins = () =>
 
 const appPlugins = (mode: string) =>
   lazyPlugins(async () => {
-    const modules = await loadPluginModules()
+    const [modules, { nitro }, { markdownPrerender }] = await Promise.all([
+      loadComponentModules(),
+      import('nitro/vite'),
+      import('./tooling/markdownPrerender/index.ts')
+    ])
     return [
       modules.i18n(),
       icons(modules),
@@ -119,26 +109,25 @@ const appPlugins = (mode: string) =>
           ? { dir: 'src/tests/fixtures/e2e/routes', httpMethods: true }
           : { types: 'src/@types/routes.d.ts', httpMethods: true }
       ),
-      // A detecção automática do Nitro segue o runtime do build. O SSR mantém
-      // Node até Bun preservar os contratos de Response e do log de falhas.
-      modules.nitro({
+      // A função da Vercel usa o Node de engines.node. O SSR mantém Node até
+      // Bun preservar os contratos de Response e do log de falhas.
+      nitro({
         serverEntry: false,
         preset: 'vercel',
-        modules: [modules.markdownPrerender],
-        vercel: {
-          functions: {
-            runtime: `nodejs${packageJson.devEngines.runtime.version.split('.')[0]}.x`
-          }
-        }
+        modules: [markdownPrerender]
       })
     ]
   })
 
-// O Lightning CSS transpila nesting, light-dark() e prefixos para os navegadores
-// do Baseline padrão do Vite.
-const css = {
-  transformer: 'lightningcss'
-} as const
+function loadTestEnvFile(): void {
+  try {
+    loadEnvFile(fileURLToPath(new URL('.env.test', import.meta.url)))
+  } catch (error) {
+    const isMissing =
+      error instanceof Error && 'code' in error && error.code === 'ENOENT'
+    if (!isMissing) throw error
+  }
+}
 
 // oxlint-disable-next-line eslint/max-lines-per-function -- A configuração declarativa do Vite fica reunida neste callback.
 export default defineConfig(({ mode }) => {
@@ -149,14 +138,18 @@ export default defineConfig(({ mode }) => {
   }
 
   if (mode === 'test') {
-    loadEnvFile(fileURLToPath(new URL('.env.test', import.meta.url)))
+    loadTestEnvFile()
   }
 
-  const testEnv = {
-    BASE_URL_TEST: env.BASE_URL_TEST,
-    HOST: env.HOST,
-    PORT: env.PORT
-  }
+  // O Vitest grava test.env no process.env dos workers, onde um valor ausente
+  // viraria a string "undefined".
+  const testEnv = Object.fromEntries(
+    Object.entries({
+      BASE_URL_TEST: env.BASE_URL_TEST,
+      HOST: env.HOST,
+      PORT: env.PORT
+    }).filter(([, value]) => value !== undefined)
+  )
 
   return {
     run: {
@@ -184,7 +177,7 @@ export default defineConfig(({ mode }) => {
         },
         'dead-code-project': {
           command:
-            'knip-bun --config tooling/knip.ts && knip-bun --config tooling/knip.ts --strict && knip-bun --config tooling/knip.ts --cycles',
+            'knip-bun --config tooling/knip.ts && knip-bun --config tooling/knip.ts --strict',
           cache: {
             env: ['NODE_ENV'],
             input: [
@@ -272,8 +265,16 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
-    css,
-    resolve,
+    // O Lightning CSS transpila nesting, light-dark() e prefixos para os
+    // navegadores do Baseline padrão do Vite. O nome das classes dos CSS Modules
+    // vem só do conteúdo: o [hash] padrão inclui a query, e o ?inline usado pelo
+    // plugin do Solid no SSR de desenvolvimento geraria outras classes
+    // (vitejs/vite#23735).
+    css: {
+      transformer: 'lightningcss',
+      lightningcss: { cssModules: { pattern: '[content-hash]_[local]' } }
+    },
+    resolve: { tsconfigPaths: true },
     // Repassa ao terminal os erros e avisos do navegador durante o vp dev.
     server: { ...server, forwardConsole: true },
     preview: server,
@@ -285,7 +286,6 @@ export default defineConfig(({ mode }) => {
       maxWorkers: env.CI ? CI_TEST_WORKERS : undefined,
       css: false,
       globals: true,
-      passWithNoTests: false,
       restoreMocks: true,
       unstubGlobals: true,
       unstubEnvs: true,
@@ -310,7 +310,6 @@ export default defineConfig(({ mode }) => {
           'src/**/*.d.ts',
           'src/**/{constants,types,@types}/**',
           'src/**/{constants,types}.{ts,tsx}',
-          'src/**/*.test.{ts,tsx}',
           'src/**/*.test-d.{ts,tsx}',
           'src/tests/**',
           'src/App.tsx',
@@ -328,7 +327,6 @@ export default defineConfig(({ mode }) => {
       projects: [
         {
           resolve: {
-            ...resolve,
             alias: {
               'server-only': fileURLToPath(
                 new URL('tooling/testing/server-only.ts', import.meta.url)
@@ -351,19 +349,15 @@ export default defineConfig(({ mode }) => {
           }
         },
         {
-          resolve,
           plugins: componentPlugins(),
           test: {
             name: { label: 'dom', color: 'magenta' },
             environment: 'happy-dom',
             environmentOptions: { happyDOM: { url: 'http://localhost/en' } },
-            setupFiles: ['./tooling/vitest.setup.ts'],
             include: ['src/**/*.dom.test.{ts,tsx}']
           }
         },
         {
-          css,
-          resolve,
           plugins: componentPlugins(),
           test: {
             css: true,

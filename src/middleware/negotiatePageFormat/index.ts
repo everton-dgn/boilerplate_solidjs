@@ -13,7 +13,8 @@ const TYPE_SPECIFICITY = 2
 const UTF8 = /^charset\s*=\s*(?:utf-8|"utf-8")$/iu
 // RFC 7763: a resposta é CommonMark com extensões GFM, então as duas variantes
 // são atendidas.
-const MARKDOWN_VARIANT = /^variant\s*=\s*"?(?:gfm|commonmark)"?$/iu
+const MARKDOWN_VARIANT =
+  /^variant\s*=\s*(?:gfm|commonmark|"(?:gfm|commonmark)")$/iu
 const PARAMETERS = [UTF8, MARKDOWN_VARIANT]
 
 // Varredura linear: uma regex com lookahead até o fim da string custava O(n²)
@@ -70,6 +71,12 @@ function parseRange(value: string): MediaRange[] {
   return [{ type, quality, parameterCount: seen.size }]
 }
 
+function parseAccept(accept: string): MediaRange[] {
+  return splitOutsideQuotes({ value: accept, separator: ',' }).flatMap(range =>
+    parseRange(range)
+  )
+}
+
 function preference({ ranges, type }: MediaPreferenceOptions): MediaPreference {
   let result: MediaPreference = { quality: 0, specificity: -1 }
   for (const range of ranges) {
@@ -99,9 +106,7 @@ export function negotiatePageFormat(
   accept: string | null
 ): 'html' | 'markdown' | undefined {
   if (accept === null) return 'html'
-  const ranges = splitOutsideQuotes({ value: accept, separator: ',' }).flatMap(
-    range => parseRange(range)
-  )
+  const ranges = parseAccept(accept)
   const html = preference({ ranges, type: 'text/html' })
   const markdown = preference({ ranges, type: 'text/markdown' })
   if (
@@ -118,11 +123,7 @@ export function negotiatePageFormat(
 export function acceptsMarkdown(accept: string | null): boolean {
   if (accept === null) return true
   return (
-    preference({
-      ranges: splitOutsideQuotes({ value: accept, separator: ',' }).flatMap(
-        range => parseRange(range)
-      ),
-      type: 'text/markdown'
-    }).quality > 0
+    preference({ ranges: parseAccept(accept), type: 'text/markdown' }).quality >
+    0
   )
 }

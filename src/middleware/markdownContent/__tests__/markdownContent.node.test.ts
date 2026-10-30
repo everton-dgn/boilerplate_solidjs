@@ -7,7 +7,7 @@ import {
 } from '@solidjs/web'
 import { createMemo, Loading, onCleanup } from 'solid-js'
 
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import { Router } from '@/router.ts'
 
 import {
@@ -271,9 +271,14 @@ describe('markdown aliases and runtime publication', () => {
     )
   })
 
-  it.each(['GET', 'HEAD'])(
-    'rejects a %s alias when the rendered response becomes noindex',
-    async method => {
+  it.each([
+    ['GET', 'nofollow, NoIndex'],
+    ['HEAD', 'nofollow, NoIndex'],
+    ['GET', 'none'],
+    ['GET', 'googlebot: none']
+  ])(
+    'rejects a %s alias when the rendered response sends X-Robots-Tag %s',
+    async (method, robots) => {
       const cancel = vi.fn<() => void>()
       const body = new ReadableStream<Uint8Array>({
         start(controller) {
@@ -284,7 +289,7 @@ describe('markdown aliases and runtime publication', () => {
       const original = new Response(body, {
         headers: {
           'content-type': 'text/html',
-          'x-robots-tag': 'nofollow, NoIndex',
+          'x-robots-tag': robots,
           'cache-control': 'public, max-age=3600'
         }
       })
@@ -299,6 +304,22 @@ describe('markdown aliases and runtime publication', () => {
       )
       await expect(response.text()).resolves.toBe('')
       expect(cancel).toHaveBeenCalledOnce()
+    }
+  )
+
+  it.each(['max-image-preview:none', 'max-image-preview: none, nosnippet'])(
+    'keeps publishing an alias with X-Robots-Tag %s',
+    async robots => {
+      const original = await html()
+      original.headers.set('x-robots-tag', robots)
+      const response = await markdownContent(
+        event({ path: '/en/about.md' }),
+        () => Promise.resolve(original)
+      )
+      expect(response.status).toBe(HTTP_OK)
+      expect(response.headers.get('content-type')).toBe(
+        'text/markdown; charset=utf-8'
+      )
     }
   )
 
@@ -348,6 +369,27 @@ describe('markdown aliases and runtime publication', () => {
       )
     }
   )
+
+  it.each(['/pt/about/.md', '/en/docs/index.md'])(
+    'answers the non-canonical alias %s with a 404 and no render',
+    async path => {
+      const next = vi.fn<() => Promise<Response>>(() => html())
+      const response = await markdownContent(event({ path }), next)
+      expect(next).not.toHaveBeenCalled()
+      expect(response.status).toBe(HTTP_NOT_FOUND)
+    }
+  )
+
+  // Sem prefixo de idioma, /pt.md segue o redirect dos caminhos sem idioma.
+  it('does not publish the home through /pt.md', async () => {
+    const next = vi.fn<() => Promise<Response>>(() => html())
+    const response = await markdownContent(event({ path: '/pt.md' }), next)
+    expect(next).not.toHaveBeenCalled()
+    expect(response.status).toBe(HTTP_REDIRECT)
+    expect(response.headers.get('location')).toBe(
+      'https://example.com/en/pt.md'
+    )
+  })
 })
 
 describe('markdown negotiation and redirects', () => {
@@ -432,8 +474,8 @@ describe('markdown negotiation and redirects', () => {
     async path => {
       vi.spyOn(Router, 'match').mockReturnValue([
         {
-          path: '/*HTTP_NOT_FOUND',
-          pattern: '/*HTTP_NOT_FOUND',
+          path: '/*404',
+          pattern: '/*404',
           match: '/missing',
           params: {},
           info: { seo: { noindex: true } }
@@ -580,9 +622,8 @@ describe('markdown resource bounds', () => {
     }
   )
 
-  it('normalizes a failed SSR response with an existing locale cookie', async () => {
+  it('normalizes an HTML 500 with render errors', async () => {
     const request = event()
-    request.request.headers.set('cookie', 'PARAGLIDE_LOCALE=en')
     request.locals.ssrRenderState = { hasErrors: true, hasCompleted: true }
     const response = await markdownContent(request, () =>
       html('Partial fallback', HTTP_SERVER_ERROR)
@@ -592,11 +633,27 @@ describe('markdown resource bounds', () => {
     await expect(response.text()).resolves.not.toContain('Partial fallback')
   })
 
+  // O adaptador roda fora do contexto de idioma; o idioma vem da requisição.
+  it.each([
+    ['/pt/about.md', 'Não foi possível concluir a solicitação.'],
+    ['/en/about.md', 'The request could not be completed.'],
+    ['/es/about.md', 'No se pudo completar la solicitud.']
+  ])(
+    'answers the public 500 of %s in the request locale',
+    async (path, message) => {
+      const request = event({ path })
+      Object.assign(request.locals, { ssrRenderState: undefined })
+      const response = await markdownContent(request, () => html())
+      expect(response.status).toBe(HTTP_SERVER_ERROR)
+      await expect(response.text()).resolves.toBe(message)
+    }
+  )
+
+  // A contenção do middleware registra o log e responde 500 público.
   it('bounds conversion input', async () => {
-    const response = await markdownContent(event(), () =>
-      html('x'.repeat(MAX_HTML_BYTES + 1))
-    )
-    expect(response.status).toBe(HTTP_SERVER_ERROR)
+    await expect(
+      markdownContent(event(), () => html('x'.repeat(MAX_HTML_BYTES + 1)))
+    ).rejects.toThrow('Markdown document limit exceeded')
   })
 
   it('propagates client cancellation to the render request', async () => {

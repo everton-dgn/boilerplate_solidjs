@@ -34,9 +34,9 @@ export function createTheme(): ThemeState {
   let connection: ReturnType<typeof makeThemeChannel> | undefined
 
   createEffect(
-    () => (isReady() ? resolvedTheme() : undefined),
+    () => (isReady() ? resolvedTheme() : null),
     resolved => {
-      if (resolved !== undefined) apply(resolved)
+      if (resolved) apply(resolved)
     }
   )
 
@@ -59,8 +59,8 @@ export function createTheme(): ThemeState {
       if (!isTheme(next)) return
       setThemePreference(next)
       apply(next === 'system' ? untrack(systemTheme) : next)
-      const persisted = saveTheme(next)
-      connection?.publish({ theme: next, persisted })
+      const isPersisted = saveTheme(next)
+      connection?.publish({ theme: next, isPersisted })
     }
   }
 }

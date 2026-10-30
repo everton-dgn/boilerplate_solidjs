@@ -1,5 +1,3 @@
-/* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
-/* oxlint-disable vitest/prefer-each -- O runner nativo do Node.js não tem a API it.each. */
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import fs from 'node:fs'
@@ -52,9 +50,10 @@ describe('i18n dev shutdown', () => {
       const server = await startServer({
         context,
         onClosing: () => closing.resolve(null),
-        // Esta fixture retém o segundo evento para reproduzir o cache obsoleto.
-        // O plugin preserva a configuração do watcher escolhida pelo consumidor.
-        shouldDelayWatchEvents: true
+        // O teste entrega o evento do primeiro agregado e retém o do segundo,
+        // que o watcher só reportaria depois do fechamento. Nenhum outro evento
+        // das entradas do compilador pode iniciar a compilação retida.
+        shouldIgnoreCompilerInputs: true
       })
       const source = path.join(server.root, 'src/routes/Home/i18n/es.json')
       const aggregate = '.paraglide/messages/es.json'
@@ -87,6 +86,10 @@ describe('i18n dev shutdown', () => {
           source,
           JSON.stringify({ ...MESSAGES, home_body: 'Primero' })
         )
+        await waitFor(() =>
+          contains({ root: server.root, file: aggregate, expected: /Primero/u })
+        )
+        server.change(aggregate)
         await waitFor(() => Promise.resolve(!shouldPause))
         context.diagnostic('Compiler paused after reading Primero')
         await writeFile(

@@ -3,12 +3,11 @@ import { createSignal, Show } from 'solid-js'
 import * as v from 'valibot'
 
 import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
+import { POLL, readScripts } from '@/tests/helpers/headTags/index.ts'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { createSeo } from '../index.ts'
 
-// vi.waitUntil não lê test.expect.poll e espera 50ms por padrão.
-const POLL = { interval: 10 }
 const INSTANCES = 2
 const NodeSchema = v.record(v.string(), v.unknown())
 
@@ -24,12 +23,6 @@ function mountData(accessors: StructuredDataAccessor[]): void {
     },
     { providers: false }
   )
-}
-
-function readScripts(): string[] {
-  return [
-    ...document.head.querySelectorAll('script[type="application/ld+json"]')
-  ].map(script => script.textContent)
 }
 
 function parseNode(json: string | undefined): Record<string, unknown> {

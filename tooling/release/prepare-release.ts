@@ -1,20 +1,27 @@
 import { BOT } from './constants.ts'
-import { postpone, type ReleaseContext } from './context.ts'
+import { postpone } from './context.ts'
 import {
   api,
   assertReleaseFiles,
   assertReleasePullRequest,
+  git,
   isOpenReleasePullRequest,
   mutate,
   optionalApi,
-  requireSha,
-  type PullRequest
+  requireSha
 } from './github.ts'
-import type { ValidatedRelease } from './plan-artifact.ts'
-import { assertMainProtection, git, isAncestor, mainSha } from './repository.ts'
-import type { GitCommit, GitReference, Prepared } from './types.ts'
+import { assertMainProtection, isAncestor, mainSha } from './repository.ts'
+import type {
+  GitCommit,
+  GitReference,
+  Prepared,
+  PullRequest,
+  ReleaseContext,
+  ValidatedRelease
+} from './types.ts'
 
 const BRANCH_SHA_LENGTH = 12
+const PULLS_PAGE_SIZE = 100
 
 type ReleaseRequest = {
   ctx: ReleaseContext
@@ -77,8 +84,13 @@ async function closeObsoletePullRequests({
   branch
 }: ObsoleteSearch): Promise<void> {
   const pulls = await api<PullRequest[]>(
-    `${ctx.root}/pulls?state=open&base=main&per_page=100`
+    `${ctx.root}/pulls?state=open&base=main&per_page=${PULLS_PAGE_SIZE}`
   )
+  if (pulls.length === PULLS_PAGE_SIZE) {
+    await postpone(
+      `Checked only the latest ${PULLS_PAGE_SIZE} open pull requests to main; older obsolete release pull requests may stay open.`
+    )
+  }
   for (const pr of pulls) {
     if (
       pr.head.ref === branch ||

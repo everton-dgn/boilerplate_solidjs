@@ -1,10 +1,4 @@
-import {
-  expect,
-  type APIRequestContext,
-  type Page,
-  test,
-  type TestInfo
-} from '@playwright/test'
+import type { APIRequestContext, Page } from '@playwright/test'
 import * as v from 'valibot'
 
 import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
@@ -12,7 +6,7 @@ import {
   readGatedBody,
   releaseFixtureGate
 } from '@/tests/helpers/fixtureGate/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 test.use({ locale: 'pt-BR' })
 
@@ -23,16 +17,7 @@ const LOADING_TEXT = 'Carregando produto...'
 const JSON_LD = 'script[type="application/ld+json"]'
 const SCRIPTS_WITH_PRODUCT = 2
 
-type HtmlEvidence = {
-  testInfo: TestInfo
-  name: string
-  html: string
-}
 type GatedVisit = { page: Page; request: APIRequestContext }
-
-async function saveHtml({ testInfo, name, html }: HtmlEvidence): Promise<void> {
-  await testInfo.attach(name, { body: html, contentType: 'text/html' })
-}
 
 function productId(): string {
   return `structured-data:${crypto.randomUUID()}`
@@ -65,7 +50,7 @@ async function expectSafeProduct(page: Page): Promise<void> {
 test('envia o JSON-LD assíncrono como atualização de head após o HTML inicial', async ({
   request,
   baseURL
-}, testInfo) => {
+}) => {
   if (!baseURL) throw new Error('baseURL is required')
   const id = productId()
   const response = await fetch(`${baseURL}${PAGE_URL}?id=${id}`, {
@@ -78,7 +63,6 @@ test('envia o JSON-LD assíncrono como atualização de head após o HTML inicia
     shellText: LOADING_TEXT
   })
   expect(response.status).toBe(HTTP_OK)
-  await saveHtml({ testInfo, name: 'stream-response.html', html })
 
   const headEnd = html.indexOf('</head>')
   expect(headEnd).toBeGreaterThan(0)
@@ -103,10 +87,7 @@ test('envia o JSON-LD assíncrono como atualização de head após o HTML inicia
 test.describe('streaming sem JavaScript', () => {
   test.use({ javaScriptEnabled: false })
 
-  test('mantém apenas o JSON-LD inicial no head', async ({
-    page,
-    request
-  }, testInfo) => {
+  test('mantém apenas o JSON-LD inicial no head', async ({ page, request }) => {
     await visitGated({ page, request })
     await page.waitForLoadState('load')
     await expect(page.getByText(LOADING_TEXT, { exact: true })).toBeVisible()
@@ -114,19 +95,14 @@ test.describe('streaming sem JavaScript', () => {
     const scripts = await page.locator(`head ${JSON_LD}`).allTextContents()
     expect(scripts.join('')).not.toContain(PRODUCT_NAME)
     await expect(page.locator(`body ${JSON_LD}`)).toHaveCount(0)
-    await saveHtml({
-      testInfo,
-      name: 'dom-without-javascript.html',
-      html: await page.content()
-    })
   })
 })
 
 test('insere o JSON-LD tardio no head antes de carregar o JavaScript da aplicação', async ({
   page,
-  request
-}, testInfo) => {
-  const violations = await watchCspViolations(page)
+  request,
+  cspViolations
+}) => {
   await page.route(/\/assets\/.*\.js(?:\?.*)?$/u, route => route.abort())
   await visitGated({ page, request })
   await expect(page.getByRole('heading', { name: PRODUCT_NAME })).toBeVisible()
@@ -139,22 +115,16 @@ test('insere o JSON-LD tardio no head antes de carregar o JavaScript da aplicaç
   const scripts = await page.locator(`head ${JSON_LD}`).allTextContents()
   expect(scripts.filter(text => text.includes(PRODUCT_NAME))).toHaveLength(1)
   await expectSafeProduct(page)
-  expect(violations).toStrictEqual([])
+  expect(cspViolations).toStrictEqual([])
   await expect(page.locator(`body ${JSON_LD}`)).toHaveCount(0)
-  await saveHtml({
-    testInfo,
-    name: 'dom-before-hydration.html',
-    html: await page.content()
-  })
 })
 
 test('hidrata sem duplicar o JSON-LD e o remove ao sair da rota', async ({
   page,
-  request
-}, testInfo) => {
-  const errors: string[] = []
-  const violations = await watchCspViolations(page)
-  page.on('pageerror', error => errors.push(error.message))
+  request,
+  pageErrors,
+  cspViolations
+}) => {
   await visitGated({ page, request })
   await page.getByRole('button', { name: 'Incrementar', exact: true }).click()
   await expect(page.getByText('Cliques: 1', { exact: true })).toBeVisible()
@@ -165,17 +135,12 @@ test('hidrata sem duplicar o JSON-LD e o remove ao sair da rota', async ({
   expect(scripts.filter(text => text.includes(PRODUCT_NAME))).toHaveLength(1)
   await expectSafeProduct(page)
   await expect(page.locator(`body ${JSON_LD}`)).toHaveCount(0)
-  await saveHtml({
-    testInfo,
-    name: 'dom-after-hydration.html',
-    html: await page.content()
-  })
 
   await page.getByRole('link', { name: 'Início', exact: true }).click()
   await expect(page).toHaveTitle('SolidJS Boilerplate | Aplicações web com SSR')
   await expect(page.locator(`head ${JSON_LD}`)).toHaveCount(1)
   const remaining = await page.locator(JSON_LD).allTextContents()
   expect(remaining.join('')).not.toContain(PRODUCT_NAME)
-  expect(errors).toStrictEqual([])
-  expect(violations).toStrictEqual([])
+  expect(pageErrors).toStrictEqual([])
+  expect(cspViolations).toStrictEqual([])
 })

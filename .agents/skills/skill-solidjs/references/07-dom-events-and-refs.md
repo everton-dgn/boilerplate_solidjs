@@ -18,7 +18,7 @@ Receita:
 <div class={['card', { selected: props.selected }]} style={{ 'background-color': color(), '--space': space() }} />
 ```
 
-Armadilha: classList não é API JSX atual. Snapshot de classes não torna cru reativo.
+Armadilha: classList não é API JSX atual. Snapshot de classes não torna cru reativo. Com uma CSP sem `'unsafe-inline'` em `style-src`, o navegador bloqueia o atributo `style` que o SSR grava no HTML (regra da CSP, não do Solid); nesse caso, use classes. Atualização dinâmica no cliente por setProperty (CSSOM) não é bloqueada.
 
 ## Eventos e propagação
 
@@ -91,7 +91,7 @@ Children explícitos suprimem `textContent` na compilação; não combine as dua
 
 `<output>{total()}</output>` começando em zero funciona no Chromium, mas quebra em happy-dom na base verificada. `{String(total())}` preservou 0/5/0 nos dois ambientes; converter muda o caminho exercitado, então não faça isso no teste de comportamento numérico. Veja [ambientes de teste](../../skill-solidjs-testing/references/environments.md#happy-dom).
 
-Alternar número falso e elemento como filho único tem outro defeito de runtime: [R13](17-known-risks.md#r13-zero-ou-nan-como-filho-único-acumula-nós-de-texto-ao-alternar).
+Alternar número falso e elemento como filho único: veja [R13](17-known-risks.md#r13-zero-ou-nan-como-filho-único-acumula-nós-de-texto-ao-alternar).
 
 ## Namespace
 

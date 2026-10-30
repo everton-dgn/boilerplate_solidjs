@@ -59,18 +59,17 @@ scripts e as restrições de runtime.
 
 ## Documentação
 
-| Guia                                         | Conteúdo                                                   |
-| -------------------------------------------- | ---------------------------------------------------------- |
-| [Desenvolvimento](docs/development.md)       | Ambiente, scripts, runtimes, cache, CI e deploy            |
-| [Arquitetura](docs/architecture.md)          | Rotas, organização de módulos e dependências entre camadas |
-| [Internacionalização](docs/i18n.md)          | Catálogos, geração, navegação e persistência do idioma     |
-| [Componentes e estilos](docs/ui.md)          | Campos, diálogos, notificações, tema, CSS e ícones         |
-| [Segurança e CSP](docs/security.md)          | Cabeçalhos, nonce, renderização e limites da política      |
-| [Erros no servidor](docs/server-errors.md)   | Chamadas de backend, saída pública e recuperação           |
-| [SEO](docs/seo.md)                           | Metadados, dados estruturados e índices do site            |
-| [Testes](docs/testing.md)                    | Ambientes, isolamento, E2E e diagnóstico de falhas         |
-| [Desempenho de SEO](docs/seo-performance.md) | Medições históricas e método de comparação                 |
-| [Releases](tooling/release/README.md)        | Versões, tags, changelog e recuperação da automação        |
+| Guia                                       | Conteúdo                                                   |
+| ------------------------------------------ | ---------------------------------------------------------- |
+| [Desenvolvimento](docs/development.md)     | Ambiente, scripts, runtimes, cache, CI e deploy            |
+| [Arquitetura](docs/architecture.md)        | Rotas, organização de módulos e dependências entre camadas |
+| [Internacionalização](docs/i18n.md)        | Catálogos, geração, navegação e persistência do idioma     |
+| [Componentes e estilos](docs/ui.md)        | Campos, diálogos, notificações, tema, CSS e ícones         |
+| [Segurança e CSP](docs/security.md)        | Cabeçalhos, nonce, renderização e limites da política      |
+| [Erros no servidor](docs/server-errors.md) | Chamadas de backend, saída pública e recuperação           |
+| [SEO](docs/seo.md)                         | Metadados, dados estruturados e índices do site            |
+| [Testes](docs/testing.md)                  | Ambientes, isolamento, E2E e diagnóstico de falhas         |
+| [Releases](tooling/release/README.md)      | Versões, tags, changelog e recuperação da automação        |
 
 As [convenções para agentes](AGENTS.md) ficam no arquivo de instruções do
 projeto.

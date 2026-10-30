@@ -7,14 +7,14 @@ import { readTheme } from '../themeStorage/index.ts'
 
 type ThemeMessage = {
   theme: Theme
-  persisted: boolean
+  isPersisted: boolean
   changedAt: number
   origin: string
 }
 
 type ThemeChoice = {
   theme: Theme
-  persisted: boolean
+  isPersisted: boolean
 }
 
 type ThemeConnection = {
@@ -30,8 +30,8 @@ function isThemeMessage(message: unknown): message is ThemeMessage {
     message !== null &&
     'theme' in message &&
     isTheme(message.theme) &&
-    'persisted' in message &&
-    typeof message.persisted === 'boolean' &&
+    'isPersisted' in message &&
+    typeof message.isPersisted === 'boolean' &&
     'changedAt' in message &&
     typeof message.changedAt === 'number' &&
     Number.isSafeInteger(message.changedAt) &&
@@ -71,15 +71,15 @@ export function makeThemeChannel(
       message.changedAt < changedAt ||
       (message.changedAt === changedAt && message.origin <= lastOrigin)
     ) {
-      if (message.persisted) restore()
+      if (message.isPersisted) restore()
       return
     }
     ;({ changedAt } = message)
     lastOrigin = message.origin
-    temporary = !message.persisted
+    temporary = !message.isPersisted
     observed = readTheme()
     receive(
-      message.persisted && observed !== undefined
+      message.isPersisted && observed !== undefined
         ? (observed ?? DEFAULT_THEME)
         : message.theme
     )
@@ -95,12 +95,12 @@ export function makeThemeChannel(
   restore()
 
   return {
-    publish({ theme, persisted }) {
+    publish({ theme, isPersisted }) {
       changedAt = Math.max(Date.now(), changedAt + 1)
       lastOrigin = origin
-      temporary = !persisted
+      temporary = !isPersisted
       observed = readTheme()
-      channel.post({ theme, persisted, changedAt, origin })
+      channel.post({ theme, isPersisted, changedAt, origin })
     },
     dispose() {
       channel.dispose()

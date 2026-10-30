@@ -16,6 +16,8 @@ permissions: {}
 
 env:
   LEFTHOOK: '0'
+  RELEASE_SOURCE_RUN_ID:
+    ${{ github.event.workflow_run.id || inputs.source_run_id }}
 
 concurrency:
   group: >-
@@ -66,8 +68,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_PLAN_FILE: ${{ runner.temp }}/release-plan.json
-          RELEASE_SOURCE_RUN_ID:
-            ${{ github.event.workflow_run.id || inputs.source_run_id }}
         run: bun tooling/release/plan-release.ts
 
       - name: Upload release plan
@@ -120,13 +120,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_MODE: prepare
           RELEASE_PLAN_FILE: ${{ runner.temp }}/release-plan/release-plan.json
-          RELEASE_SOURCE_RUN_ID:
-            ${{ github.event.workflow_run.id || inputs.source_run_id }}
         run: bun --no-install tooling/release/automatic-release.ts
 
   # O merge exige contents: write; ler o PR basta para conferir sua identidade.
   publish:
-    needs: [plan, prepare]
+    needs: prepare
     if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -135,6 +133,9 @@ jobs:
       checks: write
       contents: write
       pull-requests: read
+    outputs:
+      tag: ${{ steps.publish.outputs.tag }}
+      version: ${{ steps.publish.outputs.version }}
     steps:
       - name: Checkout trusted release automation
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -157,11 +158,10 @@ jobs:
           digest-mismatch: error
 
       - name: Validate release metadata, merge and publish
+        id: publish
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_MODE: publish
           RELEASE_HEAD: ${{ needs.prepare.outputs.head }}
           RELEASE_PLAN_FILE: ${{ runner.temp }}/release-plan/release-plan.json
-          RELEASE_SOURCE_RUN_ID:
-            ${{ github.event.workflow_run.id || inputs.source_run_id }}
         run: bun --no-install tooling/release/automatic-release.ts

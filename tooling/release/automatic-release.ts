@@ -32,8 +32,6 @@ if (mode === 'publish' && prepared) {
 }
 if (mode === 'prepare') {
   await appendOutput(
-    prepared
-      ? { publish: 'true', head: prepared.head, source: ctx.source }
-      : { publish: 'false' }
+    prepared ? { publish: 'true', head: prepared.head } : { publish: 'false' }
   )
 }

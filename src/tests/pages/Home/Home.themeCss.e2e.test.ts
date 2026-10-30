@@ -3,14 +3,13 @@ import { expect, test } from '@playwright/test'
 test.use({ locale: 'pt-BR' })
 
 test.describe('cores no HTML inicial', () => {
+  test.use({ javaScriptEnabled: false })
+
   for (const colorScheme of ['light', 'dark'] as const) {
-    test(`CSS inicial segue o sistema ${colorScheme}`, async ({ browser }) => {
-      const context = await browser.newContext({
-        javaScriptEnabled: false,
-        colorScheme
-      })
-      try {
-        const page = await context.newPage()
+    test.describe(`sistema ${colorScheme}`, () => {
+      test.use({ colorScheme })
+
+      test(`CSS inicial segue o sistema ${colorScheme}`, async ({ page }) => {
         await page.goto('/')
         await expect(page.locator('html')).not.toHaveClass(/light|dark/u)
         await expect(page.locator('body')).toHaveCSS(
@@ -20,28 +19,23 @@ test.describe('cores no HTML inicial', () => {
             : 'oklch(0.141 0.005 285.823)'
         )
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-      } finally {
-        await context.close()
-      }
+      })
     })
   }
 
   for (const theme of ['light', 'dark'] as const) {
-    test(`SSR aplica cookie ${theme} contra o sistema antes da hidratação`, async ({
-      browser,
-      baseURL
-    }) => {
-      if (!baseURL) throw new Error('Missing test base URL')
-      const context = await browser.newContext({
-        baseURL,
-        javaScriptEnabled: false,
-        colorScheme: theme === 'light' ? 'dark' : 'light'
-      })
-      try {
+    test.describe(`cookie ${theme}`, () => {
+      test.use({ colorScheme: theme === 'light' ? 'dark' : 'light' })
+
+      test(`SSR aplica cookie ${theme} contra o sistema antes da hidratação`, async ({
+        page,
+        context,
+        baseURL
+      }) => {
+        if (!baseURL) throw new Error('Missing test base URL')
         await context.addCookies([
           { name: 'app-theme', value: theme, url: baseURL }
         ])
-        const page = await context.newPage()
         await page.goto('/')
         await expect(page.locator('html')).toHaveClass(theme)
         await expect(page.locator('html')).toHaveCSS('color-scheme', theme)
@@ -53,9 +47,7 @@ test.describe('cores no HTML inicial', () => {
           'background-color',
           theme === 'light' ? 'oklch(1 0 0)' : 'oklch(0.141 0.005 285.823)'
         )
-      } finally {
-        await context.close()
-      }
+      })
     })
   }
 })

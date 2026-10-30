@@ -27,13 +27,16 @@ rotas com parâmetros. Na chamada com `route: true`, `createSeo` lê a cadeia de
 rotas ativas com `useRouteMatches` e publica esses campos no título, na
 descrição, no Open Graph, no Twitter e no JSON-LD usando `useHead`. A rota filha
 sobrescreve os campos que declara e herda os demais do layout; `image` é
-mesclada atributo a atributo (`path`, `width`, `height`, `alt`). Sem definição
-na cadeia, título, descrição e imagem vêm de `SITE`, `type` é `website` e
-`noindex` é `false`. A home declara um título próprio que identifica o
-boilerplate e seu uso para aplicações web com SSR. Página indexável publica
-`robots` com `index, follow, max-image-preview:large`: os dois primeiros já são
-o padrão do crawler e o terceiro libera a prévia grande da imagem no Google
-Discover. Escolha do projeto: com `noindex: true`, a chamada de rota publica só
+mesclada atributo a atributo (`path`, `width`, `height`, `alt`). Ao trocar o
+`path`, declare também `width` e `height` do novo arquivo: dimensões omitidas
+são herdadas da imagem anterior e publicadas em `og:image:width` e
+`og:image:height`, e a prévia nas redes pode sair cortada. Sem definição na
+cadeia, título, descrição e imagem vêm de `SITE`, `type` é `website` e `noindex`
+é `false`. A home declara um título próprio que identifica o boilerplate e seu
+uso para aplicações web com SSR. Página indexável publica `robots` com
+`index, follow, max-image-preview:large`: os dois primeiros já são o padrão do
+crawler e o terceiro libera a prévia grande da imagem no Google Discover.
+Escolha do projeto: com `noindex: true`, a chamada de rota publica só
 `robots: noindex`, título e descrição. Canonical, Open Graph, Twitter (inclusive
 `og:locale`, `og:site_name` e `twitter:card`) e JSON-LD ficam de fora, inclusive
 na página 404. Neste boilerplate esses metadados só têm consumidor em páginas
@@ -65,11 +68,19 @@ export const seo = {
 Em `index.tsx`, importe `seo` e use `info: { seo }` na definição da rota, junto
 dos demais controles que a página declarar. Getters preservam o idioma da
 requisição; não copie os textos traduzidos para valores no topo do módulo. Os
-catálogos ficam em `i18n/{pt,en,es}.json` ao lado desses arquivos. O mesmo
-`seo.ts` pode exportar `content` com os dados que o componente renderiza (as
-páginas que usam `SiteArticle` o tipam com `satisfies SitePage`), e os getters
-de `seo` podem ler esse objeto. É dado de UI: o Markdown não o lê, porque sai do
-HTML renderizado.
+catálogos ficam em `i18n/{pt,en,es}.json` ao lado desses arquivos. Os dados que
+o componente renderiza ficam em `index.tsx`, numa constante não exportada com
+getters (as páginas que usam `SiteArticle` a tipam com `satisfies SitePage`), ou
+em chamadas de `m` no próprio JSX. O manifesto de rotas importa o `route` de
+cada página no bundle inicial, e tudo o que `seo.ts` importa entra junto. Por
+isso os getters de `seo` chamam as mensagens diretamente, sem ler o objeto da
+página, e o corpo fica só no módulo da rota, baixado na navegação. Uma página
+que ainda exporte `content` de `seo.ts` deve movê-lo para `index.tsx` e trocar
+as leituras de `seo` pelas mensagens. A regra de lint `project/seo-module` acusa
+um `seo.ts` que exporte outra coisa além de `seo` ou que importe um módulo local
+como valor, e o teste de i18n em produção confere que cada corpo fica só no
+módulo da rota. É dado de UI: o Markdown não o lê, porque sai do HTML
+renderizado.
 
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
 JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (nó
@@ -148,19 +159,42 @@ export default function FaqPage() {
 }
 ```
 
+Uma página do tipo `article`, com imagem própria e seção no `llms.txt`, declara
+o tipo e a imagem em `seo.ts`, com o texto alternativo também num getter:
+
+```ts
+import { m } from '@paraglide/messages.js'
+
+import type { SeoRouteInfo } from '@/@types/seo.ts'
+
+export const seo = {
+  get title() {
+    return m.team_title()
+  },
+  get description() {
+    return m.team_description()
+  },
+  type: 'article',
+  image: {
+    path: '/images/equipe.png',
+    width: 1200,
+    height: 800,
+    get alt() {
+      return m.team_imageAlt()
+    }
+  }
+} satisfies SeoRouteInfo
+```
+
+A rota importa esse objeto e declara a seção ao lado dele:
+
 ```tsx
 import type { RouteDefinition } from '@solidjs/router'
 
+import { seo } from './seo.ts'
+
 export const route = {
-  info: {
-    seo: {
-      title: 'Sobre nós',
-      description: 'Conheça nossa equipe.',
-      type: 'article',
-      image: { path: '/images/equipe.png', alt: 'Foto da equipe' }
-    },
-    llms: { section: 'Empresa' }
-  }
+  info: { seo, llms: { section: 'Empresa' } }
 } satisfies RouteDefinition
 ```
 
@@ -168,40 +202,47 @@ export const route = {
 
 O `llms.txt` coleta os mesmos metadados pelo manifesto, sem renderizar páginas
 nem executar preloads, e publica só as páginas que declaram `route.info.llms`. O
-arquivo é um índice curado para modelos de linguagem, não um sitemap: em sites
-grandes, selecione as páginas que explicam o produto e agrupe-as. `llms: true`
-inclui a página; sem seção herdada, ela entra na seção padrão `Pages`.
-`{ section: 'Guias' }` cria ou reutiliza uma seção com esse nome, na ordem em
-que aparece no manifesto; `{ optional: true }` move a página para a seção
-`Optional`, que o formato reserva ao conteúdo que o modelo pode pular, e uma
-seção declarada com esse nome se funde a ela. A configuração é herdada pela
-cadeia de rotas: um layout com `llms: { section: 'Docs' }` inclui suas filhas
-nessa seção, uma filha pode sair com `llms: false` ou sobrescrever só o campo
-que declara, e `llms: true` numa filha reativa a inclusão preservando seção e
-marcação opcional herdadas. `noindex: true` exclui a página do sitemap e do
-llms.txt, mesmo com a flag. O filtro considera a configuração efetiva da página,
-incluindo herança e a rota de índice filha. O resolvedor fica colocalizado em
-`src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. A publicação de Markdown
-é controlada separadamente por `route.info.markdown`.
+arquivo é um índice curado para modelos de linguagem, não um sitemap, e não tem
+limite de tamanho: em sites grandes, meça os textos reais, selecione as páginas
+que explicam o produto e agrupe-as. `llms: true` inclui a página; sem seção
+herdada, ela entra na seção padrão `Pages`. `{ section: 'Guias' }` cria ou
+reutiliza uma seção com esse nome, na ordem em que aparece no manifesto;
+`{ optional: true }` move a página para a seção `Optional`, que o formato
+reserva ao conteúdo que o modelo pode pular, e uma seção declarada com esse nome
+se funde a ela. A configuração é herdada pela cadeia de rotas: um layout com
+`llms: { section: 'Docs' }` inclui suas filhas nessa seção, uma filha pode sair
+com `llms: false` ou sobrescrever só o campo que declara, e `llms: true` numa
+filha reativa a inclusão preservando seção e marcação opcional herdadas.
+`noindex: true` exclui a página do sitemap e do llms.txt, mesmo com a flag. O
+filtro considera a configuração efetiva da página, incluindo herança e a rota de
+índice filha. O resolvedor fica colocalizado em
+`src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. O índice sai no idioma
+base. Rotas com parâmetro ficam fora mesmo com `llms`, e as fontes de
+`route.info.sitemap` não alimentam esse índice. A publicação de Markdown é
+controlada separadamente por `route.info.markdown`; quando a folha declara
+`markdown: true` ou `'dynamic'`, o link do índice aponta para o `.md`
+(`/en/about.md`), e nas demais, para o HTML.
 
 ## Sitemap e rotas dinâmicas
 
-O `llms.txt` coleta do manifesto só páginas sem parâmetros, com `llms`
-habilitado e sem `noindex`, no idioma base. Se a folha declara `markdown: true`
-ou `'dynamic'`, o link aponta para o `.md` (`/en/about.md`); nas demais, para o
-HTML. Rotas com parâmetro ficam fora mesmo com `llms`, e as fontes de
-`route.info.sitemap` não alimentam esse índice. No sitemap, uma rota com
-parâmetro entra pelas entradas de `route.info.sitemap`: uma função, síncrona ou
-assíncrona, que devolve `{ path, lastmod? }` com caminhos absolutos do site,
-enumerados a partir da fonte de dados. O módulo da rota entra no bundle do
-cliente, então banco e SDK ficam numa server function chamada pela fonte,
-conforme o [contrato de erros no servidor](server-errors.md). A fonte recebe um
+No sitemap, uma rota com parâmetro entra pelas entradas de `route.info.sitemap`:
+uma função, síncrona ou assíncrona, que devolve `{ path, lastmod? }` com
+caminhos absolutos do site, enumerados a partir da fonte de dados. O módulo da
+rota entra no bundle do cliente, então banco e SDK ficam numa server function
+chamada pela fonte, conforme o
+[contrato de erros no servidor](server-errors.md). A fonte recebe um
 `AbortSignal` que aborta no prazo das fontes, na desconexão do cliente e ao fim
 da leitura, inclusive quando outra fonte falha; repasse-o à leitura para
 cancelá-la, em vez de só deixar de esperá-la. Uma fonte que ignore o sinal
 continua rodando, mas a resposta não a espera além do prazo. A fonte roda a cada
 request do sitemap (o CDN reutiliza a resposta por uma hora) e é ignorada sob
-`noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito. As
+`noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito.
+Como no llms.txt, o filtro considera a configuração efetiva da página, incluindo
+a rota de índice filha, que compartilha a URL do layout: o índice com
+`noindex: true` retira a fonte do layout, uma fonte declarada pelo índice
+substitui a do layout, e o índice sem fonte herda a do layout, publicada
+conforme o `noindex` efetivo do índice. A fonte fica presa à URL de quem a
+declara; uma fonte que enumere páginas de outra filha deve ficar nessa filha. As
 entradas são validadas na fronteira: caminho que não começa com `/`, com host,
 esquema, query, fragmento ou espaço falha; barras finais e repetidas são
 normalizadas; entradas que resultam na mesma URL publicada mantêm a primeira
@@ -209,10 +250,9 @@ ocorrência (a página estática antes da fonte). A comparação usa a URL local
 que vai para o XML, então `/a/../b` e `/b`, `/café` e `/caf%C3%A9` ou
 `/pt/blog/x` e `/blog/x` contam como a mesma página. `lastmod` fora do W3C
 Datetime é omitido. Falha de qualquer fonte, entrada inválida, prazo estourado
-ou sitemap acima do limite do protocolo (a quantidade fica em
-`sitemap.xml/constants.ts` e o limite de bytes em
-`sitemap.xml/helpers/buildSitemapResponse/index.ts`) respondem 503 sem corpo e
-com `no-store`, e o servidor registra a linha fixa `[sitemap]` descrita em
+ou sitemap acima dos limites do protocolo (de URLs e de bytes, em
+`sitemap.xml/constants.ts`) respondem 503 sem corpo e com `no-store`, e o
+servidor registra a linha fixa `[sitemap]` descrita em
 [erros no servidor](server-errors.md#log-de-falhas). O crawler tenta de novo, e
 o CDN não guarda um sitemap parcial por uma hora. A resposta de sucesso traz
 `stale-if-error=86400`: depois que a cópia em cache expira, se a função
@@ -225,7 +265,9 @@ alterações não são lidas pelo gerador.
 Os limites são conferidos uma única vez, depois de gerar uma URL por idioma, com
 alternates e `x-default`: a quantidade de caminhos aceita é o limite de URLs
 dividido pelo número de idiomas. Veja a
-[integração dos índices com i18n](i18n.md#índices-de-seo).
+[integração dos índices com i18n](i18n.md#índices-de-seo). O endpoint gera um
+único sitemap, sem divisão automática: uma aplicação que passe de qualquer
+limite precisa de vários arquivos e de um índice de sitemaps.
 
 ```tsx
 import type { RouteDefinition } from '@solidjs/router'
@@ -243,10 +285,63 @@ Para que `noindex` seja respeitado pelas listas, declare-o em `route.info.seo`,
 em vez de acrescentar apenas uma tag HTML avulsa.
 
 A travessia do manifesto é iterativa, para não depender do limite de recursão do
-JavaScript. O coletor do sitemap lê caminhos, `noindex`, `type` e as datas de
-artigo, sem resolver título ou descrição. O coletor do `llms.txt` resolve também
-os metadados das páginas. O registro histórico da medição dos casos extremos
-está em [desempenho da coleta de SEO](seo-performance.md).
+JavaScript; o teste de `walkStaticRoutes` cobre 10 mil layouts aninhados e 10
+mil rotas irmãs. O coletor do sitemap lê caminhos, `noindex`, `type` e as datas
+de artigo, sem resolver título ou descrição. O coletor do `llms.txt` resolve
+também os metadados das páginas.
+
+### Capacidade e medição
+
+O coletor do `llms.txt` percorre todas as rotas do manifesto e resolve os
+metadados de cada página antes de aplicar `route.info.llms` e `noindex`. O custo
+da coleta cresce com o total de rotas: selecionar menos páginas encurta o texto
+publicado, mas a travessia e a resolução de metadados continuam passando por
+todas.
+
+A ordem de grandeza vem de uma medição histórica, feita em setembro de 2026 num
+Apple M2 Pro, sobre uma versão intermediária em que `route.info.llms` era
+booleano e ainda não havia seções. Com 100 mil rotas sintéticas, a coleta de
+caminhos levou cerca de 33 ms e o `llms.txt` completo cerca de 230 ms, com corpo
+de cerca de 12 MB e diferença de heap perto de 108 MiB entre o início e o fim da
+geração (não é pico de memória). O sitemap completo de 10 mil rotas levou cerca
+de 7 ms. Os scripts e registros dessa medição não existem mais, e a versão atual
+não foi medida de novo. Os números servem para dimensionar e não valem como meta
+nem como limite da CI.
+
+Para comparar uma mudança em `walkStaticRoutes`, `collectLlmsPages` ou no
+coletor do sitemap, meça fora do repositório:
+
+- copie os helpers da revisão de base como linha de base e carregue as duas
+  versões pelo Vite instalado, importando `collectLlmsPages` e a assinatura
+  atual de `buildLlmsText`;
+- rode pares antes/depois em processos Node novos, alternando a ordem a cada par
+  e sem outros benchmarks na máquina (a medição histórica usou 20 pares por
+  cenário);
+- em cada processo, faça uma primeira chamada e três repetições; use a mediana
+  das repetições do processo e, entre os processos, a mediana e o P95 pelo
+  método do posto mais próximo, que com 20 observações é só indicativo;
+- deixe fora do cronômetro a carga dos módulos, a criação das rotas sintéticas e
+  o GC explícito entre chamadas;
+- mantenha fixa a ordem das operações (caminhos, metadados, `llms.txt`,
+  sitemap), porque a primeira chamada de cada uma aproveita o código aquecido
+  pela anterior e não representa inicialização fria;
+- grave cada execução num JSONL novo, com tempos, erros, contagens e tamanhos.
+
+Rotas sintéticas que expõem os metadados por `$$route.require()` medem só a
+coleta e a serialização. Importação de páginas reais, preloads, SSR, rede, CDN,
+compressão e concorrência entre requisições ficam fora, então o resultado não
+prevê a latência HTTP.
+
+O [protocolo de sitemap](https://www.sitemaps.org/protocol.html) limita cada
+arquivo a 50 mil URLs e 52.428.800 bytes sem compressão, os valores de
+`sitemap.xml/constants.ts`; por isso a medição histórica de 100 mil rotas cobriu
+só o coletor do sitemap, sem gerar um XML único, que seria inválido. O
+`llms.txt` não tem limite equivalente, e o corpo de 12 MB com 100 mil páginas
+mostra por que um site grande precisa selecionar o que publica. `noindex` sai
+como metatag HTML, conforme a
+[documentação do Google sobre bloqueio de indexação](https://developers.google.com/search/docs/crawling-indexing/block-indexing);
+excluir essas páginas do `llms.txt` é uma política deste projeto, que a medição
+não verifica em buscadores nem em agentes.
 
 ## Endpoints e cache
 
@@ -276,8 +371,10 @@ sitemap, porque o manifesto, os grupos e a URL do site são fixos no build; as
 fontes do sitemap rodam a cada request. O llms.txt é montado dentro do contexto
 Paraglide do idioma base (`baseLocale` do runtime), inclusive a descrição do
 site e os metadados das páginas, para que nem a requisição que preenche a
-memória nem um contexto de outro idioma mudem o texto; a nota sobre o idioma do
-índice deriva do mesmo `baseLocale`. Os três arquivos saem com
+memória nem um contexto de outro idioma mudem o texto. A nota sobre o idioma do
+índice deriva do mesmo `baseLocale`, com o nome do idioma em inglês, o idioma
+das notas. A lista de idiomas da mesma nota é texto fixo: ao mudar os idiomas em
+`project.inlang/settings.json`, reescreva-a. Os três arquivos saem com
 `public, max-age=0, s-maxage=3600, stale-if-error=86400` em produção (o CDN
 reutiliza por uma hora; a Vercel só cacheia resposta de função com `s-maxage` e
 consome `s-maxage` e `stale-if-error` sem repassá-los ao navegador) e com
@@ -286,8 +383,11 @@ que a cópia expira não derruba o arquivo por até um dia. As URLs absolutas do
 três arquivos partem da origem de `VITE_SITE_URL`; um site servido em um
 subcaminho não é suportado por essa geração. A página 404 declara
 `robots: noindex`. A imagem social fica em `public/images/og.png`, com cache
-imutável configurado em `vercel.json`; o logo do JSON-LD reutiliza
-`public/favicon/apple-touch-icon.png`.
+imutável de um ano configurado em `vercel.json` para `/images/`. Como esse cache
+não revalida, publique uma imagem nova com outro nome (por exemplo,
+`og-2026-10.png`) e atualize `SITE.image.path`: sobrescrever `og.png` deixa
+navegadores e caches intermediários com a versão antiga por até um ano. O logo
+do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
 
 ## Leitura por agentes
 
@@ -305,9 +405,11 @@ autorização.
 página cujo último segmento é `index` acrescenta `/index.md`: `/pt/index` usa
 `/pt/index/index.md`, e `/pt/docs/index` usa `/pt/docs/index/index.md`. Essa
 regra também cobre segmentos repetidos: `/pt/index/index` usa
-`/pt/index/index/index.md`. O middleware remove somente o último `/index.md`
-quando encontra o sufixo `/index/index.md`, antes de reconhecer o alias da home.
-O middleware usa o matching nativo também para parâmetros, sem produtor,
+`/pt/index/index/index.md`. O middleware remove o `.md` e um `/index` final e
+responde 404 a qualquer URL `.md` que não seja a forma canônica da página:
+`/pt/docs/index.md` não é alias de `/pt/docs`, e `/pt.md`, sem prefixo de
+idioma, segue o redirect dos caminhos sem idioma em vez de publicar a home. O
+middleware usa o matching nativo também para parâmetros, sem produtor,
 `SitePage` obrigatório, `getPaths` ou manifesto de artefatos. A enumeração
 finita do sitemap e do llms.txt continua separada; o llms enumera as rotas
 estáticas conhecidas. O alternate de SEO acompanha a rota atual também na
@@ -319,16 +421,12 @@ conteúdo adicional exclusivo do Markdown. Traduções permanecem em getters ou
 chamadas no componente, no contexto do idioma da requisição.
 
 O adaptador escolhe `event.renderMode = 'async'` apenas para solicitações de
-Markdown e aguarda o SSR. A entrada repassa o sinal da requisição ao
-`renderToStream`. Antes da conversão, o adaptador exige `hasCompleted === true`
-e `hasErrors === false` no estado seguro guardado em
-`event.locals.ssrRenderState`. Ausência, conclusão incompleta ou erro descarta o
-HTML e devolve erro público 500 com `private, no-store`. O estado cobre erros
-observados pelo render; não atesta dados de hidratação silenciosamente
-descartados pelo serializador. Markdown usa o HTML assentado, sem esses dados. O
-hook global marca o estado e recebe cada erro uma vez por tipo em cada
-requisição; a conclusão continua exigida à parte. HTML normal mantém streaming.
-O contrato e o critério para remover o patch estão em
+Markdown, aguarda o SSR e só converte o HTML quando o estado de integridade do
+render indica conclusão sem erros; o HTML normal mantém streaming. O estado
+cobre erros observados pelo render; não atesta dados de hidratação
+silenciosamente descartados pelo serializador, e o Markdown usa o HTML
+assentado, sem esses dados. O contrato completo, a resposta de recusa e o
+critério para remover o patch estão em
 [erros no servidor](server-errors.md#integridade-do-ssr-para-markdown).
 
 O prerender do build passa pelo mesmo adaptador. O módulo
@@ -351,10 +449,10 @@ continuam na mesma ordem. As regras preservam destinos, capturas e condições
 nativos, inclusive ISR, `functionRules` e skew protection. O módulo não define
 um destino SSR próprio nem altera `vercel.config`; um artefato sem regras de
 filesystem interrompe o build. Uma regra inicial sem destino nem status que
-encerre o roteamento numa página protegida também interrompe o build. Isso
-inclui os headers de `routeRules` do Nitro quando atingem essas páginas: use o
-middleware, ou uma regra explícita em `vercel.config.routes` com
-`continue: true`. O módulo não força a continuação, pois isso mudaria a
+encerre o roteamento numa página protegida também interrompe o build. Os headers
+de `routeRules` do Nitro saem com `continue: true` e não encerram o roteamento;
+uma regra própria em `vercel.config.routes` que atinja essas páginas precisa do
+mesmo `continue: true`. O módulo não força a continuação, pois isso mudaria a
 prioridade de headers e redirects. Assim, `/pt` continua negociando HTML ou
 Markdown, enquanto `/pt/index.md` mantém o arquivo estático. Os testes de
 tooling exercitam o preset real sem configuração prévia e com regras adicionais.
@@ -425,7 +523,9 @@ A localização preserva URL > cookie > Accept-Language. Redirects seguros para
 uma página elegível da mesma origem preservam a intenção `.md`; o middleware não
 segue redirects. Erros não viram documentos de sucesso. Um 404 HTML negociado
 mantém status 404, idioma e `noindex`; páginas sem opt-in não publicam seu
-conteúdo de sucesso pelo alias Markdown.
+conteúdo de sucesso pelo alias Markdown. Um `X-Robots-Tag` com `noindex` ou
+`none` na resposta da página também recusa a publicação;
+`max-image-preview: none` só limita a prévia de imagens e não conta.
 
 As respostas convertidas na requisição recebem `text/markdown; charset=utf-8`,
 `private, no-store`, `Vary: Accept` adicional ao Vary existente e CSP com

@@ -1,13 +1,13 @@
 import { once } from 'node:events'
 import { createServer, request as proxyRequest, type Server } from 'node:http'
 
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 import {
   readGatedBody,
   releaseFixtureGate
 } from '@/tests/helpers/fixtureGate/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const HTTP_OK = 200
 const HTTP_BAD_GATEWAY = 502
@@ -134,7 +134,9 @@ test('envia o template antes da CSS do fragmento, sem handlers inline', async ({
 test('revela o painel com CSS nova e em cache, sem violação de CSP', async ({
   page,
   request,
-  baseURL
+  baseURL,
+  pageErrors,
+  cspViolations
 }) => {
   if (!baseURL) throw new Error('Missing test base URL')
   const server = await startCachingProxy(baseURL)
@@ -144,11 +146,6 @@ test('revela o painel com CSS nova e em cache, sem violação de CSP', async ({
       throw new Error('Missing caching proxy address')
     }
     const url = `http://127.0.0.1:${address.port}${PAGE_URL}`
-    const errors: string[] = []
-    const violations = await watchCspViolations(page)
-    page.on('pageerror', error => {
-      errors.push(error.message)
-    })
 
     // Cada navegação usa um gate novo: um id já liberado resolveria o dado
     // antes do shell e levaria a CSS ao <head>.
@@ -160,7 +157,7 @@ test('revela o painel com CSS nova e em cache, sem violação de CSP', async ({
     await expect(page.getByText(LOADING_TEXT, { exact: true })).toBeVisible()
     await releaseFixtureGate({ request, id: firstId })
     await expectStyledPanel(page)
-    expect(violations).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
     const html = (await response?.text()) ?? ''
     const stylesheetUrls = readFragmentStylesheets(html).map(stylesheet => {
       const href = stylesheet.groups?.href
@@ -199,8 +196,8 @@ test('revela o painel com CSS nova e em cache, sem violação de CSP', async ({
       expect(timing.transferSize).toBe(0)
       expect(timing.decodedBodySize).toBeGreaterThan(0)
     }
-    expect(violations).toStrictEqual([])
-    expect(errors).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
   } finally {
     await stopCachingProxy(server)
   }

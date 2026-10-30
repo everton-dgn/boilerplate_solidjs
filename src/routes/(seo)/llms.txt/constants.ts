@@ -1,6 +1,6 @@
 import { baseLocale } from '@paraglide/runtime.js'
 
-import type { LlmsPage } from '@/@types/llms.ts'
+import type { LlmsPage } from './types.ts'
 
 // Nome em inglês, o idioma das notas, do idioma em que o índice é montado.
 const INDEX_LANGUAGE =
@@ -22,7 +22,7 @@ export const LLMS_USE_CASES: readonly LlmsPage[] = [
     description:
       'Use this foundation when a project needs server-rendered pages, TypeScript, translated routes and automated tests. Request the page as Markdown, then follow its repository and documentation links.',
     section: 'When to use',
-    optional: false
+    isOptional: false
   },
   {
     path: '/about',
@@ -30,6 +30,6 @@ export const LLMS_USE_CASES: readonly LlmsPage[] = [
     description:
       'Use this overview to identify the maintainer, project purpose and source license. Read the contact and privacy pages for this demonstration; verify your own product requirements before adapting the code.',
     section: 'When to use',
-    optional: false
+    isOptional: false
   }
 ]

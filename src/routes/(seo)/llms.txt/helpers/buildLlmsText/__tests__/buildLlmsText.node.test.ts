@@ -1,5 +1,4 @@
-import type { LlmsPage } from '@/@types/llms.ts'
-
+import type { LlmsPage } from '../../../types.ts'
 import { buildLlmsText } from '../index.ts'
 
 type PageOverrides = Partial<LlmsPage> & Pick<LlmsPage, 'path'>
@@ -9,7 +8,7 @@ function page(overrides: PageOverrides): LlmsPage {
     title: overrides.path,
     description: '',
     section: 'Pages',
-    optional: false,
+    isOptional: false,
     ...overrides
   }
 }
@@ -98,9 +97,14 @@ describe('geração do llms.txt', () => {
       pages: [
         page({ path: '/', title: 'Início', description: 'Apresentação.' }),
         page({ path: '/docs/a', title: 'A', section: 'Guias' }),
-        page({ path: '/changelog', title: 'Changelog', optional: true }),
+        page({ path: '/changelog', title: 'Changelog', isOptional: true }),
         page({ path: '/about', title: 'Sobre' }),
-        page({ path: '/docs/b', title: 'B', section: 'Guias', optional: true })
+        page({
+          path: '/docs/b',
+          title: 'B',
+          section: 'Guias',
+          isOptional: true
+        })
       ],
       siteUrl: 'https://example.com'
     })
@@ -188,7 +192,7 @@ describe('geração do llms.txt', () => {
       pages: [
         page({ path: '/a', title: 'A', section: 'Optional' }),
         page({ path: '/b', title: 'B', section: 'Guias' }),
-        page({ path: '/c', title: 'C', optional: true })
+        page({ path: '/c', title: 'C', isOptional: true })
       ],
       siteUrl: 'https://example.com'
     })

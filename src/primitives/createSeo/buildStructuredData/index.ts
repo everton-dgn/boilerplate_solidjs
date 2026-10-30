@@ -1,7 +1,7 @@
 import type { Article, Graph, Organization, WebPage, WebSite } from 'schema-dts'
 
 import type { SeoMetadata } from '@/@types/seo.ts'
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { LOCALE_TAGS } from '@/i18n/localeTags/index.ts'
 

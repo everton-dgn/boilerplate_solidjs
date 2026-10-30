@@ -58,6 +58,19 @@ function advance(milliseconds: number) {
   flush()
 }
 
+function observeOutput(output: Node) {
+  const observer = new MutationObserver(() => {
+    /* Os registros são lidos com takeRecords. */
+  })
+  observer.observe(output, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  })
+  onTestFinished(() => observer.disconnect())
+  return observer
+}
+
 function readMessages(host: HTMLElement) {
   return Array.from(host.querySelectorAll('li p'), item => item.textContent)
 }
@@ -223,15 +236,7 @@ describe('anúncios das notificações', () => {
     expect(host.querySelector('[role="alert"]')).toHaveTextContent(
       `${m.toast_error()}: Failure`
     )
-    const observer = new MutationObserver(() => {
-      /* Os registros são lidos com takeRecords. */
-    })
-    observer.observe(output, {
-      childList: true,
-      subtree: true,
-      characterData: true
-    })
-    onTestFinished(() => observer.disconnect())
+    const observer = observeOutput(output)
     api.update({ id, message: 'Latest' })
     advance(ANNOUNCEMENT_WAIT)
     expect(observer.takeRecords()).toStrictEqual([])
@@ -246,15 +251,7 @@ describe('anúncios das notificações', () => {
     const output = host.querySelector('output')
     assert(output)
     expect(output).toHaveTextContent(`${m.toast_info()}: A`)
-    const observer = new MutationObserver(() => {
-      /* Os registros são lidos com takeRecords. */
-    })
-    observer.observe(output, {
-      childList: true,
-      subtree: true,
-      characterData: true
-    })
-    onTestFinished(() => observer.disconnect())
+    const observer = observeOutput(output)
     api.update({ id, message: 'B' })
     api.update({ id, message: 'A' })
     advance(ANNOUNCEMENT_WAIT)

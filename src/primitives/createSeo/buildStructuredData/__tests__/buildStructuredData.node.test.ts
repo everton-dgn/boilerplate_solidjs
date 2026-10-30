@@ -1,5 +1,5 @@
 import type { SeoMetadata } from '@/@types/seo.ts'
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import { parseStructuredData } from '@/tests/helpers/parseStructuredData/index.ts'
 
 import { buildStructuredData } from '../index.ts'

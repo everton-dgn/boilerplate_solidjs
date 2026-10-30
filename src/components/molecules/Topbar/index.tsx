@@ -6,7 +6,7 @@ import IconGithub from '~icons/hugeicons/github'
 import { LocaleSwitcher } from '@/components/atoms/LocaleSwitcher/index.tsx'
 import { LocalizedLink } from '@/components/atoms/LocalizedLink/index.tsx'
 import { ThemeToggle } from '@/components/atoms/ThemeToggle/index.tsx'
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 
 import { NavItem } from './NavItem/index.tsx'

@@ -15,11 +15,16 @@ type ResolveLocalizedHrefOptions = LocalizeHrefOptions & {
 const LOCAL_ORIGIN = 'https://local.invalid'
 
 export function isAbsoluteHref(href: string): boolean {
-  return /^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(href)
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(href)) return true
+  // O parser de URL descarta TAB e lê '\' como '/': '/\host' e '/<TAB>/host'
+  // apontam para outro host.
+  return (
+    href.startsWith('/') && new URL(href, LOCAL_ORIGIN).origin !== LOCAL_ORIGIN
+  )
 }
 
 export function localizeHref({ href, locale }: LocalizeHrefOptions): string {
-  if (!href.startsWith('/') || href.startsWith('//')) return href
+  if (!href.startsWith('/') || isAbsoluteHref(href)) return href
   return localizeParaglideHref(href, { locale })
 }
 

@@ -1,3 +1,4 @@
+import { paraglideMiddleware } from '@paraglide/server.js'
 import { createRequestEvent, type RequestEvent } from '@solidjs/web'
 import { provideRequestEvent } from '@solidjs/web/storage'
 
@@ -11,7 +12,8 @@ const TEST_ORIGIN = 'http://localhost'
 const HTTP_FOUND = 302
 const HTTP_BAD_GATEWAY = 502
 const HTTP_INTERNAL_SERVER_ERROR = 500
-const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+// Sem o contexto de idioma do paraglide, a mensagem sai no idioma base.
+const PUBLIC_MESSAGE = 'The request could not be completed.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
 const ERROR_PAGE_LOG =
   '[error-page] Unexpected failure; private details omitted'
@@ -122,6 +124,22 @@ describe('contenção de falhas do middleware', () => {
       heads: [[LOG_MESSAGE, 'Error'], [LOG_MESSAGE]],
       leaks: []
     })
+  })
+
+  it('responde no idioma da requisição dentro do contexto de idioma', async () => {
+    const response = await paraglideMiddleware(
+      new Request(new URL('/pt', TEST_ORIGIN)),
+      () =>
+        failingWith(new Error('PRIVATE'))(
+          new Request(TEST_ORIGIN),
+          renderPage()
+        )
+    )
+
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(
+      'Não foi possível concluir a solicitação.'
+    )
   })
 
   it('deixa passar uma Response de controle sem corpo, com os headers de segurança', async () => {

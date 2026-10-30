@@ -10,31 +10,20 @@ import IconLoading from '~icons/hugeicons/loader-circle'
 
 import { ToastContext } from './context.ts'
 import { createToastState } from './createToastState/index.ts'
-import type { ToastEntry, ToastVariant } from './types.ts'
+import type { ToastEntry } from './types.ts'
 
 import S from './styles.module.css'
 
-const icons = {
-  info: IconInfo,
-  success: IconSuccess,
-  warning: IconWarning,
-  error: IconError,
-  loading: IconLoading
-}
-
-function variantLabel(variant: ToastVariant) {
-  const labels = {
-    info: m.toast_info,
-    success: m.toast_success,
-    warning: m.toast_warning,
-    error: m.toast_error,
-    loading: m.toast_loading
-  }
-  return labels[variant]()
+const VARIANTS = {
+  info: { icon: IconInfo, label: m.toast_info },
+  success: { icon: IconSuccess, label: m.toast_success },
+  warning: { icon: IconWarning, label: m.toast_warning },
+  error: { icon: IconError, label: m.toast_error },
+  loading: { icon: IconLoading, label: m.toast_loading }
 }
 
 function announcement(toast: ToastEntry | undefined) {
-  return toast ? `${variantLabel(toast.variant)}: ${toast.message}` : ''
+  return toast ? `${VARIANTS[toast.variant].label()}: ${toast.message}` : ''
 }
 
 export function ToastProvider(props: ParentProps) {
@@ -101,7 +90,9 @@ export function ToastProvider(props: ParentProps) {
           <For each={state.toasts()} keyed={toast => toast.id}>
             {toast => {
               const id = untrack(() => toast().id)
-              const Icon = dynamicComponent(() => icons[toast().variant])
+              const Icon = dynamicComponent(
+                () => VARIANTS[toast().variant].icon
+              )
               return (
                 <li
                   ref={element => items.set(id, element)}
@@ -141,10 +132,18 @@ export function ToastProvider(props: ParentProps) {
                   }}
                 >
                   <span class={S.icon}>
-                    <Icon width={20} height={20} />
+                    <Icon
+                      width={20}
+                      height={20}
+                      class={
+                        toast().variant === 'loading' ? 'spinner' : undefined
+                      }
+                    />
                   </span>
                   <div class={S.content}>
-                    <span class={S.label}>{variantLabel(toast().variant)}</span>
+                    <span class={S.label}>
+                      {VARIANTS[toast().variant].label()}
+                    </span>
                     <p class={S.message}>{toast().message}</p>
                   </div>
                   <button

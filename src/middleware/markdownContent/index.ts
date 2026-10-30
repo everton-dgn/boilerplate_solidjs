@@ -1,5 +1,6 @@
 import { m } from '@paraglide/messages.js'
-import type { StartMiddleware } from '@solidjs/vite-plugin'
+import { extractLocaleFromRequest } from '@paraglide/runtime.js'
+import type { RequestEvent } from '@solidjs/web'
 import { pageRoutes } from 'virtual:file-routes'
 
 import {
@@ -12,8 +13,7 @@ import {
 } from '@/constants/http.ts'
 import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
-import { delocalizePathname } from '@/i18n/urls/index.ts'
-import { PUBLIC_ERROR_MESSAGE } from '@/infra/server/publicErrors/index.ts'
+import { publicErrorMessage } from '@/infra/server/publicErrors/index.ts'
 import { Router } from '@/router.ts'
 
 import { appendVary } from '../helpers/appendVary/index.ts'
@@ -25,14 +25,13 @@ import {
 } from '../negotiatePageFormat/index.ts'
 import { isPagePath } from '../requestClassification/index.ts'
 import { applySecurityHeaders } from '../securityHeaders/index.ts'
+import type { Next } from '../types.ts'
 import { MARKDOWN_PRERENDER_PATH, MARKDOWN_TIMEOUT_MS } from './constants.ts'
 import { collectStaticMarkdownPages } from './helpers/collectStaticMarkdownPages/index.ts'
 import { convertHtml } from './helpers/convertHtml/index.ts'
 
-type Event = Parameters<StartMiddleware>[0]
-type Next = Parameters<StartMiddleware>[1]
 type RenderOptions = {
-  event: Event
+  event: RequestEvent
   render: Next
   original: Request
   url: URL
@@ -45,15 +44,18 @@ type TextOptions = {
   body: string | null
   headers: Record<string, string>
 }
+type PublicOptions = { status: number; request: Request }
 type Publication = { response: Response; isPublished: boolean }
 type RedirectOptions = { response: Response; url: URL; request: Request }
 type RouteRequest = { request: Request; url: URL; isPublished: boolean }
 
 const VARY_HEADERS = 'Accept, Cookie, Accept-Language'
+// none equivale a noindex, nofollow; em max-image-preview, só limita a prévia.
+const NOINDEX = /(?<!max-image-preview\s*:\s*)\b(?:noindex|none)\b/iu
 
 function uncachedResponse(response: Response): Response {
   response.headers.set('cache-control', 'private, no-store')
-  return applySecurityHeaders({ response, nonce: undefined })
+  return applySecurityHeaders(response)
 }
 
 function textResponse({ status, body, headers }: TextOptions): Response {
@@ -65,10 +67,15 @@ function textResponse({ status, body, headers }: TextOptions): Response {
   )
 }
 
-function publicResponse(status: number): Response {
+// O adaptador roda fora do contexto de idioma do paraglide; o idioma da
+// mensagem vem da requisição original, na ordem do localizeRequest.
+function publicResponse({ status, request }: PublicOptions): Response {
   return textResponse({
     status,
-    body: status === HTTP_INTERNAL_SERVER_ERROR ? PUBLIC_ERROR_MESSAGE : null,
+    body:
+      status === HTTP_INTERNAL_SERVER_ERROR
+        ? publicErrorMessage(extractLocaleFromRequest(request))
+        : null,
     headers: { vary: VARY_HEADERS }
   })
 }
@@ -105,10 +112,9 @@ function documentUrl(request: Request): URL {
   const url = new URL(request.url)
   if (!url.pathname.endsWith('.md')) return url
   const page = url.pathname.slice(0, -'.md'.length)
-  const isIndex =
-    page.endsWith('/index/index') ||
-    delocalizePathname(url.pathname) === '/index.md'
-  url.pathname = isIndex ? page.slice(0, -'/index'.length) || '/' : page
+  url.pathname = page.endsWith('/index')
+    ? page.slice(0, -'/index'.length) || '/'
+    : page
   return url
 }
 
@@ -121,7 +127,7 @@ function isEligible(url: URL): boolean {
 
 function canPublish({ response, isPublished }: Publication): boolean {
   return (
-    isPublished && !/noindex/iu.test(response.headers.get('x-robots-tag') ?? '')
+    isPublished && !NOINDEX.test(response.headers.get('x-robots-tag') ?? '')
   )
 }
 
@@ -131,8 +137,11 @@ function canConvert({ response, isPublished }: Publication): boolean {
   return response.status === HTTP_OK && canPublish({ response, isPublished })
 }
 
+// Só a forma canônica publica: /pt.md ou /pt/about/.md duplicariam páginas
+// fora dos arquivos estáticos.
 function isUnpublished({ request, url, isPublished }: RouteRequest): boolean {
   return (
+    markdownPath(url.pathname) !== new URL(request.url).pathname ||
     request.headers.has('authorization') ||
     (!isPublished && !Router.match(url.href).at(-1)?.pattern.includes('*'))
   )
@@ -165,7 +174,7 @@ async function resolveRedirect({
   // cliente comum que envie o header só troca o redirect por 500 público.
   if (request.headers.has('x-nitro-prerender')) {
     await response.body?.cancel()
-    return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
+    return publicResponse({ status: HTTP_INTERNAL_SERVER_ERROR, request })
   }
   // A resposta do render já saiu do securityHeaders; falta só o cache.
   const redirect = appendVary({
@@ -219,7 +228,7 @@ async function renderMarkdown({
     !canPublish({ response, isPublished })
   ) {
     await response.body?.cancel()
-    return publicResponse(HTTP_NOT_FOUND)
+    return publicResponse({ status: HTTP_NOT_FOUND, request: original })
   }
   const state = event.locals.ssrRenderState
   if (
@@ -228,12 +237,18 @@ async function renderMarkdown({
     state?.hasErrors === true
   ) {
     await response.body?.cancel()
-    return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
+    return publicResponse({
+      status: HTTP_INTERNAL_SERVER_ERROR,
+      request: original
+    })
   }
   if (!canConvert({ response, isPublished })) return response
   if (state?.hasCompleted !== true || state.hasErrors !== false) {
     await response.body?.cancel()
-    return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
+    return publicResponse({
+      status: HTTP_INTERNAL_SERVER_ERROR,
+      request: original
+    })
   }
   // A origem pública resolve os links: no prerender a requisição é local.
   const markdown = await convertHtml({
@@ -277,8 +292,13 @@ async function boundedRender(
       renderMarkdown({ ...options, signal }),
       aborted.promise
     ])
-  } catch {
-    return publicResponse(HTTP_INTERNAL_SERVER_ERROR)
+  } catch (error) {
+    // As demais falhas seguem para a contenção, que registra o log.
+    if (!signal.aborted) throw error
+    return publicResponse({
+      status: HTTP_INTERNAL_SERVER_ERROR,
+      request: original
+    })
   } finally {
     clearTimeout(timeout)
     signal.removeEventListener('abort', onAbort)
@@ -286,7 +306,7 @@ async function boundedRender(
 }
 
 export async function markdownContent(
-  event: Event,
+  event: RequestEvent,
   render: Next
 ): Promise<Response> {
   const original = event.request
@@ -299,10 +319,10 @@ export async function markdownContent(
   try {
     decodeURI(url.pathname)
   } catch {
-    return publicResponse(HTTP_BAD_REQUEST)
+    return publicResponse({ status: HTTP_BAD_REQUEST, request: original })
   }
   if (!isPagePath({ pathname: url.pathname, method: original.method })) {
-    return publicResponse(HTTP_NOT_FOUND)
+    return publicResponse({ status: HTTP_NOT_FOUND, request: original })
   }
   const format = negotiatePageFormat(original.headers.get('accept'))
   const isPublished = isEligible(url)

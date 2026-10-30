@@ -4,7 +4,7 @@
 
 Core, renderer, plugin e compilador precisam resolver para um conjunto compatível. Confira as versões resolvidas e os peers ao mudar esse conjunto; a faixa do manifesto não prova a resolução instalada.
 
-Receita: fixe versões exatas e lockfile ao atualizar; confira a resolução do plugin com `pnpm why @solidjs/compiler -r`. Monorepo com vários pacotes Solid, em cliente/SSR/Vitest:
+Receita: fixe versões exatas e lockfile ao atualizar; confira a resolução do plugin com o `why` do gerenciador do projeto (`vp why @solidjs/compiler`, `bun why @solidjs/compiler` ou `pnpm why @solidjs/compiler -r`). Monorepo com vários pacotes Solid, em cliente/SSR/Vitest:
 
 ```ts
 resolve: { dedupe: ['solid-js', '@solidjs/web', '@solidjs/router', '@solidjs/signals'] }
@@ -18,9 +18,9 @@ Contrato: em 2026-09-29, `latest` de `solid-js` e router escolhe Solid 1; `next`
 
 Receita: tags: `npm view <pacote> dist-tags`; offline, lockfile/manifesto instalado, tags não verificadas. Após atualização, teste dev e produção. Backend padrão native; compiler babel isola JSX, mas demais transformações exigem @solidjs/compiler.
 
-Armadilha: Tag ou primeiro pacote em `.pnpm` pode escolher outra RC transitiva; Babel não elimina o compilador nativo.
+Armadilha: Tag ou primeiro pacote no diretório do layout isolado do gerenciador (`node_modules/.bun` no Bun, `.pnpm` no pnpm), que pode guardar várias versões lado a lado, pode escolher outra RC transitiva; Babel não elimina o compilador nativo.
 
-O core da base verificada ainda importa `ROOT_ERROR_HOOK`, `configureClientErrors` e `isStatic` de `@solidjs/signals`; uma cópia transitiva antiga sem esses exports causa `MISSING_EXPORT`. Confira `pnpm why solid-js` e `pnpm why @solidjs/signals` antes de contornar o erro com aliases. A faixa `^` do [manifesto do core](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/solid/package.json) não garante alinhamento no lockfile.
+O core da base verificada ainda importa `ROOT_ERROR_HOOK`, `configureClientErrors` e `isStatic` de `@solidjs/signals`; uma cópia transitiva antiga sem esses exports causa `MISSING_EXPORT`. Confira com o `why` do gerenciador (`vp why solid-js` e `vp why @solidjs/signals`, ou o equivalente) antes de contornar o erro com aliases. A faixa `^` do [manifesto do core](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/solid/package.json) não garante alinhamento no lockfile.
 
 Eventos delegados também dependem desse alinhamento: na base verificada, o renderer usa `node._$$click`; um compilador antigo que emita `node.$$click` produz handlers que nunca disparam, sem erro de build. Ao investigar, compare a propriedade emitida no JSX compilado com a chave lida pelo renderer instalado.
 

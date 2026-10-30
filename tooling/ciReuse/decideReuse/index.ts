@@ -7,8 +7,6 @@ import type {
   MergeContext,
   PullRequest,
   PullContext,
-  TimelineEvent,
-  TimelineOptions,
   WorkflowRun,
   WorkflowRuns,
   RunContext,
@@ -22,24 +20,16 @@ const REPOSITORY_PATTERN = /^[\w.-]+\/[\w.-]+$/u
 const MAIN_BRANCH = 'main'
 
 const WORKFLOW_PATH = '.github/workflows/ci.yml'
-const EVIDENCE_VERSION = 1
+const EVIDENCE_VERSION = 2
 const EVIDENCE_PREFIX = 'ci-reuse-evidence-'
 
 const PAGE_SIZE = 100
-const MAX_TIMELINE_PAGES = 10
 const MERGE_PARENT_COUNT = 2
 const REUSED_JOBS = ['Quality', 'Tooling', 'E2E (fixtures)']
 // O verificador não pode aprovar a própria mudança nem a do workflow que o executa.
 const FULL_CI_PREFIXES = ['.github/', 'tooling/ciReuse/']
 // Lockfile e toolchain geram chaves novas de cache, que só o Quality grava.
 const QUALITY_FILES = new Set(['bun.lock', 'package.json', 'bunfig.toml'])
-const RETARGET_EVENTS = new Set([
-  'base_ref_changed',
-  'base_ref_force_pushed',
-  'base_ref_deleted',
-  'automatic_base_change_succeeded',
-  'automatic_base_change_failed'
-])
 
 function reject(reason: string): never {
   throw new Error(reason)
@@ -103,43 +93,6 @@ async function findPullRequest({
     reject('Base ou head do PR diferem dos parents do merge.')
   }
   return pr
-}
-
-async function assertSinglePullRequest({
-  repository,
-  merge,
-  pr,
-  ports
-}: PullContext) {
-  const [owner] = repository.split('/')
-  const head = encodeURIComponent(`${owner}:${pr.head.ref}`)
-  const pulls = await ports.api<PullRequest[]>(
-    `repos/${repository}/pulls?state=all&head=${head}&per_page=${PAGE_SIZE}`
-  )
-  // Nomes de branch são reutilizados; só PRs com o mesmo head testado contam.
-  const sameHead = pulls.filter(item => item.head.sha === merge.head)
-  if (
-    pulls.length === PAGE_SIZE ||
-    sameHead.length !== 1 ||
-    sameHead[0]?.number !== pr.number
-  ) {
-    reject('O head do PR tem mais de um PR associado.')
-  }
-}
-
-async function assertNoRetarget(options: TimelineOptions): Promise<void> {
-  if (options.page > MAX_TIMELINE_PAGES) {
-    reject('A timeline do PR excede o limite verificado.')
-  }
-  const events = await options.ports.api<TimelineEvent[]>(
-    `repos/${options.repository}/issues/${options.pr}/timeline?per_page=${PAGE_SIZE}&page=${options.page}`
-  )
-  if (events.some(item => RETARGET_EVENTS.has(item.event ?? ''))) {
-    reject('O PR mudou de base.')
-  }
-  if (events.length === PAGE_SIZE) {
-    await assertNoRetarget({ ...options, page: options.page + 1 })
-  }
 }
 
 async function findRun({
@@ -223,39 +176,19 @@ async function findEvidence({
   return artifact.id
 }
 
-function assertEvidence(context: RunContext, evidence: unknown): string {
+// A API do artifact já fixa run, tentativa e head, e assertTestedCommit confere
+// árvore e parents; a evidência só aponta o commit testado.
+function assertEvidence(evidence: unknown): string {
   if (typeof evidence !== 'object' || evidence === null) {
     reject('Evidência ilegível.')
   }
-  const { repository, merge, pr, run } = context
   const fields = new Map<string, unknown>(Object.entries(evidence))
-  const expected = {
-    version: EVIDENCE_VERSION,
-    repository,
-    run_id: run.id,
-    run_attempt: run.run_attempt,
-    event: 'pull_request',
-    workflow_ref: `${repository}/${WORKFLOW_PATH}@refs/pull/${pr.number}/merge`,
-    pull_request: pr.number,
-    base_ref: MAIN_BRANCH,
-    base_sha: merge.base,
-    head_sha: merge.head,
-    tested_tree: merge.tree
-  }
-  for (const [key, value] of Object.entries(expected)) {
-    if (fields.get(key) !== value) reject(`Evidência divergente em ${key}.`)
+  if (fields.get('version') !== EVIDENCE_VERSION) {
+    reject('A evidência vem de outra versão do workflow.')
   }
   const tested = fields.get('tested_sha')
-  const parents = fields.get('tested_parents')
-  if (
-    typeof tested !== 'string' ||
-    !SHA_PATTERN.test(tested) ||
-    fields.get('github_sha') !== tested ||
-    fields.get('workflow_sha') !== tested ||
-    !Array.isArray(parents) ||
-    parents.join(' ') !== `${merge.base} ${merge.head}`
-  ) {
-    reject('A evidência não descreve o merge testado.')
+  if (typeof tested !== 'string' || !SHA_PATTERN.test(tested)) {
+    reject('A evidência não traz o SHA testado.')
   }
   return tested
 }
@@ -286,13 +219,11 @@ async function verify(options: DecideReuseOptions): Promise<Decision> {
   )
   if (critical) return full(`O merge altera ${critical}.`)
   const pr = await findPullRequest({ ...context, merge })
-  await assertSinglePullRequest({ ...context, merge, pr })
-  await assertNoRetarget({ ...context, pr: pr.number, page: 1 })
   const run = await findRun({ ...context, merge, pr })
   const runContext = { ...context, merge, pr, run }
   await assertJobs(runContext)
   const artifact = await findEvidence(runContext)
-  const tested = assertEvidence(runContext, await ports.readEvidence(artifact))
+  const tested = assertEvidence(await ports.readEvidence(artifact))
   await assertTestedCommit(runContext, tested)
   const hasQualityChanges = files.some(file => QUALITY_FILES.has(file))
   const shouldRunQuality =

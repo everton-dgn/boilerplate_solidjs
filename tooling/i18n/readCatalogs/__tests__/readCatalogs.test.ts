@@ -1,10 +1,10 @@
-/* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, it, type TestContext } from 'node:test'
 
+import { LOCALES } from '../../testProject/index.ts'
 import { isCatalogFile, readCatalogs } from '../index.ts'
 
 type FixtureOptions = {
@@ -18,8 +18,6 @@ type WriteOptions = {
   value: unknown
   consumer?: string
 }
-
-const LOCALES = ['pt', 'en', 'es']
 
 async function sandbox(context: TestContext): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), 'i18n-catalogs-'))

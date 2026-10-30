@@ -7,16 +7,22 @@ import {
   type ServerResponse
 } from 'node:http'
 
-import { expect, test } from '@playwright/test'
-
+import {
+  releaseFixtureGate,
+  releaseFixtureGateQuietly
+} from '@/tests/helpers/fixtureGate/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 import { watchEntryLoad } from '@/tests/helpers/watchEntryLoad/index.ts'
 
 type DocumentStream = {
   response: IncomingMessage
   outgoing: ServerResponse
   released: Promise<null>
+}
+type ShellStream = {
+  response: IncomingMessage
+  outgoing: ServerResponse
 }
 type ParserProxy = {
   server: Server
@@ -27,6 +33,36 @@ type ParserProxy = {
 const HTTP_BAD_GATEWAY = 502
 const INDEX_NOT_FOUND = -1
 const PANEL_COUNT = 2
+// Script que o servidor acrescenta ao fim do shell; sem ele, hydrate() espera
+// o DOMContentLoaded.
+const SHELL_MARKER = '_$HY.s['
+const SHELL_TAIL = 1024
+
+// Envia o shell até antes do marcador e mantém a resposta aberta até o teste
+// truncar o documento.
+async function streamUntilShellMarker({
+  response,
+  outgoing
+}: ShellStream): Promise<void> {
+  response.setEncoding('utf8')
+  let pending = ''
+  for await (const chunk of response) {
+    pending += String(chunk)
+    const marker = pending.indexOf(SHELL_MARKER)
+    if (marker === INDEX_NOT_FOUND) {
+      const flushed = pending.length - SHELL_TAIL
+      if (flushed > 0) {
+        outgoing.write(pending.slice(0, flushed))
+        pending = pending.slice(flushed)
+      }
+      continue
+    }
+    outgoing.write(pending.slice(0, pending.lastIndexOf('<script', marker)))
+    response.destroy()
+    return
+  }
+  throw new Error('Shell marker not found')
+}
 
 async function streamHead({
   response,
@@ -59,30 +95,45 @@ async function startParserProxy(target: string): Promise<ParserProxy> {
   let truncate: (() => void) | undefined
   const server = createServer((incoming, outgoing) => {
     const url = new URL(incoming.url ?? '/', target)
+    const relay = async (response: IncomingMessage): Promise<void> => {
+      outgoing.writeHead(
+        response.statusCode ?? HTTP_BAD_GATEWAY,
+        response.headers
+      )
+      if (url.pathname === '/en') {
+        try {
+          await streamHead({ response, outgoing, released: gate.promise })
+        } catch {
+          outgoing.destroy()
+        }
+        return
+      }
+      if (
+        url.pathname === '/en/hydration' &&
+        url.searchParams.get('cut') === 'shell'
+      ) {
+        truncate = () => outgoing.end()
+        try {
+          await streamUntilShellMarker({ response, outgoing })
+        } catch {
+          outgoing.destroy()
+        }
+        return
+      }
+      if (url.pathname === '/en/hydration') {
+        truncate = () => {
+          response.unpipe(outgoing)
+          outgoing.end()
+        }
+      }
+      response.on('error', () => outgoing.destroy())
+      response.pipe(outgoing)
+    }
     const upstream = proxyRequest(
       url,
       { method: incoming.method, headers: incoming.headers },
-      async response => {
-        outgoing.writeHead(
-          response.statusCode ?? HTTP_BAD_GATEWAY,
-          response.headers
-        )
-        if (url.pathname === '/en') {
-          try {
-            await streamHead({ response, outgoing, released: gate.promise })
-          } catch {
-            outgoing.destroy()
-          }
-          return
-        }
-        if (url.pathname === '/en/hydration') {
-          truncate = () => {
-            response.unpipe(outgoing)
-            outgoing.end()
-          }
-        }
-        response.on('error', () => outgoing.destroy())
-        response.pipe(outgoing)
+      response => {
+        void relay(response)
       }
     )
     upstream.on('error', () => outgoing.destroy())
@@ -111,13 +162,12 @@ async function stopProxy(server: Server): Promise<void> {
 
 test('não marca antes do shell quando a entrada async já executou', async ({
   page,
-  baseURL
+  baseURL,
+  pageErrors,
+  cspViolations
 }) => {
   if (!baseURL) throw new Error('Missing test base URL')
   const proxy = await startParserProxy(baseURL)
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
-  const violations = await watchCspViolations(page)
   await watchEntryLoad(page)
   try {
     const address = proxy.server.address()
@@ -132,17 +182,17 @@ test('não marca antes do shell quando a entrada async já executou', async ({
       'loading'
     )
     await expect(page.locator('body')).toHaveCount(0)
-    expect(await hydrationFinished(page)).toBeFalsy()
+    expect(await hydrationFinished(page)).toBe(false)
 
     proxy.release()
-    await expect.poll(() => hydrationFinished(page)).toBeTruthy()
+    await expect.poll(() => hydrationFinished(page)).toBe(true)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'SolidJS Boilerplate for web applications'
     )
     await page.getByRole('button', { name: 'Select theme' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
-    expect(errors).toStrictEqual([])
-    expect(violations).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
   } finally {
     proxy.release()
     await page.close()
@@ -153,13 +203,13 @@ test('não marca antes do shell quando a entrada async já executou', async ({
 test('encerra a hidratação e recupera dados pelo cliente após truncamento', async ({
   page,
   baseURL,
-  request
+  request,
+  pageErrors,
+  cspViolations
 }) => {
   if (!baseURL) throw new Error('Missing test base URL')
   const proxy = await startParserProxy(baseURL)
   const id = crypto.randomUUID()
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
   let clientLoads = 0
   page.on('request', resource => {
     if (
@@ -169,7 +219,6 @@ test('encerra a hidratação e recupera dados pelo cliente após truncamento', a
       clientLoads += 1
     }
   })
-  const violations = await watchCspViolations(page)
   await watchEntryLoad(page)
   try {
     const address = proxy.server.address()
@@ -195,21 +244,21 @@ test('encerra a hidratação e recupera dados pelo cliente após truncamento', a
     await expect(
       page.getByRole('button', { name: 'Shell count: 1', exact: true })
     ).toBeVisible()
-    expect(await hydrationFinished(page)).toBeFalsy()
+    expect(await hydrationFinished(page)).toBe(false)
     expect(clientLoads).toBe(0)
 
     proxy.truncate()
     await page.waitForLoadState('domcontentloaded')
     await expect.poll(() => clientLoads).toBe(PANEL_COUNT)
-    await expect.poll(() => hydrationFinished(page)).toBeTruthy()
+    await expect.poll(() => hydrationFinished(page)).toBe(true)
     await expect(
       page.getByText('Waiting for First', { exact: true })
     ).toBeVisible()
     await expect(
       page.getByText('Waiting for Second', { exact: true })
     ).toBeVisible()
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-first`)
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-second`)
+    await releaseFixtureGate({ request, id: `${id}-first` })
+    await releaseFixtureGate({ request, id: `${id}-second` })
     await expect(
       page.getByRole('heading', { name: 'First', exact: true })
     ).toBeVisible()
@@ -222,11 +271,78 @@ test('encerra a hidratação e recupera dados pelo cliente após truncamento', a
     await expect(
       page.getByRole('button', { name: 'Shell count: 2', exact: true })
     ).toBeVisible()
-    expect(violations).toStrictEqual([])
-    expect(errors).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
   } finally {
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-first`)
-    await request.post(`http://127.0.0.1:4318/release?id=${id}-second`)
+    await releaseFixtureGateQuietly({ request, id: `${id}-first` })
+    await releaseFixtureGateQuietly({ request, id: `${id}-second` })
+    await page.close()
+    await stopProxy(proxy.server)
+  }
+})
+
+test('recupera dados pelo cliente quando o truncamento antecede o fim do shell', async ({
+  page,
+  baseURL,
+  request,
+  pageErrors,
+  cspViolations
+}) => {
+  if (!baseURL) throw new Error('Missing test base URL')
+  const proxy = await startParserProxy(baseURL)
+  const id = crypto.randomUUID()
+  let clientLoads = 0
+  page.on('request', resource => {
+    if (
+      resource.method() === 'POST' &&
+      new URL(resource.url()).pathname.startsWith('/_server/')
+    ) {
+      clientLoads += 1
+    }
+  })
+  await watchEntryLoad(page)
+  try {
+    const address = proxy.server.address()
+    if (address === null || typeof address === 'string') {
+      throw new Error('Missing proxy address')
+    }
+    await page.goto(
+      `http://127.0.0.1:${address.port}/en/hydration?id=${id}&cut=shell`,
+      { waitUntil: 'commit' }
+    )
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-entry-loaded',
+      'loading'
+    )
+    await expect(
+      page.getByText('Waiting for First', { exact: true })
+    ).toBeVisible()
+    expect(await hydrationFinished(page)).toBe(false)
+    expect(clientLoads).toBe(0)
+
+    proxy.truncate()
+    await page.waitForLoadState('domcontentloaded')
+    await expect.poll(() => clientLoads).toBe(PANEL_COUNT)
+    await expect.poll(() => hydrationFinished(page)).toBe(true)
+    await releaseFixtureGate({ request, id: `${id}-first` })
+    await releaseFixtureGate({ request, id: `${id}-second` })
+    await expect(
+      page.getByRole('heading', { name: 'First', exact: true })
+    ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Second', exact: true })
+    ).toBeVisible()
+    await page
+      .getByRole('button', { name: 'Shell count: 0', exact: true })
+      .press('Enter')
+    await expect(
+      page.getByRole('button', { name: 'Shell count: 1', exact: true })
+    ).toBeVisible()
+    expect(cspViolations).toStrictEqual([])
+    expect(pageErrors).toStrictEqual([])
+  } finally {
+    await releaseFixtureGateQuietly({ request, id: `${id}-first` })
+    await releaseFixtureGateQuietly({ request, id: `${id}-second` })
     await page.close()
     await stopProxy(proxy.server)
   }

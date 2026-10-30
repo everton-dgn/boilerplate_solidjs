@@ -1,16 +1,24 @@
 import { readdir, readFile } from 'node:fs/promises'
 
-import { expect, test, type Page } from '@playwright/test'
-import * as v from 'valibot'
+import type { Page } from '@playwright/test'
+
+import {
+  markBackendRecovered,
+  readBackendState,
+  releaseFixtureGate,
+  waitForGate
+} from '@/tests/helpers/fixtureGate/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 test.use({ locale: 'pt-BR' })
 
-const BACKEND = 'http://127.0.0.1:4318'
 const HTTP_OK = 200
 const HTTP_FOUND = 302
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const ATTEMPTS_AFTER_RETRY = 2
-const backendState = v.object({ attempts: v.number(), marker: v.string() })
+// A mensagem pública segue o idioma da requisição; o navegador, com pt-BR, abre
+// a página e chama as server functions em pt.
+const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 type ServerResponse = {
   body: string
   headers: Record<string, string>
@@ -79,7 +87,6 @@ test('um envelope devolvido por server function no SSR entrega o valor', async (
 // Regressão do @solidjs/router (https://github.com/solidjs/solid-router/issues/633):
 // query() não copia mais os headers de corpo do envelope, como o content-type,
 // para a página.
-// oxlint-disable-next-line vitest/prefer-each -- O runner do Playwright não oferece test.each.
 for (const kind of ['envelope-return', 'envelope-throw']) {
   test(`o documento com ${kind} por query no SSR continua HTML`, async ({
     request
@@ -98,8 +105,7 @@ test('um envelope lançado por server function no SSR vira falha de render sem e
   request
 }) => {
   const id = `throw:${crypto.randomUUID()}`
-  const state = await request.get(`${BACKEND}/control?id=${id}`)
-  const { marker } = v.parse(backendState, await state.json())
+  const { marker } = await readBackendState({ request, id })
   const response = await request.get(
     `/control-signal?kind=envelope-throw&id=${id}`
   )
@@ -109,8 +115,8 @@ test('um envelope lançado por server function no SSR vira falha de render sem e
   expect(response.headers()['content-language']).toBe('en')
   expect(document).toContain('Something went wrong!')
   // Controle positivo: a server function leu o marcador antes de lançar.
-  const after = await request.get(`${BACKEND}/control?id=${id}`)
-  expect(v.parse(backendState, await after.json()).attempts).toBe(1)
+  const after = await readBackendState({ request, id })
+  expect(after.attempts).toBe(1)
 })
 
 for (const { phase, javaScriptEnabled } of SCENARIOS) {
@@ -119,17 +125,12 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
 
     test('recarrega a página com falha e após o backend voltar', async ({
       page,
-      request
-    }, testInfo) => {
+      request,
+      pageErrors
+    }) => {
       const id = crypto.randomUUID()
-      const initialState = await request.get(`${BACKEND}/control?id=${id}`)
-      const privateMarker = v.parse(
-        backendState,
-        await initialState.json()
-      ).marker
-      const browserErrors: string[] = []
+      const { marker: privateMarker } = await readBackendState({ request, id })
       const serverResponses = await captureServerFunctions(page)
-      page.on('pageerror', error => browserErrors.push(error.message))
 
       const response = await page.goto(`/backend-error?phase=${phase}&id=${id}`)
       expect(await response?.text()).not.toContain(privateMarker)
@@ -147,10 +148,6 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
         page.getByRole('heading', { name: 'Algo deu errado!' })
       ).toBeVisible()
       await expect(page.locator('header')).toHaveCount(0)
-      await page.screenshot({
-        path: testInfo.outputPath('backend-error.png'),
-        fullPage: true
-      })
 
       // Uma navegação completa precisa funcionar sem hidratação nem invalidação de query.
       const retryResponse = page.waitForResponse(candidate =>
@@ -172,8 +169,8 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       }
       await expect
         .poll(async () => {
-          const state = await request.get(`${BACKEND}/control?id=${id}`)
-          return v.parse(backendState, await state.json()).attempts
+          const state = await readBackendState({ request, id })
+          return state.attempts
         })
         .toBe(ATTEMPTS_AFTER_RETRY)
       await expect(
@@ -186,15 +183,13 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       // erro não chegar mais ao navegador.
       const rendersOnServer = phase !== 'action'
       expect(
-        browserErrors.filter(
-          message =>
-            !rendersOnServer ||
-            message !== 'Não foi possível concluir a solicitação.'
+        pageErrors.filter(
+          message => !rendersOnServer || message !== PUBLIC_MESSAGE
         )
       ).toStrictEqual([])
-      browserErrors.length = 0
+      pageErrors.length = 0
 
-      await request.post(`${BACKEND}/control?id=${id}`)
+      await markBackendRecovered({ request, id })
       const recoveryResponse = page.waitForResponse(candidate =>
         candidate.request().isNavigationRequest()
       )
@@ -212,7 +207,7 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       await expect(page.locator('[data-error-variant="runtime"]')).toHaveCount(
         0
       )
-      expect(browserErrors).toStrictEqual([])
+      expect(pageErrors).toStrictEqual([])
       if (phase === 'action') {
         expect(serverResponses).toHaveLength(ATTEMPTS_AFTER_RETRY + 1)
       }
@@ -222,19 +217,30 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
 }
 
 for (const phase of ['ssr', 'stream', 'action']) {
-  // oxlint-disable-next-line vitest/prefer-each -- O runner do Playwright não oferece test.each.
   for (const failure of ['http', 'throw', 'result', 'public', 'success']) {
     test(`confidencialidade: ${phase}, ${failure}`, async ({
       page,
-      request
+      request,
+      pageErrors
     }) => {
-      const id = `${failure}:${crypto.randomUUID()}`
-      const state = await request.get(`${BACKEND}/control?id=${id}`)
-      const { marker } = v.parse(backendState, await state.json())
-      const browserErrors: string[] = []
+      // No streaming, o backend segura /data até o teste ver o fallback. Uma
+      // resposta anterior ao shell embutiria o conteúdo no documento.
+      const isStream = phase === 'stream'
+      const id = `${failure}:${crypto.randomUUID()}${isStream ? ':gated' : ''}`
+      const { marker } = await readBackendState({ request, id })
       const serverResponses = await captureServerFunctions(page)
-      page.on('pageerror', error => browserErrors.push(error.message))
-      const response = await page.goto(`/backend-error?phase=${phase}&id=${id}`)
+      const response = await page.goto(
+        `/backend-error?phase=${phase}&id=${id}`,
+        { waitUntil: isStream ? 'commit' : 'load' }
+      )
+      if (isStream) {
+        await expect(
+          page.getByText('Carregando dados...', { exact: true })
+        ).toBeVisible()
+        await waitForGate({ request, id })
+        await releaseFixtureGate({ request, id })
+      }
+      // Lido só depois da liberação: o corpo termina quando /data responde.
       const document = await response?.text()
       expect(document).not.toContain(marker)
       expect(JSON.stringify(response?.headers())).not.toContain(marker)
@@ -243,7 +249,7 @@ for (const phase of ['ssr', 'stream', 'action']) {
           ? HTTP_INTERNAL_SERVER_ERROR
           : HTTP_OK
       )
-      if (phase === 'stream') expect(document).toContain('Carregando dados...')
+      if (isStream) expect(document).toContain('Carregando dados...')
       if (phase === 'action') {
         await page.getByRole('button', { name: 'Consultar backend' }).click()
       }
@@ -260,13 +266,11 @@ for (const phase of ['ssr', 'stream', 'action']) {
         )
       }
       expect(JSON.stringify(serverResponses)).not.toContain(marker)
-      expect(browserErrors.join(' ')).not.toContain(marker)
+      expect(pageErrors.join(' ')).not.toContain(marker)
       // A hidratação tolera somente a repetição da mensagem pública fixa.
       expect(
-        browserErrors.filter(
-          message =>
-            phase === 'action' ||
-            message !== 'Não foi possível concluir a solicitação.'
+        pageErrors.filter(
+          message => phase === 'action' || message !== PUBLIC_MESSAGE
         )
       ).toStrictEqual([])
     })

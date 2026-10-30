@@ -1,4 +1,3 @@
-/* oxlint-disable vitest/no-import-node-test -- O Bun executa os testes de release pela API node:test. */
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -16,6 +15,10 @@ const LINES = WORKFLOW.split('\n')
 const NOT_FOUND = -1
 const IMPORT_PATTERN =
   /(?:^|\n)\s*(?:import|export)\b[^'"]*?\bfrom\s*['"](?<specifier>[^'"]+)['"]|(?:^|\n)\s*import\s*['"](?<bare>[^'"]+)['"]|\bimport\(\s*['"](?<dynamic>[^'"]+)['"]\s*\)/gu
+
+function words(value: string): string {
+  return value.replaceAll(/\s+/gu, ' ').trim()
+}
 
 function jobBlock(id: string): string {
   const start = LINES.indexOf(`  ${id}:`)
@@ -107,5 +110,35 @@ describe('release jobs with write permissions', () => {
     assert.ok(publish.includes('      contents: write\n'))
     assert.ok(publish.includes('      checks: write\n'))
     assert.doesNotMatch(publish, /pull-requests: write/u)
+  })
+
+  it('expose the published tag and version as publish job outputs', () => {
+    const publish = jobBlock('publish')
+    assert.ok(
+      publish.includes(
+        `    outputs:\n      tag: \${{ steps.publish.outputs.tag }}\n      version: \${{ steps.publish.outputs.version }}\n`
+      )
+    )
+    assert.ok(
+      publish.includes(
+        '- name: Validate release metadata, merge and publish\n        id: publish\n'
+      )
+    )
+  })
+})
+
+// O GitHub cancela a release pendente do mesmo grupo: um run inelegível que
+// entrasse no grupo publish substituiria a release elegível em espera.
+describe('release eligibility', () => {
+  it('is the same in the concurrency group and in the plan job', () => {
+    const group =
+      /automatic-release-\$\{\{(?<value>.+?)&& 'publish' \|\| github\.run_id \}\}/su.exec(
+        WORKFLOW
+      )?.groups?.value
+    const condition = /^ {4}if: >-\n(?<value>(?: {6}.*\n)+)/mu.exec(
+      jobBlock('plan')
+    )?.groups?.value
+    assert.ok(group && condition)
+    assert.equal(words(group), `(${words(condition)})`)
   })
 })

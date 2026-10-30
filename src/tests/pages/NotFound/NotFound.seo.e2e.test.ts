@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
+const HTTP_NOT_FOUND = 404
 const SOCIAL_TAGS = 'head meta[property^="og:"], head meta[name^="twitter:"]'
 
 test.describe('página inexistente', () => {
@@ -28,12 +29,12 @@ test.describe('página inexistente', () => {
 })
 
 test.describe('página inexistente hidratada', () => {
-  test('mantém só robots, título e descrição depois de hidratar', async ({
-    page
+  test('responde 404, mantém só robots, título e descrição depois de hidratar e volta ao início', async ({
+    page,
+    pageErrors
   }) => {
-    const errors: string[] = []
-    page.on('pageerror', error => errors.push(error.message))
-    await page.goto('/pagina-inexistente')
+    const response = await page.goto('/pagina-inexistente')
+    expect(response?.status()).toBe(HTTP_NOT_FOUND)
 
     // O menu de tema só abre com o JavaScript hidratado.
     await page.getByRole('button', { name: 'Select theme' }).click()
@@ -49,6 +50,12 @@ test.describe('página inexistente hidratada', () => {
     await expect(
       page.locator('head script[type="application/ld+json"]')
     ).toHaveCount(0)
-    expect(errors).toStrictEqual([])
+
+    await page.getByRole('link', { name: 'Back to home' }).click()
+    await expect(page).toHaveURL('/en')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'SolidJS Boilerplate for web applications'
+    )
+    expect(pageErrors).toStrictEqual([])
   })
 })

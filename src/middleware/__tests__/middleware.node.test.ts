@@ -8,6 +8,7 @@ import { readLog } from '@/tests/helpers/readLog/index.ts'
 
 import middleware, { createMiddleware } from '../index.ts'
 import { localizeRequest } from '../localizeRequest/index.ts'
+import { MAX_HTML_BYTES } from '../markdownContent/constants.ts'
 
 const TEST_ORIGIN = 'http://localhost'
 // vi.mock é içado para o topo do arquivo; o caminho sobe junto.
@@ -18,7 +19,10 @@ const { API_PATH, FORM_PATH } = vi.hoisted(() => ({
 const HTTP_FOUND = 302
 const HTTP_METHOD_NOT_ALLOWED = 405
 const HTTP_INTERNAL_SERVER_ERROR = 500
-const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
+// A cadeia interna responde no idioma da página. As contenções externas e o
+// adaptador Markdown, fora do contexto de idioma, respondem no idioma base.
+const PUBLIC_MESSAGE_PT = 'Não foi possível concluir a solicitação.'
+const PUBLIC_MESSAGE_EN = 'The request could not be completed.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
 const ERROR_PAGE_LOG =
   '[error-page] Unexpected failure; private details omitted'
@@ -118,7 +122,7 @@ describe('export padrão do middleware', () => {
     )
 
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_PT)
     expect(Object.fromEntries(response.headers)).toMatchObject({
       'x-content-type-options': 'nosniff',
       'referrer-policy': 'strict-origin-when-cross-origin'
@@ -142,7 +146,11 @@ describe('contenção do adaptador Markdown', () => {
       const event = pageEvent(`/${locale}/about`)
       const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
         expect(isPublicError(event.locals.serverFailure)).toBe(true)
-        return Promise.resolve(new Response(`${getLocale()}:${PUBLIC_MESSAGE}`))
+        return Promise.resolve(
+          new Response(getLocale(), {
+            headers: { 'content-type': 'text/html' }
+          })
+        )
       })
 
       const response = await provideRequestEvent(event, () =>
@@ -151,7 +159,7 @@ describe('contenção do adaptador Markdown', () => {
 
       expect(next).toHaveBeenCalledExactlyOnceWith()
       expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-      await expect(response.text()).resolves.toBe(`${locale}:${PUBLIC_MESSAGE}`)
+      await expect(response.text()).resolves.toBe(locale)
       expect(Object.fromEntries(response.headers)).toMatchObject({
         'content-language': locale,
         'x-content-type-options': 'nosniff'
@@ -179,7 +187,7 @@ describe('contenção do adaptador Markdown', () => {
 
     expect(next).not.toHaveBeenCalled()
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_EN)
     expect(readLog(console.error)).toStrictEqual({
       heads: [
         [LOG_MESSAGE, 'Error'],
@@ -218,7 +226,7 @@ describe('contenção do adaptador Markdown', () => {
 
     expect(next).toHaveBeenCalledExactlyOnceWith()
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_EN)
     expect(response.headers.get('x-content-type-options')).toBe('nosniff')
     expect(readLog(console.error)).toStrictEqual({
       heads: [[LOG_MESSAGE, 'Error']],
@@ -233,7 +241,9 @@ describe('contenção do adaptador Markdown', () => {
       .mockRejectedValue(new Error('PRIVATE_MIDDLEWARE'))
     const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
       expect(isPublicError(event.locals.serverFailure)).toBe(true)
-      return Promise.resolve(new Response(getLocale()))
+      return Promise.resolve(
+        new Response(getLocale(), { headers: { 'content-type': 'text/html' } })
+      )
     })
 
     const response = await provideRequestEvent(event, () =>
@@ -290,6 +300,68 @@ describe('contenção do adaptador Markdown', () => {
   })
 })
 
+describe('falhas próprias do adaptador Markdown', () => {
+  beforeEach(mockProductionLog)
+
+  // Sem prefixo de idioma, o fallback devolve o redirect em vez da página.
+  it('troca por 500 em texto o redirect de idioma do fallback', async () => {
+    vi.spyOn(Router, 'match').mockImplementation(() => {
+      throw new Error('PRIVATE_MATCH')
+    })
+    const event = pageEvent('/about')
+    const next = vi.fn<() => Promise<Response>>()
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event, next)
+    )
+
+    expect(next).not.toHaveBeenCalled()
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_EN)
+    expect(response.headers.has('location')).toBe(false)
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
+  })
+
+  it('registra a falha da conversão acima do limite de bytes', async () => {
+    vi.spyOn(Router, 'match').mockReturnValue([
+      {
+        path: '/about',
+        pattern: '/about',
+        match: '/about',
+        params: {},
+        info: { markdown: true }
+      }
+    ])
+    const event = pageEvent('/en/about.md')
+    event.request = new Request(event.request, {
+      headers: { accept: 'text/markdown' }
+    })
+    const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
+      event.locals.ssrRenderState = { hasCompleted: true, hasErrors: false }
+      return Promise.resolve(
+        new Response('x'.repeat(MAX_HTML_BYTES + 1), {
+          headers: { 'content-type': 'text/html' }
+        })
+      )
+    })
+
+    const response = await provideRequestEvent(event, () =>
+      middleware(event, next)
+    )
+
+    expect(next).toHaveBeenCalledExactlyOnceWith()
+    expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_EN)
+    expect(readLog(console.error)).toStrictEqual({
+      heads: [[LOG_MESSAGE, 'Error']],
+      leaks: []
+    })
+  })
+})
+
 describe('respostas com headers imutáveis', () => {
   beforeEach(mockProductionLog)
 
@@ -331,7 +403,7 @@ describe('respostas com headers imutáveis', () => {
     )
 
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
-    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
+    await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_PT)
     // Headers imutáveis lançam um TypeError; o corpo upstream fica fora do log.
     expect(readLog(console.error)).toStrictEqual({
       heads: [[LOG_MESSAGE, 'TypeError']],
@@ -347,9 +419,9 @@ describe('cadeia de produção', () => {
   })
 
   // A ordem decide quais respostas recebem os cabeçalhos de segurança e o
-  // contexto: o handler de API responde sem chamar next, então o que vier
+  // nonce: o handler de API responde sem chamar next, então o que vier
   // depois dele não roda nas rotas de API. Trocar a ordem faz este teste falhar.
-  it('aplica os cabeçalhos e o contexto antes do handler de API', async () => {
+  it('aplica os cabeçalhos e o nonce antes do handler de API', async () => {
     const event = pageEvent(API_PATH)
     const next = vi.fn<() => Promise<Response>>()
 
@@ -360,11 +432,9 @@ describe('cadeia de produção', () => {
     expect(next).not.toHaveBeenCalled()
     await expect(response.text()).resolves.toBe('api')
     expect({
-      requestId: typeof event.locals.requestId,
       nonce: typeof event.nonce,
       nosniff: response.headers.get('x-content-type-options')
     }).toStrictEqual({
-      requestId: 'string',
       nonce: 'string',
       nosniff: 'nosniff'
     })
@@ -379,7 +449,6 @@ describe('cadeia de produção', () => {
     const event = pageEvent('/pt/pagina')
     const response = new Response('página')
     const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
-      expect(event.locals.requestId).toBeDefined()
       expect(event.nonce).toBeDefined()
       return Promise.resolve(response)
     })

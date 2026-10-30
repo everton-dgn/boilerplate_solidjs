@@ -1,40 +1,41 @@
 /* oxlint-disable unicorn/no-document-cookie -- Os testes exercitam a persistência e o bloqueio de cookie diretamente. */
-import { useContext } from 'solid-js'
+import { flush, useContext } from 'solid-js'
 
+import type { ResolvedTheme, Theme } from '@/@types/theme.ts'
 import { ThemeContext } from '@/components/atoms/Provider/context.ts'
 import { THEME_COOKIE_NAME } from '@/constants/theme.ts'
 import { readTheme, saveTheme } from '@/infra/adapters/themeStorage/index.ts'
 import { blockCookie } from '@/tests/helpers/blockCookie/index.ts'
+import { clearThemeCookie } from '@/tests/helpers/clearThemeCookie/index.ts'
+import { stubBroadcastChannel } from '@/tests/helpers/stubBroadcastChannel/index.ts'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import type { ThemeState } from '../types.ts'
-
-function resetDocumentTheme(): void {
-  document.documentElement.classList.remove('light', 'dark')
-  document.documentElement.style.colorScheme = ''
-}
 
 describe('primitive de tema', () => {
   let state: ThemeState
   let media: EventTarget & { matches: boolean }
 
   beforeEach(() => {
-    resetDocumentTheme()
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
+    document.documentElement.classList.remove('light', 'dark')
+    document.documentElement.style.colorScheme = ''
+    clearThemeCookie()
     media = Object.assign(new EventTarget(), { matches: true })
     vi.stubGlobal('matchMedia', () => media)
     vi.stubGlobal('BroadcastChannel', null)
   })
 
-  afterEach(() => {
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  })
-
   function mount(): void {
     renderComponent(() => {
       state = useContext(ThemeContext)
-      return <span>{state.resolvedTheme()}</span>
+      return <span>{state.theme()}</span>
     })
+  }
+
+  function changeSystemTheme(theme: ResolvedTheme): void {
+    media.matches = theme === 'dark'
+    media.dispatchEvent(new Event('change'))
+    flush()
   }
 
   it('segue o sistema sem preferência salva', async () => {
@@ -46,14 +47,26 @@ describe('primitive de tema', () => {
     expect(document.cookie).not.toContain(`${THEME_COOKIE_NAME}=`)
   })
 
+  it('acompanha a mudança do sistema com a preferência system', async () => {
+    mount()
+    await expect.poll(() => state.isReady()).toBe(true)
+    changeSystemTheme('light')
+    expect(state.resolvedTheme()).toBe('light')
+    expect(document.documentElement).toHaveClass('light')
+    expect(document.documentElement.style.colorScheme).toBe('light')
+  })
+
   it('mantém escolha explícita quando o sistema muda', async () => {
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     state.setTheme('light')
-    media.dispatchEvent(new Event('change'))
-    await expect.poll(() => state.resolvedTheme()).toBe('light')
+    changeSystemTheme('light')
+    changeSystemTheme('dark')
+    expect(state.resolvedTheme()).toBe('light')
+    expect(document.documentElement).toHaveClass('light')
     expect(readTheme()).toBe('light')
-    expect(document.documentElement.style.colorScheme).toBe('light')
+    state.setTheme('system')
+    expect(document.documentElement).toHaveClass('dark')
   })
 
   it('reconcilia mudança de outra aba e remoção da preferência', async () => {
@@ -62,23 +75,37 @@ describe('primitive de tema', () => {
     saveTheme('light')
     globalThis.dispatchEvent(new Event('focus'))
     await expect.poll(() => state.theme()).toBe('light')
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
+    clearThemeCookie()
     globalThis.dispatchEvent(new Event('pageshow'))
     await expect.poll(() => state.theme()).toBe('system')
-    expect(state.resolvedTheme()).toBe('dark')
+    await expect.poll(() => document.documentElement).toHaveClass('dark')
   })
 
   it('continua alternando quando o armazenamento é bloqueado', async () => {
-    const restore = blockCookie()
+    blockCookie()
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     state.setTheme('light')
-    await expect.poll(() => state.resolvedTheme()).toBe('light')
+    expect(document.documentElement).toHaveClass('light')
     expect(readTheme()).toBeUndefined()
-    restore()
   })
 
-  it('mantém a escolha feita antes do canal iniciar', async () => {
+  it('ignora um tema inválido recebido por cast', async () => {
+    mount()
+    await expect.poll(() => state.isReady()).toBe(true)
+    state.setTheme('light')
+    flush()
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Simula um valor externo que chega ao setTheme sem validação de tipo.
+    const invalid = 'sepia' as unknown as Theme
+    state.setTheme(invalid)
+    flush()
+    expect(state.theme()).toBe('light')
+    expect(document.documentElement).toHaveClass('light')
+    expect(document.documentElement).not.toHaveClass('dark')
+    expect(readTheme()).toBe('light')
+  })
+
+  it('mantém a escolha feita logo após a montagem', async () => {
     document.cookie = `${THEME_COOKIE_NAME}=dark; Path=/`
     mount()
     state.setTheme('light')
@@ -99,59 +126,24 @@ describe('primitive de tema', () => {
     state.setTheme('light')
     expect(applied).toStrictEqual([true])
   })
-})
-
-type TestChannel = EventTarget & {
-  postMessage: ReturnType<typeof vi.fn>
-  close: ReturnType<typeof vi.fn>
-}
-
-describe('primitive de tema com canal entre abas', () => {
-  let state: ThemeState
-  let channel: TestChannel
-
-  beforeEach(() => {
-    resetDocumentTheme()
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-    channel = Object.assign(new EventTarget(), {
-      postMessage: vi.fn<() => void>(),
-      close: vi.fn<() => void>()
-    })
-    vi.stubGlobal('matchMedia', () => ({
-      matches: false,
-      addEventListener: vi.fn<() => void>(),
-      removeEventListener: vi.fn<() => void>()
-    }))
-    vi.stubGlobal(
-      'BroadcastChannel',
-      vi.fn(function makeChannel() {
-        return channel
-      })
-    )
-  })
-
-  afterEach(() => {
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  })
 
   it('aplica no DOM o tema recebido de outra aba', async () => {
-    renderComponent(() => {
-      state = useContext(ThemeContext)
-      return <span>{state.resolvedTheme()}</span>
-    })
+    media.matches = false
+    const channel = stubBroadcastChannel()
+    mount()
     await expect.poll(() => state.isReady()).toBe(true)
     expect(document.documentElement).toHaveClass('light')
     channel.dispatchEvent(
       new MessageEvent('message', {
         data: {
           theme: 'dark',
-          persisted: false,
+          isPersisted: false,
           changedAt: 1,
           origin: 'remote'
         }
       })
     )
-    await expect.poll(() => state.resolvedTheme()).toBe('dark')
+    await expect.poll(() => state.theme()).toBe('dark')
     expect(document.documentElement).toHaveClass('dark')
     expect(document.documentElement.style.colorScheme).toBe('dark')
   })

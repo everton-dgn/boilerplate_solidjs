@@ -73,10 +73,6 @@ export type PullRequest = {
 
 export type PullContext = MergeContext & { pr: PullRequest }
 
-export type TimelineEvent = { event?: string }
-
-export type TimelineOptions = Context & { pr: number; page: number }
-
 export type WorkflowRun = {
   id: number
   run_attempt: number

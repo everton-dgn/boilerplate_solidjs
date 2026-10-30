@@ -4,7 +4,6 @@ import { isHtmlResponse } from '../helpers/isHtmlResponse/index.ts'
 import type { Next } from '../types.ts'
 import { CSP_DIRECTIVES, SECURITY_HEADERS } from './constants.ts'
 
-type SecurityHeadersUpdate = { response: Response; nonce: string | undefined }
 type HeaderUpdate = { response: Response; headers: Record<string, string> }
 
 const NONCE_BYTES = 16
@@ -53,10 +52,7 @@ export function requestNonce(): string | undefined {
 // Só documentos HTML executam scripts. Texto, XML, JSON e redirects saem com
 // script-src 'none', e o nonce da requisição não fica guardado no cache
 // compartilhado das respostas com s-maxage.
-export function applySecurityHeaders({
-  response,
-  nonce
-}: SecurityHeadersUpdate): Response {
+export function applySecurityHeaders(response: Response): Response {
   return withHeaders({
     response,
     headers: import.meta.env.DEV
@@ -64,7 +60,7 @@ export function applySecurityHeaders({
       : {
           ...SECURITY_HEADERS,
           'content-security-policy': contentSecurityPolicy(
-            isHtmlResponse(response) ? nonce : undefined
+            isHtmlResponse(response) ? requestNonce() : undefined
           )
         }
   })
@@ -76,6 +72,6 @@ export async function securityHeaders(
   _request: Request,
   next: Next
 ): Promise<Response> {
-  const nonce = requestNonce()
-  return applySecurityHeaders({ response: await next(), nonce })
+  requestNonce()
+  return applySecurityHeaders(await next())
 }

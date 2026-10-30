@@ -6,7 +6,7 @@ function blocked(): never {
 // do próprio teardown; o registro abaixo é só a rede de segurança.
 export function blockCookie(): () => void {
   const original = Object.getOwnPropertyDescriptor(document, 'cookie')
-  let active = true
+  let isActive = true
 
   Object.defineProperty(document, 'cookie', {
     configurable: true,
@@ -15,8 +15,8 @@ export function blockCookie(): () => void {
   })
 
   const restore = (): void => {
-    if (!active) return
-    active = false
+    if (!isActive) return
+    isActive = false
     if (original) {
       Object.defineProperty(document, 'cookie', original)
       return

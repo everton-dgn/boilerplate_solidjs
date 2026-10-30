@@ -1,4 +1,3 @@
-/* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 import assert from 'node:assert/strict'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -155,18 +154,39 @@ it('mantém headers, redirects, proxy, skew protection, ISR e functionRules do N
   }
 })
 
-it('recusa headers terminais que impedem a proteção de páginas no preset real', async context => {
-  for (const pattern of ['/pt', '/pt/', '/**']) {
+it('recusa rotas terminais que impedem a proteção de páginas no preset real', async context => {
+  for (const src of ['/pt', '/pt/', '/(.*)']) {
     await assert.rejects(
       fixture({
         context,
         config: {
-          routeRules: {
-            [pattern]: { headers: { 'x-page': 'home' } }
+          vercel: {
+            config: {
+              version: 3,
+              routes: [{ src, headers: { 'x-page': 'home' } }]
+            }
           }
         }
       }),
       /Vercel route ends before Markdown page protection/u
+    )
+  }
+})
+
+it('mantém os headers de routeRules antes da proteção sem encerrar o roteamento', async context => {
+  for (const pattern of ['/pt', '/pt/', '/**']) {
+    const { routes } = await fixture({
+      context,
+      config: { routeRules: { [pattern]: { headers: { 'x-page': 'home' } } } }
+    })
+    const header = initialRoutes(routes).find(
+      route => route.headers?.['x-page'] === 'home'
+    )
+    assert.equal(header?.continue, true, pattern)
+    assert.equal(
+      destination({ routes, pathname: '/pt' })?.dest,
+      '/__server',
+      pattern
     )
   }
 })

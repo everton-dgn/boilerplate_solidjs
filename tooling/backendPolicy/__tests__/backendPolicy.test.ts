@@ -1,34 +1,39 @@
-/* oxlint-disable vitest/no-import-node-test -- Executa o CLI real em um projeto temporário com o runner nativo do Node.js. */
-/* oxlint-disable node/no-sync -- Fixture e subprocessos são sequenciais e isolados do servidor; o processo de teste aguarda o CLI real. */
 import assert from 'node:assert/strict'
-import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync
-} from 'node:fs'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { test, type TestContext } from 'node:test'
+import { test } from 'node:test'
 
 import * as v from 'valibot'
 import { RuleTester } from 'vite-plus/lint/plugins-dev'
 
 import { lint } from '../../lint.ts'
+import { lintFixture } from '../../testing/lintFixture/index.ts'
 import backendPolicy from '../index.ts'
 import backendPlugin from '../plugin.ts'
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')
-type LintFixture = {
-  sources: Record<string, string>
-  full?: boolean
-  context: TestContext
-}
 type Diagnostic = { filename: string; code: string; severity: string }
 type PolicyCase = { source: string; code: string }
 type FilenameMatch = { actual: string; expected: string }
+type ErrorQuery = {
+  diagnostics: Diagnostic[]
+  filename: string
+  matches: (code: string) => boolean
+}
+
+// Só as regras de backend, sem o restante do lint do projeto.
+const BACKEND_LINT_CONFIG = `export default ${JSON.stringify({
+  lint: {
+    categories: { correctness: 'off' },
+    jsPlugins: [
+      {
+        name: 'backend',
+        specifier: path.join(ROOT, 'tooling/backendPolicy/plugin.ts')
+      }
+    ],
+    rules: { 'eslint/no-console': lint.rules?.['eslint/no-console'] },
+    overrides: backendPolicy
+  }
+})}`
 
 const OBSERVER_CODES = new Set([
   'eslint(no-restricted-imports)',
@@ -67,60 +72,12 @@ function readDiagnostics(output: string): Diagnostic[] {
   return v.parse(schema, JSON.parse(output)).diagnostics
 }
 
-function lintFixture({
-  sources,
-  full = false,
-  context
-}: LintFixture): SpawnSyncReturns<string> {
-  const directory = mkdtempSync(path.join(tmpdir(), 'solid-backend-policy-'))
-  // Sandbox criado pelo próprio teste: a remoção direta é o descarte correto.
-  context.after(() => rmSync(directory, { recursive: true, force: true }))
-  symlinkSync(
-    path.join(ROOT, 'node_modules'),
-    path.join(directory, 'node_modules'),
-    'dir'
-  )
-  writeFileSync(
-    path.join(directory, 'package.json'),
-    JSON.stringify({ type: 'module' }),
-    { flag: 'wx' }
-  )
-  writeFileSync(
-    path.join(directory, 'vite.config.ts'),
-    `export default ${JSON.stringify({
-      lint: full
-        ? {
-            ...lint,
-            jsPlugins: lint.jsPlugins?.map(plugin =>
-              typeof plugin === 'string' || !plugin.specifier.startsWith('.')
-                ? plugin
-                : { ...plugin, specifier: path.resolve(ROOT, plugin.specifier) }
-            ),
-            options: { typeAware: false, typeCheck: false }
-          }
-        : {
-            categories: { correctness: 'off' },
-            jsPlugins: [
-              {
-                name: 'backend',
-                specifier: path.join(ROOT, 'tooling/backendPolicy/plugin.ts')
-              }
-            ],
-            rules: { 'eslint/no-console': lint.rules?.['eslint/no-console'] },
-            overrides: backendPolicy
-          }
-    })}`,
-    { flag: 'wx' }
-  )
-  for (const [filename, source] of Object.entries(sources)) {
-    const destination = path.join(directory, filename)
-    mkdirSync(path.dirname(destination), { recursive: true })
-    writeFileSync(destination, source, { flag: 'wx' })
-  }
-  return spawnSync(
-    path.join(ROOT, 'node_modules/.bin/vp'),
-    ['lint', ...Object.keys(sources), '--format', 'json'],
-    { cwd: directory, encoding: 'utf8', timeout: 30_000 }
+function hasError({ diagnostics, filename, matches }: ErrorQuery): boolean {
+  return diagnostics.some(
+    diagnostic =>
+      matchesFilename({ actual: diagnostic.filename, expected: filename }) &&
+      diagnostic.severity === 'error' &&
+      matches(diagnostic.code)
   )
 }
 
@@ -227,7 +184,7 @@ test('a política rejeita desvios de acesso no parser real do Oxlint', context =
     'src/infra/server/configureServerErrors/index.ts':
       'import { markSafeError } from "@solidjs/web"'
   }
-  const result = lintFixture({ sources, context })
+  const result = lintFixture({ sources, context, config: BACKEND_LINT_CONFIG })
   assert.equal(result.status, 1, result.stderr)
   const diagnostics = readDiagnostics(result.stdout)
   for (const code of [
@@ -235,31 +192,22 @@ test('a política rejeita desvios de acesso no parser real do Oxlint', context =
     'eslint(no-restricted-properties)'
   ]) {
     assert.ok(
-      diagnostics.some(
-        diagnostic =>
-          matchesFilename({
-            actual: diagnostic.filename,
-            expected: 'src/infra/server/logServerFailure/index.ts'
-          }) &&
-          diagnostic.code === code &&
-          diagnostic.severity === 'error'
-      ),
+      hasError({
+        diagnostics,
+        filename: 'src/infra/server/logServerFailure/index.ts',
+        matches: actual => actual === code
+      }),
       `proteção do log central: ${code}`
     )
   }
   for (const filename of Object.keys(sources)) {
     assert.ok(
-      diagnostics.some(
-        diagnostic =>
-          matchesFilename({
-            actual: diagnostic.filename,
-            expected: filename
-          }) &&
-          diagnostic.severity === 'error' &&
-          /^eslint\(no-restricted-(?:globals|imports|properties)\)$/u.test(
-            diagnostic.code
-          )
-      ),
+      hasError({
+        diagnostics,
+        filename,
+        matches: code =>
+          /^eslint\(no-restricted-(?:globals|imports|properties)\)$/u.test(code)
+      }),
       filename
     )
   }
@@ -280,7 +228,7 @@ test('o lint completo aplica as novas regras com exceções restritas', context 
     'src/infra/server/requestJson/index.ts': 'console.error("PRIVATE")',
     'src/infra/server/publicErrors/index.ts': 'void import("@solidjs/web")'
   }
-  const result = lintFixture({ sources, full: true, context })
+  const result = lintFixture({ sources, context })
   assert.equal(result.status, 1, result.stderr)
   const diagnostics = readDiagnostics(result.stdout)
   for (const [filename, source] of Object.entries(sources)) {
@@ -288,15 +236,7 @@ test('o lint completo aplica as novas regras com exceções restritas', context 
       ? 'backend(static-solid-imports)'
       : 'eslint(no-console)'
     assert.ok(
-      diagnostics.some(
-        diagnostic =>
-          matchesFilename({
-            actual: diagnostic.filename,
-            expected: filename
-          }) &&
-          diagnostic.code === code &&
-          diagnostic.severity === 'error'
-      ),
+      hasError({ diagnostics, filename, matches: actual => actual === code }),
       `${filename}: ${code}`
     )
   }
@@ -305,6 +245,7 @@ test('o lint completo aplica as novas regras com exceções restritas', context 
 test('a política preserva APIs públicas, testes e logging do tooling', context => {
   const valid = lintFixture({
     context,
+    config: BACKEND_LINT_CONFIG,
     sources: {
       'src/infra/server/requestJson/index.ts':
         'export const request = () => fetch("/private")',
@@ -318,7 +259,7 @@ test('a política preserva APIs públicas, testes e logging do tooling', context
       'src/local-console.ts': 'const console = { error() {} }; console.error()',
       'src/transport.test.ts':
         'fetch("/fixture"); console.error("fixture"); void import("@solidjs/web")',
-      'src/transport.spec.tsx':
+      'src/transport.test.tsx':
         'console.warn("fixture"); void import(`@solidjs/web/server-functions/server`)',
       'src/example.d.ts':
         'type Safe = typeof import("@solidjs/web").markSafeError',
@@ -330,7 +271,7 @@ test('a política preserva APIs públicas, testes e logging do tooling', context
         'import { markSafeError } from "@solidjs/web"; export type Safe = typeof markSafeError',
       'src/transport.test.mts':
         'fetch("/fixture"); console.error("fixture"); void import("@solidjs/web")',
-      'src/transport.spec.cjs':
+      'src/transport.test.cjs':
         'fetch("/fixture"); console.error("fixture"); void import("@solidjs/web")',
       'tooling/probe.ts':
         'console.warn("tooling"); console.error("tooling"); void import("@solidjs/web")'
@@ -354,20 +295,16 @@ test('só o módulo de registro instala o hook de erros do servidor', context =>
     'src/infra/server/configureServerErrors/index.ts':
       'import { markSafeError } from "@solidjs/web"; markSafeError(new Error("private"))'
   }
-  const result = lintFixture({ sources, full: true, context })
+  const result = lintFixture({ sources, context })
   assert.equal(result.status, 1, result.stderr)
   const diagnostics = readDiagnostics(result.stdout)
   for (const filename of Object.keys(sources)) {
     assert.ok(
-      diagnostics.some(
-        diagnostic =>
-          matchesFilename({
-            actual: diagnostic.filename,
-            expected: filename
-          }) &&
-          diagnostic.code === 'eslint(no-restricted-imports)' &&
-          diagnostic.severity === 'error'
-      ),
+      hasError({
+        diagnostics,
+        filename,
+        matches: code => code === 'eslint(no-restricted-imports)'
+      }),
       filename
     )
   }
@@ -388,25 +325,26 @@ test('só o registro do hook declara as falhas de render observadas', context =>
     'src/helpers/observer-dynamic.ts':
       'void import("@/infra/server/renderIntegrity/index.ts").then(module => module.observeRenderFailures())'
   }
-  const result = lintFixture({ sources: restricted, context })
+  const result = lintFixture({
+    sources: restricted,
+    context,
+    config: BACKEND_LINT_CONFIG
+  })
   assert.equal(result.status, 1, result.stderr)
   const diagnostics = readDiagnostics(result.stdout)
   for (const filename of Object.keys(restricted)) {
     assert.ok(
-      diagnostics.some(
-        diagnostic =>
-          matchesFilename({
-            actual: diagnostic.filename,
-            expected: filename
-          }) &&
-          OBSERVER_CODES.has(diagnostic.code) &&
-          diagnostic.severity === 'error'
-      ),
+      hasError({
+        diagnostics,
+        filename,
+        matches: code => OBSERVER_CODES.has(code)
+      }),
       filename
     )
   }
   const allowed = lintFixture({
     context,
+    config: BACKEND_LINT_CONFIG,
     sources: {
       'src/infra/server/configureServerErrors/index.ts':
         'import { observeRenderFailures } from "../renderIntegrity/index.ts"; observeRenderFailures()',
@@ -491,20 +429,12 @@ test('a política cobre todas as extensões de código sem ampliar privilégios'
   const sources = Object.fromEntries(
     Object.entries(fixtures).map(([filename, { source }]) => [filename, source])
   )
-  const result = lintFixture({ sources, full: true, context })
+  const result = lintFixture({ sources, context })
   assert.equal(result.status, 1, result.stderr)
   const diagnostics = readDiagnostics(result.stdout)
   for (const [filename, { code }] of Object.entries(fixtures)) {
     assert.ok(
-      diagnostics.some(
-        diagnostic =>
-          matchesFilename({
-            actual: diagnostic.filename,
-            expected: filename
-          }) &&
-          diagnostic.code === code &&
-          diagnostic.severity === 'error'
-      ),
+      hasError({ diagnostics, filename, matches: actual => actual === code }),
       `${filename}: ${code}`
     )
   }

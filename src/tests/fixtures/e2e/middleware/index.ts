@@ -5,7 +5,7 @@ import { delocalizePathname } from '@/i18n/urls/index.ts'
 import { requestJson } from '@/infra/server/requestJson/index.ts'
 import { createMiddleware } from '@/middleware/index.ts'
 
-import { fixtureError } from '../outside-error/fixtureError/index.ts'
+import { fixtureError } from '../backend/fixtureError/index.ts'
 import { readFixtureMarker } from '../outside-error/readFixtureMarker/index.ts'
 import { recordFixtureThrow } from '../outside-error/recordFixtureThrow/index.ts'
 

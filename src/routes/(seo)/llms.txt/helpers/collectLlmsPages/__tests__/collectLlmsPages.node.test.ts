@@ -1,4 +1,4 @@
-import { SITE } from '@/constants/site.ts'
+import { SITE } from '@/constants/site/index.ts'
 import type { StaticRoute } from '@/helpers/walkStaticRoutes/types.ts'
 
 import { collectLlmsPages } from '../index.ts'
@@ -57,14 +57,14 @@ describe('coleta das páginas selecionadas para o llms.txt', () => {
         title: 'Visão geral',
         description: 'Guias do projeto.',
         section: 'Guias',
-        optional: false
+        isOptional: false
       },
       {
         path: '/docs/guia',
         title: 'Documentação',
         description: 'Guias do projeto.',
         section: 'Guias',
-        optional: true
+        isOptional: true
       }
     ])
     expect(preload).not.toHaveBeenCalled()
@@ -98,7 +98,7 @@ describe('coleta das páginas selecionadas para o llms.txt', () => {
         title: SITE.title,
         description: SITE.description,
         section: 'Pages',
-        optional: false
+        isOptional: false
       }
     ])
     expect(readDynamicRoute).not.toHaveBeenCalled()
@@ -190,7 +190,7 @@ describe('herança da seleção de llms.txt na cadeia de rotas', () => {
     ])
 
     expect(
-      pages.map(page => [page.path, page.section, page.optional])
+      pages.map(page => [page.path, page.section, page.isOptional])
     ).toStrictEqual([
       ['/guias', 'Guias', true],
       ['/guias/rascunho/publicado', 'Guias', true],
@@ -232,7 +232,7 @@ describe('herança da seleção de llms.txt na cadeia de rotas', () => {
     ])
 
     expect(
-      pages.map(page => [page.path, page.section, page.optional])
+      pages.map(page => [page.path, page.section, page.isOptional])
     ).toStrictEqual([
       ['/guias', 'Guias', true],
       ['/guias/referencia', 'Referência', true],

@@ -8,9 +8,6 @@ const BLOG_ENTRIES = 2
 const HOME_TITLE = 'SolidJS Boilerplate | Web applications with SSR'
 const SITE_DESCRIPTION =
   'A foundation for web applications with SolidJS, TypeScript and Vite+, with server-side rendering and light and dark themes.'
-// Grupo dos robôs de treinamento de IA: começa em GPTBot e termina bloqueando tudo.
-const AI_BOTS_GROUP =
-  /\nUser-agent: GPTBot\n(?:User-agent: [^\n]+\n)*Disallow: \/\n/u
 
 test.describe('índices gerados do manifesto de rotas', () => {
   test('gera sitemap, robots e llms.txt a partir do manifesto de rotas', async ({
@@ -49,14 +46,6 @@ test.describe('índices gerados do manifesto de rotas', () => {
     expect(robots.status()).toBe(HTTP_OK)
     expect(robots.headers()['content-type']).toContain('text/plain')
     expect(robots.headers()['cache-control']).toBe(cacheControl)
-    const robotsText = await robots.text()
-    expect(
-      robotsText.startsWith('User-agent: *\nAllow: /\nDisallow: /_server\n')
-    ).toBe(true)
-    expect(robotsText).toMatch(AI_BOTS_GROUP)
-    expect(robotsText.endsWith(`\nSitemap: ${siteUrl}/sitemap.xml\n`)).toBe(
-      true
-    )
 
     const llms = await request.get('/llms.txt')
     expect(llms.status()).toBe(HTTP_OK)

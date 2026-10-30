@@ -7,7 +7,6 @@ import type { Plugin, PluginOption, ViteDevServer } from 'vite-plus'
 import { prepareMessages } from '../prepareMessages/index.ts'
 import { canContainCatalogs, isCatalogFile } from '../readCatalogs/index.ts'
 
-type ReportErrorOptions = { server: ViteDevServer; error: Error }
 type ProjectFileOptions = { root: string; file: string }
 
 const PROJECT = './project.inlang'
@@ -17,20 +16,9 @@ const PROJECT_FILES = new Set([
 ])
 const PREPARATION_DELAY_MS = 100
 
-function reportError({ server, error }: ReportErrorOptions): void {
-  server.ws.send({
-    type: 'error',
-    err: { message: error.message, stack: error.stack ?? '' }
-  })
-}
-
 function isProjectFile({ root, file }: ProjectFileOptions): boolean {
   const relative = path.relative(root, file).split(path.sep).join('/')
   return PROJECT_FILES.has(relative)
-}
-
-function toError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error))
 }
 
 function catalogPreparation(): Plugin {
@@ -49,8 +37,11 @@ function catalogPreparation(): Plugin {
       // HMR, então só um reload remove o overlay do erro.
       server?.ws.send({ type: 'full-reload' })
     } catch (error) {
-      failure = toError(error)
-      if (server) reportError({ server, error: failure })
+      failure = error instanceof Error ? error : new Error(String(error))
+      server?.ws.send({
+        type: 'error',
+        err: { message: failure.message, stack: failure.stack ?? '' }
+      })
     }
   }
   const prepareRequested = async () => {

@@ -141,7 +141,6 @@ const backendPolicy: NonNullable<LintConfig['overrides']> = [
   {
     files: [
       'src/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'src/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'src/**/*.test-d.{ts,tsx}',
       'src/**/*.d.{ts,mts,cts}'
     ],

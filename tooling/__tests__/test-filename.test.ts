@@ -1,12 +1,10 @@
-/* oxlint-disable vitest/no-import-node-test -- Os testes de tooling usam o runner nativo do Node.js. */
-/* oxlint-disable vitest/prefer-each -- O runner nativo do Node.js não tem a API it.each. */
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import { describe, it } from 'node:test'
 
 import { RuleTester } from 'vite-plus/lint/plugins-dev'
 
-import plugin from '../css-modules-plugin.ts'
+import plugin from '../project-plugin.ts'
 import { testFilenameError } from '../test-filename.ts'
 
 describe('test filename policy', () => {

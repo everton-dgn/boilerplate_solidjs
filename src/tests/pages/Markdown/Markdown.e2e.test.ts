@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test'
 
+import { releaseFixtureGate } from '@/tests/helpers/fixtureGate/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
-
-test.use({ headless: true })
 
 const HTTP_OK = 200
 const HTTP_REDIRECT = 307
@@ -15,10 +14,13 @@ const HTTP_INTERNAL_SERVER_ERROR = 500
 
 const PAGE = '/pt/markdown-contract/sample'
 const LOCALES = ['pt', 'en', 'es']
-const BACKEND = 'http://127.0.0.1:4318'
+// A ordem dos atributos não faz parte do contrato do HTML.
+const MARKDOWN_ALTERNATE =
+  /<link\b(?=[^>]*\brel="alternate")(?=[^>]*\btype="text\/markdown")(?=[^>]*\bhref="(?<href>[^"]+)")[^>]*>/u
 
 function expectPublicMarkdown(body: string) {
   expect(body).toContain('# HTML Markdown contract: sample')
+  expect(body).toContain('Before the title')
   expect(body.indexOf('Before the title')).toBeLessThan(
     body.indexOf('# HTML Markdown')
   )
@@ -74,7 +76,6 @@ test('normal HTML hydrates the same ordered fragments and preserves controls', a
   ).toBeVisible()
 })
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright não oferece test.each.
 for (const preference of [
   { accept: 'text/markdown', type: 'text/markdown' },
   { accept: 'text/markdown;q=0, text/html', type: 'text/html' },
@@ -136,10 +137,8 @@ test('matches unenumerated parameter values without a Markdown producer', async 
   expect(await response.text()).toContain(`# HTML Markdown contract: ${slug}`)
 })
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright não oferece test.each.
 for (const locale of LOCALES) {
   test(`preserves the index slug and home Markdown aliases in ${locale}`, async ({
-    page,
     request
   }) => {
     const pathname = `/${locale}/markdown-contract/index`
@@ -149,14 +148,7 @@ for (const locale of LOCALES) {
     })
     expect(html.status()).toBe(HTTP_OK)
     expect(html.headers()['content-type']).toContain('text/html')
-    const alternate = await page.evaluate(
-      documentHtml =>
-        new DOMParser()
-          .parseFromString(documentHtml, 'text/html')
-          .querySelector('link[rel="alternate"][type="text/markdown"]')
-          ?.getAttribute('href'),
-      await html.text()
-    )
+    const alternate = MARKDOWN_ALTERNATE.exec(await html.text())?.groups?.href
     expect(alternate).toBe(`${readSiteOrigin()}${markdownPath}`)
 
     const markdown = await request.get(`${markdownPath}?version=2`)
@@ -184,15 +176,12 @@ test('isolates simultaneous locale cookies in settled content', async ({
       const other = LOCALES[(index + 1) % LOCALES.length]
       const id = crypto.randomUUID()
       for (const label of ['first', 'second']) {
-        const released = await request.post(
-          `${BACKEND}/release?id=${id}:${label}`
-        )
-        expect(released.ok()).toBe(true)
+        await releaseFixtureGate({ request, id: `${id}:${label}` })
       }
       const response = await request.get(
         `/${locale}/markdown-contract/sample.md?id=${id}`,
         {
-          headers: { cookie: `PARAGLIDE_LOCALE=${other}; locale=${other}` }
+          headers: { cookie: `locale=${other}` }
         }
       )
       expect(response.status()).toBe(HTTP_OK)
@@ -219,7 +208,6 @@ test('localizes explicit Markdown URLs without losing their suffix', async ({
   )
 })
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright não oferece test.each.
 for (const path of ['/pt/markdown-noindex', '/pt/markdown-optout']) {
   test(`does not publish ${path}`, async ({ request }) => {
     const html = await request.get(path, { headers: { accept: 'text/html' } })
