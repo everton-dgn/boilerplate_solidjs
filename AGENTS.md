@@ -256,8 +256,11 @@ release. Add a tool name to select part of the graph. For example, run
   textos de todas as páginas, nos três idiomas, para o bundle inicial. Os getters
   de `seo` chamam as mensagens direto, sem ler o objeto da página. Não mova o
   `content` para `seo.ts`, para um módulo que o `seo.ts` importe nem para outro
-  que o `route` alcance. O `I18n.production.e2e` confere isso; detalhes em
-  [SEO](docs/seo.md).
+  que o `route` alcance. A regra `project/seo-module`
+  (`tooling/seoModule/index.ts`) recusa no lint qualquer export além de `seo` e
+  qualquer import local como valor em `seo.ts`, e o `I18n.production.e2e`
+  confere o resultado no build; detalhes em [SEO](docs/seo.md). Ao mudar a
+  regra, rode `vp run test:tooling`.
 - Markdown usa main semântico e filtros do conversor. Use `data-md-exclude`
   para excluir conteúdo; CSS calculado não é interpretado. Preserve citações
   contextuais em footer dentro de main.

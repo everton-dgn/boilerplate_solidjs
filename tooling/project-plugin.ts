@@ -2,6 +2,7 @@ import { definePlugin, defineRule } from 'vite-plus/lint/plugins'
 
 import { cssFilename } from './css/css-filename.ts'
 import { noExportList } from './noExportList/index.ts'
+import { seoModule } from './seoModule/index.ts'
 import { testFilename } from './test-filename.ts'
 
 const cssModulesImport = defineRule({
@@ -36,7 +37,8 @@ const plugin = definePlugin({
     'css-modules-import': cssModulesImport,
     'css-filename': cssFilename,
     'test-filename': testFilename,
-    'no-export-list': noExportList
+    'no-export-list': noExportList,
+    'seo-module': seoModule
   }
 })
 
