@@ -11,9 +11,10 @@ import {
 import { isHtmlResponse } from '../helpers/isHtmlResponse/index.ts'
 import { isPageRequest } from '../requestClassification/index.ts'
 import { applySecurityHeaders, requestNonce } from '../securityHeaders/index.ts'
-import type { ChainEntry, Middleware, Render } from '../types.ts'
+import type { Middleware } from '../types.ts'
 
-type RenderState = { isRendered: boolean }
+type Render = (request?: Request) => Response | Promise<Response>
+type ChainEntry = (request: Request, next: Render) => Promise<Response>
 type Containment = {
   error: unknown
   request: Request
@@ -22,13 +23,12 @@ type Containment = {
 }
 
 function publicTextFailure(): Response {
-  return applySecurityHeaders({
-    response: new Response(PUBLIC_ERROR_MESSAGE, {
+  return applySecurityHeaders(
+    new Response(PUBLIC_ERROR_MESSAGE, {
       status: HTTP_INTERNAL_SERVER_ERROR,
       headers: { 'content-type': 'text/plain; charset=utf-8' }
-    }),
-    nonce: requestNonce()
-  })
+    })
+  )
 }
 
 // Força o status: um render descartado pode ter iniciado a resposta.
@@ -36,7 +36,8 @@ async function renderErrorPage(render: Render): Promise<Response> {
   const event = getRequestEvent()
   if (!event) return publicTextFailure()
   event.locals.serverFailure = createPublicError()
-  const nonce = requestNonce()
+  // O render lê o nonce do evento; a CSP da página de erro usa o mesmo valor.
+  requestNonce()
   try {
     const page = await render()
     // Com o status forçado, um redirect de idioma sairia com Location e sem corpo.
@@ -44,13 +45,12 @@ async function renderErrorPage(render: Render): Promise<Response> {
       await page.body?.cancel()
       return publicTextFailure()
     }
-    return applySecurityHeaders({
-      response: new Response(page.body, {
+    return applySecurityHeaders(
+      new Response(page.body, {
         status: HTTP_INTERNAL_SERVER_ERROR,
         headers: page.headers
-      }),
-      nonce
-    })
+      })
+    )
   } catch (error) {
     logServerFailure({ source: 'error-page', error })
     return publicTextFailure()
@@ -65,7 +65,7 @@ async function containedResponse({
 }: Containment): Promise<Response> {
   if (isControlResponse(error)) {
     try {
-      return applySecurityHeaders({ response: error, nonce: requestNonce() })
+      return applySecurityHeaders(error)
     } catch {
       // Headers que não aceitam gravação nem cópia (status fora de 200 a 599
       // ou objeto hostil) tornam o controle uma falha.
@@ -83,9 +83,9 @@ export function containFailures(chain: Middleware[]): ChainEntry {
   return async (request, next) => {
     // O plugin só aceita uma chamada ao render por requisição. Se a cadeia já
     // renderizou a página antes de falhar, a página de erro não é possível.
-    const state: RenderState = { isRendered: false }
+    let isRendered = false
     const render: Render = override => {
-      state.isRendered = true
+      isRendered = true
       return next(override)
     }
     try {
@@ -96,7 +96,7 @@ export function containFailures(chain: Middleware[]): ChainEntry {
         error,
         request,
         next,
-        isRendered: state.isRendered
+        isRendered
       })
     }
   }

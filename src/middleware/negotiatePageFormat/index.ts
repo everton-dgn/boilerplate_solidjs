@@ -71,6 +71,12 @@ function parseRange(value: string): MediaRange[] {
   return [{ type, quality, parameterCount: seen.size }]
 }
 
+function parseAccept(accept: string): MediaRange[] {
+  return splitOutsideQuotes({ value: accept, separator: ',' }).flatMap(range =>
+    parseRange(range)
+  )
+}
+
 function preference({ ranges, type }: MediaPreferenceOptions): MediaPreference {
   let result: MediaPreference = { quality: 0, specificity: -1 }
   for (const range of ranges) {
@@ -100,9 +106,7 @@ export function negotiatePageFormat(
   accept: string | null
 ): 'html' | 'markdown' | undefined {
   if (accept === null) return 'html'
-  const ranges = splitOutsideQuotes({ value: accept, separator: ',' }).flatMap(
-    range => parseRange(range)
-  )
+  const ranges = parseAccept(accept)
   const html = preference({ ranges, type: 'text/html' })
   const markdown = preference({ ranges, type: 'text/markdown' })
   if (
@@ -119,11 +123,7 @@ export function negotiatePageFormat(
 export function acceptsMarkdown(accept: string | null): boolean {
   if (accept === null) return true
   return (
-    preference({
-      ranges: splitOutsideQuotes({ value: accept, separator: ',' }).flatMap(
-        range => parseRange(range)
-      ),
-      type: 'text/markdown'
-    }).quality > 0
+    preference({ ranges: parseAccept(accept), type: 'text/markdown' }).quality >
+    0
   )
 }

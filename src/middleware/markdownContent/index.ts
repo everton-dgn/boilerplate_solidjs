@@ -1,5 +1,5 @@
 import { m } from '@paraglide/messages.js'
-import type { StartMiddleware } from '@solidjs/vite-plugin'
+import type { RequestEvent } from '@solidjs/web'
 import { pageRoutes } from 'virtual:file-routes'
 
 import {
@@ -24,14 +24,13 @@ import {
 } from '../negotiatePageFormat/index.ts'
 import { isPagePath } from '../requestClassification/index.ts'
 import { applySecurityHeaders } from '../securityHeaders/index.ts'
+import type { Next } from '../types.ts'
 import { MARKDOWN_PRERENDER_PATH, MARKDOWN_TIMEOUT_MS } from './constants.ts'
 import { collectStaticMarkdownPages } from './helpers/collectStaticMarkdownPages/index.ts'
 import { convertHtml } from './helpers/convertHtml/index.ts'
 
-type Event = Parameters<StartMiddleware>[0]
-type Next = Parameters<StartMiddleware>[1]
 type RenderOptions = {
-  event: Event
+  event: RequestEvent
   render: Next
   original: Request
   url: URL
@@ -54,7 +53,7 @@ const NOINDEX = /(?<!max-image-preview\s*:\s*)\b(?:noindex|none)\b/iu
 
 function uncachedResponse(response: Response): Response {
   response.headers.set('cache-control', 'private, no-store')
-  return applySecurityHeaders({ response, nonce: undefined })
+  return applySecurityHeaders(response)
 }
 
 function textResponse({ status, body, headers }: TextOptions): Response {
@@ -291,7 +290,7 @@ async function boundedRender(
 }
 
 export async function markdownContent(
-  event: Event,
+  event: RequestEvent,
   render: Next
 ): Promise<Response> {
   const original = event.request

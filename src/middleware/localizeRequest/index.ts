@@ -8,7 +8,7 @@ import {
   isPagePath,
   isServerFunctionPath
 } from '../requestClassification/index.ts'
-import { applySecurityHeaders, requestNonce } from '../securityHeaders/index.ts'
+import { applySecurityHeaders } from '../securityHeaders/index.ts'
 import type { Next } from '../types.ts'
 import { persistLocale } from './persistLocale/index.ts'
 
@@ -69,17 +69,16 @@ export async function localizeRequest({
     return persistLocale({
       request,
       locale: decision.locale,
-      response: applySecurityHeaders({
-        response: new Response(null, {
+      response: applySecurityHeaders(
+        new Response(null, {
           status: HTTP_TEMPORARY_REDIRECT,
           headers: {
             location: decision.redirectUrl.href,
             'cache-control': 'private, no-store',
             vary: 'Cookie, Accept-Language'
           }
-        }),
-        nonce: requestNonce()
-      })
+        })
+      )
     })
   }
   // O router transforma só o caminho usado para matching. Preservar a
