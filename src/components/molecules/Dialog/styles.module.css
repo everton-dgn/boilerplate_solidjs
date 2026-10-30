@@ -1,4 +1,5 @@
 .dialog {
+  box-sizing: border-box;
   width: min(var(--width-dialog), calc(100% - 32px));
   max-height: calc(100% - 32px);
   margin: auto;
