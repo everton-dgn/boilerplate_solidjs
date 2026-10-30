@@ -42,7 +42,8 @@ release. Add a tool name to select part of the graph. For example, run
   mudam; a publicação mantém as verificações reais sem repetir os testes.
   Só o job de plano da release instala dependências e importa o Vite+
   (`tooling/release/plan-release.ts`); os jobs com escrita usam apenas Git,
-  `gh` e módulos `node:`.
+  `gh` e módulos `node:`. O pre-push roda também o Knip (`vp run dead-code`),
+  em paralelo com `test:tooling` e `test:release`, como o job `Quality` do CI.
 - Para validar mudanças, use `vp run check:ci` e `vp run test`, não os
   comandos embutidos `vp check` e `vp test` citados acima: eles pulam o
   `i18n:generate` e o lint de CSS.

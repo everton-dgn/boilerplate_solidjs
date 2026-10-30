@@ -409,11 +409,11 @@ mesma execução.
 Instalados pelo Lefthook no `vp install`, autorizado em `trustedDependencies` do
 `package.json`:
 
-| Hook         | O que roda                                                                                                                                                |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `scan:secrets --staged` quando Kingfisher está disponível                                                |
-| `commit-msg` | `commitlint` (header até 100 caracteres; linha em branco antes do rodapé; aviso para linhas do corpo e rodapé acima de 100)                               |
-| `pre-push`   | `check:ci`, `typecheck:node` e `test:ci` em sequência; depois, `test:tooling` e `test:release` em paralelo; a primeira falha interrompe os jobs seguintes |
+| Hook         | O que roda                                                                                                                                                                    |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `scan:secrets --staged` quando Kingfisher está disponível                                                                    |
+| `commit-msg` | `commitlint` (header até 100 caracteres; linha em branco antes do rodapé; aviso para linhas do corpo e rodapé acima de 100)                                                   |
+| `pre-push`   | `check:ci`, `typecheck:node` e `test:ci` em sequência; depois, `test:tooling`, `test:release` e `dead-code` (Knip) em paralelo; a primeira falha interrompe os jobs seguintes |
 
 O `pre-commit` é pulado durante `merge` e `rebase`. Em CI o Lefthook não instala
 os hooks; o job `Quality` repete o commitlint nos commits de cada PR. O
