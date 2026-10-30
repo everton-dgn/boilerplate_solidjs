@@ -5,42 +5,32 @@ const HTTP_NOT_FOUND = 404
 const MENU_TRIGGERS = 2
 
 test.describe('layout na árvore de produção', () => {
-  test('renderiza Home e 404 com barra no SSR', async ({
-    browser,
-    baseURL
-  }) => {
-    const context = await browser.newContext({
-      javaScriptEnabled: false,
-      baseURL
-    })
-    const page = await context.newPage()
-    try {
-      const home = await page.goto('/pt')
-      expect(home?.status()).toBe(HTTP_OK)
-      await expect(page.getByRole('banner')).toHaveCount(1)
-      await expect(
-        page.getByRole('heading', {
-          name: 'SolidJS Boilerplate para aplicações web'
-        })
-      ).toBeVisible()
-      const menuTriggers = page
-        .getByRole('banner')
-        .locator('button[aria-haspopup="menu"]')
-      await expect(menuTriggers).toHaveCount(MENU_TRIGGERS)
-      await expect(page.locator('head link[rel="canonical"]')).toHaveCount(1)
+  test.use({ javaScriptEnabled: false })
 
-      const missing = await page.goto('/pt/pagina-inexistente')
-      expect(missing?.status()).toBe(HTTP_NOT_FOUND)
-      await expect(page.getByRole('banner')).toHaveCount(1)
-      await expect(page).toHaveTitle('Página não encontrada')
-      await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
-        'content',
-        'noindex'
-      )
-      await expect(page.locator('head link[rel="canonical"]')).toHaveCount(0)
-    } finally {
-      await context.close()
-    }
+  test('renderiza Home e 404 com barra no SSR', async ({ page }) => {
+    const home = await page.goto('/pt')
+    expect(home?.status()).toBe(HTTP_OK)
+    await expect(page.getByRole('banner')).toHaveCount(1)
+    await expect(
+      page.getByRole('heading', {
+        name: 'SolidJS Boilerplate para aplicações web'
+      })
+    ).toBeVisible()
+    const menuTriggers = page
+      .getByRole('banner')
+      .locator('button[aria-haspopup="menu"]')
+    await expect(menuTriggers).toHaveCount(MENU_TRIGGERS)
+    await expect(page.locator('head link[rel="canonical"]')).toHaveCount(1)
+
+    const missing = await page.goto('/pt/pagina-inexistente')
+    expect(missing?.status()).toBe(HTTP_NOT_FOUND)
+    await expect(page.getByRole('banner')).toHaveCount(1)
+    await expect(page).toHaveTitle('Página não encontrada')
+    await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
+      'content',
+      'noindex'
+    )
+    await expect(page.locator('head link[rel="canonical"]')).toHaveCount(0)
   })
 })
 

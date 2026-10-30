@@ -72,33 +72,28 @@ function readMainContent(html: string) {
 }
 
 for (const language of LANGUAGES) {
-  // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
-  for (const [index, path] of PATHS.entries()) {
-    test(`${language.locale}${path || '/'} publishes readable content and discovery metadata in the initial HTML`, async ({
-      browser,
-      baseURL,
-      request
-    }) => {
-      const pathname = `/${language.locale}${path}`
-      const response = await request.get(pathname, {
-        headers: { accept: 'text/html' },
-        maxRedirects: 0
-      })
-      expect(response.status()).toBe(HTTP_OK)
-      expect(response.headers()['content-type']).toContain('text/html')
-      const html = await response.text()
-      const markdown = await request.get(pathname, {
-        headers: { accept: 'text/markdown' }
-      })
-      expect(markdown.status()).toBe(HTTP_OK)
-      const markdownBody = await markdown.text()
-      expect(markdownBody).toContain(`# ${language.headings[index]}`)
-      const context = await browser.newContext({
-        baseURL,
-        javaScriptEnabled: false
-      })
-      try {
-        const page = await context.newPage()
+  test.describe(`${language.locale} without JavaScript`, () => {
+    test.use({ javaScriptEnabled: false })
+
+    for (const [index, path] of PATHS.entries()) {
+      test(`${language.locale}${path || '/'} publishes readable content and discovery metadata in the initial HTML`, async ({
+        page,
+        request
+      }) => {
+        const pathname = `/${language.locale}${path}`
+        const response = await request.get(pathname, {
+          headers: { accept: 'text/html' },
+          maxRedirects: 0
+        })
+        expect(response.status()).toBe(HTTP_OK)
+        expect(response.headers()['content-type']).toContain('text/html')
+        const html = await response.text()
+        const markdown = await request.get(pathname, {
+          headers: { accept: 'text/markdown' }
+        })
+        expect(markdown.status()).toBe(HTTP_OK)
+        const markdownBody = await markdown.text()
+        expect(markdownBody).toContain(`# ${language.headings[index]}`)
         const navigation = await page.goto(pathname)
         expect(navigation?.status()).toBe(HTTP_OK)
         const main = page.getByRole('main')
@@ -153,25 +148,20 @@ for (const language of LANGUAGES) {
           await expect(link).toHaveCount(1)
           await expect(link).toHaveAccessibleName(/\S/u)
         }
-      } finally {
-        await context.close()
-      }
-    })
-  }
+      })
+    }
+  })
 
-  // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
   for (const width of [MOBILE_WIDTH, DESKTOP_WIDTH]) {
-    test(`${language.locale} content fits ${width}px and keeps theme and locale during navigation`, async ({
-      browser,
-      baseURL
-    }, testInfo) => {
-      const context = await browser.newContext({
-        baseURL,
+    test.describe(`${language.locale} at ${width}px`, () => {
+      test.use({
         viewport: { width, height: VIEWPORT_HEIGHT },
         colorScheme: 'light'
       })
-      try {
-        const page = await context.newPage()
+
+      test(`${language.locale} content fits ${width}px and keeps theme and locale during navigation`, async ({
+        page
+      }, testInfo) => {
         const errors: string[] = []
         page.on('pageerror', error => errors.push(error.message))
         const violations = await watchCspViolations(page)
@@ -268,9 +258,7 @@ for (const language of LANGUAGES) {
         ).toHaveAttribute('aria-checked', 'true')
         expect(errors).toEqual([])
         expect(violations).toEqual([])
-      } finally {
-        await context.close()
-      }
+      })
     })
   }
 }

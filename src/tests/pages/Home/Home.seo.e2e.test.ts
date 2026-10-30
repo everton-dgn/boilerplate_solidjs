@@ -153,25 +153,19 @@ test.describe('metadados de SEO', () => {
     )
   })
 
-  test('publica noindex no HTML de uma rota estática sem depender de JavaScript', async ({
-    browser,
-    baseURL
-  }) => {
-    const context = await browser.newContext({
-      javaScriptEnabled: false,
-      baseURL
-    })
-    try {
-      const page = await context.newPage()
+  test.describe('sem JavaScript', () => {
+    test.use({ javaScriptEnabled: false })
+
+    test('publica noindex no HTML de uma rota estática sem depender de JavaScript', async ({
+      page
+    }) => {
       await page.goto('/seo-noindex')
       await expect(page).toHaveTitle('Página utilitária')
       await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
         'content',
         'noindex'
       )
-    } finally {
-      await context.close()
-    }
+    })
   })
 
   test('publica tipo, imagem e JSON-LD declarados pela rota', async ({

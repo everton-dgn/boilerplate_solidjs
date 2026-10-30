@@ -11,18 +11,13 @@ const LANGUAGES = [
   { locale: 'es', messages: spanish }
 ]
 
-// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
-for (const { locale, messages } of LANGUAGES) {
-  test(`runtime errors publish translated ${locale} metadata without JavaScript`, async ({
-    browser,
-    baseURL
-  }) => {
-    const context = await browser.newContext({
-      javaScriptEnabled: false,
-      baseURL
-    })
-    try {
-      const page = await context.newPage()
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false })
+
+  for (const { locale, messages } of LANGUAGES) {
+    test(`runtime errors publish translated ${locale} metadata without JavaScript`, async ({
+      page
+    }) => {
       const response = await page.goto(
         `/${locale}/outside-error?case=render-root&id=${crypto.randomUUID()}`
       )
@@ -38,11 +33,9 @@ for (const { locale, messages } of LANGUAGES) {
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(
         messages.errorFallback_runtimeTitle
       )
-    } finally {
-      await context.close()
-    }
-  })
-}
+    })
+  }
+})
 
 test('a server function keeps the page locale when the cookie disagrees', async ({
   page,

@@ -83,16 +83,12 @@ for (const language of LANGUAGES) {
   })
 }
 
-test('native field values are present without JavaScript', async ({
-  browser,
-  baseURL
-}) => {
-  const context = await browser.newContext({
-    javaScriptEnabled: false,
-    baseURL
-  })
-  try {
-    const page = await context.newPage()
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false })
+
+  test('native field values are present without JavaScript', async ({
+    page
+  }) => {
     await page.goto('/en/ui-kit')
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Ada')
     await expect(page.getByLabel('Subscribe', { exact: true })).toBeChecked()
@@ -100,9 +96,7 @@ test('native field values are present without JavaScript', async ({
       'First line\nSecond line'
     )
     await expect(page.locator('dialog')).not.toBeVisible()
-  } finally {
-    await context.close()
-  }
+  })
 })
 
 test('initially open dialog hydrates modally with CSP enabled', async ({
@@ -116,18 +110,16 @@ test('initially open dialog hydrates modally with CSP enabled', async ({
   await expect(dialog).not.toBeVisible()
 })
 
-test('modal and notifications fit a narrow dark viewport', async ({
-  browser,
-  baseURL
-}) => {
-  const context = await browser.newContext({
-    baseURL,
+test.describe('narrow dark viewport', () => {
+  test.use({
     viewport: { width: MOBILE_WIDTH, height: 812 },
     colorScheme: 'dark',
     reducedMotion: 'reduce'
   })
-  try {
-    const page = await context.newPage()
+
+  test('modal and notifications fit a narrow dark viewport', async ({
+    page
+  }) => {
     await page.goto('/pt/ui-kit')
     await expect.poll(() => hydrationFinished(page)).toBe(true)
     await expect(page.locator('html')).toHaveClass('dark')
@@ -155,9 +147,7 @@ test('modal and notifications fit a narrow dark viewport', async ({
     await expect(
       notification.getByRole('button', { name: 'Fechar notificação' })
     ).toBeVisible()
-  } finally {
-    await context.close()
-  }
+  })
 })
 
 test('localized navigation preserves SPA state and reloads when changing language', async ({

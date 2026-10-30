@@ -31,7 +31,7 @@ const buildRouteSchema = v.object({
 })
 const buildConfigSchema = v.object({ routes: v.array(buildRouteSchema) })
 
-test.use({ headless: true })
+test.use({ headless: true, javaScriptEnabled: false })
 
 test('routes HTML home pages before static Markdown directory indexes', async () => {
   const config = v.parse(
@@ -91,8 +91,7 @@ for (const locale of LOCALES) {
   for (const path of PAGES) {
     test(`serves ${locale}${path || '/'} Markdown generated at build time`, async ({
       request,
-      browser,
-      baseURL
+      page
     }) => {
       const pathname = `/${locale}${path}`
       const href = path ? `${pathname}.md` : `${pathname}/index.md`
@@ -112,39 +111,30 @@ for (const locale of LOCALES) {
       expect(negotiated.status()).toBe(HTTP_OK)
       expect(negotiated.headers()['cache-control']).toBe('private, no-store')
       expect(await negotiated.text()).toBe(markdown)
-      const context = await browser.newContext({
-        baseURL,
-        javaScriptEnabled: false
-      })
-      try {
-        const page = await context.newPage()
-        await page.goto(pathname)
-        const main = page.getByRole('main')
-        const headings = await main.locator('h1, h2, h3').allTextContents()
-        expect(headings.length).toBeGreaterThan(0)
-        for (const heading of headings) {
-          expect(markdown).toContain(heading.trim())
-        }
-        const fragments = await main.locator('p').evaluateAll(paragraphs =>
-          paragraphs.flatMap(paragraph => {
-            const walker = document.createTreeWalker(
-              paragraph,
-              NodeFilter.SHOW_TEXT
-            )
-            const texts: string[] = []
-            while (walker.nextNode()) {
-              const text = walker.currentNode.textContent?.trim()
-              if (text) texts.push(text)
-            }
-            return texts
-          })
-        )
-        expect(fragments.length).toBeGreaterThan(0)
-        for (const fragment of fragments) {
-          expect(markdown).toContain(fragment)
-        }
-      } finally {
-        await context.close()
+      await page.goto(pathname)
+      const main = page.getByRole('main')
+      const headings = await main.locator('h1, h2, h3').allTextContents()
+      expect(headings.length).toBeGreaterThan(0)
+      for (const heading of headings) {
+        expect(markdown).toContain(heading.trim())
+      }
+      const fragments = await main.locator('p').evaluateAll(paragraphs =>
+        paragraphs.flatMap(paragraph => {
+          const walker = document.createTreeWalker(
+            paragraph,
+            NodeFilter.SHOW_TEXT
+          )
+          const texts: string[] = []
+          while (walker.nextNode()) {
+            const text = walker.currentNode.textContent?.trim()
+            if (text) texts.push(text)
+          }
+          return texts
+        })
+      )
+      expect(fragments.length).toBeGreaterThan(0)
+      for (const fragment of fragments) {
+        expect(markdown).toContain(fragment)
       }
     })
   }
