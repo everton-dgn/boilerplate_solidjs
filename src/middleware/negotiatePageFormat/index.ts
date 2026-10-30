@@ -13,7 +13,8 @@ const TYPE_SPECIFICITY = 2
 const UTF8 = /^charset\s*=\s*(?:utf-8|"utf-8")$/iu
 // RFC 7763: a resposta é CommonMark com extensões GFM, então as duas variantes
 // são atendidas.
-const MARKDOWN_VARIANT = /^variant\s*=\s*"?(?:gfm|commonmark)"?$/iu
+const MARKDOWN_VARIANT =
+  /^variant\s*=\s*(?:gfm|commonmark|"(?:gfm|commonmark)")$/iu
 const PARAMETERS = [UTF8, MARKDOWN_VARIANT]
 
 // Varredura linear: uma regex com lookahead até o fim da string custava O(n²)
