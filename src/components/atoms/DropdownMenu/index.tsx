@@ -12,7 +12,7 @@ export function DropdownMenu<Value extends string = string>(
   const menu = createMenuState()
 
   return (
-    <div class={S.root}>
+    <div class={[S.root, props.class]}>
       {props.trigger(menu.triggerProps)}
 
       <Show when={menu.isOpen()}>
@@ -23,7 +23,11 @@ export function DropdownMenu<Value extends string = string>(
           tabindex={-1}
           aria-label={props.label}
           aria-labelledby={props.label ? undefined : menu.ids.trigger}
-          class={S.content}
+          class={[
+            S.content,
+            props.align === 'start' ? S.align_start : S.align_end,
+            props.contentClass
+          ]}
           onKeyDown={menu.onMenuKeyDown}
         >
           <For each={props.items}>

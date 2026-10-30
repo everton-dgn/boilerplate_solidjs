@@ -1,5 +1,7 @@
 import type { JSX } from '@solidjs/web'
 
+type DropdownMenuAlign = 'start' | 'end'
+
 type DropdownMenuOption<Value extends string = string> = {
   value: Value
   label: string
@@ -21,6 +23,9 @@ export type DropdownMenuTriggerProps = {
 export type DropdownMenuProps<Value extends string = string> = {
   trigger: (props: DropdownMenuTriggerProps) => JSX.Element
   label?: string
+  align?: DropdownMenuAlign
+  class?: string
+  contentClass?: string
   items?: readonly DropdownMenuOption<Value>[]
   value?: Value
   onChange?: (value: Value) => void
