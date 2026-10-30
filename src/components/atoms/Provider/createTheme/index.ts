@@ -1,4 +1,10 @@
-import { createEffect, createSignal, onSettled, untrack } from 'solid-js'
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  onSettled,
+  untrack
+} from 'solid-js'
 
 import type { ResolvedTheme, Theme } from '@/@types/theme.ts'
 import { DEFAULT_THEME, THEME_COLORS } from '@/constants/theme.ts'
@@ -19,14 +25,15 @@ export function createTheme(): ThemeState {
   const [systemTheme, setSystemTheme] = createSignal<ResolvedTheme>('light')
   const [isReady, setIsReady] = createSignal(false)
 
+  const resolvedTheme = createMemo(() => {
+    const current = themePreference()
+    return current === 'system' ? systemTheme() : current
+  })
+
   let connection: ReturnType<typeof makeThemeChannel> | undefined
 
   createEffect(
-    () => {
-      if (!isReady()) return null
-      const current = themePreference()
-      return current === 'system' ? systemTheme() : current
-    },
+    () => (isReady() ? resolvedTheme() : null),
     resolved => {
       if (resolved) apply(resolved)
     }
@@ -45,6 +52,7 @@ export function createTheme(): ThemeState {
 
   return {
     theme: themePreference,
+    resolvedTheme,
     isReady,
     setTheme(next) {
       setThemePreference(next)
