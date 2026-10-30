@@ -365,18 +365,17 @@ server functions (`/_server` por padrão, lido do
 com `Disallow: /`, e o link do sitemap. Buscadores e agentes que leem páginas a
 pedido do usuário continuam liberados, porque são o público do llms.txt.
 `Disallow` é um pedido que robôs mal comportados ignoram e não remove URL do
-índice; para isso, use `noindex` em `route.info.seo`. O texto do robots é
-montado uma vez, ao carregar o módulo, porque os grupos e a URL do site são
-fixos no build. Em produção o processo guarda em memória a resposta do llms.txt
-e a leitura do manifesto do sitemap, porque o manifesto também é fixo no build;
-as fontes do sitemap rodam a cada request. O llms.txt é montado dentro do
-contexto Paraglide do idioma base (`baseLocale` do runtime), inclusive a
-descrição do site e os metadados das páginas, para que nem a requisição que
-preenche a memória nem um contexto de outro idioma mudem o texto. A nota sobre o
-idioma do índice deriva do mesmo `baseLocale`, com o nome do idioma em inglês, o
-idioma das notas. A lista de idiomas da mesma nota é texto fixo: ao mudar os
-idiomas em `project.inlang/settings.json`, reescreva-a. Os três arquivos saem
-com `public, max-age=0, s-maxage=3600, stale-if-error=86400` em produção (o CDN
+índice; para isso, use `noindex` em `route.info.seo`. Em produção o processo
+guarda em memória a resposta do robots e do llms.txt e a leitura do manifesto do
+sitemap, porque o manifesto, os grupos e a URL do site são fixos no build; as
+fontes do sitemap rodam a cada request. O llms.txt é montado dentro do contexto
+Paraglide do idioma base (`baseLocale` do runtime), inclusive a descrição do
+site e os metadados das páginas, para que nem a requisição que preenche a
+memória nem um contexto de outro idioma mudem o texto. A nota sobre o idioma do
+índice deriva do mesmo `baseLocale`, com o nome do idioma em inglês, o idioma
+das notas. A lista de idiomas da mesma nota é texto fixo: ao mudar os idiomas em
+`project.inlang/settings.json`, reescreva-a. Os três arquivos saem com
+`public, max-age=0, s-maxage=3600, stale-if-error=86400` em produção (o CDN
 reutiliza por uma hora; a Vercel só cacheia resposta de função com `s-maxage` e
 consome `s-maxage` e `stale-if-error` sem repassá-los ao navegador) e com
 `no-store` em desenvolvimento. Com `stale-if-error`, um erro da função depois
