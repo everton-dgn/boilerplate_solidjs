@@ -2,6 +2,50 @@
 
 ## Unreleased
 
+## 1.13.0 - 2026-10-30
+
+### Added
+
+- flag page bodies exported or imported by seo.ts (baba855)
+- expose tag and version as publish job outputs (c2bf29c)
+
+### Fixed
+
+- restore SitePage.description and the page descriptions (dbe893b)
+- ignore invalid values in setTheme again (7a48ddb)
+- derive the index language note from the base locale (9814622)
+- require the main package cache in the reuse proof again (e973f94)
+- keep the box-sizing, font and cursor declarations in kit components (0763c40)
+- restore kit tokens, variant class, theme list and mark announcement (1862f4c)
+- restore the same-locale fragment shortcut in resolveLocalizedHref (41013dc)
+- restore SiteContent as its own molecule (fa82d28)
+- expose the resolved theme again (7b21637)
+- restore the kit tokens the example app does not use (19166d2)
+- restore the kit props of DropdownMenu, Topbar and PageBadge (8e82e3a)
+- restore the Button label prop (79abfff)
+- translate the public error message to the request locale (6e9739d)
+- let the child index decide the layout sitemap source (fd55e3a)
+- keep the forced-colors outline on script-focused menu items (4b67186)
+- reconcile the merged theme list and CSS Modules test (3a5d449)
+- authenticate git fetches and flag unchecked pull requests (f04e03d)
+- keep backslash and tab authority hrefs external (3ef39ca)
+- print the original failure of protected operations and the sitemap in dev
+  (7554da6)
+- resolve route SEO once per navigation on markdown pages (f1f3d79)
+- keep page bodies out of the initial bundle (4b5266d)
+- reject unbalanced quotes in the Markdown variant parameter (fb9861c)
+- refuse non-canonical Markdown aliases and X-Robots-Tag none (e01c79e)
+- surface Markdown adapter failures to the containment (4f220bf)
+- show keyboard focus on menu items and fix destructive contrast (829e836)
+- update Nitro to the RC, Knip and inlang (b5c2116)
+- drop taze and list next-tag updates with bun info (5a75705)
+- update Solid to rc.20 and drop the solid-js patch (2d4d69d)
+- pin Node 24.22.2 for local runs (a202cbe)
+- pin taze and leave Node and Actions out of deps:update (5c9f318)
+- update Solid to rc.19 with router next.43 and vite-plugin next.52 (574cc95)
+- update filesystem-routing, paraglide and setup-vp (8c58f90)
+- select updates with taze to include prerelease channels (77b4194)
+
 ## 1.12.12 - 2026-10-29
 
 ### Fixed
