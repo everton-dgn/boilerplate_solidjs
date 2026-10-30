@@ -67,6 +67,16 @@ CSS no teste quando precisar validar estilos.
 Localmente, os testes de navegador e E2E usam o Chromium instalado pelo
 Playwright. Com `CI=true`, usam o Chrome do runner pelo canal `chrome`.
 
+No modo `test`, o `vite.config.ts` carrega o `.env.test` versionado em
+`process.env` antes de iniciar o Vitest, então todas as variáveis do arquivo,
+com ou sem o prefixo `VITE_`, chegam aos workers dos projetos `node` e `dom`.
+`BASE_URL_TEST`, `HOST` e `PORT` também seguem por `test.env`, que o projeto
+`browser` expõe em `import.meta.env`; uma variável que os testes de navegador
+precisem ler entra nessa lista. O `tooling/playwright.ts` carrega o mesmo
+arquivo para os testes E2E. Nos dois casos, variáveis já exportadas no shell têm
+precedência sobre o arquivo. Sem o `.env.test`, o Vitest segue só com o ambiente
+do shell.
+
 ## Isolamento e diagnóstico
 
 A configuração compartilhada limpa o histórico de mocks e, antes de cada teste,
