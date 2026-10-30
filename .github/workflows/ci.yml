@@ -252,6 +252,7 @@ jobs:
         uses: ./.github/actions/setup-project
         with:
           cache-save: false
+          cache-toolchain: 'true'
 
       # O token chega só aos comandos do Vercel CLI. A documentação da Vercel
       # passa o token também ao vercel build, então o build o mantém.
