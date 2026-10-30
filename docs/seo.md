@@ -351,10 +351,10 @@ continuam na mesma ordem. As regras preservam destinos, capturas e condições
 nativos, inclusive ISR, `functionRules` e skew protection. O módulo não define
 um destino SSR próprio nem altera `vercel.config`; um artefato sem regras de
 filesystem interrompe o build. Uma regra inicial sem destino nem status que
-encerre o roteamento numa página protegida também interrompe o build. Isso
-inclui os headers de `routeRules` do Nitro quando atingem essas páginas: use o
-middleware, ou uma regra explícita em `vercel.config.routes` com
-`continue: true`. O módulo não força a continuação, pois isso mudaria a
+encerre o roteamento numa página protegida também interrompe o build. Os headers
+de `routeRules` do Nitro saem com `continue: true` e não encerram o roteamento;
+uma regra própria em `vercel.config.routes` que atinja essas páginas precisa do
+mesmo `continue: true`. O módulo não força a continuação, pois isso mudaria a
 prioridade de headers e redirects. Assim, `/pt` continua negociando HTML ou
 Markdown, enquanto `/pt/index.md` mantém o arquivo estático. Os testes de
 tooling exercitam o preset real sem configuração prévia e com regras adicionais.

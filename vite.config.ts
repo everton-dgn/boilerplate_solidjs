@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
-import packageJson from './package.json'
 import { fmt } from './tooling/fmt.ts'
 import { lint } from './tooling/lint.ts'
 
@@ -119,17 +118,12 @@ const appPlugins = (mode: string) =>
           ? { dir: 'src/tests/fixtures/e2e/routes', httpMethods: true }
           : { types: 'src/@types/routes.d.ts', httpMethods: true }
       ),
-      // A detecção automática do Nitro segue o runtime do build. O SSR mantém
-      // Node até Bun preservar os contratos de Response e do log de falhas.
+      // A função da Vercel usa o Node de engines.node. O SSR mantém Node até
+      // Bun preservar os contratos de Response e do log de falhas.
       modules.nitro({
         serverEntry: false,
         preset: 'vercel',
-        modules: [modules.markdownPrerender],
-        vercel: {
-          functions: {
-            runtime: `nodejs${packageJson.devEngines.runtime.version.split('.')[0]}.x`
-          }
-        }
+        modules: [modules.markdownPrerender]
       })
     ]
   })

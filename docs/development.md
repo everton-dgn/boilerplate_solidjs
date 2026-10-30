@@ -69,8 +69,8 @@ vp run build
 ```
 
 Esse comando gera `.vercel/output/`, incluindo estáticos e a função SSR com
-runtime Node. O build executa em Bun; o destino da função é explícito no Nitro e
-acompanha `devEngines.runtime`. Gerar o artefato localmente não publica a
+runtime Node. O build executa em Bun; o Nitro tira o Node da função do
+`engines.node` do `package.json`. Gerar o artefato localmente não publica a
 aplicação.
 
 ### Runtime do SSR
@@ -78,9 +78,10 @@ aplicação.
 O SSR de produção permanece em Node porque respostas de `fetch()` no Bun
 declarado no projeto permitem alterar os headers. `Response.redirect()` já
 preserva o corpo nulo, mas a proteção do servidor também depende da
-imutabilidade dos headers de respostas de rede. Não remova o runtime explícito
-do Nitro: a detecção automática escolheria Bun por causa do processo que executa
-o build. Antes de migrar o SSR, preserve os contratos de
+imutabilidade dos headers de respostas de rede. Com `engines.node` definido e
+sem `engines.bun`, o Nitro gera a função em Node mesmo quando o build executa em
+Bun. Não acrescente `engines.bun` nem `bunVersion` ao `vercel.json`: os dois
+juntos trocam a função para Bun. Antes de migrar o SSR, preserve os contratos de
 [erros de servidor](server-errors.md) e rode os testes da fronteira no runtime
 de destino, além dos E2E completos.
 

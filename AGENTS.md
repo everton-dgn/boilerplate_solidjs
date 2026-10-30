@@ -34,8 +34,8 @@ release. Add a tool name to select part of the graph. For example, run
 - Preserve Node no Vitest, nos testes de tooling fora de `tooling/release/` e
   no SSR de produção até as incompatibilidades descritas em
   [desenvolvimento](docs/development.md) serem resolvidas e verificadas.
-  O runtime explícito do Nitro impede que executar o build em Bun troque
-  silenciosamente o runtime da função Vercel.
+  O Nitro escolhe o runtime da função Vercel pelo `engines.node`, então
+  executar o build em Bun não troca a função para Bun.
 - O Knip, o lint de CSS, o backend simulado de E2E e a automação de release executam
   em Bun. Valide a automação com `vp run test:release`, também executado no
   pre-push. No CI, essa suíte roda quando a automação ou suas dependências
