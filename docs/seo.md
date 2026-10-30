@@ -305,9 +305,11 @@ autorização.
 página cujo último segmento é `index` acrescenta `/index.md`: `/pt/index` usa
 `/pt/index/index.md`, e `/pt/docs/index` usa `/pt/docs/index/index.md`. Essa
 regra também cobre segmentos repetidos: `/pt/index/index` usa
-`/pt/index/index/index.md`. O middleware remove somente o último `/index.md`
-quando encontra o sufixo `/index/index.md`, antes de reconhecer o alias da home.
-O middleware usa o matching nativo também para parâmetros, sem produtor,
+`/pt/index/index/index.md`. O middleware remove o `.md` e um `/index` final e
+responde 404 a qualquer URL `.md` que não seja a forma canônica da página:
+`/pt/docs/index.md` não é alias de `/pt/docs`, e `/pt.md`, sem prefixo de
+idioma, segue o redirect dos caminhos sem idioma em vez de publicar a home. O
+middleware usa o matching nativo também para parâmetros, sem produtor,
 `SitePage` obrigatório, `getPaths` ou manifesto de artefatos. A enumeração
 finita do sitemap e do llms.txt continua separada; o llms enumera as rotas
 estáticas conhecidas. O alternate de SEO acompanha a rota atual também na
@@ -425,7 +427,9 @@ A localização preserva URL > cookie > Accept-Language. Redirects seguros para
 uma página elegível da mesma origem preservam a intenção `.md`; o middleware não
 segue redirects. Erros não viram documentos de sucesso. Um 404 HTML negociado
 mantém status 404, idioma e `noindex`; páginas sem opt-in não publicam seu
-conteúdo de sucesso pelo alias Markdown.
+conteúdo de sucesso pelo alias Markdown. Um `X-Robots-Tag` com `noindex` ou
+`none` na resposta da página também recusa a publicação;
+`max-image-preview: none` só limita a prévia de imagens e não conta.
 
 As respostas convertidas na requisição recebem `text/markdown; charset=utf-8`,
 `private, no-store`, `Vary: Accept` adicional ao Vary existente e CSP com

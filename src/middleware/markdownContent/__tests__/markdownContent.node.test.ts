@@ -271,9 +271,14 @@ describe('markdown aliases and runtime publication', () => {
     )
   })
 
-  it.each(['GET', 'HEAD'])(
-    'rejects a %s alias when the rendered response becomes noindex',
-    async method => {
+  it.each([
+    ['GET', 'nofollow, NoIndex'],
+    ['HEAD', 'nofollow, NoIndex'],
+    ['GET', 'none'],
+    ['GET', 'googlebot: none']
+  ])(
+    'rejects a %s alias when the rendered response sends X-Robots-Tag %s',
+    async (method, robots) => {
       const cancel = vi.fn<() => void>()
       const body = new ReadableStream<Uint8Array>({
         start(controller) {
@@ -284,7 +289,7 @@ describe('markdown aliases and runtime publication', () => {
       const original = new Response(body, {
         headers: {
           'content-type': 'text/html',
-          'x-robots-tag': 'nofollow, NoIndex',
+          'x-robots-tag': robots,
           'cache-control': 'public, max-age=3600'
         }
       })
@@ -299,6 +304,22 @@ describe('markdown aliases and runtime publication', () => {
       )
       await expect(response.text()).resolves.toBe('')
       expect(cancel).toHaveBeenCalledOnce()
+    }
+  )
+
+  it.each(['max-image-preview:none', 'max-image-preview: none, nosnippet'])(
+    'keeps publishing an alias with X-Robots-Tag %s',
+    async robots => {
+      const original = await html()
+      original.headers.set('x-robots-tag', robots)
+      const response = await markdownContent(
+        event({ path: '/en/about.md' }),
+        () => Promise.resolve(original)
+      )
+      expect(response.status).toBe(HTTP_OK)
+      expect(response.headers.get('content-type')).toBe(
+        'text/markdown; charset=utf-8'
+      )
     }
   )
 
@@ -348,6 +369,27 @@ describe('markdown aliases and runtime publication', () => {
       )
     }
   )
+
+  it.each(['/pt/about/.md', '/en/docs/index.md'])(
+    'answers the non-canonical alias %s with a 404 and no render',
+    async path => {
+      const next = vi.fn<() => Promise<Response>>(() => html())
+      const response = await markdownContent(event({ path }), next)
+      expect(next).not.toHaveBeenCalled()
+      expect(response.status).toBe(HTTP_NOT_FOUND)
+    }
+  )
+
+  // Sem prefixo de idioma, /pt.md segue o redirect dos caminhos sem idioma.
+  it('does not publish the home through /pt.md', async () => {
+    const next = vi.fn<() => Promise<Response>>(() => html())
+    const response = await markdownContent(event({ path: '/pt.md' }), next)
+    expect(next).not.toHaveBeenCalled()
+    expect(response.status).toBe(HTTP_REDIRECT)
+    expect(response.headers.get('location')).toBe(
+      'https://example.com/en/pt.md'
+    )
+  })
 })
 
 describe('markdown negotiation and redirects', () => {
