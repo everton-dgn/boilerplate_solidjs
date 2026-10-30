@@ -1,8 +1,10 @@
 import { parseCookieHeader, serializeCookie } from '@solidjs/web'
 
 import type { Theme } from '@/@types/theme.ts'
-import { THEME_COOKIE_MAX_AGE, THEME_COOKIE_NAME } from '@/constants/theme.ts'
+import { THEME_COOKIE_NAME } from '@/constants/theme.ts'
 import { isTheme } from '@/helpers/isTheme/index.ts'
+
+const THEME_COOKIE_MAX_AGE = 31_536_000
 
 export function readTheme(
   cookieHeader?: string | null
