@@ -31,7 +31,7 @@ const buildRouteSchema = v.object({
 })
 const buildConfigSchema = v.object({ routes: v.array(buildRouteSchema) })
 
-test.use({ headless: true, javaScriptEnabled: false })
+test.use({ javaScriptEnabled: false })
 
 test('routes HTML home pages before static Markdown directory indexes', async () => {
   const config = v.parse(
