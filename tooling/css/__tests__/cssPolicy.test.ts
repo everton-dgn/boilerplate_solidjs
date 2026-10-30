@@ -38,13 +38,15 @@ describe('css filenames', () => {
         'export { default } from "@/routes/styles.module.css"',
         'export * from "/src/theme/tokens/zIndex.css"',
         'void import("@/routes/styles.module.css?inline")',
+        'void import(`@/routes/styles.module.css`)',
         'void import(source)'
       ].map(code => ({ filename: 'src/App.tsx', code })),
       invalid: [
         'import S from "@/routes/home.module.css?inline"',
         'export { default } from "@/routes/home.module.css"',
         'export * from "@/routes/home.module.css"',
-        'void import("@/routes/home.module.css")'
+        'void import("@/routes/home.module.css")',
+        'void import(`@/routes/home.module.css`)'
       ].map(code => ({
         filename: 'src/App.tsx',
         code,

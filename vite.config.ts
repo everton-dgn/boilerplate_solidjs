@@ -13,6 +13,7 @@ const CSS_CACHE_INPUTS = [
   'src/**/*.css',
   'tooling/css/**',
   'tooling/css-filename.ts',
+  'tooling/lint/import-specifier.ts',
   'package.json',
   'bun.lock',
   'bunfig.toml'

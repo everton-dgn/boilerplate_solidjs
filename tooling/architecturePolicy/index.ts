@@ -2,6 +2,11 @@ import path from 'node:path'
 
 import { definePlugin, defineRule, type ESTree } from 'vite-plus/lint/plugins'
 
+import {
+  readStaticSpecifier,
+  resolveProjectPath
+} from '../lint/import-specifier.ts'
+
 type Layer =
   | 'base'
   | 'primitives'
@@ -21,8 +26,6 @@ type ImportNode =
   | ESTree.ExportAllDeclaration
   | ESTree.ImportExpression
   | ESTree.TSImportType
-
-type ImportLocation = { specifier: string; filename: string; root: string }
 
 const UI: Layer[] = ['atoms', 'molecules', 'organisms', 'components']
 const FORBIDDEN: Partial<Record<Layer, Layer[]>> = {
@@ -73,25 +76,6 @@ function layer(file: string): Layer | undefined {
   return 'source'
 }
 
-function resolveImport({ specifier, filename, root }: ImportLocation): string {
-  const [clean = ''] = specifier.replaceAll('\\', '/').split(/[?#]/u)
-  let absolute
-  if (clean.startsWith('@paraglide/')) {
-    absolute = path.resolve(
-      root,
-      'paraglide',
-      clean.slice('@paraglide/'.length)
-    )
-  } else if (clean.startsWith('@/')) {
-    absolute = path.resolve(root, 'src', clean.slice('@/'.length))
-  } else if (clean.startsWith('/src/')) {
-    absolute = path.resolve(root, clean.slice(1))
-  } else if (clean.startsWith('.')) {
-    absolute = path.resolve(path.dirname(filename), clean)
-  } else return ''
-  return path.relative(root, absolute).split(path.sep).join('/')
-}
-
 const layerImports = defineRule({
   meta: {
     type: 'problem',
@@ -111,18 +95,9 @@ const layerImports = defineRule({
     const forbidden = FORBIDDEN[from] ?? []
 
     function check(node: ImportNode): void {
-      const { source } = node
-      let specifier
-      if (source?.type === 'Literal') {
-        specifier = source.value
-      } else if (
-        source?.type === 'TemplateLiteral' &&
-        source.expressions.length === 0
-      ) {
-        specifier = source.quasis[0]?.value.cooked
-      }
-      if (typeof specifier !== 'string') return
-      const target = resolveImport({
+      const specifier = readStaticSpecifier(node)
+      if (specifier === undefined) return
+      const target = resolveProjectPath({
         specifier,
         filename: context.filename,
         root: context.cwd
