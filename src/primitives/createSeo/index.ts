@@ -5,7 +5,10 @@ import type { Thing } from 'schema-dts'
 import { type Accessor, createMemo, createUniqueId } from 'solid-js'
 
 import { SITE } from '@/constants/site.ts'
-import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
+import {
+  hasMarkdownOptIn,
+  markdownPath
+} from '@/helpers/markdownRoute/index.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { buildLocaleAlternates } from '@/i18n/buildLocaleAlternates/index.ts'
@@ -53,8 +56,9 @@ function publishRouteSeo(): void {
     resolveSiteUrl(localizeHref({ href: location.pathname }))
   )
   const image = createMemo(() => resolveSiteUrl(seo().image.path))
+  // Só `indexableTags` lê o link, e ela já exclui as páginas noindex.
   const markdownHref = createMemo(() =>
-    isMarkdownRoute(matches().map(match => match.route.info))
+    hasMarkdownOptIn(matches().map(match => match.route.info))
       ? markdownPath(localizeHref({ href: location.pathname }))
       : undefined
   )

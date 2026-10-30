@@ -26,6 +26,7 @@ describe('cálculo do SEO da rota', () => {
       routes: [
         {
           path: '/*rest',
+          info: { markdown: true },
           component: () => {
             navigate = useNavigate()
             return null

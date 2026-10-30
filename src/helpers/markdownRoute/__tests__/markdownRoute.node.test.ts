@@ -1,4 +1,4 @@
-import { isMarkdownRoute, markdownPath } from '../index.ts'
+import { hasMarkdownOptIn, isMarkdownRoute, markdownPath } from '../index.ts'
 
 describe('HTML-derived Markdown', () => {
   it('requires an explicit leaf opt-in and effective indexable SEO', () => {
@@ -23,6 +23,16 @@ describe('HTML-derived Markdown', () => {
       isMarkdownRoute([{ markdown: 'dynamic', seo: { noindex: true } }])
     ).toBe(false)
     expect(isMarkdownRoute([{ markdown: false }])).toBe(false)
+  })
+
+  it('reads the opt-in from the leaf without resolving SEO', () => {
+    expect(hasMarkdownOptIn([{ markdown: true, seo: { noindex: true } }])).toBe(
+      true
+    )
+    expect(hasMarkdownOptIn([{ markdown: 'dynamic' }])).toBe(true)
+    expect(hasMarkdownOptIn([{ markdown: true }, {}])).toBe(false)
+    expect(hasMarkdownOptIn([{ markdown: false }])).toBe(false)
+    expect(hasMarkdownOptIn([])).toBe(false)
   })
 
   it.each([
