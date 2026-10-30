@@ -116,8 +116,11 @@ release. Add a tool name to select part of the graph. For example, run
   `@paraglide/runtime.js`; não edite `paraglide/` nem `.paraglide/`.
 - Chame mensagens no componente ou em getters. Não capture idioma nem texto
   traduzido no topo de módulo compartilhado entre requisições SSR.
-- Links e redirects de páginas usam `localizeHref({ href })`. `paths` mantém
-  os caminhos tipados sem idioma. Endpoints e assets ficam sem prefixo.
+- Links de páginas usam `LocalizedLink`, a navegação programática usa
+  `createLocalizedNavigate()` e os redirects usam `localizedRedirect()`.
+  `localizeHref()` fica para compor URLs de SEO e de índices. `paths` mantém
+  os caminhos tipados sem idioma. Endpoints e assets ficam sem prefixo
+  (`shouldLocalize: false`).
 - Preserve `AsyncLocalStorage`, o corpo original das server functions, a
   navegação de documento na troca de idioma e a tolerância a cookies bloqueados.
 - Rode `vp run i18n:generate` para conferir paridade, duplicatas e parâmetros.
@@ -314,7 +317,7 @@ release. Add a tool name to select part of the graph. For example, run
   fixtures E2E, porque não há declaração local para marcar.
 - `export {}` vazio também é recusado. Para transformar em módulo um `.d.ts`
   que só tem `declare global`, use um `import` real, como
-  `import '@solidjs/web'` em `src/@types/solid.d.ts`.
+  `import 'vite/client'` em `src/@types/env.d.ts`.
 - `import/exports-last` exige os exports no fim do arquivo. Declare antes
   deles os tipos, constantes e helpers privados. Quando um valor exportado
   precisar existir antes do código privado que o consome, mova-o para um
@@ -394,9 +397,9 @@ release. Add a tool name to select part of the graph. For example, run
 ## Dependências entre camadas
 
 - Preserve `architecture/layer-imports` em `tooling/architecturePolicy/index.ts`.
-  `helpers`, `constants`, `@types`, `data` e `infra` não dependem de UI,
-  primitives, rotas ou entradas (`App`, `Document`, `entry-server`,
-  `entry-client`, `router`, `middleware`).
+  `helpers`, `constants`, `@types`, `data`, `infra`, `theme`, `i18n` e
+  `paraglide` não dependem de UI, primitives, rotas ou entradas (`App`,
+  `Document`, `entry-server`, `entry-client`, `router`, `middleware`).
   Primitives globais não dependem de UI, rotas ou entradas; atoms não dependem
   de molecules/organisms, e molecules não dependem de organisms.
 - Produção em `src` não importa testes, fixtures de `src/tests` ou `tooling`.
