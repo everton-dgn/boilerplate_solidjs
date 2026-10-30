@@ -1,6 +1,6 @@
 import { definePlugin, defineRule } from 'vite-plus/lint/plugins'
 
-import { cssFilename } from './css-filename.ts'
+import { cssFilename } from './css/css-filename.ts'
 import { noExportList } from './noExportList/index.ts'
 import { testFilename } from './test-filename.ts'
 

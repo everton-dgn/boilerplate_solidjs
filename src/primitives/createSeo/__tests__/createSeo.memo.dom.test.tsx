@@ -1,23 +1,14 @@
 import { createRouter, memoryHistory, useNavigate } from '@solidjs/router'
 
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
+import { POLL, readCanonical } from '@/tests/helpers/headTags/index.ts'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { createSeo } from '../index.ts'
 
 vi.mock(import('@/helpers/resolveRouteSeo/index.ts'), { spy: true })
 
-// vi.waitUntil não lê test.expect.poll e espera 50ms por padrão.
-const POLL = { interval: 10 }
 const TWO_ROUTES = 2
-
-function readCanonical(): string | null {
-  return (
-    document.head
-      .querySelector('link[rel="canonical"]')
-      ?.getAttribute('href') ?? null
-  )
-}
 
 describe('cálculo do SEO da rota', () => {
   it('resolve os metadados uma vez por rota em vez de uma vez por tag', async () => {

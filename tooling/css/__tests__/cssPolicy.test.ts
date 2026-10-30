@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url'
 import stylelint from 'stylelint'
 import { RuleTester } from 'vite-plus/lint/plugins-dev'
 
-import { cssFilenameError } from '../../css-filename.ts'
 import plugin from '../../project-plugin.ts'
+import { cssFilenameError } from '../css-filename.ts'
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url))
 

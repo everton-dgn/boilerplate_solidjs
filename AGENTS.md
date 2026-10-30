@@ -83,7 +83,7 @@ release. Add a tool name to select part of the graph. For example, run
   descreva a responsabilidade compartilhada, como `themeStorage` para
   `readTheme` e `saveTheme`. Quando houver uma exportação principal e funções
   auxiliares relacionadas, o módulo pode manter o nome da principal, como
-  `createMenuState` com `queryMenuItems`.
+  `negotiatePageFormat` com `acceptsMarkdown`.
 - Tipos e constantes auxiliares não tornam, por si só, um módulo de função
   única uma exceção. Funções internas não exportadas também não interferem
   na escolha do nome.

@@ -5,7 +5,7 @@ import { defineRule, type ESTree } from 'vite-plus/lint/plugins'
 import {
   readStaticSpecifier,
   resolveProjectPath
-} from './lint/import-specifier.ts'
+} from '../lint/import-specifier.ts'
 
 type CssImportNode =
   | ESTree.ImportDeclaration

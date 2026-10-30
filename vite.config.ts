@@ -12,7 +12,6 @@ import { lint } from './tooling/lint.ts'
 const CSS_CACHE_INPUTS = [
   'src/**/*.css',
   'tooling/css/**',
-  'tooling/css-filename.ts',
   'tooling/lint/import-specifier.ts',
   'package.json',
   'bun.lock',
