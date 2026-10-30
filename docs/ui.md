@@ -52,8 +52,9 @@ tem estado próprio e libera os temporizadores ao desmontar.
 `DropdownMenu`, em `components/atoms/`, segue o padrão de menu do APG: setas,
 `Home` e `End` navegam entre os itens, `Escape` fecha, e `Tab` fecha sem prender
 o foco. Selecionar um item, pelo teclado ou pelo ponteiro, devolve o foco ao
-gatilho; com o ponteiro, o navegador não mostra o anel de `:focus-visible`.
-Clicar fora fecha o menu e preserva o destino do foco.
+gatilho; com o ponteiro, o navegador não mostra o anel de `:focus-visible`. Na
+navegação por teclado, o item focado recebe o anel de foco global, além do fundo
+de destaque. Clicar fora fecha o menu e preserva o destino do foco.
 
 Os gatilhos de tema e de idioma incluem o estado atual no nome acessível: o de
 idioma começa pelo código mostrado no botão, como "EN, select language", e o de
@@ -106,19 +107,23 @@ do Vite+.
   etapas duplicadas em `@keyframes` geram erro.
 - Nomes e valores desconhecidos em media features, operadores sem os espaços
   obrigatórios em `calc()` e `@import` em posição inválida geram erro.
-- Fora de `src/theme/`, `color-mix()` e `light-dark()` são proibidos.
-  `stylelint-declaration-strict-value` exige tokens nas propriedades de cor,
-  `background`, `fill`, `stroke`, sombras, `font-size`, `font-weight`, `z-index`
-  e `border-radius` (incluindo cantos físicos e lógicos), com análise das
+- Fora de `src/theme/`, cores literais são proibidas em qualquer propriedade:
+  hexadecimais, nomes de cor e as funções `rgb()`, `rgba()`, `hsl()`, `hsla()`,
+  `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()` e `color()`, além de
+  `color-mix()` e `light-dark()`. `stylelint-declaration-strict-value` exige
+  tokens nas propriedades de cor, `background`, `background-image`, `fill`,
+  `stroke`, sombras, `font`, `font-size`, `font-weight`, `z-index` e
+  `border-radius` (incluindo cantos físicos e lógicos), com análise das
   abreviações suportadas pelo plugin. Funções locais não são liberadas;
   gradientes compartilhados ficam nos tokens. Valores como `transparent`,
   `currentColor`, `inherit`, `none` e `auto` são permitidos. O tema pode definir
   os valores e manter as cores de sistema usadas no reset de alto contraste. O
   plugin não escolhe tokens nem aplica correções automáticas. Sua análise de
   abreviações é experimental e não cobre toda a sintaxe CSS.
-- Propriedades, valores, unidades, cores hexadecimais, pseudoclasses e at-rules
-  desconhecidos geram erro. `:global` e `:local` não são permitidos; os estilos
-  globais ficam em `src/theme/`.
+- Propriedades, valores, unidades, cores hexadecimais, pseudoclasses,
+  pseudoelementos, seletores de tipo e at-rules desconhecidos geram erro.
+  `:global` e `:local` não são permitidos; os estilos globais ficam em
+  `src/theme/`.
 - Declarações duplicadas e abreviações que sobrescrevem propriedades anteriores
   geram erro. Fallbacks consecutivos com sintaxes diferentes são permitidos.
 - Nomes de animação devem ter `@keyframes` no próprio arquivo ou nas referências

@@ -23,7 +23,7 @@ export function DropdownMenu<Value extends string = string>(
   createOutsideDismiss(menu)
 
   return (
-    <div class={[S.root, props.class]}>
+    <div class={S.root}>
       {props.trigger(triggerProps)}
 
       <Show when={menu.isOpen()}>
@@ -36,11 +36,7 @@ export function DropdownMenu<Value extends string = string>(
           tabindex={-1}
           aria-label={props.label}
           aria-labelledby={props.label ? undefined : ids.trigger}
-          class={[
-            S.content,
-            props.align === 'start' ? S.align_start : S.align_end,
-            props.contentClass
-          ]}
+          class={S.content}
           onKeyDown={handleKeyDown}
         >
           <For each={props.items}>

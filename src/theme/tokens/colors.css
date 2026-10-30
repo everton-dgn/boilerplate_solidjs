@@ -3,11 +3,6 @@
 
   --color-background: light-dark(oklch(1 0 0), oklch(0.141 0.005 285.823));
   --color-foreground: light-dark(oklch(0.141 0.005 285.823), oklch(0.985 0 0));
-  --color-card: light-dark(oklch(1 0 0), oklch(0.21 0.006 285.885));
-  --color-card-foreground: light-dark(
-    oklch(0.141 0.005 285.823),
-    oklch(0.985 0 0)
-  );
   --color-popover: light-dark(oklch(1 0 0), oklch(0.21 0.006 285.885));
   --color-popover-foreground: light-dark(
     oklch(0.141 0.005 285.823),
@@ -49,10 +44,13 @@
     oklch(0.577 0.245 27.325),
     oklch(0.704 0.191 22.216)
   );
+  --color-destructive-foreground: light-dark(
+    oklch(1 0 0),
+    oklch(0.141 0.005 285.823)
+  );
   --color-border: light-dark(oklch(0.92 0.004 286.32), oklch(1 0 0 / 10%));
   --color-input: light-dark(oklch(0.92 0.004 286.32), oklch(1 0 0 / 15%));
   --color-focus: oklch(0.605 0.208 256.184 / 0.8);
-  --color-white: oklch(1 0 0);
   --color-overlay: oklch(0 0 0 / 55%);
   --color-success: oklch(0.62 0.16 150);
   --color-info: oklch(0.62 0.15 250);

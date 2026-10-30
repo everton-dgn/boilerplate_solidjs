@@ -4,17 +4,14 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-sizing: border-box;
   border: 1px solid transparent;
   border-radius: var(--radius-8);
-  font-family: inherit;
   font-weight: var(--font-weight-500);
   font-size: var(--font-size-14);
   line-height: 1;
   letter-spacing: normal;
   white-space: nowrap;
   text-decoration: none;
-  cursor: pointer;
   outline: none;
   transition:
     background-color 0.18s ease,
@@ -48,7 +45,7 @@
 
 .variant_destructive {
   background: var(--color-destructive);
-  color: var(--color-white);
+  color: var(--color-destructive-foreground);
 
   &:hover {
     background: var(--color-destructive-hover);

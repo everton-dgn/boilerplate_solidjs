@@ -3,7 +3,7 @@ import { SITE } from '@/constants/site.ts'
 import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
-import { SiteContent } from '../index.tsx'
+import { SiteArticle } from '../index.tsx'
 
 describe('conteúdo das páginas institucionais', () => {
   it('localiza os links internos uma vez e preserva os externos', () => {
@@ -14,7 +14,7 @@ describe('conteúdo das páginas institucionais', () => {
       sections: [],
       links: [...SITE_LINKS.pages, ...SITE_LINKS.sources]
     }
-    const host = renderComponent(() => <SiteContent page={page} />, {
+    const host = renderComponent(() => <SiteArticle page={page} />, {
       providers: false
     })
     expect(
