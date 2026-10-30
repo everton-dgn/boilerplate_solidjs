@@ -7,12 +7,11 @@ import IconMoon from '~icons/hugeicons/moon-02'
 import IconSun from '~icons/hugeicons/sun-01'
 
 import type { Theme } from '@/@types/theme.ts'
+import { THEMES } from '@/constants/theme.ts'
 
 import { Button } from '../Button/index.tsx'
 import { DropdownMenu } from '../DropdownMenu/index.tsx'
 import { ThemeContext } from '../Provider/context.ts'
-
-const THEMES: readonly Theme[] = ['light', 'dark', 'system']
 
 const THEME_OPTIONS = {
   light: { label: m.themeToggle_light, icon: IconSun },

@@ -1,5 +1,6 @@
 import type { Theme } from '@/@types/theme.ts'
 
+export const THEMES: readonly Theme[] = ['light', 'dark', 'system']
 export const DEFAULT_THEME: Theme = 'system'
 export const THEME_COOKIE_NAME = 'app-theme'
 export const DARK_MEDIA_QUERY = '(prefers-color-scheme: dark)'

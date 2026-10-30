@@ -110,6 +110,43 @@ a {
   text-decoration: none;
 }
 
+/* Anuncia o limite do destaque para leitor de tela, que ignora a cor de fundo
+   do mark. O texto fica fora do fluxo visual e segue o idioma do documento. */
+mark {
+  position: relative;
+
+  &::before,
+  &::after {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(100%);
+    content: ' [início do texto destacado] ';
+  }
+
+  &::after {
+    content: ' [fim do texto destacado] ';
+  }
+
+  &:lang(en)::before {
+    content: ' [start of highlighted text] ';
+  }
+
+  &:lang(en)::after {
+    content: ' [end of highlighted text] ';
+  }
+
+  &:lang(es)::before {
+    content: ' [inicio del texto destacado] ';
+  }
+
+  &:lang(es)::after {
+    content: ' [fin del texto destacado] ';
+  }
+}
+
 :where(button, a, [role='button']) {
   touch-action: manipulation;
 }

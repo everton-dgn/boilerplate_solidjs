@@ -37,6 +37,10 @@
   resize: vertical;
 }
 
+.variant_default {
+  border-color: var(--color-input);
+}
+
 .variant_destructive {
   border-color: var(--color-destructive);
 
