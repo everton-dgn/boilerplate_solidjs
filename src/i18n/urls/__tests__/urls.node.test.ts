@@ -13,6 +13,8 @@ describe('localized URLs', () => {
     for (const href of [
       'https://example.com/a',
       '//example.com/a',
+      String.raw`/\example.com/a`,
+      '/\t/example.com/a',
       'mailto:a@example.com',
       '#section'
     ]) {
