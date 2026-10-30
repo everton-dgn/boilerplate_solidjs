@@ -25,8 +25,6 @@ describe('primitive de tema', () => {
     vi.stubGlobal('BroadcastChannel', null)
   })
 
-  afterEach(clearThemeCookie)
-
   function mount(): void {
     renderComponent(() => {
       state = useContext(ThemeContext)
@@ -81,13 +79,12 @@ describe('primitive de tema', () => {
   })
 
   it('continua alternando quando o armazenamento é bloqueado', async () => {
-    const restore = blockCookie()
+    blockCookie()
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     state.setTheme('light')
     expect(document.documentElement).toHaveClass('light')
     expect(readTheme()).toBeUndefined()
-    restore()
   })
 
   it('mantém a escolha feita antes do canal iniciar', async () => {

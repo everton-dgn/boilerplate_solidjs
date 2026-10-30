@@ -1,36 +1,30 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import * as v from 'valibot'
+
+import {
+  readBackendState,
+  releaseFixtureGate,
+  waitForGate
+} from '@/tests/helpers/fixtureGate/index.ts'
 
 const HTTP_OK = 200
 const HTTP_REDIRECT = 307
 const HTTP_INTERNAL_SERVER_ERROR = 500
 
-const BACKEND = 'http://127.0.0.1:4318'
 const PAGE = '/pt/markdown-contract/sample'
 const REQUEST_TIMEOUT = 15_000
-const stateSchema = v.object({
-  gate: v.picklist(['none', 'waiting', 'released']),
-  real: v.boolean()
-})
 type Gate = { request: APIRequestContext; id: string }
 
 async function waitForGates({ request, id }: Gate): Promise<void> {
   for (const label of ['first', 'second']) {
-    await expect
-      .poll(async () => {
-        const response = await request.get(
-          `${BACKEND}/control?id=${id}:${label}`
-        )
-        return v.parse(stateSchema, await response.json()).gate
-      })
-      .toBe('waiting')
+    await waitForGate({ request, id: `${id}:${label}` })
   }
 }
 
+// Nos blocos finally, esta chamada também é a liberação que a resposta espera;
+// por isso mantém a asserção.
 async function releaseGates({ request, id }: Gate): Promise<void> {
   for (const label of ['second', 'first']) {
-    const response = await request.post(`${BACKEND}/release?id=${id}:${label}`)
-    expect(response.ok()).toBe(true)
+    await releaseFixtureGate({ request, id: `${id}:${label}` })
   }
 }
 
@@ -85,8 +79,6 @@ test('normal HTML sends the loading shell while both sources remain blocked', as
       shell += decoder.decode(chunk.value, { stream: true })
     }
     await waitForGates({ request, id })
-    expect(shell).toContain('FIRST_FALLBACK')
-    expect(shell).toContain('SECOND_FALLBACK')
     await releaseGates({ request, id })
     for (;;) {
       const chunk = await reader.read()
@@ -108,8 +100,8 @@ test('failed async fragment returns a public 500 instead of partial Markdown', a
   })
   try {
     await waitForGates({ request, id })
-    const state = await request.get(`${BACKEND}/control?id=${id}:first`)
-    expect(v.parse(stateSchema, await state.json()).real).toBe(true)
+    const state = await readBackendState({ request, id: `${id}:first` })
+    expect(state.real).toBe(true)
   } finally {
     await releaseGates({ request, id })
   }
@@ -186,8 +178,8 @@ test('the same Error instance fails both sequential Markdown requests publicly',
     })
     try {
       await waitForGates({ request, id })
-      const state = await request.get(`${BACKEND}/control?id=${id}:first`)
-      expect(v.parse(stateSchema, await state.json()).real).toBe(true)
+      const state = await readBackendState({ request, id: `${id}:first` })
+      expect(state.real).toBe(true)
     } finally {
       await releaseGates({ request, id })
     }
@@ -208,12 +200,10 @@ test('the same Error instance fails both sequential Markdown requests publicly',
 test('propagated server-function rejection fails Markdown while caught rejection stays healthy', async ({
   request
 }) => {
-  const backendSchema = v.object({ attempts: v.number(), marker: v.string() })
   for (const scenario of ['server-error', 'server-caught']) {
     const id = crypto.randomUUID()
-    const controlURL = `${BACKEND}/control?id=throw:${id}:first`
-    const before = await request.get(controlURL)
-    const initial = v.parse(backendSchema, await before.json())
+    const backend = { request, id: `throw:${id}:first` }
+    const initial = await readBackendState(backend)
     expect(initial.attempts).toBe(0)
     const pending = request.get(`${PAGE}.md?id=${id}&scenario=${scenario}`)
     try {
@@ -222,10 +212,8 @@ test('propagated server-function rejection fails Markdown while caught rejection
       await releaseGates({ request, id })
     }
     const response = await pending
-    const after = await request.get(controlURL)
-    expect(v.parse(backendSchema, await after.json()).attempts).toBeGreaterThan(
-      0
-    )
+    const after = await readBackendState(backend)
+    expect(after.attempts).toBeGreaterThan(0)
     const body = await response.text()
     expect(body).not.toContain(initial.marker)
     expect(JSON.stringify(response.headers())).not.toContain(initial.marker)

@@ -4,7 +4,7 @@ import { createMemo, createSignal, Loading } from 'solid-js'
 import { createSeo } from '@/primitives/createSeo/index.ts'
 import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
 
-import { waitFixtureGate } from '../../outside-error/waitFixtureGate/index.ts'
+import { waitFixtureGate } from '../../backend/waitFixtureGate/index.ts'
 
 type ProductDetailsProps = { id: string }
 

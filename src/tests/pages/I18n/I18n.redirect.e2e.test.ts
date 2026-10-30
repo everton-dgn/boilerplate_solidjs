@@ -1,6 +1,4 @@
-import { expect, test } from '@playwright/test'
-
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const REDIRECT = 302
 
@@ -28,9 +26,9 @@ for (const [kind, destination] of [
 // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const source of ['action', 'query']) {
   test(`${source} redirects across locales load a new document with matching messages`, async ({
-    page
+    page,
+    cspViolations
   }) => {
-    const violations = await watchCspViolations(page)
     await page.goto('/pt/i18n-redirect')
     await expect(
       page.getByRole('button', { name: 'Selecionar tema' })
@@ -56,7 +54,7 @@ for (const source of ['action', 'query']) {
     await expect(page.locator('html')).not.toHaveAttribute(
       'data-previous-document'
     )
-    expect(violations).toStrictEqual([])
+    expect(cspViolations).toStrictEqual([])
   })
 }
 

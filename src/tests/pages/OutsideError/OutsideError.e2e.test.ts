@@ -1,14 +1,19 @@
 import { readFile } from 'node:fs/promises'
 import { env } from 'node:process'
 
-import { expect, test, type APIRequestContext } from '@playwright/test'
-import * as v from 'valibot'
+import type { APIRequestContext } from '@playwright/test'
 
+import {
+  readBackendState,
+  readGatedBody,
+  releaseFixtureGate,
+  waitForGate
+} from '@/tests/helpers/fixtureGate/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 test.use({ locale: 'pt-BR' })
 
-const BACKEND = 'http://127.0.0.1:4318'
 const HTTP_OK = 200
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const LOADING_TEXT = 'Carregando fixture...'
@@ -23,12 +28,6 @@ const MIDDLEWARE_LOG =
   '[middleware] Unexpected failure; private details omitted'
 const SERVER_ERROR_LOG =
   '[server-error] Unexpected failure; private details omitted'
-const backendState = v.object({
-  attempts: v.number(),
-  gate: v.picklist(['none', 'waiting', 'released']),
-  real: v.boolean(),
-  marker: v.string()
-})
 
 type Gate = 'none' | 'before' | 'stream'
 type FixtureCase = {
@@ -38,8 +37,12 @@ type FixtureCase = {
   content: string
   pageErrors: string[]
 }
-type Control = { request: APIRequestContext; id: string }
-type RawRequest = Control & { baseURL: string; fixture: FixtureCase }
+type RawRequest = {
+  request: APIRequestContext
+  id: string
+  baseURL: string
+  fixture: FixtureCase
+}
 type RawResponse = { body: string; headers: string; status: number }
 type LogCount = { file: string; message: string }
 
@@ -88,54 +91,28 @@ const CASES: FixtureCase[] = [
   }
 ]
 
-async function readState({ request, id }: Control) {
-  const state = await request.get(`${BACKEND}/control?id=${id}`)
-  return v.parse(backendState, await state.json())
-}
-
-async function release({ request, id }: Control): Promise<void> {
-  await request.post(`${BACKEND}/release?id=${id}`)
-}
-
-// Confirma pelo backend que a fixture chegou à fonte assíncrona antes de
-// liberar a falha, sem depender de temporizador.
-async function releaseWhenWaiting(control: Control): Promise<void> {
-  await expect
-    .poll(async () => {
-      const state = await readState(control)
-      return state.gate
-    })
-    .toBe('waiting')
-  await release(control)
-}
-
-// Lê o documento bruto fora do navegador. No streaming, só libera o gate
-// depois que o shell com o fallback de Loading chegou ao cliente.
+// Lê o documento bruto fora do navegador. No streaming, a falha só é liberada
+// depois que a fixture chegou à fonte assíncrona.
 async function readRawDocument({
   request,
   id,
   baseURL,
   fixture
 }: RawRequest): Promise<RawResponse> {
-  if (fixture.gate === 'before') await release({ request, id })
+  if (fixture.gate === 'before') await releaseFixtureGate({ request, id })
   const response = await fetch(
     `${baseURL}/outside-error?case=${fixture.name}&id=${id}`
   )
-  const reader = response.body?.getReader()
-  if (!reader) throw new Error('Response without body')
-  const decoder = new TextDecoder()
-  let body = ''
-  let released = fixture.gate !== 'stream'
-  for (;;) {
-    const chunk = await reader.read()
-    if (chunk.done) break
-    body += decoder.decode(chunk.value, { stream: true })
-    if (!released && body.includes(LOADING_TEXT)) {
-      released = true
-      await releaseWhenWaiting({ request, id })
-    }
-  }
-  body += decoder.decode()
+  const body =
+    fixture.gate === 'stream'
+      ? await readGatedBody({
+          request,
+          id,
+          response,
+          shellText: LOADING_TEXT,
+          shouldWaitForGate: true
+        })
+      : await response.text()
   return {
     body,
     headers: JSON.stringify(Object.fromEntries(response.headers)),
@@ -159,7 +136,7 @@ for (const fixture of CASES) {
     }) => {
       if (!baseURL) throw new Error('baseURL is required')
       const id = `outside:${crypto.randomUUID()}`
-      const { marker } = await readState({ request, id })
+      const { marker } = await readBackendState({ request, id })
       // O throw no render da raiz passa pelo hook de erros de produção, que
       // grava uma linha fixa [server-error] por requisição.
       const logFile =
@@ -191,7 +168,7 @@ for (const fixture of CASES) {
       // nos casos com gate, só falhou depois da liberação. Sem streaming o
       // registro volta num header; com gate, pelo backend sintético.
       expect(raw.headers).toContain('"x-fixture-marker":"loaded"')
-      const state = await readState({ request, id })
+      const state = await readBackendState({ request, id })
       expect(state.attempts).toBe(1)
       expect(state.gate).toBe(fixture.gate === 'none' ? 'none' : 'released')
       if (fixture.gate === 'none') {
@@ -204,13 +181,12 @@ for (const fixture of CASES) {
 
     test('o navegador mostra o fallback sem o marcador', async ({
       page,
-      request
+      request,
+      pageErrors
     }) => {
       const id = `outside:${crypto.randomUUID()}`
-      const { marker } = await readState({ request, id })
-      const browserErrors: string[] = []
-      page.on('pageerror', error => browserErrors.push(error.message))
-      if (fixture.gate === 'before') await release({ request, id })
+      const { marker } = await readBackendState({ request, id })
+      if (fixture.gate === 'before') await releaseFixtureGate({ request, id })
 
       const response = await page.goto(
         `/outside-error?case=${fixture.name}&id=${id}`,
@@ -218,16 +194,17 @@ for (const fixture of CASES) {
       )
       if (fixture.gate === 'stream') {
         await expect(page.getByText(LOADING_TEXT)).toBeVisible()
-        await releaseWhenWaiting({ request, id })
+        await waitForGate({ request, id })
+        await releaseFixtureGate({ request, id })
       }
 
       await expect(page.getByText(fixture.content)).toBeVisible()
       expect(await page.content()).not.toContain(marker)
-      expect(browserErrors.join(' ')).not.toContain(marker)
+      expect(pageErrors.join(' ')).not.toContain(marker)
       expect(
-        browserErrors.filter(message => !fixture.pageErrors.includes(message))
+        pageErrors.filter(message => !fixture.pageErrors.includes(message))
       ).toStrictEqual([])
-      const state = await readState({ request, id })
+      const state = await readBackendState({ request, id })
       if (fixture.gate === 'none') {
         expect(response?.headers()['x-fixture-thrown']).toBe('real')
       } else {
@@ -261,7 +238,7 @@ test.describe('exceções no middleware', () => {
       const logFile = env.SERVER_LOG_FILE
       if (!baseURL || !logFile) throw new Error('E2E environment is incomplete')
       const id = `outside:${crypto.randomUUID()}`
-      const { marker } = await readState({ request, id })
+      const { marker } = await readBackendState({ request, id })
       const logBefore = await countLogLines({
         file: logFile,
         message: MIDDLEWARE_LOG
@@ -287,7 +264,7 @@ test.describe('exceções no middleware', () => {
         JSON.stringify(Object.fromEntries(response.headers))
       ).not.toContain(marker)
       // Controle positivo: a fixture lançou com o marcador carregado.
-      const state = await readState({ request, id })
+      const state = await readBackendState({ request, id })
       expect(state.attempts).toBe(1)
       expect(state.real).toBe(true)
       // Uma linha fixa do middleware por requisição. O teardown global recusa
@@ -317,19 +294,18 @@ test.describe('exceções no middleware', () => {
 
       expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
       await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
-      const state = await readState({ request, id })
+      const state = await readBackendState({ request, id })
       expect(state.real).toBe(true)
     })
   }
 
   test('a página de erro do middleware hidrata no navegador', async ({
     page,
-    request
+    request,
+    pageErrors
   }) => {
     const id = `outside:${crypto.randomUUID()}`
-    const { marker } = await readState({ request, id })
-    const browserErrors: string[] = []
-    page.on('pageerror', error => browserErrors.push(error.message))
+    const { marker } = await readBackendState({ request, id })
 
     const response = await page.goto(
       `/outside-error?case=middleware-before&id=${id}`
@@ -343,7 +319,7 @@ test.describe('exceções no middleware', () => {
     expect(await page.content()).not.toContain(marker)
     // Só a mensagem pública pode reaparecer ao hidratar o fallback.
     expect(
-      browserErrors.filter(message => message !== PUBLIC_MESSAGE)
+      pageErrors.filter(message => message !== PUBLIC_MESSAGE)
     ).toStrictEqual([])
   })
 })

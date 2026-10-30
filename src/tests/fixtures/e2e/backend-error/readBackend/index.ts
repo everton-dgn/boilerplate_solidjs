@@ -3,6 +3,8 @@ import * as v from 'valibot'
 import { createPublicError } from '@/infra/server/publicErrors/index.ts'
 import { requestJson } from '@/infra/server/requestJson/index.ts'
 
+import { fixtureError } from '../../backend/fixtureError/index.ts'
+
 type BackendData = { message: string }
 
 export async function readBackend(id: string): Promise<BackendData> {
@@ -15,12 +17,7 @@ export async function readBackend(id: string): Promise<BackendData> {
   // Exercitam a política global sem depender do catch do transporte. Os
   // detalhes sintéticos nascem no backend somente após o build.
   if (id.startsWith('throw:') || id.startsWith('result:')) {
-    const error = Object.assign(
-      new Error(data.message, { cause: `CAUSE_${data.message}` }),
-      {
-        internalContext: `CONTEXT_${data.message}`
-      }
-    )
+    const error = fixtureError(data.message)
     if (id.startsWith('throw:')) throw error
     const invalidResult = { message: 'Resultado inválido', error }
     return invalidResult

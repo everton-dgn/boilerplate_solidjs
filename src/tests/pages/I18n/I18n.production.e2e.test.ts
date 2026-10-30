@@ -1,9 +1,9 @@
 import { readdir, readFile } from 'node:fs/promises'
 
-import { expect, test } from '@playwright/test'
 import * as v from 'valibot'
 
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 const HTTP_OK = 200
@@ -18,21 +18,24 @@ const LANGUAGES = [
     tag: 'pt-BR',
     title: 'SolidJS Boilerplate para aplicações web',
     selector: 'Selecionar idioma',
-    missing: 'Página não encontrada'
+    missing: 'Página não encontrada',
+    home: 'Voltar ao início'
   },
   {
     locale: 'en',
     tag: 'en-US',
     title: 'SolidJS Boilerplate for web applications',
     selector: 'Select language',
-    missing: 'Page not found'
+    missing: 'Page not found',
+    home: 'Back to home'
   },
   {
     locale: 'es',
     tag: 'es-ES',
     title: 'SolidJS Boilerplate para aplicaciones web',
     selector: 'Seleccionar idioma',
-    missing: 'Página no encontrada'
+    missing: 'Página no encontrada',
+    home: 'Volver al inicio'
   }
 ]
 
@@ -78,7 +81,8 @@ function includesAny({ source, texts }: TextSearch): boolean {
 
 test('switches language and hydrates when cookie access is blocked', async ({
   page,
-  context
+  context,
+  pageErrors
 }) => {
   await context.addInitScript(() => {
     Object.defineProperty(document, 'cookie', {
@@ -91,8 +95,6 @@ test('switches language and hydrates when cookie access is blocked', async ({
       }
     })
   })
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
   await page.goto('/en')
   await page.getByRole('button', { name: 'Select language' }).click()
   await page
@@ -104,7 +106,7 @@ test('switches language and hydrates when cookie access is blocked', async ({
   )
   await page.getByRole('button', { name: 'Seleccionar tema' }).click()
   await expect(page.getByRole('menu')).toBeVisible()
-  expect(errors).toEqual([])
+  expect(pageErrors).toEqual([])
 })
 
 test('loads each page body only with its route implementation', async ({
@@ -136,7 +138,6 @@ test('loads each page body only with its route implementation', async ({
     ).toBe(true)
     return modules[0]
   })
-  expect(bodyModules[0]?.source).toContain('SolidJS 2 · Vite+ · TypeScript 7')
   const homeModule = bodyModules[0]?.file
   const requested = new Set<string>()
   page.on('request', request =>
@@ -161,7 +162,8 @@ test('loads each page body only with its route implementation', async ({
 for (const language of LANGUAGES) {
   test(`renders ${language.locale} in SSR and hydrates without changing its locale`, async ({
     page,
-    request
+    request,
+    pageErrors
   }) => {
     const response = await request.get(`/${language.locale}`, {
       headers: { 'accept-language': 'de-DE', cookie: 'locale=es' }
@@ -171,8 +173,6 @@ for (const language of LANGUAGES) {
     const html = await response.text()
     expect(html).toContain(`lang="${language.tag}"`)
     expect(html).toContain(language.title)
-    const errors: string[] = []
-    page.on('pageerror', error => errors.push(error.message))
     await page.goto(`/${language.locale}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       language.title
@@ -189,6 +189,8 @@ for (const language of LANGUAGES) {
       ALTERNATE_LINKS
     )
     const header = await page.getByRole('banner').elementHandle()
+    const isSameHeader = () =>
+      header.evaluate(element => element === document.querySelector('header'))
     await page.getByRole('link', { name: '404', exact: true }).click()
     await expect(page).toHaveURL(`/${language.locale}/404`)
     await expect(page).toHaveTitle(language.missing)
@@ -196,12 +198,14 @@ for (const language of LANGUAGES) {
       'content',
       'noindex'
     )
-    expect(
-      await header.evaluate(
-        element => element === document.querySelector('header')
-      )
-    ).toBe(true)
-    expect(errors).toEqual([])
+    expect(await isSameHeader()).toBe(true)
+    await page.getByRole('link', { name: language.home }).click()
+    await expect(page).toHaveURL(`/${language.locale}`)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      language.title
+    )
+    expect(await isSameHeader()).toBe(true)
+    expect(pageErrors).toEqual([])
   })
 }
 

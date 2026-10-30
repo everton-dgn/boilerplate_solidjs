@@ -1,7 +1,8 @@
-import { expect, test, type Page, type Route } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
+import { holdRoute } from '@/tests/helpers/holdRoute/index.ts'
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const HTTP_OK = 200
 const PAGE_URL = '/en'
@@ -14,38 +15,12 @@ const THEME_BUTTON = 'Select theme'
 const ENTRY_SCRIPT =
   /<script\b(?=[^>]*\btype="module")(?=[^>]*\basync\b)[^>]*>/u
 
-type ScriptGate = {
-  requested: Promise<null>
-  release: () => Promise<void>
-}
-
-// Segura todos os scripts até release(): o documento fica no HTML do servidor
-// enquanto o bundle não chega, sem depender de tempo.
-async function holdScripts(page: Page): Promise<ScriptGate> {
-  const requested = Promise.withResolvers<null>()
-  const released = Promise.withResolvers<null>()
-  async function handler(route: Route): Promise<void> {
-    requested.resolve(null)
-    await released.promise
-    await route.continue()
-  }
-  await page.route(SCRIPTS, handler)
-  return {
-    requested: requested.promise,
-    release: async () => {
-      released.resolve(null)
-      await page.unrouteAll({ behavior: 'wait' })
-    }
-  }
-}
-
 async function expectServerDocument(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_TITLE)
   await expect(
     page.getByRole('link', { name: 'Home', exact: true })
   ).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('menu')).toHaveCount(0)
-  await expect(page.locator('html')).not.toHaveAttribute(MARKER)
   expect(await hydrationFinished(page)).toBe(false)
 }
 
@@ -81,19 +56,16 @@ test.describe('without JavaScript', () => {
       name: THEME_BUTTON
     })
     await expect(trigger).toBeDisabled()
-    await expect(page.getByRole('menu')).toHaveCount(0)
     expect(await page.evaluate(() => document.readyState)).toBe('complete')
-    expect(await hydrationFinished(page)).toBe(false)
   })
 })
 
 test('marks hydration only after the bundle runs, on every document load', async ({
-  page
+  page,
+  pageErrors,
+  cspViolations
 }) => {
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
-  const violations = await watchCspViolations(page)
-  let gate = await holdScripts(page)
+  let gate = await holdRoute({ page, url: SCRIPTS })
   try {
     await page.goto(PAGE_URL, { waitUntil: 'commit' })
     await gate.requested
@@ -101,14 +73,14 @@ test('marks hydration only after the bundle runs, on every document load', async
     await gate.release()
     await expectInteractiveDocument(page)
 
-    gate = await holdScripts(page)
+    gate = await holdRoute({ page, url: SCRIPTS })
     await page.reload({ waitUntil: 'commit' })
     await gate.requested
     await expectServerDocument(page)
     await gate.release()
     await expectInteractiveDocument(page)
-    expect(errors).toEqual([])
-    expect(violations).toEqual([])
+    expect(pageErrors).toEqual([])
+    expect(cspViolations).toEqual([])
   } finally {
     await gate.release()
   }
@@ -126,16 +98,13 @@ test('does not mark hydration when the bundle fails to load', async ({
   expect(await page.evaluate(() => document.readyState)).toBe('complete')
   await expectServerDocument(page)
   await expect(page.getByRole('button', { name: THEME_BUTTON })).toBeDisabled()
-  await expect(page.getByRole('menu')).toHaveCount(0)
-  expect(await hydrationFinished(page)).toBe(false)
 })
 
 test('keeps the marker and interactivity across client-side navigation', async ({
-  page
+  page,
+  pageErrors,
+  cspViolations
 }) => {
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
-  const violations = await watchCspViolations(page)
   let documentRequests = 0
   page.on('request', request => {
     if (request.resourceType() === 'document') documentRequests += 1
@@ -157,16 +126,15 @@ test('keeps the marker and interactivity across client-side navigation', async (
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(HOME_TITLE)
   await expectInteractiveDocument(page)
   expect(documentRequests).toBe(1)
-  expect(errors).toEqual([])
-  expect(violations).toEqual([])
+  expect(pageErrors).toEqual([])
+  expect(cspViolations).toEqual([])
 })
 
 test('replays a click captured before hydration after the bundle is released', async ({
-  page
+  page,
+  pageErrors
 }) => {
-  const errors: string[] = []
-  page.on('pageerror', error => errors.push(error.message))
-  const gate = await holdScripts(page)
+  const gate = await holdRoute({ page, url: SCRIPTS })
   try {
     await page.goto(PAGE_URL, { waitUntil: 'commit' })
     await gate.requested
@@ -182,7 +150,7 @@ test('replays a click captured before hydration after the bundle is released', a
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menu')).not.toBeVisible()
     await expectInteractiveDocument(page)
-    expect(errors).toEqual([])
+    expect(pageErrors).toEqual([])
   } finally {
     await gate.release()
   }

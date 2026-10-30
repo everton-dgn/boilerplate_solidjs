@@ -17,7 +17,6 @@ function setup(): void {
 
 describe('sincronização de tema', () => {
   beforeEach(setup)
-  afterEach(clearThemeCookie)
 
   it('ignora mensagens inválidas e usa cookie canônico para escritas persistidas', () => {
     const receive = vi.fn<() => void>()
@@ -142,7 +141,6 @@ describe('sincronização de tema', () => {
 
 describe('ordenação e escolhas temporárias', () => {
   beforeEach(setup)
-  afterEach(clearThemeCookie)
 
   it('descarta mensagem temporária anterior à escolha local persistida', () => {
     const receive = vi.fn<() => void>()
@@ -266,7 +264,6 @@ describe('ordenação e escolhas temporárias', () => {
 
 describe('ciclo de vida do canal de tema', () => {
   beforeEach(setup)
-  afterEach(clearThemeCookie)
 
   it('remove listeners e fecha o canal ao descartar', () => {
     const receive = vi.fn<() => void>()

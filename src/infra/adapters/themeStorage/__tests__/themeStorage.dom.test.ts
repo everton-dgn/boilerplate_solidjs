@@ -6,8 +6,6 @@ import { readTheme, saveTheme } from '../index.ts'
 describe('persistência da preferência no cookie', () => {
   beforeEach(clearThemeCookie)
 
-  afterEach(clearThemeCookie)
-
   it.each(['light', 'dark', 'system'] as const)('grava e relê %s', theme => {
     expect(saveTheme(theme)).toBe(true)
     expect(readTheme()).toBe(theme)
@@ -32,10 +30,9 @@ describe('persistência da preferência no cookie', () => {
   })
 
   it('tolera exceções na leitura e na escrita', () => {
-    const restore = blockCookie()
+    blockCookie()
     expect(readTheme()).toBeUndefined()
     expect(saveTheme('dark')).toBe(false)
-    restore()
   })
 
   it('restringe o cookie ao host e usa Secure em HTTPS', () => {

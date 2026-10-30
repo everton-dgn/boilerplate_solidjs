@@ -108,5 +108,3 @@ const server = createServer((request, response) => {
 })
 
 server.listen(PORT, '127.0.0.1')
-process.once('SIGTERM', () => server.close())
-process.once('SIGINT', () => server.close())

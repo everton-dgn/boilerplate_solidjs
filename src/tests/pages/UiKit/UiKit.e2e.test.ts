@@ -1,7 +1,5 @@
-import { expect, test } from '@playwright/test'
-
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
-import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
+import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const LANGUAGES = [
   { locale: 'pt', dialog: 'Fechar diálogo', toast: 'Fechar notificação' },
@@ -13,11 +11,10 @@ const MOBILE_WIDTH = 375
 // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const language of LANGUAGES) {
   test(`fields, modal and notifications work in ${language.locale} after SSR`, async ({
-    page
+    page,
+    pageErrors,
+    cspViolations
   }) => {
-    const errors: string[] = []
-    page.on('pageerror', error => errors.push(error.message))
-    const csp = await watchCspViolations(page)
     await page.goto(`/${language.locale}/ui-kit`)
     await expect.poll(() => hydrationFinished(page)).toBe(true)
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Ada')
@@ -78,21 +75,17 @@ for (const language of LANGUAGES) {
       page.getByText('<strong>Plain text</strong>', { exact: true }).first()
     ).toBeVisible()
     await expect(page.locator('strong')).toHaveCount(0)
-    expect(errors).toEqual([])
-    expect(csp).toEqual([])
+    expect(pageErrors).toEqual([])
+    expect(cspViolations).toEqual([])
   })
 }
 
-test('native field values are present without JavaScript', async ({
-  browser,
-  baseURL
-}) => {
-  const context = await browser.newContext({
-    javaScriptEnabled: false,
-    baseURL
-  })
-  try {
-    const page = await context.newPage()
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false })
+
+  test('native field values are present without JavaScript', async ({
+    page
+  }) => {
     await page.goto('/en/ui-kit')
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Ada')
     await expect(page.getByLabel('Subscribe', { exact: true })).toBeChecked()
@@ -100,13 +93,13 @@ test('native field values are present without JavaScript', async ({
       'First line\nSecond line'
     )
     await expect(page.locator('dialog')).not.toBeVisible()
-  } finally {
-    await context.close()
-  }
+  })
 })
 
 test('initially open dialog hydrates modally with CSP enabled', async ({
-  page
+  page,
+  pageErrors,
+  cspViolations
 }) => {
   await page.goto('/en/ui-kit?open=1')
   const dialog = page.getByRole('dialog', { name: 'Fixture dialog' })
@@ -114,20 +107,20 @@ test('initially open dialog hydrates modally with CSP enabled', async ({
   expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true)
   await page.keyboard.press('Escape')
   await expect(dialog).not.toBeVisible()
+  expect(pageErrors).toEqual([])
+  expect(cspViolations).toEqual([])
 })
 
-test('modal and notifications fit a narrow dark viewport', async ({
-  browser,
-  baseURL
-}) => {
-  const context = await browser.newContext({
-    baseURL,
+test.describe('narrow dark viewport', () => {
+  test.use({
     viewport: { width: MOBILE_WIDTH, height: 812 },
     colorScheme: 'dark',
     reducedMotion: 'reduce'
   })
-  try {
-    const page = await context.newPage()
+
+  test('modal and notifications fit a narrow dark viewport', async ({
+    page
+  }) => {
     await page.goto('/pt/ui-kit')
     await expect.poll(() => hydrationFinished(page)).toBe(true)
     await expect(page.locator('html')).toHaveClass('dark')
@@ -155,9 +148,7 @@ test('modal and notifications fit a narrow dark viewport', async ({
     await expect(
       notification.getByRole('button', { name: 'Fechar notificação' })
     ).toBeVisible()
-  } finally {
-    await context.close()
-  }
+  })
 })
 
 test('localized navigation preserves SPA state and reloads when changing language', async ({
