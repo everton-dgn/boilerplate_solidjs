@@ -125,4 +125,48 @@ describe('stylelint css policy', () => {
     const rules = await lint('&:hover { color: var(--color-primary); }')
     assert.ok(rules.includes('nesting-selector-no-missing-scoping-root'))
   })
+
+  it('rejects literal colors in any property and raw font shorthands', async () => {
+    for (const { code, rule } of [
+      { code: '.a { border-block-end: 1px solid red; }', rule: 'color-named' },
+      {
+        code: '.a { border-inline-start: 1px solid #f00; }',
+        rule: 'color-no-hex'
+      },
+      {
+        code: '.a { text-decoration: underline oklch(0.6 0.2 25); }',
+        rule: 'function-disallowed-list'
+      },
+      {
+        code: '.a { font: 600 14px sans-serif; }',
+        rule: 'scale-unlimited/declaration-strict-value'
+      },
+      {
+        code: '.a { background-image: linear-gradient(var(--color-primary), var(--color-secondary)); }',
+        rule: 'scale-unlimited/declaration-strict-value'
+      }
+    ]) {
+      const rules = await lint(code)
+      assert.ok(rules.includes(rule), code)
+    }
+    assert.deepEqual(
+      await lint('.a { font: inherit; background: currentcolor; }'),
+      []
+    )
+  })
+
+  it('rejects unknown pseudo-elements and type selectors', async () => {
+    const pseudoElement = await lint(
+      '.a { &::placholder { color: var(--color-primary); } }'
+    )
+    assert.ok(pseudoElement.includes('selector-pseudo-element-no-unknown'))
+    const type = await lint('dvi.a { color: var(--color-primary); }')
+    assert.ok(type.includes('selector-type-no-unknown'))
+    assert.deepEqual(
+      await lint(
+        '.a { &::placeholder { color: var(--color-primary); } & svg { fill: currentcolor; } }'
+      ),
+      []
+    )
+  })
 })
