@@ -156,24 +156,42 @@ export default function FaqPage() {
 }
 ```
 
+Uma página do tipo `article`, com imagem própria e seção no `llms.txt`, declara
+o tipo e a imagem em `seo.ts`, com o texto alternativo também num getter:
+
+```ts
+import { m } from '@paraglide/messages.js'
+
+import type { SeoRouteInfo } from '@/@types/seo.ts'
+
+export const seo = {
+  get title() {
+    return m.team_title()
+  },
+  get description() {
+    return m.team_description()
+  },
+  type: 'article',
+  image: {
+    path: '/images/equipe.png',
+    width: 1200,
+    height: 800,
+    get alt() {
+      return m.team_imageAlt()
+    }
+  }
+} satisfies SeoRouteInfo
+```
+
+A rota importa esse objeto e declara a seção ao lado dele:
+
 ```tsx
 import type { RouteDefinition } from '@solidjs/router'
 
+import { seo } from './seo.ts'
+
 export const route = {
-  info: {
-    seo: {
-      title: 'Sobre nós',
-      description: 'Conheça nossa equipe.',
-      type: 'article',
-      image: {
-        path: '/images/equipe.png',
-        width: 1200,
-        height: 800,
-        alt: 'Foto da equipe'
-      }
-    },
-    llms: { section: 'Empresa' }
-  }
+  info: { seo, llms: { section: 'Empresa' } }
 } satisfies RouteDefinition
 ```
 
@@ -181,34 +199,35 @@ export const route = {
 
 O `llms.txt` coleta os mesmos metadados pelo manifesto, sem renderizar páginas
 nem executar preloads, e publica só as páginas que declaram `route.info.llms`. O
-arquivo é um índice curado para modelos de linguagem, não um sitemap: em sites
-grandes, selecione as páginas que explicam o produto e agrupe-as. `llms: true`
-inclui a página; sem seção herdada, ela entra na seção padrão `Pages`.
-`{ section: 'Guias' }` cria ou reutiliza uma seção com esse nome, na ordem em
-que aparece no manifesto; `{ optional: true }` move a página para a seção
-`Optional`, que o formato reserva ao conteúdo que o modelo pode pular, e uma
-seção declarada com esse nome se funde a ela. A configuração é herdada pela
-cadeia de rotas: um layout com `llms: { section: 'Docs' }` inclui suas filhas
-nessa seção, uma filha pode sair com `llms: false` ou sobrescrever só o campo
-que declara, e `llms: true` numa filha reativa a inclusão preservando seção e
-marcação opcional herdadas. `noindex: true` exclui a página do sitemap e do
-llms.txt, mesmo com a flag. O filtro considera a configuração efetiva da página,
-incluindo herança e a rota de índice filha. O resolvedor fica colocalizado em
-`src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. A publicação de Markdown
-é controlada separadamente por `route.info.markdown`.
+arquivo é um índice curado para modelos de linguagem, não um sitemap, e não tem
+limite de tamanho: em sites grandes, meça os textos reais, selecione as páginas
+que explicam o produto e agrupe-as. `llms: true` inclui a página; sem seção
+herdada, ela entra na seção padrão `Pages`. `{ section: 'Guias' }` cria ou
+reutiliza uma seção com esse nome, na ordem em que aparece no manifesto;
+`{ optional: true }` move a página para a seção `Optional`, que o formato
+reserva ao conteúdo que o modelo pode pular, e uma seção declarada com esse nome
+se funde a ela. A configuração é herdada pela cadeia de rotas: um layout com
+`llms: { section: 'Docs' }` inclui suas filhas nessa seção, uma filha pode sair
+com `llms: false` ou sobrescrever só o campo que declara, e `llms: true` numa
+filha reativa a inclusão preservando seção e marcação opcional herdadas.
+`noindex: true` exclui a página do sitemap e do llms.txt, mesmo com a flag. O
+filtro considera a configuração efetiva da página, incluindo herança e a rota de
+índice filha. O resolvedor fica colocalizado em
+`src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. O índice sai no idioma
+base. Rotas com parâmetro ficam fora mesmo com `llms`, e as fontes de
+`route.info.sitemap` não alimentam esse índice. A publicação de Markdown é
+controlada separadamente por `route.info.markdown`; quando a folha declara
+`markdown: true` ou `'dynamic'`, o link do índice aponta para o `.md`
+(`/en/about.md`), e nas demais, para o HTML.
 
 ## Sitemap e rotas dinâmicas
 
-O `llms.txt` coleta do manifesto só páginas sem parâmetros, com `llms`
-habilitado e sem `noindex`, no idioma base. Se a folha declara `markdown: true`
-ou `'dynamic'`, o link aponta para o `.md` (`/en/about.md`); nas demais, para o
-HTML. Rotas com parâmetro ficam fora mesmo com `llms`, e as fontes de
-`route.info.sitemap` não alimentam esse índice. No sitemap, uma rota com
-parâmetro entra pelas entradas de `route.info.sitemap`: uma função, síncrona ou
-assíncrona, que devolve `{ path, lastmod? }` com caminhos absolutos do site,
-enumerados a partir da fonte de dados. O módulo da rota entra no bundle do
-cliente, então banco e SDK ficam numa server function chamada pela fonte,
-conforme o [contrato de erros no servidor](server-errors.md). A fonte recebe um
+No sitemap, uma rota com parâmetro entra pelas entradas de `route.info.sitemap`:
+uma função, síncrona ou assíncrona, que devolve `{ path, lastmod? }` com
+caminhos absolutos do site, enumerados a partir da fonte de dados. O módulo da
+rota entra no bundle do cliente, então banco e SDK ficam numa server function
+chamada pela fonte, conforme o
+[contrato de erros no servidor](server-errors.md). A fonte recebe um
 `AbortSignal` que aborta no prazo das fontes, na desconexão do cliente e ao fim
 da leitura, inclusive quando outra fonte falha; repasse-o à leitura para
 cancelá-la, em vez de só deixar de esperá-la. Uma fonte que ignore o sinal
@@ -237,7 +256,9 @@ alterações não são lidas pelo gerador.
 Os limites são conferidos uma única vez, depois de gerar uma URL por idioma, com
 alternates e `x-default`: a quantidade de caminhos aceita é o limite de URLs
 dividido pelo número de idiomas. Veja a
-[integração dos índices com i18n](i18n.md#índices-de-seo).
+[integração dos índices com i18n](i18n.md#índices-de-seo). O endpoint gera um
+único sitemap, sem divisão automática: uma aplicação que passe de qualquer
+limite precisa de vários arquivos e de um índice de sitemaps.
 
 ```tsx
 import type { RouteDefinition } from '@solidjs/router'
@@ -255,10 +276,10 @@ Para que `noindex` seja respeitado pelas listas, declare-o em `route.info.seo`,
 em vez de acrescentar apenas uma tag HTML avulsa.
 
 A travessia do manifesto é iterativa, para não depender do limite de recursão do
-JavaScript. O coletor do sitemap lê caminhos, `noindex`, `type` e as datas de
-artigo, sem resolver título ou descrição. O coletor do `llms.txt` resolve também
-os metadados das páginas. O registro histórico da medição dos casos extremos
-está em [desempenho da coleta de SEO](seo-performance.md).
+JavaScript; o teste de `walkStaticRoutes` cobre 10 mil layouts aninhados e 10
+mil rotas irmãs. O coletor do sitemap lê caminhos, `noindex`, `type` e as datas
+de artigo, sem resolver título ou descrição. O coletor do `llms.txt` resolve
+também os metadados das páginas.
 
 ## Endpoints e cache
 
@@ -338,16 +359,12 @@ conteúdo adicional exclusivo do Markdown. Traduções permanecem em getters ou
 chamadas no componente, no contexto do idioma da requisição.
 
 O adaptador escolhe `event.renderMode = 'async'` apenas para solicitações de
-Markdown e aguarda o SSR. A entrada repassa o sinal da requisição ao
-`renderToStream`. Antes da conversão, o adaptador exige `hasCompleted === true`
-e `hasErrors === false` no estado seguro guardado em
-`event.locals.ssrRenderState`. Ausência, conclusão incompleta ou erro descarta o
-HTML e devolve erro público 500 com `private, no-store`. O estado cobre erros
-observados pelo render; não atesta dados de hidratação silenciosamente
-descartados pelo serializador. Markdown usa o HTML assentado, sem esses dados. O
-hook global marca o estado e recebe cada erro uma vez por tipo em cada
-requisição; a conclusão continua exigida à parte. HTML normal mantém streaming.
-O contrato e o critério para remover o patch estão em
+Markdown, aguarda o SSR e só converte o HTML quando o estado de integridade do
+render indica conclusão sem erros; o HTML normal mantém streaming. O estado
+cobre erros observados pelo render; não atesta dados de hidratação
+silenciosamente descartados pelo serializador, e o Markdown usa o HTML
+assentado, sem esses dados. O contrato completo, a resposta de recusa e o
+critério para remover o patch estão em
 [erros no servidor](server-errors.md#integridade-do-ssr-para-markdown).
 
 O prerender do build passa pelo mesmo adaptador. O módulo

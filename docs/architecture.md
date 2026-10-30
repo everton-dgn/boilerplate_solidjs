@@ -43,12 +43,8 @@ ou desenvolvimento. Mantenha essa declaração versionada e atualizada ao mudar 
 rotas, para permitir typecheck antes de iniciar o Vite.
 
 O `filesystem-routing` mantém a ordem da varredura quando o watcher atualiza ou
-recria uma rota. Antes da correção, editar um arquivo de rota no servidor de
-desenvolvimento movia a rota para o fim do manifesto, e a declaração gerada
-mudava de ordem sem mudança de conteúdo. O problema foi relatado em
-[solidjs/filesystem-routing#27](https://github.com/solidjs/filesystem-routing/issues/27)
-e corrigido em [#28](https://github.com/solidjs/filesystem-routing/pull/28); o
-teste de `PageFileSystemRouter` continua cobrindo esse caso como regressão.
+recria uma rota, e o teste de `PageFileSystemRouter` cobre esse caso
+([solidjs/filesystem-routing#27](https://github.com/solidjs/filesystem-routing/issues/27)).
 
 O [tsconfig.json](../tsconfig.json) mantém TypeScript em modo estrito, com
 `erasableSyntaxOnly` para restringir a sintaxe TypeScript que exige
@@ -74,11 +70,8 @@ Imports de CSS Modules usam o nome `S`, por exemplo,
 
 ## Coesão dos módulos de tooling
 
-Divida por responsabilidades que possam ser lidas e alteradas juntas. O número
-de linhas ajuda a encontrar candidatos, mas não determina a divisão. Fluxos que
-dependem do mesmo contexto local permanecem juntos; funções pequenas que apenas
-repassam chamadas acrescentam caminhos de leitura sem esclarecer a operação.
-
+A divisão segue a
+[regra de coesão do AGENTS.md](../AGENTS.md#coesão-e-tamanho-dos-módulos).
 `tooling/lint.ts` monta a configuração e seus overrides. Os grupos em
 `tooling/lint/rules/` reúnem as regras de JavaScript, imports, TypeScript,
 Unicorn, testes e integrações com o ambiente. Os valores das regras e a ordem
@@ -94,14 +87,13 @@ os contratos extensos usados nessa decisão.
 
 ## Dados e infraestrutura
 
-Quando houver consumidores de formatação de datas, moedas ou números, coloque
-essas funções em `data/formatters/`, com testes junto delas. Normalização de
-erros de domínio de APIs, quando necessária, fica em `data/errorApi/`. Essas
-pastas de `data/` são convenções para novos consumidores; atualmente não contêm
-módulos. A criação de erros públicos exclusivos do servidor fica em
+`data/formatters/` (formatação de datas, moedas e números) e `data/errorApi/`
+(normalização de erros de domínio de APIs) são convenções para os primeiros
+consumidores e ainda não contêm módulos. Erros públicos exclusivos do servidor
+ficam em
 [`infra/server/publicErrors/`](../src/infra/server/publicErrors/index.ts), junto
-da proteção das operações de backend. Requisições e persistência continuam em
-`infra/`. Validação de tema continua em `helpers/isTheme/`.
+da proteção das operações de backend; requisições e persistência ficam em
+`infra/`.
 
 ## Dependências entre camadas
 

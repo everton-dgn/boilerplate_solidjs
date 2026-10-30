@@ -8,6 +8,19 @@ Os arquivos de teste ficam em pastas `__tests__` ao lado do código que exercita
 (`src/__tests__/`, pastas dos módulos, `tooling/release/__tests__/`). Os testes
 E2E são a exceção e vivem em `src/tests/pages/`, fora dos projetos do Vitest.
 
+A regra de lint `project/test-filename`, em `tooling/test-filename.ts`, confere
+os nomes: `Nome[.qualificador].ambiente.test.ts(x)` em `src`, com o ambiente
+`node`, `dom`, `browser` ou `e2e`; `Nome[.qualificador].test-d.ts(x)` para
+testes só de tipos; e `Nome[.qualificador].test.ts` em `tooling`. `Nome` é o
+assunto exato, que por padrão é a pasta que contém `__tests__`, como `isTheme`
+em `helpers/isTheme/__tests__/isTheme.node.test.ts`; assuntos com ponto, como
+`llms.txt`, também valem. Qualificadores são separados por ponto, começam com
+minúscula e seguem em camelCase, como em `Home.themeCss.e2e.test.ts`. Suítes sem
+módulo colocalizado, como as de `src/__tests__/` e `tooling/__tests__/`, e cada
+página em `src/tests/pages/<Pasta>/` declaram seus assuntos no mapa `subjects`
+desse arquivo. A primeira suíte E2E de uma página nova exige a entrada
+correspondente, e os arquivos dessas pastas usam só o ambiente `e2e`.
+
 Teste regras e resultados observáveis: recuperação após erro, navegação,
 seleção, persistência e sincronização. Componentes de apresentação simples não
 precisam de suíte própria para conferir montagem, textos estáticos, classes ou o
@@ -98,8 +111,9 @@ sucesso, cada um em SSR inicial, chamada pelo navegador e streaming, além de
 recarregamento ainda com falha, recuperação após o backend voltar e isolamento
 do bundle cliente. O SSR inicial também é verificado com JavaScript desativado.
 O detalhe está em [docs/server-errors.md](server-errors.md); o CI executa a
-suíte inteira, exceto quando a prova de reaproveitamento dispensa
-`E2E (fixtures)` no push da `main`.
+suíte inteira, exceto quando a
+[prova de reaproveitamento](development.md#reutilização-da-validação-do-pr-na-main)
+dispensa `E2E (fixtures)`.
 
 `hydrationFinished()` lê o atributo `data-hydration-ended` do `<html>`,
 publicado pela API pública experimental `onHydrationEnd` do Solid. O registro
@@ -204,14 +218,13 @@ ambas em paralelo, em runners separados para isolar portas e builds; a suíte de
 produção também valida o build final e é a única que roda quando a prova de
 reaproveitamento dispensa `E2E (fixtures)`.
 
-No push para `main`, o job de E2E de produção executa `vercel build --prod` com
-as configurações obtidas da Vercel. O Playwright recebe somente as variáveis
-públicas `VITE_*` daquele arquivo, preservando valores já definidos no processo.
-Credenciais de backend do arquivo da Vercel não são repassadas ao preview. Com
-`TEST_PREBUILT=true`, o Playwright inicia somente o preview. Um tar criado antes
-dos testes e a listagem dos arquivos são comparados ao output depois deles:
-alterações ou novos arquivos fazem o job falhar. O deploy recebe esse tar na
-mesma execução do CI e publica o build testado, sem recompilar.
+No push para `main`, o job de E2E de produção testa o build da Vercel que o
+deploy publica, conforme a
+[integração com a Vercel](../tooling/release/README.md#integração-com-a-vercel).
+O Playwright recebe somente as variáveis públicas `VITE_*` do arquivo de
+ambiente obtido da Vercel, preservando valores já definidos no processo;
+credenciais de backend desse arquivo não são repassadas ao preview. Com
+`TEST_PREBUILT=true`, o Playwright inicia somente o preview.
 
 PRs, inclusive de forks, mantêm os builds locais sem credenciais da Vercel. Os
 comandos locais também continuam compilando por padrão. Para conferir um build
@@ -220,18 +233,18 @@ modo exige rotas de produção; usá-lo com a suíte de fixtures causa erro. Os
 testes de `tooling/__tests__/playwright.test.ts` executam os comandos de startup
 com um CLI simulado e verificam a quantidade de builds em cada modo.
 
-Use `vp exec playwright test --config tooling/playwright.ts --ui` para abrir a
-interface interativa do Playwright. Com `CI=true`, os E2E usam dois workers;
-localmente, mantêm o paralelismo padrão. `OutsideError.e2e.test.ts`, que confere
-a contagem exata de linhas no log do servidor, roda no projeto `server-logs`,
-declarado como `teardown` do `chromium` em `tooling/playwright.ts`: começa
-depois que os demais testes terminam, mesmo quando algum falha, e executa o
-arquivo em ordem num único worker. Uma execução filtrada com testes do
-`chromium` também roda esse arquivo no fim, e `--no-deps` o dispensa; para rodar
-só ele, passe o caminho do arquivo ou da pasta `OutsideError`. Uma linha gravada
-com atraso por uma requisição anterior ainda alteraria a contagem. Para comparar
-tempos ou investigar uma falha de concorrência, use
-`CI=true vp run test:e2e --workers=1` e `CI=true vp run test:e2e --workers=2`.
+Use `bun run test:e2e:ui` para abrir a interface interativa do Playwright. Com
+`CI=true`, os E2E usam dois workers; localmente, mantêm o paralelismo padrão.
+`OutsideError.e2e.test.ts`, que confere a contagem exata de linhas no log do
+servidor, roda no projeto `server-logs`, declarado como `teardown` do `chromium`
+em `tooling/playwright.ts`: começa depois que os demais testes terminam, mesmo
+quando algum falha, e executa o arquivo em ordem num único worker. Uma execução
+filtrada com testes do `chromium` também roda esse arquivo no fim, e `--no-deps`
+o dispensa; para rodar só ele, passe o caminho do arquivo ou da pasta
+`OutsideError`. Uma linha gravada com atraso por uma requisição anterior ainda
+alteraria a contagem. Para comparar tempos ou investigar uma falha de
+concorrência, use `CI=true vp run test:e2e --workers=1` e
+`CI=true vp run test:e2e --workers=2`.
 
 Os relatórios HTML ficam em `playwright-report/e2e/` e
 `playwright-report/production/`. Os traces de falhas ficam em

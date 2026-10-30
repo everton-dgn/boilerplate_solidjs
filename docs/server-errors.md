@@ -53,24 +53,21 @@ runtime, inclusive de render e de rejeições fora de server functions, por um
 quando o erro não era público. Sinais de controle (`Response` sem corpo,
 envelopes e `NotReadyError`) seguem a política padrão do runtime.
 `Response.error()` também não tem corpo, mas o status 0 não sai como HTTP, então
-ela vira falha pública. Um envelope lançado por uma query durante o SSR chega
-primeiro ao hook como controle; depois o router lança o valor do envelope no
-render, e esse valor é tratado como falha de render, com ou sem o hook. O
-retorno do hook vai ao cliente sem nova sanitização, então ele nunca devolve o
-objeto recebido, nem um erro público, que pode ter ganhado campos depois de
-criado. O hook é síncrono e não lança, nem quando o log falha: uma falha dele
-faria o runtime registrar o erro do hook.
+ela vira falha pública. O caso do envelope lançado por uma query no SSR está em
+[Validação e recuperação](#validação-e-recuperação). O retorno do hook vai ao
+cliente sem nova sanitização, então ele nunca devolve o objeto recebido, nem um
+erro público, que pode ter ganhado campos depois de criado. O hook é síncrono e
+não lança, nem quando o log falha: uma falha dele faria o runtime registrar o
+erro do hook.
 
 Limites do hook:
 
 - A rejeição de uma fonte assíncrona é serializada com a política padrão antes
   de qualquer hook. O mesmo corpo leva "Internal Server Error" para a fonte e a
   mensagem pública para o boundary.
-- Em desenvolvimento o hook devolve `undefined`, para que o runtime envie o erro
-  original ao navegador. Ele registra o log filtrado seguido do erro original e
-  marca o estado usado pelo Markdown. Uma falha de server function chega ao hook
-  já trocada pelo erro público do wrapper: o navegador recebe a mensagem
-  pública, e o original sai no terminal pelo log do wrapper.
+- Em desenvolvimento o hook não troca o erro, como descrito em
+  [Log de falhas](#log-de-falhas): o navegador recebe o erro que o runtime
+  recebeu, que numa server function já é o erro público do wrapper.
 - Valores primitivos lançados não têm veredito por objeto; o hook roda e
   registra o log a cada vez que o runtime os encontra.
 
@@ -109,15 +106,20 @@ para que os scripts dela, o handler do plugin e a CSP usem o mesmo valor. Sem
 evento de requisição, o 500 em texto sai com `script-src 'none'`. O desenho da
 CSP está no guia de [cabeçalhos de segurança](security.md).
 
-Numa navegação (`GET` ou `HEAD` com `accept` de HTML, `*/*` ou sem `accept`, o
-mesmo critério do plugin para servir uma página), o 500 mostra a página de erro
-do app: `containFailures` grava um `createPublicError()` em
-`locals.serverFailure` e chama o render da página. O `ServerFailureGate` de
-[`App.tsx`](../src/App.tsx) lança esse erro antes do Router, o `Errored` raiz
-mostra o `ErrorFallback` e o cliente hidrata o fallback pelo erro serializado.
-Como o erro já é público, o hook não registra outro log. O status é forçado para
-500 na resposta. Se o render devolver algo que não seja HTML, como o redirect de
-idioma de um caminho sem prefixo, a resposta é o 500 em texto.
+Numa navegação, o 500 mostra a página de erro do app. Navegação é um `GET` ou
+`HEAD` num caminho de página cujo `Accept` permita HTML ou Markdown, incluindo
+curingas e a ausência do header, conforme `isPageRequest` em
+[`requestClassification`](../src/middleware/requestClassification/index.ts); um
+cliente que peça só Markdown também recebe a página de erro em HTML. Esse
+critério é mais amplo que o do servidor de desenvolvimento do plugin, que só
+considera HTML, `*/*` ou a falta de `accept`. `containFailures` grava um
+`createPublicError()` em `locals.serverFailure` e chama o render da página. O
+`ServerFailureGate` de [`App.tsx`](../src/App.tsx) lança esse erro antes do
+Router, o `Errored` raiz mostra o `ErrorFallback` e o cliente hidrata o fallback
+pelo erro serializado. Como o erro já é público, o hook não registra outro log.
+O status é forçado para 500 na resposta. Se o render devolver algo que não seja
+HTML, como o redirect de idioma de um caminho sem prefixo, a resposta é o 500 em
+texto.
 
 O render recebido pelo middleware é o dispatcher do plugin, que atende o
 endpoint de server functions (`/_server`) antes da página. Por isso esse
@@ -191,9 +193,10 @@ O logger é síncrono e não propaga falhas de inspeção, montagem ou acesso ao
 destino. Os consumidores mantêm a resposta pública mesmo sem log disponível. Se
 o destino escrever e depois lançar, a mensagem fixa pode aparecer duas vezes.
 
-No servidor de desenvolvimento, três chamadores passam
-`shouldPrintOriginal: true`, e o logger imprime o erro original numa segunda
-chamada de `console.error`, depois da linha filtrada:
+No servidor de desenvolvimento, o hook de `configureServerErrors` devolve
+`undefined`, e o runtime envia ao navegador o erro que recebeu. Três chamadores
+passam `shouldPrintOriginal: true`, e o logger imprime o erro original numa
+segunda chamada de `console.error`, depois da linha filtrada:
 
 - O hook de `configureServerErrors`. Com o hook instalado, o runtime deixa de
   imprimir essas falhas, e sem esse pedido a mensagem só chegaria ao navegador.
@@ -203,9 +206,11 @@ chamada de `console.error`, depois da linha filtrada:
 - O sitemap, que responde 503 sem passar pelo runtime.
 
 As origens `[middleware]` e `[error-page]` não fazem o pedido, porque em
-desenvolvimento a contenção relança a exceção antes de registrar. O logger
-confere `import.meta.env.DEV` por conta própria e ignora o pedido em produção.
-Uma falha ao formatar o erro original é descartada.
+desenvolvimento a contenção relança a exceção antes de registrar. Os
+diagnósticos de desenvolvimento do Solid também imprimem a mensagem, como o de
+um erro contido por `<Errored>`. O logger confere `import.meta.env.DEV` por
+conta própria e ignora o pedido em produção. Uma falha ao formatar o erro
+original é descartada.
 
 Limites conhecidos:
 
@@ -524,19 +529,13 @@ erro público 500 sem cache. Redirects e respostas que não são páginas elegí
 preservam seu fluxo anterior. As páginas estáticas passam por esse mesmo
 adaptador no prerender do build, e uma recusa ali interrompe o build.
 
-Como o hook é a fonte desse sinal, ele fica instalado também em desenvolvimento.
-Nesse modo ele marca o estado e registra o log filtrado, mas devolve
-`undefined`, e o runtime continua enviando ao navegador o erro que recebeu, que
-numa server function já é o erro público do wrapper. Com um hook instalado, o
-runtime deixa de chamar `console.error` com o erro recebido; o hook e o wrapper
-devolvem o original ao terminal por `logServerFailure`, depois da linha
-filtrada, como descrito em [Log de falhas](#log-de-falhas). Os diagnósticos de
-desenvolvimento do Solid também imprimem a mensagem, como o de um erro contido
-por `<Errored>`. A entrada continua sem um `onError` local: ele teria
-precedência sobre o hook global, desviaria a sanitização e o log e deixaria o
-estado sem marcação, e o Markdown publicaria com `hasErrors: false`. O registro
-do hook chama `observeRenderFailures()`; até lá a fábrica cria o estado com
-`hasErrors` indefinido, e o Markdown recusa a página. Sem o
+Como o hook é a fonte desse sinal, ele fica instalado também em desenvolvimento,
+onde marca o estado sem trocar o erro, como descrito em
+[Log de falhas](#log-de-falhas). A entrada continua sem um `onError` local: ele
+teria precedência sobre o hook global, desviaria a sanitização e o log e
+deixaria o estado sem marcação, e o Markdown publicaria com `hasErrors: false`.
+O registro do hook chama `observeRenderFailures()`; até lá a fábrica cria o
+estado com `hasErrors` indefinido, e o Markdown recusa a página. Sem o
 `serverFunctions.configure` do Vite, que carrega o registro, todo `.md` responde
 500 e o prerender interrompe o build.
 
