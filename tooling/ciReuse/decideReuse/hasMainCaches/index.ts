@@ -6,6 +6,8 @@ const MAIN_REF = 'refs/heads/main'
 
 const VALIDATION_CACHE_PREFIX = 'ci-validation-v2-'
 
+const DEPENDENCY_CACHE_PREFIX = 'vite-plus-'
+
 const PAGE_SIZE = 100
 
 type ActionsCache = { key: string; ref: string }
@@ -20,18 +22,35 @@ type Manifest = { devEngines?: DevEngines; packageManager?: unknown }
 
 type CacheOptions = Context & { runner: Runner }
 
+type CacheLookup = Context & { key: string; isPrefix: boolean }
+
 function digest(value: Uint8Array): Buffer {
   return createHash('sha256').update(value).digest()
 }
 
-// Só a chave de validação, definida no ci.yml, é consultada: a de pacotes segue
-// o formato interno do setup-vp, que pode mudar sem aviso.
-export async function hasMainCaches({
+// O filtro key da API compara por prefixo; a chave exata exige conferir a igualdade.
+async function hasMainCache({
   repository,
+  key,
+  isPrefix,
+  ports
+}: CacheLookup): Promise<boolean> {
+  const caches = await ports.api<ActionsCaches>(
+    `repos/${repository}/actions/caches?ref=${encodeURIComponent(MAIN_REF)}&key=${encodeURIComponent(key)}&per_page=${PAGE_SIZE}`
+  )
+  return caches.actions_caches.some(
+    cache =>
+      cache.ref === MAIN_REF &&
+      (isPrefix ? cache.key.startsWith(key) : cache.key === key)
+  )
+}
+
+export async function hasMainCaches({
   sha,
   runner,
-  ports
+  ...context
 }: CacheOptions): Promise<boolean> {
+  const { ports } = context
   // Mesmo valor de hashFiles('bun.lock') nas chaves do workflow.
   const lock = digest(digest(await ports.readBlob(`${sha}:bun.lock`)))
   const hash = lock.toString('hex')
@@ -46,11 +65,14 @@ export async function hasMainCaches({
   if (typeof node !== 'string' || !bun) {
     throw new Error('Versões de Node ou Bun ausentes no package.json.')
   }
-  const prefix = `${VALIDATION_CACHE_PREFIX}${runner.os}-${runner.arch}-node-${node}-bun-${bun}-${hash}-`
-  const caches = await ports.api<ActionsCaches>(
-    `repos/${repository}/actions/caches?ref=${encodeURIComponent(MAIN_REF)}&key=${encodeURIComponent(prefix)}&per_page=${PAGE_SIZE}`
-  )
-  return caches.actions_caches.some(
-    cache => cache.ref === MAIN_REF && cache.key.startsWith(prefix)
-  )
+  // Formato documentado no README do setup-vp, com a arquitetura do Node:
+  // vite-plus-{OS}-{arch}-{pm}-{lockfile-hash}.
+  const dependencies = `${DEPENDENCY_CACHE_PREFIX}${runner.os}-${runner.nodeArch}-bun-${hash}`
+  const validation = `${VALIDATION_CACHE_PREFIX}${runner.os}-${runner.arch}-node-${node}-bun-${bun}-${hash}-`
+  const lookups = [
+    { ...context, sha, key: dependencies, isPrefix: false },
+    { ...context, sha, key: validation, isPrefix: true }
+  ]
+  const results = await Promise.all(lookups.map(lookup => hasMainCache(lookup)))
+  return results.every(Boolean)
 }

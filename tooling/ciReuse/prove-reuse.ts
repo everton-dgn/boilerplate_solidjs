@@ -1,5 +1,5 @@
 import { appendFile } from 'node:fs/promises'
-import { env, stdout } from 'node:process'
+import { arch, env, stdout } from 'node:process'
 
 import { createPorts } from './createPorts/index.ts'
 import { decideReuse } from './decideReuse/index.ts'
@@ -17,7 +17,11 @@ const signal = AbortSignal.timeout(DEADLINE_MS)
 const decision = await decideReuse({
   repository,
   sha: env.GITHUB_SHA ?? '',
-  runner: { os: env.RUNNER_OS ?? '', arch: env.RUNNER_ARCH ?? '' },
+  runner: {
+    os: env.RUNNER_OS ?? '',
+    arch: env.RUNNER_ARCH ?? '',
+    nodeArch: arch
+  },
   ports: createPorts({ repository, signal })
 })
 const message =

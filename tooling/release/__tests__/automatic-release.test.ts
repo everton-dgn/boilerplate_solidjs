@@ -300,6 +300,8 @@ describe(
           state.calls.indexOf('PUT repos/owner/repo/pulls/1/merge')
       )
       assert.equal(state.release?.tag_name, 'v1.0.0')
+      assert.equal(await f.lastOutput('tag'), 'v1.0.0')
+      assert.equal(await f.lastOutput('version'), '1.0.0')
     })
 
     it('rejects a release whose source CI no longer passes', async context => {

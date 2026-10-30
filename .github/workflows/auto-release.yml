@@ -133,6 +133,9 @@ jobs:
       checks: write
       contents: write
       pull-requests: read
+    outputs:
+      tag: ${{ steps.publish.outputs.tag }}
+      version: ${{ steps.publish.outputs.version }}
     steps:
       - name: Checkout trusted release automation
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -155,6 +158,7 @@ jobs:
           digest-mismatch: error
 
       - name: Validate release metadata, merge and publish
+        id: publish
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_MODE: publish

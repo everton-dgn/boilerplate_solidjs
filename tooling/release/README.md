@@ -101,6 +101,11 @@ metadados e aponta para o CI aprovado da origem. A release não repete cobertura
 tooling nem E2E. Os testes específicos da automação executam em Bun no pre-push
 e no CI quando houver mudanças relevantes; a publicação não os repete.
 
+O job `publish` expõe `tag` e `version` como saídas para um job seguinte no
+mesmo workflow, como deploy ou publicação de pacote, porque a tag criada com o
+`GITHUB_TOKEN` não dispara outros workflows; as saídas ficam vazias quando o
+merge é adiado.
+
 O script confere as regras ativas da `main` antes de criar qualquer artefato de
 release e repete a conferência imediatamente antes do merge. Se faltar a
 exigência de CI estrito, a preparação para sem criar commit, branch ou PR. As

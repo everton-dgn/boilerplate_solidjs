@@ -111,6 +111,20 @@ describe('release jobs with write permissions', () => {
     assert.ok(publish.includes('      checks: write\n'))
     assert.doesNotMatch(publish, /pull-requests: write/u)
   })
+
+  it('expose the published tag and version as publish job outputs', () => {
+    const publish = jobBlock('publish')
+    assert.ok(
+      publish.includes(
+        `    outputs:\n      tag: \${{ steps.publish.outputs.tag }}\n      version: \${{ steps.publish.outputs.version }}\n`
+      )
+    )
+    assert.ok(
+      publish.includes(
+        '- name: Validate release metadata, merge and publish\n        id: publish\n'
+      )
+    )
+  })
 })
 
 // O GitHub cancela a release pendente do mesmo grupo: um run inelegível que
