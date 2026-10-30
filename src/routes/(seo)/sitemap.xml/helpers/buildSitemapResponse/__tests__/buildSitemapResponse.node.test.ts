@@ -106,8 +106,14 @@ async function readOutcome(response: Response): Promise<Outcome> {
   ]
 }
 
+// O Vitest roda com DEV verdadeiro; os casos conferem o log de produção.
+function mockProductionLog(): void {
+  vi.stubEnv('DEV', false)
+  vi.spyOn(console, 'error').mockImplementation(vi.fn())
+}
+
 describe('resposta do sitemap', () => {
-  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+  beforeEach(mockProductionLog)
 
   afterEach(() => {
     vi.useRealTimers()
@@ -236,6 +242,26 @@ describe('resposta do sitemap', () => {
     })
   })
 
+  it('imprime o erro original depois da linha filtrada em desenvolvimento', async () => {
+    vi.stubEnv('DEV', true)
+    const failure = new Error('PRIVATE')
+
+    const response = await buildSitemapResponse({
+      siteUrl: SITE_URL,
+      signal: openSignal(),
+      manifest: manifest([() => Promise.reject(failure)])
+    })
+
+    await expect(readOutcome(response)).resolves.toStrictEqual(UNAVAILABLE)
+    expect(readLog(console.error).heads[0]).toStrictEqual([
+      SITEMAP_LOG,
+      'Error'
+    ])
+    expect(vi.mocked(console.error).mock.calls.slice(1)).toStrictEqual([
+      [failure]
+    ])
+  })
+
   it('responde 503 quando uma fonte devolve um caminho fora do site', async () => {
     const response = await buildSitemapResponse({
       siteUrl: SITE_URL,
@@ -260,7 +286,7 @@ describe('resposta do sitemap', () => {
 })
 
 describe('prazo e cancelamento das fontes do sitemap', () => {
-  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+  beforeEach(mockProductionLog)
 
   afterEach(() => {
     vi.useRealTimers()
@@ -341,7 +367,7 @@ describe('prazo e cancelamento das fontes do sitemap', () => {
 })
 
 describe('limite de URLs e duplicatas do sitemap', () => {
-  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
+  beforeEach(mockProductionLog)
 
   it(
     'aceita o limite de URLs depois de gerar uma URL por idioma',
