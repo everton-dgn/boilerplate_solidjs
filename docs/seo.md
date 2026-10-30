@@ -65,11 +65,16 @@ export const seo = {
 Em `index.tsx`, importe `seo` e use `info: { seo }` na definição da rota, junto
 dos demais controles que a página declarar. Getters preservam o idioma da
 requisição; não copie os textos traduzidos para valores no topo do módulo. Os
-catálogos ficam em `i18n/{pt,en,es}.json` ao lado desses arquivos. O mesmo
-`seo.ts` pode exportar `content` com os dados que o componente renderiza (as
-páginas que usam `SiteArticle` o tipam com `satisfies SitePage`), e os getters
-de `seo` podem ler esse objeto. É dado de UI: o Markdown não o lê, porque sai do
-HTML renderizado.
+catálogos ficam em `i18n/{pt,en,es}.json` ao lado desses arquivos. Os dados que
+o componente renderiza ficam em `index.tsx`, numa constante não exportada com
+getters (as páginas que usam `SiteArticle` a tipam com `satisfies SitePage`), ou
+em chamadas de `m` no próprio JSX. O manifesto de rotas importa o `route` de
+cada página no bundle inicial, e tudo o que `seo.ts` importa entra junto. Por
+isso os getters de `seo` chamam as mensagens diretamente, sem ler o objeto da
+página, e o corpo fica só no módulo da rota, baixado na navegação. Uma página
+que ainda exporte `content` de `seo.ts` deve movê-lo para `index.tsx` e trocar
+as leituras de `seo` pelas mensagens. É dado de UI: o Markdown não o lê, porque
+sai do HTML renderizado.
 
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
 JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (nó

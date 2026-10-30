@@ -5,7 +5,7 @@ import SolidLogo from '~icons/my-images/solid'
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
 import { SITE } from '@/constants/site.ts'
 
-import { content, seo } from './seo.ts'
+import { seo } from './seo.ts'
 
 import S from './styles.module.css'
 
@@ -26,9 +26,15 @@ export default function Home() {
         <section class={S.hero}>
           <PageBadge>{SITE.title}</PageBadge>
 
-          <h1 class={S.title}>{content.title}</h1>
+          <h1 class={S.title}>{m.home_title()}</h1>
 
-          <p class={S.description}>{content.intro}</p>
+          <p class={S.description}>
+            {m.home_description({
+              framework: 'SolidJS 2',
+              toolchain: 'Vite+',
+              language: 'TypeScript'
+            })}
+          </p>
 
           <p class={S.description}>{m.home_features()}</p>
 
