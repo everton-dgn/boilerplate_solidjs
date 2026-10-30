@@ -22,6 +22,7 @@ const MARKDOWN_ALTERNATE =
 
 function expectPublicMarkdown(body: string) {
   expect(body).toContain('# HTML Markdown contract: sample')
+  expect(body).toContain('Before the title')
   expect(body.indexOf('Before the title')).toBeLessThan(
     body.indexOf('# HTML Markdown')
   )
