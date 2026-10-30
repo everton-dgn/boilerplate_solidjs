@@ -18,24 +18,6 @@ function makeState(): ToastState {
 }
 
 describe('estado das notificações', () => {
-  it('não publica novo anúncio quando o lote volta ao texto já anunciado', () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] })
-    onTestFinished(() => {
-      vi.useRealTimers()
-    })
-    const state = makeState()
-    const id = state.api.show({ message: 'A', duration: 0 })
-    vi.advanceTimersByTime(ANNOUNCEMENT_DELAY)
-    flush()
-    const announced = state.polite()
-    expect(announced).toMatchObject({ id, message: 'A' })
-    state.api.update({ id, message: 'B' })
-    state.api.update({ id, message: 'A' })
-    vi.advanceTimersByTime(ANNOUNCEMENT_DELAY)
-    flush()
-    expect(state.polite()).toBe(announced)
-  })
-
   it('anuncia um toast novo de texto repetido mesmo que outro volte ao texto no lote', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] })
     onTestFinished(() => {

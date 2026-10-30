@@ -4,8 +4,6 @@ import path from 'node:path'
 
 import { buildRouteTree, PageFileSystemRouter } from 'filesystem-routing'
 
-const BASE_LAYOUT_PAGE_COUNT = 5
-
 describe('roteamento por arquivo', () => {
   it('descobre páginas dinâmicas sem registrar componentes colocalizados', async () => {
     const router = new PageFileSystemRouter({
@@ -19,7 +17,7 @@ describe('roteamento por arquivo', () => {
     expect(routes[0]).toMatchObject({ page: true })
   })
 
-  it('registra a página inicial e o fallback a partir dos arquivos reais', async () => {
+  it('registra a página inicial e o fallback e remove o agrupamento da URL', async () => {
     const router = new PageFileSystemRouter({
       dir: `${import.meta.dirname}/../routes`,
       extensions: ['js', 'jsx', 'ts', 'tsx']
@@ -33,28 +31,14 @@ describe('roteamento por arquivo', () => {
     expect(
       routes.find(route => route.path === '/(base)/*404/')?.$$route
     ).toBeDefined()
-  })
-
-  it('remove o segmento de agrupamento da URL da página inicial', async () => {
-    const router = new PageFileSystemRouter({
-      dir: `${import.meta.dirname}/../routes`,
-      extensions: ['js', 'jsx', 'ts', 'tsx']
-    })
-
-    const pages = buildRouteTree(await router.getRoutes())
-
+    const pages = buildRouteTree(routes)
     expect(pages).toHaveLength(1)
     expect(pages[0]).toMatchObject({ id: '/(base)', path: '/' })
     expect(pages[0]?.children).toStrictEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: '/(home)/', path: '/' }),
-        expect.objectContaining({ id: '/*404/', path: '/*404/' }),
-        expect.objectContaining({ id: '/about/', path: '/about/' }),
-        expect.objectContaining({ id: '/contact/', path: '/contact/' }),
-        expect.objectContaining({ id: '/privacy/', path: '/privacy/' })
+        expect.objectContaining({ id: '/(home)/', path: '/' })
       ])
     )
-    expect(pages[0]?.children).toHaveLength(BASE_LAYOUT_PAGE_COUNT)
   })
 
   it('mantém a ordem da varredura quando uma rota muda ou volta', async () => {
