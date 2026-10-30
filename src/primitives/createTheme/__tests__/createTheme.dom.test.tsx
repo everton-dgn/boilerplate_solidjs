@@ -5,6 +5,8 @@ import { ThemeContext } from '@/components/atoms/Provider/context.ts'
 import { THEME_COOKIE_NAME } from '@/constants/theme.ts'
 import { readTheme, saveTheme } from '@/infra/adapters/themeStorage/index.ts'
 import { blockCookie } from '@/tests/helpers/blockCookie/index.ts'
+import { clearThemeCookie } from '@/tests/helpers/clearThemeCookie/index.ts'
+import { stubBroadcastChannel } from '@/tests/helpers/stubBroadcastChannel/index.ts'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import type { ThemeState } from '../types.ts'
@@ -20,15 +22,13 @@ describe('primitive de tema', () => {
 
   beforeEach(() => {
     resetDocumentTheme()
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
+    clearThemeCookie()
     media = Object.assign(new EventTarget(), { matches: true })
     vi.stubGlobal('matchMedia', () => media)
     vi.stubGlobal('BroadcastChannel', null)
   })
 
-  afterEach(() => {
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  })
+  afterEach(clearThemeCookie)
 
   function mount(): void {
     renderComponent(() => {
@@ -62,7 +62,7 @@ describe('primitive de tema', () => {
     saveTheme('light')
     globalThis.dispatchEvent(new Event('focus'))
     await expect.poll(() => state.theme()).toBe('light')
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
+    clearThemeCookie()
     globalThis.dispatchEvent(new Event('pageshow'))
     await expect.poll(() => state.theme()).toBe('system')
     expect(state.resolvedTheme()).toBe('dark')
@@ -101,38 +101,22 @@ describe('primitive de tema', () => {
   })
 })
 
-type TestChannel = EventTarget & {
-  postMessage: ReturnType<typeof vi.fn>
-  close: ReturnType<typeof vi.fn>
-}
-
 describe('primitive de tema com canal entre abas', () => {
   let state: ThemeState
-  let channel: TestChannel
+  let channel: ReturnType<typeof stubBroadcastChannel>
 
   beforeEach(() => {
     resetDocumentTheme()
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-    channel = Object.assign(new EventTarget(), {
-      postMessage: vi.fn<() => void>(),
-      close: vi.fn<() => void>()
-    })
+    clearThemeCookie()
+    channel = stubBroadcastChannel()
     vi.stubGlobal('matchMedia', () => ({
       matches: false,
       addEventListener: vi.fn<() => void>(),
       removeEventListener: vi.fn<() => void>()
     }))
-    vi.stubGlobal(
-      'BroadcastChannel',
-      vi.fn(function makeChannel() {
-        return channel
-      })
-    )
   })
 
-  afterEach(() => {
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  })
+  afterEach(clearThemeCookie)
 
   it('aplica no DOM o tema recebido de outra aba', async () => {
     renderComponent(() => {

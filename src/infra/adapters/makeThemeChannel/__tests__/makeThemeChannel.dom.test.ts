@@ -1,36 +1,23 @@
 /* oxlint-disable unicorn/no-document-cookie -- Os testes exercitam a persistência e o bloqueio de cookie diretamente. */
 import { THEME_COOKIE_NAME } from '@/constants/theme.ts'
+import { clearThemeCookie } from '@/tests/helpers/clearThemeCookie/index.ts'
+import { stubBroadcastChannel } from '@/tests/helpers/stubBroadcastChannel/index.ts'
 
 import { makeThemeChannel } from '../index.ts'
 
 const NOW = 10
 const SECOND_CALL = 2
 
-let channel: EventTarget & {
-  postMessage: ReturnType<typeof vi.fn>
-  close: ReturnType<typeof vi.fn>
-}
-function setup(): void {
-  document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  channel = Object.assign(new EventTarget(), {
-    postMessage: vi.fn<() => void>(),
-    close: vi.fn<() => void>()
-  })
-  vi.stubGlobal(
-    'BroadcastChannel',
-    vi.fn(function makeChannel() {
-      return channel
-    })
-  )
-}
+let channel: ReturnType<typeof stubBroadcastChannel>
 
-function cleanup(): void {
-  document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
+function setup(): void {
+  clearThemeCookie()
+  channel = stubBroadcastChannel()
 }
 
 describe('sincronização de tema', () => {
   beforeEach(setup)
-  afterEach(cleanup)
+  afterEach(clearThemeCookie)
 
   it('ignora mensagens inválidas e usa cookie canônico para escritas persistidas', () => {
     const receive = vi.fn<() => void>()
@@ -89,7 +76,7 @@ describe('sincronização de tema', () => {
     document.cookie = `${THEME_COOKIE_NAME}=dark; Path=/`
     globalThis.dispatchEvent(new Event('focus'))
     expect(receive).toHaveBeenLastCalledWith('dark')
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
+    clearThemeCookie()
     globalThis.dispatchEvent(new Event('pageshow'))
     expect(receive).toHaveBeenLastCalledWith('system')
   })
@@ -155,7 +142,7 @@ describe('sincronização de tema', () => {
 
 describe('ordenação e escolhas temporárias', () => {
   beforeEach(setup)
-  afterEach(cleanup)
+  afterEach(clearThemeCookie)
 
   it('descarta mensagem temporária anterior à escolha local persistida', () => {
     const receive = vi.fn<() => void>()
@@ -271,7 +258,7 @@ describe('ordenação e escolhas temporárias', () => {
     onTestFinished(sync.dispose)
     sync.publish({ theme: 'dark', persisted: false })
     receive.mockClear()
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
+    clearThemeCookie()
     globalThis.dispatchEvent(new Event('focus'))
     expect(receive).toHaveBeenLastCalledWith('system')
   })
@@ -279,7 +266,7 @@ describe('ordenação e escolhas temporárias', () => {
 
 describe('ciclo de vida do canal de tema', () => {
   beforeEach(setup)
-  afterEach(cleanup)
+  afterEach(clearThemeCookie)
 
   it('remove listeners e fecha o canal ao descartar', () => {
     const receive = vi.fn<() => void>()

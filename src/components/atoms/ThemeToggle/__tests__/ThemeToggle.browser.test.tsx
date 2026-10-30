@@ -1,8 +1,7 @@
-/* oxlint-disable unicorn/no-document-cookie -- Os testes exercitam a persistência e o bloqueio de cookie diretamente. */
 import { page, userEvent } from 'vite-plus/test/browser/context'
 
-import { THEME_COOKIE_NAME } from '@/constants/theme.ts'
 import { readTheme } from '@/infra/adapters/themeStorage/index.ts'
+import { clearThemeCookie } from '@/tests/helpers/clearThemeCookie/index.ts'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import '@/theme/globalStyles.css'
@@ -10,12 +9,8 @@ import '@/theme/globalStyles.css'
 import { ThemeToggle } from '../index.tsx'
 
 describe('seletor de tema', () => {
-  beforeEach(() => {
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  })
-  afterEach(() => {
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  })
+  beforeEach(clearThemeCookie)
+  afterEach(clearThemeCookie)
 
   it('seleciona cada preferência e atualiza o estado acessível', async () => {
     renderComponent(() => <ThemeToggle />)

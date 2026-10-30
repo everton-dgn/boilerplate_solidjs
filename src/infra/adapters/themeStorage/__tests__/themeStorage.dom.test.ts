@@ -1,17 +1,12 @@
-/* oxlint-disable unicorn/no-document-cookie -- Os testes exercitam a persistência e o bloqueio de cookie diretamente. */
-import { THEME_COOKIE_NAME } from '@/constants/theme.ts'
 import { blockCookie } from '@/tests/helpers/blockCookie/index.ts'
+import { clearThemeCookie } from '@/tests/helpers/clearThemeCookie/index.ts'
 
 import { readTheme, saveTheme } from '../index.ts'
 
 describe('persistência da preferência no cookie', () => {
-  beforeEach(() => {
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  })
+  beforeEach(clearThemeCookie)
 
-  afterEach(() => {
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  })
+  afterEach(clearThemeCookie)
 
   it.each(['light', 'dark', 'system'] as const)('grava e relê %s', theme => {
     expect(saveTheme(theme)).toBe(true)
