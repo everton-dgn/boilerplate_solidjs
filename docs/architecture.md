@@ -34,8 +34,9 @@ continuam indicando parâmetros dinâmicos. Uma rota pode devolver
 `Response.redirect()`: como os headers dessa resposta são imutáveis, o
 middleware grava os cabeçalhos de segurança numa cópia.
 
-O middleware `requestContext` cria um UUID por requisição e o guarda em
-`locals.requestId`, disponível no evento de requisição do Solid.
+Para correlacionar os eventos de uma requisição, use `getTraceContext()` de
+`@solidjs/web`: ele continua o `traceparent` W3C recebido ou cria um trace para
+a requisição.
 
 O plugin gera `src/@types/routes.d.ts` com os caminhos tipados durante o build
 ou desenvolvimento. Mantenha essa declaração versionada e atualizada ao mudar as

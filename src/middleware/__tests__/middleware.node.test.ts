@@ -416,9 +416,9 @@ describe('cadeia de produção', () => {
   })
 
   // A ordem decide quais respostas recebem os cabeçalhos de segurança e o
-  // contexto: o handler de API responde sem chamar next, então o que vier
+  // nonce: o handler de API responde sem chamar next, então o que vier
   // depois dele não roda nas rotas de API. Trocar a ordem faz este teste falhar.
-  it('aplica os cabeçalhos e o contexto antes do handler de API', async () => {
+  it('aplica os cabeçalhos e o nonce antes do handler de API', async () => {
     const event = pageEvent(API_PATH)
     const next = vi.fn<() => Promise<Response>>()
 
@@ -429,11 +429,9 @@ describe('cadeia de produção', () => {
     expect(next).not.toHaveBeenCalled()
     await expect(response.text()).resolves.toBe('api')
     expect({
-      requestId: typeof event.locals.requestId,
       nonce: typeof event.nonce,
       nosniff: response.headers.get('x-content-type-options')
     }).toStrictEqual({
-      requestId: 'string',
       nonce: 'string',
       nosniff: 'nosniff'
     })
@@ -448,7 +446,6 @@ describe('cadeia de produção', () => {
     const event = pageEvent('/pt/pagina')
     const response = new Response('página')
     const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
-      expect(event.locals.requestId).toBeDefined()
       expect(event.nonce).toBeDefined()
       return Promise.resolve(response)
     })
