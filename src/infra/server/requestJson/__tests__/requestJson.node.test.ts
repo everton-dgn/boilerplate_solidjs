@@ -58,6 +58,21 @@ describe('transporte JSON protegido', () => {
     ).toBe(true)
   })
 
+  it('mantém o timeout quando o chamador informa um signal que não aborta', async () => {
+    const timeoutController = new AbortController()
+    const timeout = vi
+      .spyOn(AbortSignal, 'timeout')
+      .mockReturnValue(timeoutController.signal)
+    const mock = fetchMock(Response.json({ message: 'ok' }))
+    const caller = new AbortController()
+    const pending = requestJson({ ...options, init: { signal: caller.signal } })
+    timeoutController.abort()
+    await expect(pending).resolves.toStrictEqual({ message: 'ok' })
+    expect(timeout).toHaveBeenCalledExactlyOnceWith(TIMEOUT_MS)
+    expect(caller.signal.aborted).toBe(false)
+    expect(mock.mock.lastCall?.[1]?.signal?.aborted).toBe(true)
+  })
+
   it('cancela o corpo de uma falha HTTP sem lê-lo', async () => {
     const cancel = vi.fn<() => void>()
     const pull = vi.fn<(controller: ReadableStreamDefaultController) => void>(
