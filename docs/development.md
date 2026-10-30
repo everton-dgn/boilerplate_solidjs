@@ -52,9 +52,11 @@ O Nitro usa `preset: 'vercel'` no `vite.config.ts` e gera a função SSR e os
 estáticos em `.vercel/output/`. A entrada SSR do build é o handler nativo do
 plugin do Solid, que lê o nonce de `event.nonce` após a cadeia de middleware.
 Ele renderiza pelas entradas autorais `src/entry-server.tsx` e
-`src/entry-client.tsx`, mantidas em par para configurar o idioma antes da
-hidratação. As requisições de server functions usam a integração nativa entre
-Solid e Nitro/srvx.
+`src/entry-client.tsx`, que o plugin exige em par. A de servidor cria o estado
+de integridade do render e o conclui pelo `onCompleteAll`, que a entrada gerada
+não passa ao `renderToStream`; a de cliente confere o idioma e instala a guarda
+de histórico antes da hidratação. As requisições de server functions usam a
+integração nativa entre Solid e Nitro/srvx.
 
 A entrada do cliente publica o marcador de testes com `onHydrationEnd`, dentro
 da passagem raiz de `hydrate()`. Ele acompanha o fim da fase, inclusive quando

@@ -68,7 +68,9 @@ Limites do hook:
   mensagem pública para o boundary.
 - Em desenvolvimento o hook devolve `undefined`, para que o runtime envie o erro
   original ao navegador. Ele registra o log filtrado seguido do erro original e
-  marca o estado usado pelo Markdown.
+  marca o estado usado pelo Markdown. Uma falha de server function chega ao hook
+  já trocada pelo erro público do wrapper: o navegador recebe a mensagem
+  pública, e o original sai no terminal pelo log do wrapper.
 - Valores primitivos lançados não têm veredito por objeto; o hook roda e
   registra o log a cada vez que o runtime os encontra.
 
@@ -188,12 +190,21 @@ O logger é síncrono e não propaga falhas de inspeção, montagem ou acesso ao
 destino. Os consumidores mantêm a resposta pública mesmo sem log disponível. Se
 o destino escrever e depois lançar, a mensagem fixa pode aparecer duas vezes.
 
-No servidor de desenvolvimento, o hook de `configureServerErrors` passa
+No servidor de desenvolvimento, três chamadores passam
 `shouldPrintOriginal: true`, e o logger imprime o erro original numa segunda
-chamada de `console.error`, depois da linha filtrada. Com o hook instalado, o
-runtime deixa de imprimir essas falhas, e sem esse pedido a mensagem só chegaria
-ao navegador. O logger confere `import.meta.env.DEV` por conta própria e ignora
-o pedido em produção. Uma falha ao formatar o erro original é descartada.
+chamada de `console.error`, depois da linha filtrada:
+
+- O hook de `configureServerErrors`. Com o hook instalado, o runtime deixa de
+  imprimir essas falhas, e sem esse pedido a mensagem só chegaria ao navegador.
+- O `protectServerOperation`, que atende o wrapper e o `requestJson`. Ele troca
+  a falha pelo erro público antes do runtime, e o hook recebe só esse erro, sem
+  registrar log.
+- O sitemap, que responde 503 sem passar pelo runtime.
+
+As origens `[middleware]` e `[error-page]` não fazem o pedido, porque em
+desenvolvimento a contenção relança a exceção antes de registrar. O logger
+confere `import.meta.env.DEV` por conta própria e ignora o pedido em produção.
+Uma falha ao formatar o erro original é descartada.
 
 Limites conhecidos:
 
@@ -514,9 +525,10 @@ adaptador no prerender do build, e uma recusa ali interrompe o build.
 
 Como o hook é a fonte desse sinal, ele fica instalado também em desenvolvimento.
 Nesse modo ele marca o estado e registra o log filtrado, mas devolve
-`undefined`, e o runtime continua enviando o erro original ao navegador. Com um
-hook instalado, o runtime deixa de chamar `console.error` com o erro recebido; o
-hook devolve o original ao terminal por `logServerFailure`, depois da linha
+`undefined`, e o runtime continua enviando ao navegador o erro que recebeu, que
+numa server function já é o erro público do wrapper. Com um hook instalado, o
+runtime deixa de chamar `console.error` com o erro recebido; o hook e o wrapper
+devolvem o original ao terminal por `logServerFailure`, depois da linha
 filtrada, como descrito em [Log de falhas](#log-de-falhas). Os diagnósticos de
 desenvolvimento do Solid também imprimem a mensagem, como o de um erro contido
 por `<Errored>`. A entrada continua sem um `onError` local: ele teria

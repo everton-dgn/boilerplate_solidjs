@@ -99,7 +99,11 @@ export async function buildSitemapResponse({
       throw new Error('Sitemap acima do limite de bytes')
     }
   } catch (error) {
-    logServerFailure({ source: 'sitemap', error })
+    logServerFailure({
+      source: 'sitemap',
+      error,
+      shouldPrintOriginal: import.meta.env.DEV
+    })
     return new Response(null, {
       status: HTTP_SERVICE_UNAVAILABLE,
       headers: { 'cache-control': 'no-store' }
