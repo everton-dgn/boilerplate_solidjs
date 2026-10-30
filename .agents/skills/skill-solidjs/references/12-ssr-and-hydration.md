@@ -76,7 +76,7 @@ Armadilha: signal/store global vaza entre requests. Chamadas diretas de server f
 
 ## Handler e momento do commit
 
-Contrato: falha síncrona sem boundary lança erro original na chamada de renderToString/renderToStream antes de existir stream/thenable/readable/Promise. Nenhum onError global/local é chamado. Catch encadeado no resultado não alcança isso; try envolve render e await da resposta. Falha contida em Errored continua 200 com fallback, enquanto a síncrona contida pelo handler vira 500 público.
+Contrato: falha síncrona sem boundary lança erro original na chamada de renderToString/renderToStream antes de existir stream/thenable/readable/Promise. No runtime instalado, antes de relançar, o onError local ou, sem ele, o global recebe a falha com handling failed; o retorno é ignorado, então o hook observa sem substituir o erro (dist e JSDoc de `@solidjs/web`, sem sonda; o registro da base verificada dizia que nenhum hook era chamado). Catch encadeado no resultado não alcança isso; try envolve render e await da resposta. Falha contida em Errored continua 200 com fallback, enquanto a síncrona contida pelo handler vira 500 público.
 
 Receita:
 ```tsx
@@ -138,7 +138,7 @@ Armadilha: receita foi tipada, sem comparação de render cliente/servidor dos d
 
 ## Erros, sanitização e observação
 
-Contrato: erro contido por Errored chega ao onError com handling fallback, stream resolve fallback; rejeição tardia dentro de elemento sob Loading chega com handling client e stream resolve. Hook local prevalece sobre global; só global recebe se não houver local. Em dev, contidos também registram SSR_RENDER_ERROR_CONTAINED mesmo com hook. Síncrono sem boundary escapa antes da Promise/hook, apesar do JSDoc prometer roteamento e ausência de rejeição.
+Contrato: erro contido por Errored chega ao onError com handling fallback, stream resolve fallback; rejeição tardia dentro de elemento sob Loading chega com handling client e stream resolve. Hook local prevalece sobre global; só global recebe se não houver local. Em dev, contidos também registram SSR_RENDER_ERROR_CONTAINED mesmo com hook. Síncrono sem boundary chega ao hook com handling failed e é relançado antes da Promise ([handler](#handler-e-momento-do-commit)).
 
 Contrato: rejeição serializada sob Loading também passa sanitização, mesmo sem Errored. Serialização pode aplicar padrão antes da boundary; não prometa que retorno do hook substituirá rejeição já serializada. Errored sanitiza por padrão apenas em produção, salvo markSafeError; dev preserva original e emite log informativo. Compare builds, sem inferir produção a partir de payload dev. configureServerErrors observa globalmente; para observar sem mapear, não retorne valor. Retorno do hook é exposição deliberada sem nova sanitização; markSafeError só para erro público.
 
