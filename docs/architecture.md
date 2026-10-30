@@ -119,9 +119,8 @@ restrições são:
 As entradas são `App`, `Document`, `entry-server`, `entry-client`, `router` e
 `middleware`. A classificação parte da raiz de `src`: primitives colocalizadas
 dentro de um componente continuam na camada desse componente. Testes
-(`*.test.*`, `*.spec.*`, `__tests__` e `src/tests`) podem importar as camadas
-que verificam. A declaração gerada `src/@types/routes.d.ts` continua excluída do
-lint.
+(`*.test.*`, `__tests__` e `src/tests`) podem importar as camadas que verificam.
+A declaração gerada `src/@types/routes.d.ts` continua excluída do lint.
 
 Nos diagnósticos, `base` identifica as pastas da primeira linha, `entry`
 identifica as entradas e `source` os demais módulos de `src`.

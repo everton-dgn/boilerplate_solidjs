@@ -140,9 +140,11 @@ release. Add a tool name to select part of the graph. For example, run
   dispensa essa revisão. Siga a seção "Localização de tipos" ao extraí-las.
 - Use `type` para declarar tipos de objetos, props e contratos em código e
   testes. O lint aplica `typescript/consistent-type-definitions` com `type`.
-- Preserve `interface` quando houver necessidade de mesclagem de declarações,
-  como `RequestEventLocals` em `src/@types/solid.d.ts`, que estende `@solidjs/web`.
-  Mantenha a exceção do lint restrita ao arquivo que precisa desse comportamento.
+- Preserve `interface` quando houver necessidade de mesclagem de declarações:
+  `RequestEventLocals` em `src/@types/solid.d.ts`, `ImportMetaEnv` em
+  `src/@types/env.d.ts` e `RouteInfo` em `src/@types/router.d.ts` estendem
+  interfaces de terceiros. Mantenha a exceção do lint restrita aos arquivos
+  que precisam desse comportamento.
 - Não edite declarações geradas para trocar `interface` por `type`.
   `src/@types/routes.d.ts` pertence ao gerador `filesystem-routing` e permanece
   excluído do lint.

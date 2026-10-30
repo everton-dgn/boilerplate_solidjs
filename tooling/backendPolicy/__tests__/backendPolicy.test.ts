@@ -1,4 +1,3 @@
-/* oxlint-disable vitest/no-import-node-test -- Executa o CLI real em um projeto temporário com o runner nativo do Node.js. */
 /* oxlint-disable node/no-sync -- Fixture e subprocessos são sequenciais e isolados do servidor; o processo de teste aguarda o CLI real. */
 import assert from 'node:assert/strict'
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
@@ -318,7 +317,7 @@ test('a política preserva APIs públicas, testes e logging do tooling', context
       'src/local-console.ts': 'const console = { error() {} }; console.error()',
       'src/transport.test.ts':
         'fetch("/fixture"); console.error("fixture"); void import("@solidjs/web")',
-      'src/transport.spec.tsx':
+      'src/transport.test.tsx':
         'console.warn("fixture"); void import(`@solidjs/web/server-functions/server`)',
       'src/example.d.ts':
         'type Safe = typeof import("@solidjs/web").markSafeError',
@@ -330,7 +329,7 @@ test('a política preserva APIs públicas, testes e logging do tooling', context
         'import { markSafeError } from "@solidjs/web"; export type Safe = typeof markSafeError',
       'src/transport.test.mts':
         'fetch("/fixture"); console.error("fixture"); void import("@solidjs/web")',
-      'src/transport.spec.cjs':
+      'src/transport.test.cjs':
         'fetch("/fixture"); console.error("fixture"); void import("@solidjs/web")',
       'tooling/probe.ts':
         'console.warn("tooling"); console.error("tooling"); void import("@solidjs/web")'

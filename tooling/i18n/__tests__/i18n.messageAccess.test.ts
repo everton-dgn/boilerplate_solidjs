@@ -1,4 +1,3 @@
-/* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 /* oxlint-disable node/no-sync -- A integração cria uma fixture isolada e aguarda o CLI real. */
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'

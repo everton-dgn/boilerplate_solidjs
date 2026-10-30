@@ -4,7 +4,6 @@ import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 
 const REDIRECT = 302
 
-// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const [kind, destination] of [
   ['query', '/pt/i18n-redirect?saved=1'],
   ['parent', '/pt/next'],
@@ -25,7 +24,6 @@ for (const [kind, destination] of [
     await expect(page.locator('html')).toHaveAttribute('lang', 'pt-BR')
   })
 }
-// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const source of ['action', 'query']) {
   test(`${source} redirects across locales load a new document with matching messages`, async ({
     page

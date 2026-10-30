@@ -72,7 +72,6 @@ function readMainContent(html: string) {
 }
 
 for (const language of LANGUAGES) {
-  // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
   for (const [index, path] of PATHS.entries()) {
     test(`${language.locale}${path || '/'} publishes readable content and discovery metadata in the initial HTML`, async ({
       browser,
@@ -159,7 +158,6 @@ for (const language of LANGUAGES) {
     })
   }
 
-  // oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
   for (const width of [MOBILE_WIDTH, DESKTOP_WIDTH]) {
     test(`${language.locale} content fits ${width}px and keeps theme and locale during navigation`, async ({
       browser,

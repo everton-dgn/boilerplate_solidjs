@@ -7,7 +7,7 @@ describe('isolamento do idioma entre testes de navegador', () => {
 
   it('começa no idioma base mesmo com uma preferência anterior', () => {
     expect(getLocale()).toBe(baseLocale)
-    setLocale('es', { reload: false })
+    void setLocale('es', { reload: false })
     expect(getLocale()).toBe('es')
   })
 

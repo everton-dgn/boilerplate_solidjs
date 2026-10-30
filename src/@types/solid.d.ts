@@ -1,6 +1,5 @@
 import '@solidjs/web'
 
-// oxlint-disable-next-line typescript/consistent-type-definitions -- Apenas RequestEventLocals exige declaration merging.
 type SsrRenderState = {
   readonly hasErrors: boolean | undefined
   readonly hasCompleted: boolean

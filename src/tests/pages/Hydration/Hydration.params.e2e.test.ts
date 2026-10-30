@@ -10,7 +10,6 @@ const PARAMETERS = [
   { encoded: 'one%2Ftwo', decoded: 'one/two' }
 ]
 
-// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const { encoded, decoded } of PARAMETERS) {
   test(`preserves the encoded URL and decoded parameter ${encoded} through SSR and hydration`, async ({
     page

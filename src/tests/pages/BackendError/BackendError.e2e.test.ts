@@ -79,7 +79,6 @@ test('um envelope devolvido por server function no SSR entrega o valor', async (
 // Regressão do @solidjs/router (https://github.com/solidjs/solid-router/issues/633):
 // query() não copia mais os headers de corpo do envelope, como o content-type,
 // para a página.
-// oxlint-disable-next-line vitest/prefer-each -- O runner do Playwright não oferece test.each.
 for (const kind of ['envelope-return', 'envelope-throw']) {
   test(`o documento com ${kind} por query no SSR continua HTML`, async ({
     request
@@ -222,7 +221,6 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
 }
 
 for (const phase of ['ssr', 'stream', 'action']) {
-  // oxlint-disable-next-line vitest/prefer-each -- O runner do Playwright não oferece test.each.
   for (const failure of ['http', 'throw', 'result', 'public', 'success']) {
     test(`confidencialidade: ${phase}, ${failure}`, async ({
       page,

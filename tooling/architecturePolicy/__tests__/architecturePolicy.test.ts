@@ -1,4 +1,3 @@
-/* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 /* oxlint-disable node/no-sync -- O teste de integração cria uma fixture isolada e aguarda o CLI real. */
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -55,10 +54,6 @@ test('a política distingue dependências permitidas e inversões de camada', ()
       {
         filename: 'src/primitives/theme/__tests__/theme.dom.test.tsx',
         code: 'import { Provider } from "@/components/atoms/Provider/index.tsx"'
-      },
-      {
-        filename: 'src/helpers/theme.spec.ts',
-        code: 'import { Button } from "@/components/atoms/Button/index.tsx"'
       },
       {
         filename: 'src/tests/fixtures/e2e/routes/index.tsx',

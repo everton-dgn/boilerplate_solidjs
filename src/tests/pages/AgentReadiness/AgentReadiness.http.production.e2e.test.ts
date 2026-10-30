@@ -13,9 +13,7 @@ const LOCALES = [
 ]
 const PAGE_PATHS = ['', '/about', '/contact', '/privacy']
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
 for (const { locale, tag, missing } of LOCALES) {
-  // oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
   for (const path of PAGE_PATHS) {
     test(`negotiates HTML and Markdown at /${locale}${path}`, async ({
       request
@@ -184,7 +182,6 @@ test('serves a Markdown 404 after an unprefixed missing-page redirect', async ({
   expect(await response.text()).toMatch(/^# .+$/mu)
 })
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
 for (const page of [
   { path: '/', status: HTTP_NOT_ACCEPTABLE, contentType: 'text/plain' },
   {
@@ -213,7 +210,6 @@ for (const page of [
   })
 }
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
 for (const preference of [
   { accept: 'text/markdown;q=0.9, text/html;q=0.4', expected: 'text/markdown' },
   { accept: 'text/markdown, */*', expected: 'text/markdown' },
@@ -231,7 +227,6 @@ for (const preference of [
   })
 }
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
 for (const accept of [
   'text/html;q=0, text/markdown;q=0',
   '*/*;q=0',
@@ -254,7 +249,6 @@ for (const accept of [
   })
 }
 
-// oxlint-disable-next-line vitest/prefer-each -- Playwright has no test.each.
 for (const endpoint of [
   { path: '/llms.txt', contentType: 'text/markdown' },
   { path: '/sitemap.xml', contentType: 'application/xml' },

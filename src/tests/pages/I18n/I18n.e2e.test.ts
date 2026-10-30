@@ -11,7 +11,6 @@ const LANGUAGES = [
   { locale: 'es', messages: spanish }
 ]
 
-// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const { locale, messages } of LANGUAGES) {
   test(`runtime errors publish translated ${locale} metadata without JavaScript`, async ({
     browser,

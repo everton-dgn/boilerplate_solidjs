@@ -20,7 +20,6 @@ const LOCALES = [
   }
 ]
 
-// oxlint-disable-next-line vitest/prefer-each -- O Playwright não oferece test.each.
 for (const language of LOCALES) {
   test(`recovers the selected ${language.locale} history entry when its locale changes before hydration`, async ({
     page

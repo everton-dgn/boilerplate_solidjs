@@ -8,17 +8,7 @@ import { testRules } from './lint/rules/testing.ts'
 import { typescriptRules } from './lint/rules/typescript.ts'
 import { unicornRules } from './lint/rules/unicorn.ts'
 
-const TEST_FILES = [
-  '**/*.test.ts',
-  '**/*.test.tsx',
-  '**/*.test-d.ts',
-  '**/*.test-d.tsx',
-  '**/*.spec.ts',
-  '**/*.spec.tsx',
-  '**/test/**',
-  '**/tests/**',
-  '**/fixtures/**'
-]
+const TEST_FILES = ['**/*.test.{ts,tsx}', '**/*.test-d.{ts,tsx}', '**/tests/**']
 
 export const lint: NonNullable<UserConfig['lint']> = {
   ignorePatterns: [
@@ -67,15 +57,8 @@ export const lint: NonNullable<UserConfig['lint']> = {
     },
     {
       files: [
-        'src/__tests__/PageFileSystemRouter.node.test.ts',
-        'src/tests/pages/AgentReadiness/AgentReadiness.build.production.e2e.test.ts',
-        'src/tests/pages/BackendError/BackendError.e2e.test.ts',
-        'src/tests/pages/FragmentCss/FragmentCss.e2e.test.ts',
-        'src/tests/pages/Hydration/Hydration.parser.e2e.test.ts',
-        'src/tests/pages/Hydration/Hydration.preload.e2e.test.ts',
-        'src/tests/pages/OutsideError/OutsideError.e2e.test.ts',
-        'src/tests/pages/I18n/I18n.production.e2e.test.ts',
-        'src/tests/pages/SeoIndexes/SeoIndexes.production.e2e.test.ts',
+        'src/**/*.node.test.{ts,tsx}',
+        'src/tests/pages/**/*.e2e.test.ts',
         'src/tests/helpers/readSiteOrigin/index.ts'
       ],
       rules: { 'import/no-nodejs-modules': 'off' }
@@ -120,8 +103,9 @@ export const lint: NonNullable<UserConfig['lint']> = {
       ],
       rules: {
         'import/no-unassigned-import': 'off',
-        // Estas declarações ampliam interfaces de terceiros por declaration merging.
-        'typescript/consistent-type-definitions': ['error', 'interface']
+        // Estas declarações ampliam interfaces de terceiros por declaration
+        // merging, que só interface permite; os tipos próprios seguem com type.
+        'typescript/consistent-type-definitions': 'off'
       }
     },
 
@@ -133,11 +117,20 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      files: ['**/*.{test,spec}.{ts,tsx}'],
+      // O tooling usa o node:test, sem each e com describe e it que devolvem
+      // Promise.
+      files: ['tooling/**/__tests__/**/*.ts'],
       rules: {
         'typescript/no-floating-promises': 'off',
-        'typescript/no-misused-promises': 'off'
+        'typescript/no-misused-promises': 'off',
+        'vitest/no-import-node-test': 'off',
+        'vitest/prefer-each': 'off'
       }
+    },
+    {
+      // O runner do Playwright não oferece test.each.
+      files: ['src/tests/pages/**/*.e2e.test.ts'],
+      rules: { 'vitest/prefer-each': 'off' }
     },
     {
       files: ['**/*.{ts,tsx,mts,cts}'],

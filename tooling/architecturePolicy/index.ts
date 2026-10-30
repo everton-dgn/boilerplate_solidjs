@@ -37,7 +37,7 @@ function layer(file: string): Layer | undefined {
   if (file.startsWith('paraglide/')) return 'base'
   if (!file.startsWith('src/')) return undefined
   if (
-    /^src\/tests(?:\/|$)|\/__tests__(?:\/|$)|\.(?:test|spec)(?:\.[cm]?[jt]sx?)?$/u.test(
+    /^src\/tests(?:\/|$)|\/__tests__(?:\/|$)|\.test(?:\.[cm]?[jt]sx?)?$/u.test(
       file
     )
   ) {

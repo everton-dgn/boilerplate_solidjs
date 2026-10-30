@@ -1,4 +1,3 @@
-/* oxlint-disable vitest/no-import-node-test -- O Bun executa os testes de release pela API node:test. */
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import path from 'node:path'
@@ -138,7 +137,6 @@ describe('release versioning', () => {
     )
   })
 
-  // oxlint-disable-next-line vitest/prefer-each -- O node:test não tem a API it.each.
   for (const [open, inner, close] of [
     ['````', '```', '````'],
     ['~~~~', '~~~', '~~~~'],
