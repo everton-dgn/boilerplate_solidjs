@@ -1,6 +1,8 @@
 import { copyFile, mkdir, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import settings from '../../../project.inlang/settings.json' with { type: 'json' }
+
 type Messages = Record<string, string>
 type MessagesOptions = { root: string; messages: Messages }
 type SettingsOptions = {
@@ -15,10 +17,6 @@ const COMPILER_CONFIG = path.join(
   'project.inlang/paraglide.config.ts'
 )
 const NODE_MODULES = path.join(PROJECT_ROOT, 'node_modules')
-const PLUGIN = path.join(
-  NODE_MODULES,
-  '@inlang/plugin-message-format/dist/index.js'
-)
 
 export const LOCALES = ['pt', 'en', 'es']
 
@@ -43,14 +41,7 @@ export async function writeSettings({
 }: SettingsOptions): Promise<void> {
   await writeFile(
     path.join(root, 'project.inlang/settings.json'),
-    JSON.stringify({
-      baseLocale,
-      locales,
-      modules: [PLUGIN],
-      'plugin.inlang.messageFormat': {
-        pathPattern: './.paraglide/messages/{locale}.json'
-      }
-    })
+    JSON.stringify({ ...settings, baseLocale, locales })
   )
 }
 

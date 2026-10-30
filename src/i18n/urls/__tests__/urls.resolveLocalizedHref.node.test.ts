@@ -15,6 +15,7 @@ describe('resolveLocalizedHref contracts', () => {
   it.each([
     'https://example.com/docs',
     '//example.com/docs',
+    String.raw`/\example.com/docs`,
     'mailto:a@example.com',
     'tel:123'
   ])('preserves external href %s', href => {
@@ -24,7 +25,7 @@ describe('resolveLocalizedHref contracts', () => {
   it('requires a location for relative pages and supports query-only links', async () => {
     expect(() =>
       resolveLocalizedHref({ href: '../docs', locale: 'en' })
-    ).toThrow('requires a Router or base')
+    ).toThrow('requires a Router or safe page base')
     // As asserções ficam fora do callback: se ele não rodar, a lista vazia
     // falha o teste.
     const resolved: string[] = []
