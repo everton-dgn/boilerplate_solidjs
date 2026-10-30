@@ -17,6 +17,10 @@ const NOT_FOUND = -1
 const IMPORT_PATTERN =
   /(?:^|\n)\s*(?:import|export)\b[^'"]*?\bfrom\s*['"](?<specifier>[^'"]+)['"]|(?:^|\n)\s*import\s*['"](?<bare>[^'"]+)['"]|\bimport\(\s*['"](?<dynamic>[^'"]+)['"]\s*\)/gu
 
+function words(value: string): string {
+  return value.replaceAll(/\s+/gu, ' ').trim()
+}
+
 function jobBlock(id: string): string {
   const start = LINES.indexOf(`  ${id}:`)
   assert.ok(start !== NOT_FOUND, `Job ausente: ${id}`)
@@ -107,5 +111,21 @@ describe('release jobs with write permissions', () => {
     assert.ok(publish.includes('      contents: write\n'))
     assert.ok(publish.includes('      checks: write\n'))
     assert.doesNotMatch(publish, /pull-requests: write/u)
+  })
+})
+
+// O GitHub cancela a release pendente do mesmo grupo: um run inelegível que
+// entrasse no grupo publish substituiria a release elegível em espera.
+describe('release eligibility', () => {
+  it('is the same in the concurrency group and in the plan job', () => {
+    const group =
+      /automatic-release-\$\{\{(?<value>.+?)&& 'publish' \|\| github\.run_id \}\}/su.exec(
+        WORKFLOW
+      )?.groups?.value
+    const condition = /^ {4}if: >-\n(?<value>(?: {6}.*\n)+)/mu.exec(
+      jobBlock('plan')
+    )?.groups?.value
+    assert.ok(group && condition)
+    assert.equal(words(group), `(${words(condition)})`)
   })
 })
