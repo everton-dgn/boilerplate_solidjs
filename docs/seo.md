@@ -233,7 +233,13 @@ da leitura, inclusive quando outra fonte falha; repasse-o à leitura para
 cancelá-la, em vez de só deixar de esperá-la. Uma fonte que ignore o sinal
 continua rodando, mas a resposta não a espera além do prazo. A fonte roda a cada
 request do sitemap (o CDN reutiliza a resposta por uma hora) e é ignorada sob
-`noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito. As
+`noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito.
+Como no llms.txt, o filtro considera a configuração efetiva da página, incluindo
+a rota de índice filha, que compartilha a URL do layout: o índice com
+`noindex: true` retira a fonte do layout, uma fonte declarada pelo índice
+substitui a do layout, e o índice sem fonte herda a do layout, publicada
+conforme o `noindex` efetivo do índice. A fonte fica presa à URL de quem a
+declara; uma fonte que enumere páginas de outra filha deve ficar nessa filha. As
 entradas são validadas na fronteira: caminho que não começa com `/`, com host,
 esquema, query, fragmento ou espaço falha; barras finais e repetidas são
 normalizadas; entradas que resultam na mesma URL publicada mantêm a primeira
