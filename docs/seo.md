@@ -316,16 +316,17 @@ e a leitura do manifesto do sitemap, porque o manifesto também é fixo no build
 as fontes do sitemap rodam a cada request. O llms.txt é montado dentro do
 contexto Paraglide do idioma base (`baseLocale` do runtime), inclusive a
 descrição do site e os metadados das páginas, para que nem a requisição que
-preenche a memória nem um contexto de outro idioma mudem o texto. A nota que
-lista os idiomas e declara o idioma do índice é texto fixo: ao mudar os idiomas
-ou o idioma base em `project.inlang/settings.json`, reescreva-a. Os três
-arquivos saem com `public, max-age=0, s-maxage=3600, stale-if-error=86400` em
-produção (o CDN reutiliza por uma hora; a Vercel só cacheia resposta de função
-com `s-maxage` e consome `s-maxage` e `stale-if-error` sem repassá-los ao
-navegador) e com `no-store` em desenvolvimento. Com `stale-if-error`, um erro da
-função depois que a cópia expira não derruba o arquivo por até um dia. As URLs
-absolutas dos três arquivos partem da origem de `VITE_SITE_URL`; um site servido
-em um subcaminho não é suportado por essa geração. A página 404 declara
+preenche a memória nem um contexto de outro idioma mudem o texto. A nota sobre o
+idioma do índice deriva do mesmo `baseLocale`, com o nome do idioma em inglês, o
+idioma das notas. A lista de idiomas da mesma nota é texto fixo: ao mudar os
+idiomas em `project.inlang/settings.json`, reescreva-a. Os três arquivos saem
+com `public, max-age=0, s-maxage=3600, stale-if-error=86400` em produção (o CDN
+reutiliza por uma hora; a Vercel só cacheia resposta de função com `s-maxage` e
+consome `s-maxage` e `stale-if-error` sem repassá-los ao navegador) e com
+`no-store` em desenvolvimento. Com `stale-if-error`, um erro da função depois
+que a cópia expira não derruba o arquivo por até um dia. As URLs absolutas dos
+três arquivos partem da origem de `VITE_SITE_URL`; um site servido em um
+subcaminho não é suportado por essa geração. A página 404 declara
 `robots: noindex`. A imagem social fica em `public/images/og.png`, com cache
 imutável de um ano configurado em `vercel.json` para `/images/`. Como esse cache
 não revalida, publique uma imagem nova com outro nome (por exemplo,
