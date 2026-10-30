@@ -16,6 +16,9 @@ const HTTP_INTERNAL_SERVER_ERROR = 500
 
 const PAGE = '/pt/markdown-contract/sample'
 const LOCALES = ['pt', 'en', 'es']
+// A ordem dos atributos não faz parte do contrato do HTML.
+const MARKDOWN_ALTERNATE =
+  /<link\b(?=[^>]*\brel="alternate")(?=[^>]*\btype="text\/markdown")(?=[^>]*\bhref="(?<href>[^"]+)")[^>]*>/u
 
 function expectPublicMarkdown(body: string) {
   expect(body).toContain('# HTML Markdown contract: sample')
@@ -139,7 +142,6 @@ test('matches unenumerated parameter values without a Markdown producer', async 
 // oxlint-disable-next-line vitest/prefer-each -- Playwright não oferece test.each.
 for (const locale of LOCALES) {
   test(`preserves the index slug and home Markdown aliases in ${locale}`, async ({
-    page,
     request
   }) => {
     const pathname = `/${locale}/markdown-contract/index`
@@ -149,14 +151,7 @@ for (const locale of LOCALES) {
     })
     expect(html.status()).toBe(HTTP_OK)
     expect(html.headers()['content-type']).toContain('text/html')
-    const alternate = await page.evaluate(
-      documentHtml =>
-        new DOMParser()
-          .parseFromString(documentHtml, 'text/html')
-          .querySelector('link[rel="alternate"][type="text/markdown"]')
-          ?.getAttribute('href'),
-      await html.text()
-    )
+    const alternate = MARKDOWN_ALTERNATE.exec(await html.text())?.groups?.href
     expect(alternate).toBe(`${readSiteOrigin()}${markdownPath}`)
 
     const markdown = await request.get(`${markdownPath}?version=2`)
