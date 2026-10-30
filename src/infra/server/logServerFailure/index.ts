@@ -13,16 +13,6 @@ type FailureLog = {
 }
 type NameCheck = { error: Error; name: string }
 
-// Linha fixa por origem: nunca inclua mensagem, cause ou propriedades do erro.
-const MESSAGES = {
-  'server-operation':
-    '[server-operation] Unexpected failure; private details omitted',
-  'server-error': '[server-error] Unexpected failure; private details omitted',
-  middleware: '[middleware] Unexpected failure; private details omitted',
-  'error-page': '[error-page] Unexpected failure; private details omitted',
-  sitemap: '[sitemap] Unexpected failure; private details omitted'
-} as const satisfies Record<FailureSource, string>
-
 const MAX_FRAMES = 10
 const MAX_STACK_LINES = 50
 const MAX_LINE_LENGTH = 1024
@@ -109,12 +99,14 @@ export function logServerFailure({
   error,
   shouldPrintOriginal = false
 }: FailureLog): void {
+  // Linha fixa por origem: nunca inclua mensagem, cause ou propriedades do erro.
+  const line = `[${source}] Unexpected failure; private details omitted`
   try {
-    console.error([MESSAGES[source], ...errorDetails(error)].join('\n'))
+    console.error([line, ...errorDetails(error)].join('\n'))
   } catch {
     // A segunda tentativa não inspeciona o erro nem usa a falha do destino.
     try {
-      console.error(MESSAGES[source])
+      console.error(line)
     } catch {
       // Sem destino de log disponível.
     }
