@@ -1,6 +1,5 @@
 import {
   deLocalizeUrl,
-  getLocale,
   type Locale,
   localizeHref as localizeParaglideHref
 } from '@paraglide/runtime.js'
@@ -39,22 +38,15 @@ export function resolveLocalizedHref({
   shouldLocalize = true
 }: ResolveLocalizedHrefOptions): string {
   if (!shouldLocalize || isAbsoluteHref(href)) return href
-  const currentLocale = getLocale()
-  if (
-    (href === '' || href.startsWith('#')) &&
-    (!locale || locale === currentLocale)
-  ) {
-    return href
-  }
   let resolved = href
   if (!href.startsWith('/')) {
     if (!base) {
       throw new Error(
-        'Localized navigation requires a Router or base for relative page URLs. Use a root-relative href or shouldLocalize: false for endpoints/assets.'
+        'Localized navigation requires a Router or safe page base for relative page URLs. Use a root-relative href or shouldLocalize: false for endpoints/assets.'
       )
     }
     const url = new URL(href, new URL(base, LOCAL_ORIGIN))
     resolved = `${url.pathname}${url.search}${url.hash}`
   }
-  return localizeHref({ href: resolved, locale: locale ?? currentLocale })
+  return localizeHref({ href: resolved, locale })
 }

@@ -25,7 +25,7 @@ describe('resolveLocalizedHref contracts', () => {
   it('requires a location for relative pages and supports query-only links', async () => {
     expect(() =>
       resolveLocalizedHref({ href: '../docs', locale: 'en' })
-    ).toThrow('requires a Router or base')
+    ).toThrow('requires a Router or safe page base')
     // As asserções ficam fora do callback: se ele não rodar, a lista vazia
     // falha o teste.
     const resolved: string[] = []
