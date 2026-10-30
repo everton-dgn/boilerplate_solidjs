@@ -468,6 +468,24 @@ precisam ser repetidas. Para retry local com query, invalide a chave antes de
 `reset()`: `revalidate(getData.key); reset()`. Confirme uma nova chamada ao
 backend.
 
+Uma aba aberta antes de um deploy pode chamar uma server function que o build
+novo não tem. O servidor responde 404 com o header `X-Server-Function-Unknown`,
+sem executar a função, e o client rejeita com `unknownFunction: true`; numa
+leitura do render, o erro cai no fallback global e a recuperação é o mesmo link
+de recarga. Essa recusa sai antes do `wrapInvocation` e do hook de
+`configureServerErrors`, sem corpo em produção e sem linha `[server-error]`.
+
+O plugin do Solid também carimba as chamadas de produção que não usam GET com o
+header `X-Server-Function-Build`, para o servidor recusar com 409 uma chamada de
+outro build cujo id sobreviveu ao deploy. Com o Nitro essa checagem fica
+inativa: o plugin grava o manifesto com o id em
+`dist/.vite/solid-server-functions.json`, procura o arquivo em
+`dist/client/.vite/` e gera o `configureServerFunctionsServer` sem `buildId`. Um
+arquivo antigo nesse segundo caminho seria lido e faria o servidor recusar com
+409 toda chamada carimbada. As chamadas de `query()` usam GET e saem sem o
+carimbo. A exceção é quando os argumentos passam do limite de URL do runtime: o
+client envia a leitura por POST, com o carimbo, e ela passa pela checagem.
+
 Após alterar essa fronteira, execute:
 
 ```bash
@@ -520,13 +538,20 @@ pacote publicado e instalado mudou esse comportamento.
    e o teardown do log são a regressão da fronteira. Se o runtime mudar as
    mensagens que chegam ao navegador, meça antes de ajustar as tolerâncias de
    `pageerror`, inclusive com CPU limitada a 20x.
-4. Reavalie o wrapper só se as notas da versão ou o código publicado indicarem
+4. Depois do build, confira se a chamada `configureServerFunctionsServer(`
+   gerada pelo plugin, a que traz `endpoint:`, no `server.mjs` em
+   `.vercel/output/functions/`, traz `buildId:` com o id que o client carimba em
+   `X-Server-Function-Build`. Enquanto não trouxer, a recusa por build descrita
+   em [Validação e recuperação](#validação-e-recuperação) segue inativa. Quando
+   passar a trazer, cubra o contrato com um teste do build e avalie o tratamento
+   de `unknownFunction` no client.
+5. Reavalie o wrapper só se as notas da versão ou o código publicado indicarem
    que o runtime passou a recusar um `Error` devolvido como dado. Numa
    reprodução isolada, troque o `wrapInvocation` por um passthrough e confira o
    cenário `result` nos três canais pelos marcadores nos corpos brutos, sem
    confiar em teste verde. Verifique os artefatos de produção resolvidos;
    `NODE_ENV` sozinho não basta.
-5. Retire somente a interceptação que o runtime passou a cobrir. Preserve o
+6. Retire somente a interceptação que o runtime passou a cobrir. Preserve o
    transporte, o contrato de dados públicos, o hook, a contenção do middleware e
    seus testes. Registre comandos, resultados e limites na validação da
    atualização. Na reversão, restaure dependências e proteção juntas.
