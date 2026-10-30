@@ -1,16 +1,14 @@
 import type { RouteInfo } from '@solidjs/router'
 
-import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { delocalizePathname } from '@/i18n/urls/index.ts'
 
 export function isMarkdownRoute(
   info: readonly (RouteInfo | undefined)[]
 ): boolean {
   const markdown = info.at(-1)?.markdown
-  return (
-    (markdown === true || markdown === 'dynamic') &&
-    !resolveRouteSeo(info.map(route => route?.seo)).noindex
-  )
+  let isNoindex = false
+  for (const route of info) isNoindex = route?.seo?.noindex ?? isNoindex
+  return (markdown === true || markdown === 'dynamic') && !isNoindex
 }
 
 export function markdownPath(pathname: string): string {

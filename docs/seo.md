@@ -27,13 +27,16 @@ rotas com parâmetros. Na chamada com `route: true`, `createSeo` lê a cadeia de
 rotas ativas com `useRouteMatches` e publica esses campos no título, na
 descrição, no Open Graph, no Twitter e no JSON-LD usando `useHead`. A rota filha
 sobrescreve os campos que declara e herda os demais do layout; `image` é
-mesclada atributo a atributo (`path`, `width`, `height`, `alt`). Sem definição
-na cadeia, título, descrição e imagem vêm de `SITE`, `type` é `website` e
-`noindex` é `false`. A home declara um título próprio que identifica o
-boilerplate e seu uso para aplicações web com SSR. Página indexável publica
-`robots` com `index, follow, max-image-preview:large`: os dois primeiros já são
-o padrão do crawler e o terceiro libera a prévia grande da imagem no Google
-Discover. Escolha do projeto: com `noindex: true`, a chamada de rota publica só
+mesclada atributo a atributo (`path`, `width`, `height`, `alt`). Ao trocar o
+`path`, declare também `width` e `height` do novo arquivo: dimensões omitidas
+são herdadas da imagem anterior e publicadas em `og:image:width` e
+`og:image:height`, e a prévia nas redes pode sair cortada. Sem definição na
+cadeia, título, descrição e imagem vêm de `SITE`, `type` é `website` e `noindex`
+é `false`. A home declara um título próprio que identifica o boilerplate e seu
+uso para aplicações web com SSR. Página indexável publica `robots` com
+`index, follow, max-image-preview:large`: os dois primeiros já são o padrão do
+crawler e o terceiro libera a prévia grande da imagem no Google Discover.
+Escolha do projeto: com `noindex: true`, a chamada de rota publica só
 `robots: noindex`, título e descrição. Canonical, Open Graph, Twitter (inclusive
 `og:locale`, `og:site_name` e `twitter:card`) e JSON-LD ficam de fora, inclusive
 na página 404. Neste boilerplate esses metadados só têm consumidor em páginas
@@ -157,7 +160,12 @@ export const route = {
       title: 'Sobre nós',
       description: 'Conheça nossa equipe.',
       type: 'article',
-      image: { path: '/images/equipe.png', alt: 'Foto da equipe' }
+      image: {
+        path: '/images/equipe.png',
+        width: 1200,
+        height: 800,
+        alt: 'Foto da equipe'
+      }
     },
     llms: { section: 'Empresa' }
   }

@@ -1,24 +1,14 @@
+import { stubBroadcastChannel } from '@/tests/helpers/stubBroadcastChannel/index.ts'
+
 import { makeBroadcastChannel } from '../index.ts'
 
 const CHANNEL_NAME = 'test-channel'
 
-let channel: EventTarget & {
-  postMessage: ReturnType<typeof vi.fn>
-  close: ReturnType<typeof vi.fn>
-}
+let channel: ReturnType<typeof stubBroadcastChannel>
 
 describe('canal genérico entre abas', () => {
   beforeEach(() => {
-    channel = Object.assign(new EventTarget(), {
-      postMessage: vi.fn<() => void>(),
-      close: vi.fn<() => void>()
-    })
-    vi.stubGlobal(
-      'BroadcastChannel',
-      vi.fn(function makeChannel() {
-        return channel
-      })
-    )
+    channel = stubBroadcastChannel()
   })
 
   it('entrega a mensagem recebida sem interpretar o conteúdo', () => {

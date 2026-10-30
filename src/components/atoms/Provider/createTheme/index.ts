@@ -1,14 +1,7 @@
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  onSettled,
-  untrack
-} from 'solid-js'
+import { createEffect, createSignal, onSettled, untrack } from 'solid-js'
 
 import type { ResolvedTheme, Theme } from '@/@types/theme.ts'
 import { DEFAULT_THEME, THEME_COLORS } from '@/constants/theme.ts'
-import { isTheme } from '@/helpers/isTheme/index.ts'
 import { applyTheme } from '@/infra/adapters/applyTheme/index.ts'
 import { makeSystemTheme } from '@/infra/adapters/makeSystemTheme/index.ts'
 import { makeThemeChannel } from '@/infra/adapters/makeThemeChannel/index.ts'
@@ -26,17 +19,16 @@ export function createTheme(): ThemeState {
   const [systemTheme, setSystemTheme] = createSignal<ResolvedTheme>('light')
   const [isReady, setIsReady] = createSignal(false)
 
-  const resolvedTheme = createMemo(() => {
-    const current = themePreference()
-    return current === 'system' ? systemTheme() : current
-  })
-
   let connection: ReturnType<typeof makeThemeChannel> | undefined
 
   createEffect(
-    () => (isReady() ? resolvedTheme() : undefined),
+    () => {
+      if (!isReady()) return null
+      const current = themePreference()
+      return current === 'system' ? systemTheme() : current
+    },
     resolved => {
-      if (resolved !== undefined) apply(resolved)
+      if (resolved) apply(resolved)
     }
   )
 
@@ -53,14 +45,12 @@ export function createTheme(): ThemeState {
 
   return {
     theme: themePreference,
-    resolvedTheme,
     isReady,
     setTheme(next) {
-      if (!isTheme(next)) return
       setThemePreference(next)
       apply(next === 'system' ? untrack(systemTheme) : next)
-      const persisted = saveTheme(next)
-      connection?.publish({ theme: next, persisted })
+      const isPersisted = saveTheme(next)
+      connection?.publish({ theme: next, persisted: isPersisted })
     }
   }
 }

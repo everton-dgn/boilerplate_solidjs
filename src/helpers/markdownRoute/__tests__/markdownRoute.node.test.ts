@@ -1,7 +1,7 @@
 import { isMarkdownRoute, markdownPath } from '../index.ts'
 
-describe('HTML-derived Markdown', () => {
-  it('requires an explicit leaf opt-in and effective indexable SEO', () => {
+describe('markdown derivado do HTML', () => {
+  it('exige opt-in na folha e SEO indexável', () => {
     expect(isMarkdownRoute([{ markdown: true }, {}])).toBe(false)
     expect(
       isMarkdownRoute([{ seo: { noindex: true } }, { markdown: true }])
@@ -17,7 +17,7 @@ describe('HTML-derived Markdown', () => {
     )
   })
 
-  it('publishes dynamic pages under the same SEO rule', () => {
+  it('publica páginas dinâmicas pela mesma regra de SEO', () => {
     expect(isMarkdownRoute([{ markdown: 'dynamic' }])).toBe(true)
     expect(
       isMarkdownRoute([{ markdown: 'dynamic', seo: { noindex: true } }])
@@ -38,7 +38,7 @@ describe('HTML-derived Markdown', () => {
     ['/pt/index/index', '/pt/index/index/index.md'],
     ['/es/about', '/es/about.md'],
     ['/pt/blog/article', '/pt/blog/article.md']
-  ])('maps %s to %s', (path, expected) => {
+  ])('mapeia %s para %s', (path, expected) => {
     expect(markdownPath(path)).toBe(expected)
   })
 })
