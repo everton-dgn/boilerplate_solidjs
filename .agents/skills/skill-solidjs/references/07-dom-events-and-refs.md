@@ -91,7 +91,7 @@ Children explícitos suprimem `textContent` na compilação; não combine as dua
 
 `<output>{total()}</output>` começando em zero funciona no Chromium, mas quebra em happy-dom na base verificada. `{String(total())}` preservou 0/5/0 nos dois ambientes; converter muda o caminho exercitado, então não faça isso no teste de comportamento numérico. Veja [ambientes de teste](../../skill-solidjs-testing/references/environments.md#happy-dom).
 
-Alternar número falso e elemento como filho único tem outro defeito de runtime: [R13](17-known-risks.md#r13-zero-ou-nan-como-filho-único-acumula-nós-de-texto-ao-alternar).
+Alternar número falso e elemento como filho único: veja [R13](17-known-risks.md#r13-zero-ou-nan-como-filho-único-acumula-nós-de-texto-ao-alternar).
 
 ## Namespace
 
