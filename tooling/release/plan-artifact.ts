@@ -1,19 +1,14 @@
 import { readFile } from 'node:fs/promises'
 
-import { releaseDay, type ReleaseContext } from './context.ts'
-import { parseVersion, type ReleasePlan } from './versioning.ts'
+import { releaseDay } from './context.ts'
+import type { ReleaseContext, ReleasePlan, ValidatedRelease } from './types.ts'
 
-type ReleaseFile = {
-  path: string
-  content: string
-}
 type FormattedFiles = {
   packageJson: string
   changelog: string
 }
 type ArtifactInput = FormattedFiles & {
   ctx: ReleaseContext
-  expected: ReleasePlan
 }
 type ArtifactCheck = {
   artifact: unknown
@@ -30,29 +25,17 @@ type VersionedContext = {
 }
 
 // Contrato entre o job de leitura, que formata os arquivos com o Vite+, e os
-// jobs com escrita, que só usam Git, gh e módulos nativos.
-type PlanArtifact = {
+// jobs com escrita, que só usam Git, gh e módulos nativos. Versão, tag e notas
+// saem do plano recalculado e do changelog conferido.
+type PlanArtifact = FormattedFiles & {
   format: number
   source: string
-  version: string
-  tag: string
-  notes: string
-  packageJson: string
-  changelog: string
 }
 
-const ARTIFACT_FORMAT = 1
+const ARTIFACT_FORMAT = 2
 const JSON_INDENT = 2
 const MAX_ARTIFACT_LENGTH = 4_194_304
-const ARTIFACT_KEYS = [
-  'changelog',
-  'format',
-  'notes',
-  'packageJson',
-  'source',
-  'tag',
-  'version'
-]
+const ARTIFACT_KEYS = ['changelog', 'format', 'packageJson', 'source']
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -75,31 +58,16 @@ function extractNotes({ changelog, heading: title }: NotesSource): string {
   return section.slice(0, next < 0 ? undefined : next).trim()
 }
 
-export type ValidatedRelease = {
-  plan: ReleasePlan
-  files: ReleaseFile[]
-}
-
 export function manifestContent({ ctx, version }: VersionedContext): string {
   return `${JSON.stringify({ ...ctx.manifest, version }, null, JSON_INDENT)}\n`
 }
 
 export function createPlanArtifact({
   ctx,
-  expected,
   packageJson,
   changelog
 }: ArtifactInput): PlanArtifact {
-  const title = heading({ ctx, version: expected.version })
-  return {
-    format: ARTIFACT_FORMAT,
-    source: ctx.source,
-    version: expected.version,
-    tag: expected.tag,
-    notes: extractNotes({ changelog, heading: title }),
-    packageJson,
-    changelog
-  }
+  return { format: ARTIFACT_FORMAT, source: ctx.source, packageJson, changelog }
 }
 
 export async function readPlanArtifact(file: string): Promise<unknown> {
@@ -123,26 +91,14 @@ export function assertPlanArtifact({
   ) {
     throw new Error('Release plan artifact has an unexpected structure.')
   }
-  const { format, source, version, tag, notes, packageJson, changelog } =
-    artifact
-  if (
-    typeof version !== 'string' ||
-    typeof tag !== 'string' ||
-    typeof notes !== 'string' ||
-    typeof packageJson !== 'string' ||
-    typeof changelog !== 'string'
-  ) {
+  const { format, source, packageJson, changelog } = artifact
+  if (typeof packageJson !== 'string' || typeof changelog !== 'string') {
     throw new TypeError('Release plan artifact has an unexpected structure.')
   }
-  parseVersion(version)
-  if (
-    format !== ARTIFACT_FORMAT ||
-    source !== ctx.source ||
-    version !== expected.version ||
-    tag !== expected.tag
-  ) {
+  if (format !== ARTIFACT_FORMAT || source !== ctx.source) {
     throw new Error('Release plan artifact does not match the source plan.')
   }
+  const { version, tag } = expected
   if (
     !packageJson.endsWith('\n') ||
     JSON.stringify(JSON.parse(packageJson)) !==
@@ -156,10 +112,8 @@ export function assertPlanArtifact({
   ) {
     throw new Error('Release plan artifact changes CHANGELOG.md content.')
   }
-  const title = heading({ ctx, version })
-  if (!notes || notes !== extractNotes({ changelog, heading: title })) {
-    throw new Error('Release plan notes differ from the changelog section.')
-  }
+  const notes = extractNotes({ changelog, heading: heading({ ctx, version }) })
+  if (!notes) throw new Error('Release notes are empty in CHANGELOG.md.')
   return {
     plan: { version, tag, notes, changelog },
     files: [

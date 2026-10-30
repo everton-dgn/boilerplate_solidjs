@@ -60,16 +60,17 @@ Actions to create and approve pull requests"). O workflow tem três jobs:
 | `publish` | `actions: read`, `checks: write`, `contents: write`, `pull-requests: read` | Atesta, integra, cria a tag e publica as notas              |
 
 Só `plan` executa `vp install` e importa o Vite+. Ele entrega o artifact
-`release-plan` com a versão, as notas, o `package.json` e o `CHANGELOG.md`
-formatados. Os jobs com escrita preparam só a toolchain pela ação
-`setup-project` (`install-dependencies: false`), baixam o artifact com
-verificação de digest e executam `bun --no-install`, sem pacotes de terceiros no
-processo que recebe o `GH_TOKEN`. Antes de qualquer escrita, o script recalcula
-o plano com Git e código nativo e recusa o artifact se a estrutura, a origem, a
-versão ou a tag divergirem, se o `package.json` mudar algo além da versão ou se
-o changelog diferir do plano em algo além de espaços. O merge exige
-`contents: write`; `publish` só lê PRs. O workflow não aprova o próprio PR nem
-ignora regras de proteção.
+`release-plan` com o `package.json` e o `CHANGELOG.md` formatados. Os jobs com
+escrita preparam só a toolchain pela ação `setup-project`
+(`install-dependencies: false`), baixam o artifact com verificação de digest e
+executam `bun --no-install`, sem pacotes de terceiros no processo que recebe o
+`GH_TOKEN`. Antes de qualquer escrita, o script recalcula o plano com Git e
+código nativo e recusa o artifact se a estrutura ou a origem divergirem, se o
+`package.json` mudar algo além da versão ou se o changelog diferir do plano em
+algo além de espaços. A versão e a tag vêm do plano recalculado, e as notas, da
+seção da versão no changelog conferido. O merge exige `contents: write`;
+`publish` só lê PRs. O workflow não aprova o próprio PR nem ignora regras de
+proteção.
 
 O ruleset `.github/main-ruleset.json` protege a `main`: exige PR, merge normal,
 conversas resolvidas e o check `CI required` do GitHub Actions, com a branch

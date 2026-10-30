@@ -398,13 +398,9 @@ describe(
     it('rejects a tampered artifact before any mutation', async context => {
       const cases: [(artifact: Artifact) => Artifact, string][] = [
         [artifact => ({ ...artifact, extra: true }), 'unexpected structure'],
-        [artifact => ({ ...artifact, notes: 1 }), 'unexpected structure'],
+        [artifact => ({ ...artifact, changelog: 1 }), 'unexpected structure'],
         [
           artifact => ({ ...artifact, source: 'e'.repeat(SHA_LENGTH) }),
-          'does not match the source plan'
-        ],
-        [
-          artifact => ({ ...artifact, version: '9.0.0', tag: 'v9.0.0' }),
           'does not match the source plan'
         ],
         [
@@ -426,10 +422,6 @@ describe(
             )
           }),
           'changes CHANGELOG.md'
-        ],
-        [
-          artifact => ({ ...artifact, notes: 'Different notes.' }),
-          'notes differ'
         ]
       ]
       for (const [tamper, error] of cases) {

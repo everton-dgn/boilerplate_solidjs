@@ -1,3 +1,5 @@
+import type { Commit, ReleasePlan } from './types.ts'
+
 type Bump = 'major' | 'minor' | 'patch'
 type Change = {
   bump: Bump
@@ -67,23 +69,15 @@ function escapeSummary(value: string): string {
     .replaceAll('@', '&#64;')
 }
 
-export type Commit = {
-  sha: string
-  message: string
-}
-
-export type ReleasePlan = {
-  version: string
-  tag: string
-  notes: string
-  changelog: string
-}
-
-export function parseVersion(version: string): number[] {
+function parseVersion(version: string): number[] {
   if (!versionPattern.test(version)) {
     throw new Error(`Invalid stable version: ${version}`)
   }
   return version.split('.').map(Number)
+}
+
+export function isStableVersion(version: string): boolean {
+  return versionPattern.test(version)
 }
 
 export function planRelease(input: PlanInput): ReleasePlan | undefined {

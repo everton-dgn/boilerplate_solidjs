@@ -1,13 +1,13 @@
 import { BOT, REQUIRED_CHECK } from './constants.ts'
-import {
-  appendOutput,
-  postpone,
-  requiredEnv,
-  type ReleaseContext
-} from './context.ts'
-import { api, command, mutate, optionalApi, requireSha } from './github.ts'
-import { assertMainProtection, git, mainSha } from './repository.ts'
-import type { GitCommit, GitReference, Prepared } from './types.ts'
+import { postpone, requiredEnv } from './context.ts'
+import { api, git, mutate, optionalApi, requireSha } from './github.ts'
+import { assertMainProtection, mainSha } from './repository.ts'
+import type {
+  GitCommit,
+  GitReference,
+  Prepared,
+  ReleaseContext
+} from './types.ts'
 
 const MERGE_PARENT_COUNT = 2
 
@@ -104,7 +104,7 @@ async function cleanupBranch({ ctx, prepared }: PublishRequest): Promise<void> {
       throw new Error('Release branch advanced; refusing cleanup.')
     }
     // O lease confere o SHA esperado de forma atômica, inclusive atualizações após a leitura.
-    await command('git', [
+    await git(
       '-c',
       'credential.helper=',
       '-c',
@@ -113,7 +113,7 @@ async function cleanupBranch({ ctx, prepared }: PublishRequest): Promise<void> {
       `--force-with-lease=${branchRef}:${prepared.head}`,
       `https://github.com/${ctx.repository}.git`,
       `:${branchRef}`
-    ])
+    )
   } catch {
     console.warn(
       '::warning::Release published; branch cleanup could not complete. The branch was preserved if it still exists.'
@@ -187,6 +187,5 @@ export async function publishRelease({
       }
     })
   }
-  await appendOutput({ tag: plan.tag, version: plan.version })
   await cleanupBranch({ ctx, prepared })
 }

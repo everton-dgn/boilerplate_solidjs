@@ -1,7 +1,6 @@
 import { REQUIRED_CHECK } from './constants.ts'
-import type { ReleaseContext } from './context.ts'
-import { api, command, requireSha } from './github.ts'
-import type { GitReference } from './types.ts'
+import { api, git, requireSha } from './github.ts'
+import type { GitReference, ReleaseContext } from './types.ts'
 
 const GITHUB_ACTIONS_APP_ID = 15_368
 
@@ -16,10 +15,6 @@ type BranchRule = {
 type Ancestry = {
   ancestor: string
   descendant: string
-}
-
-export function git(...args: string[]): Promise<string> {
-  return command('git', args)
 }
 
 export async function mainSha(ctx: ReleaseContext): Promise<string> {
