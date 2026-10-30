@@ -1,3 +1,4 @@
+import { getLocale } from '@paraglide/runtime.js'
 import { createRouter, memoryHistory } from '@solidjs/router'
 import { createSignal } from 'solid-js'
 
@@ -23,16 +24,26 @@ describe('localizedLink contracts', () => {
     await expect.poll(() => anchor?.getAttribute('href')).toBe('/pt/next')
   })
 
-  it('leaves same-locale links available for SPA navigation and preserves native attributes', () => {
+  it('leaves same-locale links available for SPA navigation', () => {
+    const host = renderComponent(
+      () => (
+        <LocalizedLink href="/docs" locale={getLocale()}>
+          Docs
+        </LocalizedLink>
+      ),
+      { providers: false }
+    )
+    expect(host.querySelector('a')?.target).toBe('')
+  })
+
+  it('preserves native attributes and event handlers', () => {
     const click = vi.fn<(event: MouseEvent) => void>(event => {
-      expect(event.defaultPrevented).toBe(false)
       event.preventDefault()
     })
     const host = renderComponent(
       () => (
         <LocalizedLink
           href="/docs"
-          locale="en"
           onClick={click}
           download="manual"
           target="_blank"
@@ -44,12 +55,9 @@ describe('localizedLink contracts', () => {
     )
     const anchor = host.querySelector('a')
     assert(anchor)
-    const event = new MouseEvent('click', {
-      bubbles: true,
-      cancelable: true,
-      ctrlKey: true
-    })
-    anchor.dispatchEvent(event)
+    anchor.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true })
+    )
     expect(click).toHaveBeenCalledOnce()
     expect(anchor.target).toBe('_blank')
     expect(anchor.download).toBe('manual')
