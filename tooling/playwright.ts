@@ -40,26 +40,20 @@ const SERVER_LOG = `test-results/server-${BUILD_MODE}.log`
 env.SERVER_LOG_FILE = fileURLToPath(
   new URL(`../${SERVER_LOG}`, import.meta.url)
 )
-const BROWSER = {
-  ...devices['Desktop Chrome'],
-  channel: env.CI ? 'chrome' : undefined
-}
 // O arquivo que conta linhas fixas do log roda como teardown do chromium, em
 // ordem e sem outros testes em paralelo, para que cada contagem seja exata. O
 // teardown roda mesmo quando um teste do chromium falha.
 const SERVER_LOG_TESTS = '**/OutsideError.e2e.test.ts'
 const PROJECTS = PRODUCTION_ROUTES
-  ? [{ name: 'chromium', use: BROWSER }]
+  ? [{ name: 'chromium' }]
   : [
       {
         name: 'chromium',
-        use: BROWSER,
         testIgnore: ['**/*.production.e2e.test.ts', SERVER_LOG_TESTS],
         teardown: 'server-logs'
       },
       {
         name: 'server-logs',
-        use: BROWSER,
         testMatch: SERVER_LOG_TESTS,
         fullyParallel: false
       }
@@ -70,7 +64,6 @@ const config = defineConfig({
   testMatch: PRODUCTION_ROUTES
     ? '**/*.production.e2e.test.ts'
     : '**/*.e2e.test.ts',
-  testIgnore: PRODUCTION_ROUTES ? [] : ['**/*.production.e2e.test.ts'],
   outputDir: PRODUCTION_ROUTES
     ? '../test-results/e2e-production'
     : '../test-results/e2e',
@@ -91,6 +84,8 @@ const config = defineConfig({
     ]
   ],
   use: {
+    ...devices['Desktop Chrome'],
+    channel: env.CI ? 'chrome' : undefined,
     // Não ative bypassCSP: ele desliga a CSP e anula as suítes que conferem
     // violações (Home.csp e FragmentCss).
     baseURL: BASE_URL,
