@@ -55,14 +55,19 @@ até os scripts é:
   asset com hash.
 
 O Nitro usa a entrada SSR nativa do `@solidjs/vite-plugin`, sem substituição
-local. As entradas autorais de renderização permanecem porque `entry-client.tsx`
-configura o idioma antes de hidratar, e o plugin exige o par cliente/servidor
-quando uma dessas entradas existe. Ambas usam a mesma árvore de `Document` e
-`App`. Com as entradas autorais, o plugin deixa de gerar o
-`DefaultErrorBoundary` de produção e a opção `start.productionErrorBoundary` não
-tem efeito; o `Errored` raiz do `App` continua responsável pela página de erro.
-Uma exceção no próprio `Document` sai síncrona do `renderToStream` e a contenção
-de falhas responde o 500 em texto, com o log fixo.
+local. As entradas autorais de renderização permanecem porque `entry-server.tsx`
+cria o estado de integridade do render e o conclui pelo `onCompleteAll`, que a
+entrada gerada pelo plugin não passa ao `renderToStream`; sem esse estado
+concluído, todo `.md` responde 500 e o prerender interrompe o build. O plugin
+exige o par cliente/servidor quando uma dessas entradas existe, e
+`entry-client.tsx` confere o idioma e instala a guarda de histórico antes de
+`hydrate()`, código que só poderia ir para `start.clientSetup` se as duas
+entradas fossem geradas. Ambas usam a mesma árvore de `Document` e `App`. Com as
+entradas autorais, o plugin deixa de gerar o `DefaultErrorBoundary` de produção
+e a opção `start.productionErrorBoundary` não tem efeito; o `Errored` raiz do
+`App` continua responsável pela página de erro. Uma exceção no próprio
+`Document` sai síncrona do `renderToStream` e a contenção de falhas responde o
+500 em texto, com o log fixo.
 
 ## Validação e CSS em streaming
 
