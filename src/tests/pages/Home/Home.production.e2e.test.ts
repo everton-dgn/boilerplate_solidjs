@@ -42,38 +42,6 @@ test.describe('layout na árvore de produção', () => {
       await context.close()
     }
   })
-
-  test('preserva a mesma barra ao navegar entre Home e 404', async ({
-    page
-  }) => {
-    await page.goto('/pt')
-    await page.getByRole('button', { name: 'Selecionar tema' }).click()
-    await expect(page.getByRole('menu')).toBeVisible()
-    await page.keyboard.press('Escape')
-    const topbar = await page.getByRole('banner').elementHandle()
-
-    await page.getByRole('link', { name: '404', exact: true }).click()
-    await expect(
-      page.getByRole('heading', { name: 'Página não encontrada!' })
-    ).toBeVisible()
-    expect(
-      await topbar.evaluate(
-        element => element === document.querySelector('header')
-      )
-    ).toBe(true)
-    await page.getByRole('link', { name: 'Voltar ao início' }).click()
-    await expect(page).toHaveURL('/pt')
-    await expect(
-      page.getByRole('heading', {
-        name: 'SolidJS Boilerplate para aplicações web'
-      })
-    ).toBeVisible()
-    expect(
-      await topbar.evaluate(
-        element => element === document.querySelector('header')
-      )
-    ).toBe(true)
-  })
 })
 
 // O build E2E monta a cadeia pela fábrica; aqui passa o export padrão real.

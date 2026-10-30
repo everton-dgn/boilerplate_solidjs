@@ -18,21 +18,24 @@ const LANGUAGES = [
     tag: 'pt-BR',
     title: 'SolidJS Boilerplate para aplicações web',
     selector: 'Selecionar idioma',
-    missing: 'Página não encontrada'
+    missing: 'Página não encontrada',
+    home: 'Voltar ao início'
   },
   {
     locale: 'en',
     tag: 'en-US',
     title: 'SolidJS Boilerplate for web applications',
     selector: 'Select language',
-    missing: 'Page not found'
+    missing: 'Page not found',
+    home: 'Back to home'
   },
   {
     locale: 'es',
     tag: 'es-ES',
     title: 'SolidJS Boilerplate para aplicaciones web',
     selector: 'Seleccionar idioma',
-    missing: 'Página no encontrada'
+    missing: 'Página no encontrada',
+    home: 'Volver al inicio'
   }
 ]
 
@@ -156,6 +159,8 @@ for (const language of LANGUAGES) {
       ALTERNATE_LINKS
     )
     const header = await page.getByRole('banner').elementHandle()
+    const isSameHeader = () =>
+      header.evaluate(element => element === document.querySelector('header'))
     await page.getByRole('link', { name: '404', exact: true }).click()
     await expect(page).toHaveURL(`/${language.locale}/404`)
     await expect(page).toHaveTitle(language.missing)
@@ -163,11 +168,13 @@ for (const language of LANGUAGES) {
       'content',
       'noindex'
     )
-    expect(
-      await header.evaluate(
-        element => element === document.querySelector('header')
-      )
-    ).toBe(true)
+    expect(await isSameHeader()).toBe(true)
+    await page.getByRole('link', { name: language.home }).click()
+    await expect(page).toHaveURL(`/${language.locale}`)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      language.title
+    )
+    expect(await isSameHeader()).toBe(true)
     expect(errors).toEqual([])
   })
 }
