@@ -105,10 +105,6 @@ async function cleanupBranch({ ctx, prepared }: PublishRequest): Promise<void> {
     }
     // O lease confere o SHA esperado de forma atômica, inclusive atualizações após a leitura.
     await git(
-      '-c',
-      'credential.helper=',
-      '-c',
-      'credential.helper=!gh auth git-credential',
       'push',
       `--force-with-lease=${branchRef}:${prepared.head}`,
       `https://github.com/${ctx.repository}.git`,

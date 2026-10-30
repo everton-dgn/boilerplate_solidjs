@@ -102,8 +102,17 @@ export async function command(file: string, args: string[]): Promise<string> {
   return result.stdout.trim()
 }
 
+// O checkout não guarda o token (persist-credentials: false). Fetch e push se
+// autenticam pelo helper do gh com o GH_TOKEN do passo, o que vale também para
+// repositório privado.
 export function git(...args: string[]): Promise<string> {
-  return command('git', args)
+  return command('git', [
+    '-c',
+    'credential.helper=',
+    '-c',
+    'credential.helper=!gh auth git-credential',
+    ...args
+  ])
 }
 
 export function api<T>(path: string): Promise<T> {

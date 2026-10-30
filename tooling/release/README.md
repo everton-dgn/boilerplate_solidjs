@@ -108,7 +108,10 @@ versões de Node, Bun e Vite+ vêm do `package.json`; só o job `plan` instala a
 dependências, com lockfile congelado.
 
 Os três jobs fazem checkout da ponta da `main`, e o script confere que ela
-contém o SHA de origem e o próprio código em execução.
+contém o SHA de origem e o próprio código em execução. O checkout não guarda o
+token: os comandos do Git que acessam o remoto se autenticam pelo helper do `gh`
+com o `GH_TOKEN` do passo, o que permite usar a automação em repositório
+privado.
 
 Novos PRs podem cancelar seu CI anterior. Pushes não cancelam o workflow em
 andamento, preservando o deploy. A release aceita somente a branch `main` no
@@ -223,11 +226,12 @@ Se a `main` avançar antes do merge, a execução termina sem erro e registra o
 motivo no resumo: o CI do novo commit inicia outra release, que inclui as
 mudanças pendentes. Quando o avanço aparece no `prepare`, ele fecha o PR desta
 origem. Quando aparece no `publish`, que só lê PRs, o merge é pulado e o PR fica
-aberto até a próxima preparação. Toda preparação fecha os PRs de release abertos
-pela automação cuja origem é ancestral estrita da origem atual; PRs humanos,
-outras branches e origens mais novas não são tocados. As branches permanecem
-para inspeção; não há exclusão automática de branches abandonadas antes do
-merge.
+aberto até a próxima preparação. Toda preparação confere os 100 PRs abertos mais
+recentes para a `main` e fecha os de release abertos pela automação cuja origem
+é ancestral estrita da origem atual; com mais PRs abertos, o resumo avisa que os
+mais antigos ficaram de fora. PRs humanos, outras branches e origens mais novas
+não são tocados. As branches permanecem para inspeção; não há exclusão
+automática de branches abandonadas antes do merge.
 
 Se a `main` avançar entre a última conferência e a chamada de merge, a exigência
 de branch atualizada do ruleset bloqueia a integração no GitHub. O script mantém
@@ -272,12 +276,12 @@ A recuperação manual também mantém as verificações reais de origem, commit
 publicação; ela não repete os testes.
 
 Os testes de integração substituem `git` e `gh` por executáveis sintéticos e
-isolam o `PATH` dos subprocessos. Eles geram o artifact com o script do job
-`plan` e executam os jobs com escrita com `bun --no-install`, inclusive com
-artifacts adulterados. Um teste estático confere que a entrada desses jobs só
-alcança módulos `node:` e que o workflow mantém as permissões e a instalação
-separadas. Nenhuma ferramenta valida a sintaxe dos workflows localmente; o
-GitHub a valida ao carregar o arquivo. Não usam credenciais reais nem criam
-releases remotas. As fixtures ficam no diretório temporário do sistema e a suíte
-as descarta ao terminar. Se uma execução interrompida deixar resíduos, use
-`trash`.
+isolam o `PATH` dos subprocessos. O Git sintético recusa fetch e push sem o
+helper de credenciais do `gh`. Eles geram o artifact com o script do job `plan`
+e executam os jobs com escrita com `bun --no-install`, inclusive com artifacts
+adulterados. Um teste estático confere que a entrada desses jobs só alcança
+módulos `node:` e que o workflow mantém as permissões e a instalação separadas.
+Nenhuma ferramenta valida a sintaxe dos workflows localmente; o GitHub a valida
+ao carregar o arquivo. Não usam credenciais reais nem criam releases remotas. As
+fixtures ficam no diretório temporário do sistema e a suíte as descarta ao
+terminar. Se uma execução interrompida deixar resíduos, use `trash`.

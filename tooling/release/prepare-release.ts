@@ -21,6 +21,7 @@ import type {
 } from './types.ts'
 
 const BRANCH_SHA_LENGTH = 12
+const PULLS_PAGE_SIZE = 100
 
 type ReleaseRequest = {
   ctx: ReleaseContext
@@ -83,8 +84,13 @@ async function closeObsoletePullRequests({
   branch
 }: ObsoleteSearch): Promise<void> {
   const pulls = await api<PullRequest[]>(
-    `${ctx.root}/pulls?state=open&base=main&per_page=100`
+    `${ctx.root}/pulls?state=open&base=main&per_page=${PULLS_PAGE_SIZE}`
   )
+  if (pulls.length === PULLS_PAGE_SIZE) {
+    await postpone(
+      `Checked only the latest ${PULLS_PAGE_SIZE} open pull requests to main; older obsolete release pull requests may stay open.`
+    )
+  }
   for (const pr of pulls) {
     if (
       pr.head.ref === branch ||
