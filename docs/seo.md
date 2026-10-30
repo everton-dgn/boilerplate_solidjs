@@ -287,6 +287,59 @@ mil rotas irmãs. O coletor do sitemap lê caminhos, `noindex`, `type` e as data
 de artigo, sem resolver título ou descrição. O coletor do `llms.txt` resolve
 também os metadados das páginas.
 
+### Capacidade e medição
+
+O coletor do `llms.txt` percorre todas as rotas do manifesto e resolve os
+metadados de cada página antes de aplicar `route.info.llms` e `noindex`. O custo
+da coleta cresce com o total de rotas: selecionar menos páginas encurta o texto
+publicado, mas a travessia e a resolução de metadados continuam passando por
+todas.
+
+A ordem de grandeza vem de uma medição histórica, feita em setembro de 2026 num
+Apple M2 Pro, sobre uma versão intermediária em que `route.info.llms` era
+booleano e ainda não havia seções. Com 100 mil rotas sintéticas, a coleta de
+caminhos levou cerca de 33 ms e o `llms.txt` completo cerca de 230 ms, com corpo
+de cerca de 12 MB e diferença de heap perto de 108 MiB entre o início e o fim da
+geração (não é pico de memória). O sitemap completo de 10 mil rotas levou cerca
+de 7 ms. Os scripts e registros dessa medição não existem mais, e a versão atual
+não foi medida de novo. Os números servem para dimensionar e não valem como meta
+nem como limite da CI.
+
+Para comparar uma mudança em `walkStaticRoutes`, `collectLlmsPages` ou no
+coletor do sitemap, meça fora do repositório:
+
+- copie os helpers da revisão de base como linha de base e carregue as duas
+  versões pelo Vite instalado, importando `collectLlmsPages` e a assinatura
+  atual de `buildLlmsText`;
+- rode pares antes/depois em processos Node novos, alternando a ordem a cada par
+  e sem outros benchmarks na máquina (a medição histórica usou 20 pares por
+  cenário);
+- em cada processo, faça uma primeira chamada e três repetições; use a mediana
+  das repetições do processo e, entre os processos, a mediana e o P95 pelo
+  método do posto mais próximo, que com 20 observações é só indicativo;
+- deixe fora do cronômetro a carga dos módulos, a criação das rotas sintéticas e
+  o GC explícito entre chamadas;
+- mantenha fixa a ordem das operações (caminhos, metadados, `llms.txt`,
+  sitemap), porque a primeira chamada de cada uma aproveita o código aquecido
+  pela anterior e não representa inicialização fria;
+- grave cada execução num JSONL novo, com tempos, erros, contagens e tamanhos.
+
+Rotas sintéticas que expõem os metadados por `$$route.require()` medem só a
+coleta e a serialização. Importação de páginas reais, preloads, SSR, rede, CDN,
+compressão e concorrência entre requisições ficam fora, então o resultado não
+prevê a latência HTTP.
+
+O [protocolo de sitemap](https://www.sitemaps.org/protocol.html) limita cada
+arquivo a 50 mil URLs e 52.428.800 bytes sem compressão, os valores de
+`sitemap.xml/constants.ts`; por isso a medição histórica de 100 mil rotas cobriu
+só o coletor do sitemap, sem gerar um XML único, que seria inválido. O
+`llms.txt` não tem limite equivalente, e o corpo de 12 MB com 100 mil páginas
+mostra por que um site grande precisa selecionar o que publica. `noindex` sai
+como metatag HTML, conforme a
+[documentação do Google sobre bloqueio de indexação](https://developers.google.com/search/docs/crawling-indexing/block-indexing);
+excluir essas páginas do `llms.txt` é uma política deste projeto, que a medição
+não verifica em buscadores nem em agentes.
+
 ## Endpoints e cache
 
 `sitemap.xml/`, `robots.txt/` e `llms.txt/` são rotas de API (`index.ts`): o
@@ -316,16 +369,17 @@ e a leitura do manifesto do sitemap, porque o manifesto também é fixo no build
 as fontes do sitemap rodam a cada request. O llms.txt é montado dentro do
 contexto Paraglide do idioma base (`baseLocale` do runtime), inclusive a
 descrição do site e os metadados das páginas, para que nem a requisição que
-preenche a memória nem um contexto de outro idioma mudem o texto. A nota que
-lista os idiomas e declara o idioma do índice é texto fixo: ao mudar os idiomas
-ou o idioma base em `project.inlang/settings.json`, reescreva-a. Os três
-arquivos saem com `public, max-age=0, s-maxage=3600, stale-if-error=86400` em
-produção (o CDN reutiliza por uma hora; a Vercel só cacheia resposta de função
-com `s-maxage` e consome `s-maxage` e `stale-if-error` sem repassá-los ao
-navegador) e com `no-store` em desenvolvimento. Com `stale-if-error`, um erro da
-função depois que a cópia expira não derruba o arquivo por até um dia. As URLs
-absolutas dos três arquivos partem da origem de `VITE_SITE_URL`; um site servido
-em um subcaminho não é suportado por essa geração. A página 404 declara
+preenche a memória nem um contexto de outro idioma mudem o texto. A nota sobre o
+idioma do índice deriva do mesmo `baseLocale`, com o nome do idioma em inglês, o
+idioma das notas. A lista de idiomas da mesma nota é texto fixo: ao mudar os
+idiomas em `project.inlang/settings.json`, reescreva-a. Os três arquivos saem
+com `public, max-age=0, s-maxage=3600, stale-if-error=86400` em produção (o CDN
+reutiliza por uma hora; a Vercel só cacheia resposta de função com `s-maxage` e
+consome `s-maxage` e `stale-if-error` sem repassá-los ao navegador) e com
+`no-store` em desenvolvimento. Com `stale-if-error`, um erro da função depois
+que a cópia expira não derruba o arquivo por até um dia. As URLs absolutas dos
+três arquivos partem da origem de `VITE_SITE_URL`; um site servido em um
+subcaminho não é suportado por essa geração. A página 404 declara
 `robots: noindex`. A imagem social fica em `public/images/og.png`, com cache
 imutável de um ano configurado em `vercel.json` para `/images/`. Como esse cache
 não revalida, publique uma imagem nova com outro nome (por exemplo,
