@@ -1,9 +1,9 @@
-import type { LlmsPage, LlmsSelection } from '@/@types/llms.ts'
 import type { SeoMetadata } from '@/@types/seo.ts'
 import { resolveRouteSeo } from '@/helpers/resolveRouteSeo/index.ts'
 import { walkStaticRoutes } from '@/helpers/walkStaticRoutes/index.ts'
 import type { StaticRoute } from '@/helpers/walkStaticRoutes/types.ts'
 
+import type { LlmsPage, LlmsSelection } from '../../types.ts'
 import { resolveRouteLlms } from '../resolveRouteLlms/index.ts'
 
 type RouteState = {
@@ -36,6 +36,6 @@ export function collectLlmsPages(routes: readonly StaticRoute[]): LlmsPage[] {
       title: seo.title,
       description: seo.description,
       section: llms.section,
-      optional: llms.isOptional
+      isOptional: llms.isOptional
     }))
 }

@@ -1,4 +1,6 @@
-import type { LlmsRouteInfo, LlmsSelection } from '@/@types/llms.ts'
+import type { LlmsRouteInfo } from '@/@types/llms.ts'
+
+import type { LlmsSelection } from '../../types.ts'
 
 type ResolveRouteLlmsOptions = {
   parent?: LlmsSelection

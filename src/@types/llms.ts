@@ -7,17 +7,3 @@ type LlmsRouteOptions = {
 // herança, a seção padrão); `false` a exclui, inclusive quando o layout a
 // incluiu; o objeto inclui e sobrescreve só os campos declarados.
 export type LlmsRouteInfo = boolean | LlmsRouteOptions
-
-export type LlmsSelection = {
-  shouldInclude: boolean
-  section: string
-  isOptional: boolean
-}
-
-export type LlmsPage = {
-  path: string
-  title: string
-  description: string
-  section: string
-  optional: boolean
-}

@@ -1,4 +1,4 @@
-import type { LlmsPage } from '@/@types/llms.ts'
+import type { LlmsPage } from '../../types.ts'
 
 type BuildLlmsTextOptions = {
   title: string
@@ -49,7 +49,7 @@ export function buildLlmsText({
   const optional: string[] = []
   for (const page of pages) {
     const link = formatLink({ page, siteUrl })
-    if (page.optional || page.section === OPTIONAL_SECTION) {
+    if (page.isOptional || page.section === OPTIONAL_SECTION) {
       optional.push(link)
       continue
     }
