@@ -24,13 +24,8 @@ function setup(): void {
   )
 }
 
-function cleanup(): void {
-  document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-}
-
 describe('sincronização de tema', () => {
   beforeEach(setup)
-  afterEach(cleanup)
 
   it('ignora mensagens inválidas e usa cookie canônico para escritas persistidas', () => {
     const receive = vi.fn<() => void>()
@@ -155,7 +150,6 @@ describe('sincronização de tema', () => {
 
 describe('ordenação e escolhas temporárias', () => {
   beforeEach(setup)
-  afterEach(cleanup)
 
   it('descarta mensagem temporária anterior à escolha local persistida', () => {
     const receive = vi.fn<() => void>()
@@ -279,7 +273,6 @@ describe('ordenação e escolhas temporárias', () => {
 
 describe('ciclo de vida do canal de tema', () => {
   beforeEach(setup)
-  afterEach(cleanup)
 
   it('remove listeners e fecha o canal ao descartar', () => {
     const receive = vi.fn<() => void>()

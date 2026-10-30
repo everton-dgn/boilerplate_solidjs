@@ -9,10 +9,6 @@ describe('persistência da preferência no cookie', () => {
     document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
   })
 
-  afterEach(() => {
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  })
-
   it.each(['light', 'dark', 'system'] as const)('grava e relê %s', theme => {
     expect(saveTheme(theme)).toBe(true)
     expect(readTheme()).toBe(theme)
@@ -37,10 +33,9 @@ describe('persistência da preferência no cookie', () => {
   })
 
   it('tolera exceções na leitura e na escrita', () => {
-    const restore = blockCookie()
+    blockCookie()
     expect(readTheme()).toBeUndefined()
     expect(saveTheme('dark')).toBe(false)
-    restore()
   })
 
   it('restringe o cookie ao host e usa Secure em HTTPS', () => {

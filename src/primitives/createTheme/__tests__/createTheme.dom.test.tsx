@@ -26,10 +26,6 @@ describe('primitive de tema', () => {
     vi.stubGlobal('BroadcastChannel', null)
   })
 
-  afterEach(() => {
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
-  })
-
   function mount(): void {
     renderComponent(() => {
       state = useContext(ThemeContext)
@@ -69,13 +65,12 @@ describe('primitive de tema', () => {
   })
 
   it('continua alternando quando o armazenamento é bloqueado', async () => {
-    const restore = blockCookie()
+    blockCookie()
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     state.setTheme('light')
     await expect.poll(() => state.resolvedTheme()).toBe('light')
     expect(readTheme()).toBeUndefined()
-    restore()
   })
 
   it('mantém a escolha feita antes do canal iniciar', async () => {
@@ -128,10 +123,6 @@ describe('primitive de tema com canal entre abas', () => {
         return channel
       })
     )
-  })
-
-  afterEach(() => {
-    document.cookie = `${THEME_COOKIE_NAME}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
   })
 
   it('aplica no DOM o tema recebido de outra aba', async () => {
