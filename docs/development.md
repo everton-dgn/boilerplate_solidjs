@@ -173,11 +173,18 @@ tarefa do `vite.config.ts`. Os dois podem divergir, então confira o
 
 Execute comandos interativos diretamente. Para selecionar atualizações, use
 `vp update --interactive --latest`; `vp outdated` apenas lista as versões
-disponíveis. Observado no macOS: sob `vp run`, o script recebe o stdin em modo
-não bloqueante quando o bloco `run` deste `vite.config.ts` usa constantes, como
-`CSS_CACHE_INPUTS`. Uma leitura bloqueante falha na hora com `EAGAIN`, e o
-seletor do `vp update` fecha com zero pacotes selecionados antes de receber
-entrada. `bun run <script>` não tem o problema. O defeito está registrado em
+disponíveis. Os dois comparam cada pacote só com a dist-tag `latest` e omitem
+versões publicadas apenas em outra tag, como as RCs do Solid na `next`. Para
+esses pacotes, consulte as tags com `bun info <pacote> dist-tags`, por exemplo
+`bun info solid-js dist-tags`, e atualize a versão fixada no `package.json` à
+mão. Observado no macOS: sob `vp run`, o script recebe o stdin em modo não
+bloqueante quando o bloco `run` deste `vite.config.ts` usa constantes, como
+`CSS_CACHE_INPUTS`. Segundo o mantenedor, o Vite+ carrega configurações
+dinâmicas e estáticas por caminhos diferentes, e a carga dinâmica consulta se o
+terminal é TTY, momento em que o Node passa o stdin para o modo não bloqueante.
+Uma leitura bloqueante falha na hora com `EAGAIN`, e o seletor do `vp update`
+fecha com zero pacotes selecionados antes de receber entrada. `bun run <script>`
+não tem o problema. O defeito está registrado em
 [vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155); retire
 esta orientação quando `vp run deps:update` voltar a esperar a seleção. A tabela
 acima também mantém Vitest em observação, interfaces de teste e o gerador do
