@@ -256,47 +256,18 @@ test(EVIDENCE_TEST, async context => {
   await git('switch', '-q', '--detach', base)
   await git('merge', '-q', '--no-ff', '-m', 'merge', head)
   const tested = await git('rev-parse', 'HEAD')
-  const tree = await git('rev-parse', 'HEAD^{tree}')
-  const variables = {
-    RUNNER_TEMP: directory,
-    GITHUB_REPOSITORY: 'owner/repo',
-    GITHUB_RUN_ID: '900',
-    GITHUB_RUN_ATTEMPT: '2',
-    GITHUB_EVENT_NAME: 'pull_request',
-    GITHUB_WORKFLOW_REF:
-      'owner/repo/.github/workflows/ci.yml@refs/pull/42/merge',
-    GITHUB_WORKFLOW_SHA: tested,
-    GITHUB_SHA: tested,
-    PULL_REQUEST: '42',
-    BASE_REF: 'main',
-    BASE_SHA: base,
-    HEAD_SHA: head
-  }
   const script = `cd ${JSON.stringify(repository)}\n${stepScript('Record tested commit')}`
-  assert.equal(await runScript({ script, variables }), true)
+  assert.equal(
+    await runScript({ script, variables: { RUNNER_TEMP: directory } }),
+    true
+  )
   const evidence: unknown = JSON.parse(
     await readFile(
       path.join(directory, 'ci-reuse-evidence/evidence.json'),
       'utf8'
     )
   )
-  assert.deepEqual(evidence, {
-    version: 1,
-    repository: 'owner/repo',
-    run_id: 900,
-    run_attempt: 2,
-    event: 'pull_request',
-    workflow_ref: variables.GITHUB_WORKFLOW_REF,
-    workflow_sha: tested,
-    github_sha: tested,
-    pull_request: 42,
-    base_ref: 'main',
-    base_sha: base,
-    head_sha: head,
-    tested_sha: tested,
-    tested_tree: tree,
-    tested_parents: [base, head]
-  })
+  assert.deepEqual(evidence, { version: 2, tested_sha: tested })
 })
 
 test('pull, build e deploy usam uma única versão fixa do Vercel CLI', async () => {

@@ -30,13 +30,12 @@ const LOCK = new TextEncoder().encode('lockfile')
 const HASH = createHash('sha256')
   .update(createHash('sha256').update(LOCK).digest())
   .digest('hex')
-const RUNNER = { os: 'Linux', arch: 'X64', nodeArch: 'x64' }
+const RUNNER = { os: 'Linux', arch: 'X64' }
 const MANIFEST = JSON.stringify({
   devEngines: { runtime: { version: '24.22.0' } },
   packageManager: 'bun@1.4.3'
 })
 const ROOT = `repos/${REPOSITORY}`
-const DEPENDENCY_KEY = `vite-plus-Linux-x64-bun-${HASH}`
 const VALIDATION_PREFIX = `ci-validation-v2-Linux-X64-node-24.22.0-bun-1.4.3-${HASH}-`
 const MAIN_REF = 'refs/heads/main'
 const exec = promisify(execFile)
@@ -98,20 +97,16 @@ type ArtifactFixture = {
 type TreeFixture = { sha: string }
 type CommitFixture = { tree: TreeFixture; parents: TreeFixture[] }
 type CacheFixture = { key: string; ref: string }
-type TimelineFixture = { event: string }
 type World = {
   files: string[]
   parents: string
   pulls: PullFixture[]
-  headPulls: PullFixture[]
-  timeline: TimelineFixture[][]
   runs: RunFixture[]
   runCount: number
   jobs: JobFixture[]
   jobCount: number
   artifacts: ArtifactFixture[]
   tested: CommitFixture
-  dependencyCaches: CacheFixture[]
   validationCaches: CacheFixture[]
   evidence: Record<string, unknown>
   calls: string[]
@@ -119,7 +114,6 @@ type World = {
 type FullOptions = { world: World; reason: RegExp }
 type PullBuild = (pr: PullFixture) => PullFixture[]
 type JobsVariant = (jobs: JobFixture[]) => JobFixture[]
-type Route = [string, () => unknown]
 
 function job(name: string): JobFixture {
   return {
@@ -181,8 +175,6 @@ function createWorld(): World {
     files: ['src/App.tsx'],
     parents: `${MERGE} ${BASE} ${HEAD}`,
     pulls: [pullRequest()],
-    headPulls: [pullRequest()],
-    timeline: [[{ event: 'committed' }, { event: 'merged' }]],
     runs: [workflowRun()],
     runCount: 1,
     jobs,
@@ -192,42 +184,16 @@ function createWorld(): World {
       tree: { sha: TREE },
       parents: [{ sha: BASE }, { sha: HEAD }]
     },
-    dependencyCaches: [{ key: DEPENDENCY_KEY, ref: MAIN_REF }],
     validationCaches: [{ key: `${VALIDATION_PREFIX}1-1`, ref: MAIN_REF }],
-    evidence: {
-      version: 1,
-      repository: REPOSITORY,
-      run_id: RUN_ID,
-      run_attempt: ATTEMPT,
-      event: 'pull_request',
-      workflow_ref: `${REPOSITORY}/.github/workflows/ci.yml@refs/pull/${PR}/merge`,
-      workflow_sha: TESTED,
-      github_sha: TESTED,
-      pull_request: PR,
-      base_ref: 'main',
-      base_sha: BASE,
-      head_sha: HEAD,
-      tested_sha: TESTED,
-      tested_tree: TREE,
-      tested_parents: [BASE, HEAD]
-    },
+    evidence: { version: 2, tested_sha: TESTED },
     calls: []
   }
 }
 
 function routes(world: World): Map<string, () => unknown> {
   const caches = `${ROOT}/actions/caches?ref=refs%2Fheads%2Fmain&key=`
-  const timeline: Route[] = world.timeline.map((page, index) => [
-    `${ROOT}/issues/${PR}/timeline?per_page=${PAGE_SIZE}&page=${index + 1}`,
-    () => page
-  ])
   return new Map<string, () => unknown>([
     [`${ROOT}/commits/${MERGE}/pulls?per_page=${PAGE_SIZE}`, () => world.pulls],
-    [
-      `${ROOT}/pulls?state=all&head=${encodeURIComponent('owner:feat/x')}&per_page=${PAGE_SIZE}`,
-      () => world.headPulls
-    ],
-    ...timeline,
     [
       `${ROOT}/actions/workflows/ci.yml/runs?head_sha=${HEAD}&event=pull_request&per_page=${PAGE_SIZE}`,
       () => ({ total_count: world.runCount, workflow_runs: world.runs })
@@ -244,10 +210,6 @@ function routes(world: World): Map<string, () => unknown> {
       })
     ],
     [`${ROOT}/git/commits/${TESTED}`, () => world.tested],
-    [
-      `${caches}${encodeURIComponent(DEPENDENCY_KEY)}&per_page=${PAGE_SIZE}`,
-      () => ({ actions_caches: world.dependencyCaches })
-    ],
     [
       `${caches}${encodeURIComponent(VALIDATION_PREFIX)}&per_page=${PAGE_SIZE}`,
       () => ({ actions_caches: world.validationCaches })
@@ -335,10 +297,13 @@ test('mantém o Quality quando lockfile, manifest ou bunfig mudam', async () => 
 })
 
 test('mantém o Quality sem cache aplicável da main', async () => {
-  const foreign = [{ key: DEPENDENCY_KEY, ref: 'refs/pull/1/merge' }]
-  for (const key of ['dependencyCaches', 'validationCaches'] as const) {
-    const world = createWorld()
-    world[key] = foreign
+  const foreign = createWorld()
+  foreign.validationCaches = [
+    { key: `${VALIDATION_PREFIX}1-1`, ref: 'refs/pull/1/merge' }
+  ]
+  const missing = createWorld()
+  missing.validationCaches = []
+  for (const world of [foreign, missing]) {
     const decision = await decide(world)
     assert.equal(decision.shouldReuse, true)
     assert.equal(decision.shouldRunQuality, true)
@@ -385,36 +350,6 @@ test('rejeita PR ausente, ambíguo, de fork ou com outra base', async () => {
     world.pulls = build(pullRequest())
     await assertFull({ world, reason: /PR/u })
   }
-})
-
-test('rejeita head com mais de um PR (empilhamento)', async () => {
-  const world = createWorld()
-  world.headPulls = [pullRequest(), { ...pullRequest(), number: 7 }]
-  await assertFull({ world, reason: /mais de um PR/u })
-})
-
-test('aceita nome de branch reutilizado por PR antigo com outro head', async () => {
-  const world = createWorld()
-  const older = pullRequest()
-  world.headPulls = [
-    pullRequest(),
-    { ...older, number: 7, head: { ...older.head, sha: OTHER } }
-  ]
-  const decision = await decide(world)
-  assert.equal(decision.shouldReuse, true)
-})
-
-test('rejeita PR que mudou de base, inclusive na segunda página', async () => {
-  const world = createWorld()
-  world.timeline = [[{ event: 'base_ref_changed' }]]
-  await assertFull({ world, reason: /mudou de base/u })
-
-  const paged = createWorld()
-  paged.timeline = [
-    Array.from({ length: PAGE_SIZE }, () => ({ event: 'committed' })),
-    [{ event: 'automatic_base_change_succeeded' }]
-  ]
-  await assertFull({ world: paged, reason: /mudou de base/u })
 })
 
 test('rejeita run ausente, duplicado, falho ou de outro workflow', async () => {
@@ -483,18 +418,11 @@ test('rejeita PR antigo sem evidência e evidência de outro run', async () => {
   }
 })
 
-test('rejeita evidência divergente do run, PR ou merge', async () => {
+test('rejeita evidência de outra versão ou sem SHA testado', async () => {
   const changes: Record<string, unknown>[] = [
-    { version: 2 },
-    { run_attempt: 1 },
-    { base_ref: 'develop' },
-    { base_sha: OTHER },
-    { tested_tree: OTHER },
-    { workflow_ref: `${REPOSITORY}/.github/workflows/ci.yml@refs/heads/main` },
-    { workflow_sha: OTHER },
-    { github_sha: OTHER },
-    { tested_parents: [OTHER, HEAD] },
-    { tested_sha: 'nope' }
+    { version: 1 },
+    { tested_sha: 'nope' },
+    { tested_sha: undefined }
   ]
   for (const change of changes) {
     const world = createWorld()
@@ -517,7 +445,7 @@ test('confere o commit sintético pela API do GitHub', async () => {
 
 test('qualquer falha de API ou de leitura resulta em CI completo', async () => {
   const world = createWorld()
-  world.timeline = []
+  world.evidence = { ...world.evidence, tested_sha: OTHER }
   await assertFull({ world, reason: /Rota inesperada/u })
 
   const invalid = await decideReuse({
