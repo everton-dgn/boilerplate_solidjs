@@ -306,12 +306,13 @@ aguardar os checks de `Quality` nem compartilhar CPU com a cobertura. Os quatro
 jobs rodam em paralelo, cada um com seu checkout, portas e artefatos de build
 isolados; no push da `main`, os três reutilizáveis começam depois do
 `Reuse proof`, e o E2E de produção não espera por ele. A ação local
-`setup-project` compartilha a instalação entre os jobs e o deploy. Esse
-paralelismo reduz a espera, mas repete a preparação nos runners e pode aumentar
-o consumo de minutos do GitHub Actions. O build de produção aprovado nos E2E é
-transferido ao deploy na mesma execução do CI. Assim, tanto o PR quanto o push
-para `main` compilam duas aplicações: uma com fixtures e outra com as rotas
-reais. Os testes de tooling também compilam suas próprias fixtures menores.
+`setup-project` concentra a preparação da toolchain: os jobs de validação também
+instalam as dependências, e o deploy não. Esse paralelismo reduz a espera, mas
+repete a preparação nos runners e pode aumentar o consumo de minutos do GitHub
+Actions. O build de produção aprovado nos E2E é transferido ao deploy na mesma
+execução do CI. Assim, tanto o PR quanto o push para `main` compilam duas
+aplicações: uma com fixtures e outra com as rotas reais. Os testes de tooling
+também compilam suas próprias fixtures menores.
 
 `CI required` aguarda todos os jobs e exige sucesso de `Quality`, `Tooling`,
 `E2E (fixtures)` e `E2E (production)`; falhas, cancelamentos e jobs pulados
@@ -338,8 +339,7 @@ testou a mesma árvore, o job `Reuse proof` dispensa `Quality`, `Tooling` e
 sempre, sem depender da prova.
 
 No PR, o `Quality` publica o artifact `ci-reuse-evidence-<tentativa>` com o SHA
-do merge sintético que o checkout testou, sua árvore e seus parents, o head e a
-base do evento, o número do PR, o run, a tentativa e o `workflow_ref`. No push,
+do merge sintético que o checkout testou. No push,
 `tooling/ciReuse/prove-reuse.ts` roda no Node declarado no projeto, sem instalar
 dependências, e aprova a reutilização somente quando todas estas condições
 valem:
@@ -349,29 +349,33 @@ valem:
   run do PR usou o mesmo workflow da `main` e executou os testes do verificador;
   o PR não executa a prova, que só roda no push da `main`;
 - há um único PR integrado com esse merge commit, do próprio repositório, com
-  base `main`, base e head iguais aos parents, sem outro PR com o mesmo head
-  testado e sem mudança de base na timeline;
+  base `main` e com base e head iguais aos parents;
 - há um único run `pull_request` de `ci.yml` para o head, concluído com sucesso,
   do mesmo repositório e branch;
 - na tentativa desse run, `Quality`, `Tooling` e `E2E (fixtures)` existem, são
   da mesma tentativa e terminaram com sucesso. Re-run parcial que não repita os
   três jobs não serve como prova;
-- a evidência da mesma tentativa pertence ao run e ao head, descreve o run, o PR
-  e a base `main`, e o commit sintético consultado na API do GitHub tem os
-  mesmos parents e a mesma árvore do merge da `main`.
+- a evidência da mesma tentativa pertence ao run e ao head, e o commit sintético
+  que ela aponta, consultado na API do GitHub, tem os mesmos parents e a mesma
+  árvore do merge da `main`. Um run anterior a uma mudança de base, ou de outro
+  PR com o mesmo head e outra base, testou outros parents e reprova nesta
+  conferência.
 
-Qualquer ausência, ambiguidade, timeout, erro de API ou PR anterior à evidência
-resulta em CI completo. O gate aceita `skipped` somente com a prova aprovada no
-mesmo run. Checks sintetizados pela release não contam como prova.
+Qualquer ausência, ambiguidade, timeout, erro de API, PR anterior à evidência ou
+evidência de outra versão resulta em CI completo. O gate aceita `skipped`
+somente com a prova aprovada no mesmo run. Checks sintetizados pela release não
+contam como prova.
 
 `Quality` também roda quando o merge altera `bun.lock`, `package.json` ou
-`bunfig.toml`, ou quando a `main` não tem as entradas de cache de pacotes e de
-validação para o lockfile e a toolchain atuais. Ele é o único job que grava
-esses caches. A chave de pacotes e o prefixo de restauração da validação só
-mudam nesses casos; com o `Quality` dispensado, os PRs continuam restaurando a
-última entrada de validação da `main` com o mesmo prefixo, que envelhece
-conforme a árvore muda e pode reduzir os acertos do Vite Task e do Vitest até a
-próxima mudança de lockfile.
+`bunfig.toml`, ou quando a `main` não tem uma entrada de cache de validação para
+o lockfile e a toolchain atuais. Ele é o único job que grava esse cache e o de
+pacotes. A prova não consulta a chave de pacotes, que segue o formato interno do
+`setup-vp`: se essa entrada sumir antes da de validação, os PRs restauram pelo
+prefixo um cache de pacotes anterior até a próxima mudança de lockfile. A chave
+de pacotes e o prefixo de restauração da validação só mudam nesses casos; com o
+`Quality` dispensado, os PRs continuam restaurando a última entrada de validação
+da `main` com o mesmo prefixo, que envelhece conforme a árvore muda e pode
+reduzir os acertos do Vite Task e do Vitest até a próxima mudança de lockfile.
 
 O verificador e o workflow continuam sendo código revisado da `main`: um merge
 que altere `.github/` ou `tooling/ciReuse/` sempre executa o CI completo. A

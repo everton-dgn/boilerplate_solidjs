@@ -77,38 +77,11 @@ jobs:
 
       - name: Record tested commit
         if: github.event_name == 'pull_request'
-        env:
-          PULL_REQUEST: ${{ github.event.pull_request.number }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           mkdir "$RUNNER_TEMP/ci-reuse-evidence"
           tested_sha=$(git rev-parse HEAD)
-          tested_tree=$(git rev-parse 'HEAD^{tree}')
-          parents=$(git rev-list --parents -n 1 HEAD | cut -d' ' -f2-)
-          jq -n \
-            --arg repository "$GITHUB_REPOSITORY" \
-            --argjson run_id "$GITHUB_RUN_ID" \
-            --argjson run_attempt "$GITHUB_RUN_ATTEMPT" \
-            --arg event "$GITHUB_EVENT_NAME" \
-            --arg workflow_ref "$GITHUB_WORKFLOW_REF" \
-            --arg workflow_sha "$GITHUB_WORKFLOW_SHA" \
-            --arg github_sha "$GITHUB_SHA" \
-            --argjson pull_request "$PULL_REQUEST" \
-            --arg base_ref "$BASE_REF" \
-            --arg base_sha "$BASE_SHA" \
-            --arg head_sha "$HEAD_SHA" \
-            --arg tested_sha "$tested_sha" \
-            --arg tested_tree "$tested_tree" \
-            --arg parents "$parents" \
-            '{version: 1, repository: $repository, run_id: $run_id,
-              run_attempt: $run_attempt, event: $event,
-              workflow_ref: $workflow_ref, workflow_sha: $workflow_sha,
-              github_sha: $github_sha, pull_request: $pull_request,
-              base_ref: $base_ref, base_sha: $base_sha, head_sha: $head_sha,
-              tested_sha: $tested_sha, tested_tree: $tested_tree,
-              tested_parents: ($parents | split(" "))}' \
+          jq -n --arg tested_sha "$tested_sha" \
+            '{version: 2, tested_sha: $tested_sha}' \
             > "$RUNNER_TEMP/ci-reuse-evidence/evidence.json"
 
       - name: Upload tested commit evidence
@@ -265,6 +238,9 @@ jobs:
     name: E2E (production)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -282,8 +258,6 @@ jobs:
       - name: Pull Vercel production settings
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           test -n "$VERCEL_ORG_ID" || { echo 'Missing VERCEL_ORG_ID variable'; exit 1; }
@@ -294,8 +268,6 @@ jobs:
       - name: Build deployment with Vercel CLI
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           ENABLE_EXPERIMENTAL_COREPACK: '0'
         run: vp dlx "vercel@$VERCEL_CLI_VERSION" build --prod --yes
@@ -406,13 +378,13 @@ jobs:
           accept 'E2E (fixtures)' "$FIXTURES_RESULT" false
 
   deploy:
-    needs: [check, e2e-production]
+    needs: check
     # O success() implícito considera toda a cadeia de needs e pularia o deploy
-    # quando a prova dispensa jobs; check já exige o resultado de cada um.
+    # quando a prova dispensa jobs; check já exige o resultado de cada um,
+    # inclusive o sucesso do E2E de produção.
     if:
-      ${{ !cancelled() && needs.check.result == 'success' &&
-      needs.e2e-production.result == 'success' && github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' }}
+      ${{ !cancelled() && needs.check.result == 'success' && github.event_name
+      == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     concurrency:
@@ -453,16 +425,6 @@ jobs:
         with:
           install-dependencies: false
           cache-save: false
-
-      - name: Verify deployment configuration
-        if: steps.freshness.outputs.should-deploy == 'true'
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          test -n "$VERCEL_ORG_ID" || { echo 'Missing VERCEL_ORG_ID variable'; exit 1; }
-          test -n "$VERCEL_PROJECT_ID" || { echo 'Missing VERCEL_PROJECT_ID variable'; exit 1; }
-          test -n "$VERCEL_TOKEN" || { echo 'Missing VERCEL_TOKEN secret'; exit 1; }
-          [[ "$VERCEL_CLI_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Invalid pinned Vercel CLI version'; exit 1; }
 
       - name: Download tested deployment artifact
         if: steps.freshness.outputs.should-deploy == 'true'

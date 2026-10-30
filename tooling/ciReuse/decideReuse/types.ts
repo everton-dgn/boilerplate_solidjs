@@ -32,7 +32,6 @@ type Job = {
 export type Runner = {
   os: string
   arch: string
-  nodeArch: string
 }
 
 export type DecideReuseOptions = {
@@ -72,10 +71,6 @@ export type PullRequest = {
 }
 
 export type PullContext = MergeContext & { pr: PullRequest }
-
-export type TimelineEvent = { event?: string }
-
-export type TimelineOptions = Context & { pr: number; page: number }
 
 export type WorkflowRun = {
   id: number

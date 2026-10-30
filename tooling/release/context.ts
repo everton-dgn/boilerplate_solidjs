@@ -1,23 +1,12 @@
 import { appendFile } from 'node:fs/promises'
 import { env } from 'node:process'
 
-import { command, readSourceRun, requireSha } from './github.ts'
-import { planRelease, type Commit, type ReleasePlan } from './versioning.ts'
+import { git, readSourceRun, requireSha } from './github.ts'
+import type { Commit, ReleaseContext, ReleasePlan } from './types.ts'
+import { isStableVersion, planRelease } from './versioning.ts'
 
 const LOG_FIELD_COUNT = 2
 const ISO_DATE_LENGTH = 10
-
-function git(...args: string[]): Promise<string> {
-  return command('git', args)
-}
-
-export type ReleaseContext = {
-  repository: string
-  source: string
-  root: string
-  date: string
-  manifest: Record<string, unknown>
-}
 
 export function requiredEnv(name: string): string {
   const value = env[name]
@@ -84,7 +73,7 @@ export async function readSourcePlan(
   )
   const baselineTag = tags
     .split('\n')
-    .find(tag => /^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(tag))
+    .find(tag => tag.startsWith('v') && isStableVersion(tag.slice(1)))
   const range = baselineTag ? `${baselineTag}..${ctx.source}` : ctx.source
   const log = await git('log', '--no-merges', '--format=%H%x00%B%x00', range)
   const fields = log.split('\0')

@@ -203,7 +203,7 @@ test('o grafo mantém produção independente e os jobs reutilizáveis atrás do
     )
   )
   const deploy = jobBlock('deploy')
-  assert.ok(deploy.includes('needs: [check, e2e-production]'))
+  assert.ok(deploy.includes('    needs: check\n'))
   // Sem função de status, o success() implícito pula o deploy quando a prova
   // dispensa jobs. A checagem estática não emula o scheduler do GitHub.
   const condition = (
@@ -212,7 +212,6 @@ test('o grafo mantém produção independente e os jobs reutilizáveis atrás do
   for (const clause of [
     '!cancelled()',
     "needs.check.result == 'success'",
-    "needs.e2e-production.result == 'success'",
     "github.event_name == 'push'",
     "github.ref == 'refs/heads/main'"
   ]) {
@@ -255,50 +254,21 @@ test(EVIDENCE_TEST, async context => {
   await git('switch', '-q', '--detach', base)
   await git('merge', '-q', '--no-ff', '-m', 'merge', head)
   const tested = await git('rev-parse', 'HEAD')
-  const tree = await git('rev-parse', 'HEAD^{tree}')
-  const variables = {
-    RUNNER_TEMP: directory,
-    GITHUB_REPOSITORY: 'owner/repo',
-    GITHUB_RUN_ID: '900',
-    GITHUB_RUN_ATTEMPT: '2',
-    GITHUB_EVENT_NAME: 'pull_request',
-    GITHUB_WORKFLOW_REF:
-      'owner/repo/.github/workflows/ci.yml@refs/pull/42/merge',
-    GITHUB_WORKFLOW_SHA: tested,
-    GITHUB_SHA: tested,
-    PULL_REQUEST: '42',
-    BASE_REF: 'main',
-    BASE_SHA: base,
-    HEAD_SHA: head
-  }
   const script = `cd ${JSON.stringify(repository)}\n${stepScript('Record tested commit')}`
-  assert.equal(await runScript({ script, variables }), true)
+  assert.equal(
+    await runScript({ script, variables: { RUNNER_TEMP: directory } }),
+    true
+  )
   const evidence: unknown = JSON.parse(
     await readFile(
       path.join(directory, 'ci-reuse-evidence/evidence.json'),
       'utf8'
     )
   )
-  assert.deepEqual(evidence, {
-    version: 1,
-    repository: 'owner/repo',
-    run_id: 900,
-    run_attempt: 2,
-    event: 'pull_request',
-    workflow_ref: variables.GITHUB_WORKFLOW_REF,
-    workflow_sha: tested,
-    github_sha: tested,
-    pull_request: 42,
-    base_ref: 'main',
-    base_sha: base,
-    head_sha: head,
-    tested_sha: tested,
-    tested_tree: tree,
-    tested_parents: [base, head]
-  })
+  assert.deepEqual(evidence, { version: 2, tested_sha: tested })
 })
 
-test('pull, build e deploy usam uma única versão fixa do Vercel CLI', async () => {
+test('pull, build e deploy usam uma única versão fixa do Vercel CLI', () => {
   assert.doesNotMatch(WORKFLOW, /vercel@latest|registry\.npmjs\.org/u)
   const pins = [
     ...WORKFLOW.matchAll(/^ {2}VERCEL_CLI_VERSION: '(?<version>.+)'$/gmu)
@@ -313,26 +283,6 @@ test('pull, build e deploy usam uma única versão fixa do Vercel CLI', async ()
     WORKFLOW.split('vp dlx "vercel@$VERCEL_CLI_VERSION"').length - 1,
     VERCEL_COMMAND_COUNT
   )
-  const verify = stepScript('Verify deployment configuration')
-  const configured = {
-    VERCEL_ORG_ID: 'org',
-    VERCEL_PROJECT_ID: 'project',
-    VERCEL_TOKEN: 'token'
-  }
-  for (const [version, isAccepted] of [
-    ['64.5.0', true],
-    ['', false],
-    ['latest', false]
-  ] as const) {
-    assert.equal(
-      await runScript({
-        script: verify,
-        variables: { ...configured, VERCEL_CLI_VERSION: version }
-      }),
-      isAccepted,
-      version
-    )
-  }
 })
 
 test('o token da Vercel chega só aos passos do Vercel CLI', () => {
@@ -343,7 +293,6 @@ test('o token da Vercel chega só aos passos do Vercel CLI', () => {
   assert.deepEqual(withToken, [
     'Pull Vercel production settings',
     'Build deployment with Vercel CLI',
-    'Verify deployment configuration',
     'Deploy tested production artifact'
   ])
   for (const step of steps.filter(item =>

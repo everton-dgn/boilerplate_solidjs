@@ -1,6 +1,5 @@
 import { appendFile } from 'node:fs/promises'
-import { arch, env, stdout } from 'node:process'
-import { setTimeout as delay } from 'node:timers/promises'
+import { env, stdout } from 'node:process'
 
 import { createPorts } from './createPorts/index.ts'
 import { decideReuse } from './decideReuse/index.ts'
@@ -12,58 +11,23 @@ const output = env.GITHUB_OUTPUT
 if (!output) throw new Error('Missing GITHUB_OUTPUT.')
 
 const repository = env.GITHUB_REPOSITORY ?? ''
-const sha = env.GITHUB_SHA ?? ''
-const isMainPush =
-  env.GITHUB_EVENT_NAME === 'push' && env.GITHUB_REF === 'refs/heads/main'
-const deadline = new AbortController()
-
-const timeout = {
-  shouldReuse: false,
-  shouldRunQuality: true,
-  reason: 'A prova excedeu o tempo limite.',
-  sourceRunUrl: undefined
-}
-
-function expire() {
-  // O abort depois da decisão também resolve, sem rejeição pendente.
-  return delay(DEADLINE_MS, undefined, { signal: deadline.signal }).then(
-    () => {
-      // O mesmo sinal encerra os subprocessos da prova ainda em andamento.
-      deadline.abort()
-      return timeout
-    },
-    () => timeout
-  )
-}
-
-const decision = isMainPush
-  ? await Promise.race([
-      decideReuse({
-        repository,
-        sha,
-        runner: {
-          os: env.RUNNER_OS ?? '',
-          arch: env.RUNNER_ARCH ?? '',
-          nodeArch: arch
-        },
-        ports: createPorts({ repository, signal: deadline.signal })
-      }),
-      expire()
-    ])
-  : {
-      shouldReuse: false,
-      shouldRunQuality: true,
-      reason: 'A reutilização vale somente para push na main.',
-      sourceRunUrl: undefined
-    }
-deadline.abort()
-
-const reason = decision.reason
-  .replaceAll(/\s+/gu, ' ')
-  .slice(0, MAX_REASON_LENGTH)
+// O prazo encerra os subprocessos da prova ainda em andamento, e a falha
+// resultante vira CI completo.
+const signal = AbortSignal.timeout(DEADLINE_MS)
+const decision = await decideReuse({
+  repository,
+  sha: env.GITHUB_SHA ?? '',
+  runner: { os: env.RUNNER_OS ?? '', arch: env.RUNNER_ARCH ?? '' },
+  ports: createPorts({ repository, signal })
+})
+const message =
+  signal.aborted && !decision.shouldReuse
+    ? 'A prova excedeu o tempo limite.'
+    : decision.reason
+const reason = message.replaceAll(/\s+/gu, ' ').slice(0, MAX_REASON_LENGTH)
 await appendFile(
   output,
-  `reuse=${decision.shouldReuse}\nrun_quality=${decision.shouldRunQuality}\nreason=${reason}\n`
+  `reuse=${decision.shouldReuse}\nrun_quality=${decision.shouldRunQuality}\n`
 )
 const summary = [
   `Reutilização: ${decision.shouldReuse ? 'sim' : 'não, CI completo'}`,

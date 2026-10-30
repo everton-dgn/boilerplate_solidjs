@@ -8,9 +8,9 @@ import {
   assertReleaseFiles,
   assertReleasePullRequest,
   assertSourceRun,
-  isOpenReleasePullRequest,
-  type PullRequest
+  isOpenReleasePullRequest
 } from '../github.ts'
+import type { PullRequest } from '../types.ts'
 import { planRelease } from '../versioning.ts'
 
 const SHA_LENGTH = 40

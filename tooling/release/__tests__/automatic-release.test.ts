@@ -17,6 +17,7 @@ const STALE_PR = 2
 const NEWER_PR = 3
 const HUMAN_PR = 4
 const OTHER_BRANCH_PR = 5
+const PULLS_PAGE_SIZE = 100
 
 // O PATH do subprocesso contém só estes comandos falsos. Nenhum Git ou GitHub real fica acessível.
 const fake = String.raw`
@@ -30,13 +31,17 @@ const save = () => fs.writeFileSync(path, JSON.stringify(s));
 const out = value => { save(); console.log(typeof value === 'string' ? value : JSON.stringify(value)); };
 const fail = () => { save(); console.log('HTTP/2.0 404 Not Found\n\n{}'); process.exitCode = 1; };
 if (process.argv[1].endsWith('/git')) {
-  if (args.includes('push')) {
+  // O checkout não guarda credenciais: fetch e push só chegam ao remoto pelo helper do gh.
+  const helper = ['-c', 'credential.helper=', '-c', 'credential.helper=!gh auth git-credential'];
+  const isAuthenticated = helper.every((value, index) => args[index] === value);
+  const [command, ...rest] = isAuthenticated ? args.slice(helper.length) : args;
+  if (['fetch', 'push'].includes(command) && !isAuthenticated) throw Error('Unauthenticated remote access');
+  if (command === 'push') {
     const ref = 'refs/heads/' + s.branch;
-    if (!s.release || !args.includes('--force-with-lease=' + ref + ':' + head) || !args.includes(':' + ref)) throw Error('Unsafe cleanup');
+    if (!s.release || !rest.includes('--force-with-lease=' + ref + ':' + head) || !rest.includes(':' + ref)) throw Error('Unsafe cleanup');
     if (s.cleanupRace) { save(); process.exitCode = 1; return; }
     s.ref = null; s.deleted = true; out(''); return;
   }
-  const [command, ...rest] = args;
   if (command === 'merge-base' && rest[0] === '--is-ancestor' && (s.notAncestors ?? []).includes(rest[1])) { save(); process.exitCode = 1; return; }
   if (['fetch', 'merge-base'].includes(command)) out('');
   else if (command === 'rev-parse') out(source);
@@ -397,13 +402,9 @@ describe(
     it('rejects a tampered artifact before any mutation', async context => {
       const cases: [(artifact: Artifact) => Artifact, string][] = [
         [artifact => ({ ...artifact, extra: true }), 'unexpected structure'],
-        [artifact => ({ ...artifact, notes: 1 }), 'unexpected structure'],
+        [artifact => ({ ...artifact, changelog: 1 }), 'unexpected structure'],
         [
           artifact => ({ ...artifact, source: 'e'.repeat(SHA_LENGTH) }),
-          'does not match the source plan'
-        ],
-        [
-          artifact => ({ ...artifact, version: '9.0.0', tag: 'v9.0.0' }),
           'does not match the source plan'
         ],
         [
@@ -425,10 +426,6 @@ describe(
             )
           }),
           'changes CHANGELOG.md'
-        ],
-        [
-          artifact => ({ ...artifact, notes: 'Different notes.' }),
-          'notes differ'
         ]
       ]
       for (const [tamper, error] of cases) {
@@ -704,6 +701,28 @@ describe(
 
       const state = await f.state()
       assert.deepEqual(state.closed, [STALE_PR])
+      assert.equal(await f.lastOutput('publish'), 'true')
+    })
+
+    it('warns when the open pull requests fill the first page', async context => {
+      const f = await fixture(context)
+      await f.patch({
+        openPulls: Array.from({ length: PULLS_PAGE_SIZE }, () =>
+          openPull({
+            number: HUMAN_PR,
+            head: HEAD,
+            ref: 'feat/other',
+            login: 'someone'
+          })
+        )
+      })
+
+      await f.run('prepare')
+
+      assert.match(
+        await f.summary(),
+        /Checked only the latest 100 open pull requests to main/u
+      )
       assert.equal(await f.lastOutput('publish'), 'true')
     })
   }
