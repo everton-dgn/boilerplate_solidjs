@@ -48,7 +48,6 @@ function claimMessages({ keys, directory, owners }: ClaimOptions): void {
 }
 
 const TextSchema = v.string()
-const LAST_ITEM = -1
 const StringsSchema = v.array(v.string())
 const VariantsSchema = v.pipe(v.record(v.string(), TextSchema), v.minEntries(1))
 const ComplexSchema = v.strictObject({
@@ -60,9 +59,13 @@ const MessageSchema = v.union([
   TextSchema,
   v.pipe(v.array(ComplexSchema), v.length(1))
 ])
-const CatalogSchema = v.record(
-  v.pipe(v.string(), v.regex(/^[a-z][a-zA-Z0-9]*_[a-zA-Z0-9_]+$/u)),
-  MessageSchema
+const MessageIdSchema = v.pipe(
+  v.string(),
+  v.regex(/^[a-z][a-zA-Z0-9]*_[a-zA-Z0-9_]+$/u)
+)
+const CatalogSchema = v.pipe(
+  v.record(MessageIdSchema, MessageSchema),
+  v.minEntries(1, 'Empty catalog')
 )
 
 // JSON.parse aceita silenciosamente propriedades repetidas. Os tokens de
@@ -75,7 +78,7 @@ function assertUniqueProperties({ file, source }: ParseOptions): void {
     else if (token === '}') scopes.pop()
     else if (token.startsWith('"') && tokens[index + 1] === ':') {
       const key = v.parse(v.string(), JSON.parse(token))
-      const scope = scopes.at(LAST_ITEM)
+      const scope = scopes.at(-1)
       if (scope?.has(key)) {
         throw new Error(`[i18n] ${file}: duplicate key "${key}"`)
       }
@@ -88,9 +91,7 @@ function parseCatalog({ file, source }: ParseOptions): Catalog {
   try {
     const json: unknown = JSON.parse(source)
     assertUniqueProperties({ file, source })
-    const catalog = v.parse(CatalogSchema, json)
-    if (Object.keys(catalog).length === 0) throw new Error('Empty catalog')
-    return catalog
+    return v.parse(CatalogSchema, json)
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
     throw new Error(`[i18n] Invalid catalog ${file}: ${detail}`, {
@@ -107,6 +108,7 @@ async function validateMessages({
   if (!messageFormat.importFiles) {
     throw new Error('Message format parser unavailable')
   }
+  const locales = Object.keys(catalogs)
   let parsed: ImportResult
   try {
     parsed = await messageFormat.importFiles({
@@ -114,7 +116,7 @@ async function validateMessages({
         locale,
         content: new TextEncoder().encode(JSON.stringify(catalog))
       })),
-      settings: { baseLocale, locales: Object.keys(catalogs), modules: [] }
+      settings: { baseLocale, locales, modules: [] }
     })
   } catch (error) {
     throw new Error(`[i18n] Invalid message syntax in ${directory}`, {
@@ -129,7 +131,6 @@ async function validateMessages({
     parsed.variants,
     variant => variant.messageBundleId
   )
-  const locales = Object.keys(catalogs)
   for (const bundle of parsed.bundles) {
     if (!bundle.id) throw new Error(`[i18n] Message without ID in ${directory}`)
     // O parser retorna tabelas separadas; o SDK recebe cada mensagem com suas variantes.
@@ -187,16 +188,14 @@ export async function readCatalogs({
   }
   const files = discovered.toSorted()
   if (files.length === 0) throw new Error('[i18n] No colocated catalogs found')
-  const directories = new Set(files.map(file => path.dirname(file)))
+  const filesByDirectory = Map.groupBy(files, file => path.dirname(file))
   const catalogs: Record<string, Catalog> = Object.fromEntries(
     locales.map(locale => [locale, {}])
   )
   const owners = new Map<string, string>()
 
-  for (const directory of directories) {
-    const present = files
-      .filter(file => path.dirname(file) === directory)
-      .map(file => path.basename(file, '.json'))
+  for (const [directory, entries] of filesByDirectory) {
+    const present = entries.map(file => path.basename(file, '.json'))
     const missing = locales.filter(locale => !present.includes(locale))
     const extra = present.filter(locale => !locales.includes(locale))
     if (missing.length > 0 || extra.length > 0) {
