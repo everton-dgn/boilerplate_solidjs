@@ -209,10 +209,9 @@ ocorrência (a página estática antes da fonte). A comparação usa a URL local
 que vai para o XML, então `/a/../b` e `/b`, `/café` e `/caf%C3%A9` ou
 `/pt/blog/x` e `/blog/x` contam como a mesma página. `lastmod` fora do W3C
 Datetime é omitido. Falha de qualquer fonte, entrada inválida, prazo estourado
-ou sitemap acima do limite do protocolo (a quantidade fica em
-`sitemap.xml/constants.ts` e o limite de bytes em
-`sitemap.xml/helpers/buildSitemapResponse/index.ts`) respondem 503 sem corpo e
-com `no-store`, e o servidor registra a linha fixa `[sitemap]` descrita em
+ou sitemap acima dos limites do protocolo (de URLs e de bytes, em
+`sitemap.xml/constants.ts`) respondem 503 sem corpo e com `no-store`, e o
+servidor registra a linha fixa `[sitemap]` descrita em
 [erros no servidor](server-errors.md#log-de-falhas). O crawler tenta de novo, e
 o CDN não guarda um sitemap parcial por uma hora. A resposta de sucesso traz
 `stale-if-error=86400`: depois que a cópia em cache expira, se a função
@@ -270,20 +269,21 @@ server functions (`/_server` por padrão, lido do
 com `Disallow: /`, e o link do sitemap. Buscadores e agentes que leem páginas a
 pedido do usuário continuam liberados, porque são o público do llms.txt.
 `Disallow` é um pedido que robôs mal comportados ignoram e não remove URL do
-índice; para isso, use `noindex` em `route.info.seo`. Em produção o processo
-guarda em memória a resposta do robots e do llms.txt e a leitura do manifesto do
-sitemap, porque o manifesto, os grupos e a URL do site são fixos no build; as
-fontes do sitemap rodam a cada request. O llms.txt é montado dentro do contexto
-Paraglide do idioma base (`baseLocale` do runtime), inclusive a descrição do
-site e os metadados das páginas, para que nem a requisição que preenche a
-memória nem um contexto de outro idioma mudem o texto. A nota que lista os
-idiomas e declara o idioma do índice é texto fixo: ao mudar os idiomas ou o
-idioma base em `project.inlang/settings.json`, reescreva-a. Os três arquivos
-saem com `public, max-age=0, s-maxage=3600, stale-if-error=86400` em produção (o
-CDN reutiliza por uma hora; a Vercel só cacheia resposta de função com
-`s-maxage` e consome `s-maxage` e `stale-if-error` sem repassá-los ao navegador)
-e com `no-store` em desenvolvimento. Com `stale-if-error`, um erro da função
-depois que a cópia expira não derruba o arquivo por até um dia. As URLs
+índice; para isso, use `noindex` em `route.info.seo`. O texto do robots é
+montado uma vez, ao carregar o módulo, porque os grupos e a URL do site são
+fixos no build. Em produção o processo guarda em memória a resposta do llms.txt
+e a leitura do manifesto do sitemap, porque o manifesto também é fixo no build;
+as fontes do sitemap rodam a cada request. O llms.txt é montado dentro do
+contexto Paraglide do idioma base (`baseLocale` do runtime), inclusive a
+descrição do site e os metadados das páginas, para que nem a requisição que
+preenche a memória nem um contexto de outro idioma mudem o texto. A nota que
+lista os idiomas e declara o idioma do índice é texto fixo: ao mudar os idiomas
+ou o idioma base em `project.inlang/settings.json`, reescreva-a. Os três
+arquivos saem com `public, max-age=0, s-maxage=3600, stale-if-error=86400` em
+produção (o CDN reutiliza por uma hora; a Vercel só cacheia resposta de função
+com `s-maxage` e consome `s-maxage` e `stale-if-error` sem repassá-los ao
+navegador) e com `no-store` em desenvolvimento. Com `stale-if-error`, um erro da
+função depois que a cópia expira não derruba o arquivo por até um dia. As URLs
 absolutas dos três arquivos partem da origem de `VITE_SITE_URL`; um site servido
 em um subcaminho não é suportado por essa geração. A página 404 declara
 `robots: noindex`. A imagem social fica em `public/images/og.png`, com cache
