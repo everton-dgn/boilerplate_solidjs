@@ -468,12 +468,32 @@ precisam ser repetidas. Para retry local com query, invalide a chave antes de
 `reset()`: `revalidate(getData.key); reset()`. Confirme uma nova chamada ao
 backend.
 
-Uma aba aberta antes de um deploy pode chamar uma server function que o build
-novo não tem. O servidor responde 404 com o header `X-Server-Function-Unknown`,
-sem executar a função, e o client rejeita com `unknownFunction: true`; numa
-leitura do render, o erro cai no fallback global e a recuperação é o mesmo link
-de recarga. Essa recusa sai antes do `wrapInvocation` e do hook de
-`configureServerErrors`, sem corpo em produção e sem linha `[server-error]`.
+Após alterar essa fronteira, execute:
+
+```bash
+vp run test:tooling
+vp run test:unit
+vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError src/tests/pages/OutdatedPage
+vp run typecheck
+vp run check:ci
+```
+
+O [CI](../.github/workflows/ci.yml) executa `test:tooling` e a suíte E2E
+completa; `vp run validate` e o `pre-push` rodam `test:tooling` localmente, o
+que inclui as duas políticas. Os testes da política verificam as regras no
+parser real e seu registro no lint completo, com casos recusados e permitidos
+para cada exceção. Consulte os resultados de cada execução nos logs da validação
+local e do CI.
+
+### Página desatualizada após um deploy
+
+Uma aba aberta antes de um deploy continua com o JS do build anterior até
+carregar um documento. Ela pode chamar uma server function que o build novo não
+tem. O servidor responde 404 com o header `X-Server-Function-Unknown`, sem
+executar a função, e o client rejeita com `unknownFunction: true`. A recuperação
+está descrita no fim desta seção. Essa recusa sai antes do `wrapInvocation` e do
+hook de `configureServerErrors`, sem corpo em produção e sem linha
+`[server-error]`.
 
 O plugin do Solid também carimba as chamadas de produção que não usam GET com o
 header `X-Server-Function-Build`, e o `configureServerFunctionsServer` que ele
@@ -499,22 +519,73 @@ que o client alcança em `.vite/solid-server-functions.json`, ao lado do
 `.vite/` para `dist/.vite/` no fim do build, então nenhum dos dois é publicado;
 os testes leem os arquivos de lá.
 
-Após alterar essa fronteira, execute:
+A aba também pode pedir um chunk ou uma folha CSS com o hash do build anterior,
+que o deploy novo não publica. A recuperação usa três peças:
 
-```bash
-vp run test:tooling
-vp run test:unit
-vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError
-vp run typecheck
-vp run check:ci
-```
+- Detecção: `installOutdatedPageDetection`, instalado pelo `entry-client`, marca
+  a página como desatualizada quando o helper de preload do Vite dispara
+  `vite:preloadError` e quando uma server function responde 404 ou 409 com
+  `X-Server-Function-Unknown`. O evento sai também no preload por intenção do
+  `intentPreload()`, antes do clique, e só existe no build. O listener não chama
+  `preventDefault()`: o import resolveria `undefined`, e o `lazy` da rota
+  guardaria esse módulo vazio até a recarga.
+- Próxima navegação: com a página marcada, `createOutdatedPageGuard`, chamado ao
+  lado do guard de idioma, troca por navegação de documento a próxima navegação
+  que muda o caminho sem idioma, preservando `replace`. Query e hash seguem no
+  client, e sem conexão a navegação continua no client. Voltar e avançar entre
+  entradas do mesmo documento também seguem no client: os chunks dessas páginas
+  já carregaram, e uma leitura recusada ali recarrega pelo `Errored` raiz.
+- `Errored` raiz: uma falha de chunk registrada pelo listener ou um erro com
+  `unknownFunction: true` recarrega a página uma vez em vez de mostrar o
+  `ErrorFallback`, com a tela vazia até o documento novo chegar. É o caminho do
+  clique que chega antes da resposta 404 do preload. A recarga roda no
+  `onSettled`, num `setTimeout`, depois de o router gravar a URL do destino. O
+  fallback lê o erro sem rastrear, para que um segundo erro não o reconstrua e
+  troque a recarga pendente pela página de erro. A trava `outdated-page-reload`
+  no `sessionStorage` dura 30 segundos: se a falha voltar dentro dela, o build
+  novo também falhou e a página de erro aparece. Sem `sessionStorage` ou sem
+  conexão, a página de erro aparece direto.
 
-O [CI](../.github/workflows/ci.yml) executa `test:tooling` e a suíte E2E
-completa; `vp run validate` e o `pre-push` rodam `test:tooling` localmente, o
-que inclui as duas políticas. Os testes da política verificam as regras no
-parser real e seu registro no lint completo, com casos recusados e permitidos
-para cada exceção. Consulte os resultados de cada execução nos logs da validação
-local e do CI.
+Um envio recusado não se repete sozinho: o `ctx.retry` repetiria a mesma chamada
+e receberia a mesma recusa, 409 pelo carimbo ou 404 pelo id ausente. A rejeição
+com `unknownFunction: true` volta a quem chamou, e o `OutdatedPageNotice` pede
+para recarregar e enviar de novo, avisando que o que não foi salvo pode se
+perder.
+
+Limites conhecidos:
+
+- O client guarda um único `responseHandler`. Com `serverFunctions.components`,
+  o `installServerComponents` ocupa a mesma vaga e vence quem configurar por
+  último; os dois precisam ser compostos à mão.
+- O handler separa envio de leitura pelo ponto de chamada: fora de computação
+  rastreada e sem `GET`. Uma leitura direta feita depois de um `await`, dentro
+  de `untrack` ou num preload de rota conta como envio e mostra o aviso.
+  Leituras usam `query()` ou `GET()`.
+- Uma falha de rede no import também marca a aba, e a próxima navegação sai por
+  documento.
+- A falha de um `lazy()` dentro da página também chega ao `Errored` raiz e
+  recarrega a página atual, com o que ainda não foi salvo.
+- O asset ausente cai no SSR e responde 404 em HTML com
+  `Cache-Control: public, max-age=31536000, immutable`, porque o Nitro aplica a
+  route rule de `/assets/**` também ao erro. Depois de um rollback, o navegador
+  pode manter esse 404 para o hash. Falta conferir no deploy real. O Nitro
+  oferece miss com `no-store` para diretórios públicos sem fallthrough, e o
+  preset Vercel gera esse 404 após `filesystem`. Isso exige ajustar também a
+  regra genérica: os `errHeaders` são aplicados depois dos headers do erro. A
+  experiência local com `publicAssets` em `/assets`, `fallthrough: false`,
+  `maxAge: 31536000` e `routeRules['/assets/**'].headers: false` confirmou o
+  miss em GET e HEAD para JS e CSS: 404 com `no-store`, corpo GET de 66 bytes
+  sem a página SSR e corpo HEAD vazio. Porém, os acertos GET e HEAD responderam
+  200 sem `Cache-Control`, e ambos os casos ficaram sem `X-Content-Type-Options`
+  e `Cross-Origin-Resource-Policy` no preview Node. O handler estático não
+  define cache nos acertos; retirar a regra genérica também retira esse cache no
+  Node. A configuração gerada da Vercel manteve cache imutável antes de
+  `filesystem` e 404 `no-store` depois dele. A experiência foi revertida por não
+  cumprir o contrato do Node. Ainda falta validar uma solução que preserve cache
+  e segurança nos dois destinos; um middleware isolado não comprova essa
+  correção. Não houve deploy de validação.
+- Publicar junto os assets dos releases anteriores evitaria a falha nas abas
+  antigas. Isso exige uma etapa no pipeline de deploy e ainda não existe.
 
 ## Atualizar o Solid
 
@@ -559,13 +630,22 @@ pacote publicado e instalado mudou esse comportamento.
    o plugin mudar onde grava o `.vite/` ou deixar de guardar o id em memória,
    revise o módulo `moveViteMetadata` e a recusa por build descrita em
    [Validação e recuperação](#validação-e-recuperação).
-5. Reavalie o wrapper só se as notas da versão ou o código publicado indicarem
+5. Rode `vp run test:e2e src/tests/pages/OutdatedPage` e
+   `vp test run src/__tests__/App.dom.test.tsx`. A recuperação de página
+   desatualizada depende de quatro comportamentos do runtime: o
+   `vite:preloadError` entrega no `payload` o mesmo erro que chega ao `Errored`;
+   o `Errored` reporta o erro no console em desenvolvimento só com
+   `fallback.length` zero; um fallback que lê o erro sem rastrear não é
+   reconstruído por um erro posterior; e o router grava a URL do destino antes
+   da recarga adiada. Ver
+   [Página desatualizada após um deploy](#página-desatualizada-após-um-deploy).
+6. Reavalie o wrapper só se as notas da versão ou o código publicado indicarem
    que o runtime passou a recusar um `Error` devolvido como dado. Numa
    reprodução isolada, troque o `wrapInvocation` por um passthrough e confira o
    cenário `result` nos três canais pelos marcadores nos corpos brutos, sem
    confiar em teste verde. Verifique os artefatos de produção resolvidos;
    `NODE_ENV` sozinho não basta.
-6. Retire somente a interceptação que o runtime passou a cobrir. Preserve o
+7. Retire somente a interceptação que o runtime passou a cobrir. Preserve o
    transporte, o contrato de dados públicos, o hook, a contenção do middleware e
    seus testes. Registre comandos, resultados e limites na validação da
    atualização. Na reversão, restaure dependências e proteção juntas.
