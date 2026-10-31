@@ -87,23 +87,21 @@ async function renderGuardedRouter(): Promise<GuardedRouter> {
   }
 }
 
-// O estado do módulo não volta atrás: a marca vale até a próxima carga de
-// documento. Os casos do guard rodam em ordem a partir da aba ainda atual.
+// A marca vale até a próxima carga de documento e não volta atrás no módulo.
+// O caso da aba ainda atual fica em outdatedPage.initial.dom.test.tsx, que
+// carrega o módulo isolado.
 describe('guard de página desatualizada', () => {
-  it('mantém a navegação no client até a página ficar desatualizada', async () => {
+  beforeEach(markPageOutdated)
+
+  it('troca por documento a navegação que muda o caminho', async () => {
     const { assign } = spyDocumentNavigation()
     const { host, navigate } = await renderGuardedRouter()
-    navigate()('/en/next')
-    await expect.poll(() => host.textContent).toBe('/en/next')
-    expect(assign).not.toHaveBeenCalled()
-
-    markPageOutdated()
     navigate()('/en/other?q=1#part')
     flush()
     expect(assign).toHaveBeenCalledWith(
       `${globalThis.location.origin}/en/other?q=1#part`
     )
-    expect(host.textContent).toBe('/en/next')
+    expect(host.textContent).toBe('/en/start')
   })
 
   it('preserva o replace na navegação de documento', async () => {
