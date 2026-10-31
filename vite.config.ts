@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
+import { SECURITY_HEADERS } from './src/middleware/securityHeaders/constants.ts'
 import { fmt } from './tooling/fmt.ts'
 import { lint } from './tooling/lint.ts'
 
@@ -116,7 +117,29 @@ const appPlugins = (mode: string) =>
       nitro({
         serverEntry: false,
         preset: 'vercel',
-        modules: [markdownPrerender, moveViteMetadata]
+        modules: [markdownPrerender, moveViteMetadata],
+        // Sem fallthrough, um hash ausente em /assets/ recebe o 404 no-store do
+        // Nitro em vez da página SSR com o cache imutável da route rule. O dir
+        // não existe de propósito: os arquivos vêm da saída do Vite, e um dir
+        // dentro de .vercel/output faz o rebuild falhar.
+        publicAssets: [
+          {
+            baseURL: '/assets',
+            dir: 'public/assets',
+            fallthrough: false,
+            maxAge: 31_536_000
+          }
+        ],
+        routeRules: {
+          '/assets/**': {
+            headers: {
+              'x-content-type-options':
+                SECURITY_HEADERS['x-content-type-options'],
+              'cross-origin-resource-policy':
+                SECURITY_HEADERS['cross-origin-resource-policy']
+            }
+          }
+        }
       })
     ]
   })

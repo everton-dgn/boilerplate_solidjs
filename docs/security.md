@@ -91,8 +91,13 @@ armazenada no cache do navegador, sem modificar o HTML da aplicação.
   gerados no build) saem do CDN sem passar pela função. O `vercel.json` grava
   neles só `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`, além do
   cache imutável em `/images/` e do `Content-Type` dos `.md`; a CSP e as
-  políticas de frame só têm efeito nas respostas que passam pelo middleware.
-  Pelo mesmo motivo, um arquivo que não deve ser público precisa sair de
+  políticas de frame só têm efeito nas respostas que passam pelo middleware. Em
+  `/assets/`, os mesmos dois cabeçalhos também saem da route rule do Nitro no
+  `vite.config.ts`, com os valores de `SECURITY_HEADERS`, e chegam ao 404 de um
+  asset ausente em qualquer host e aos acertos na Vercel e no `node-server`. O
+  bloco `/assets/(.*)` do `vercel.json` fica como redundância; ao mudar um
+  desses valores em `SECURITY_HEADERS`, mude também o `vercel.json`. Pelo mesmo
+  motivo, um arquivo que não deve ser público precisa sair de
   `.vercel/output/static`: o middleware não consegue bloqueá-lo. O build move
   para `dist/.vite/` o diretório `.vite/`, com o manifesto do Vite e o das
   server functions, que listam caminhos do código-fonte
