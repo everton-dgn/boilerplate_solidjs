@@ -1,6 +1,7 @@
 import {
   createRouter,
   memoryHistory,
+  useBeforeLeave,
   useLocation,
   useNavigate
 } from '@solidjs/router'
@@ -51,7 +52,8 @@ function spyDocumentNavigation(): DocumentNavigation {
 }
 
 async function renderGuardedRouter(
-  history = memoryHistory('/en/start')
+  history = memoryHistory('/en/start'),
+  shouldCancel = false
 ): Promise<GuardedRouter> {
   let navigate: Navigate | undefined
   function Page() {
@@ -72,6 +74,7 @@ async function renderGuardedRouter(
     () => (
       <Router>
         {props => {
+          if (shouldCancel) useBeforeLeave(event => event.preventDefault())
           createOutdatedPageGuard()
           return props.children
         }}
@@ -104,6 +107,16 @@ describe('guard de página desatualizada', () => {
       `${globalThis.location.origin}/en/other?q=1#part`
     )
     expect(host.textContent).toBe('/en/start')
+  })
+
+  it('respeita o cancelamento de um guard anterior', async () => {
+    const { assign, replace } = spyDocumentNavigation()
+    const { host, navigate } = await renderGuardedRouter(undefined, true)
+    navigate()('/en/other')
+    flush()
+    expect(host.textContent).toBe('/en/start')
+    expect(assign).not.toHaveBeenCalled()
+    expect(replace).not.toHaveBeenCalled()
   })
 
   it('preserva o replace na navegação de documento', async () => {
