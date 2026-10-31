@@ -515,20 +515,25 @@ que o deploy novo não publica. A recuperação usa três peças:
 - Próxima navegação: com a página marcada, `createOutdatedPageGuard`, chamado ao
   lado do guard de idioma, troca por navegação de documento a próxima navegação
   que muda o caminho sem idioma, preservando `replace`. Query e hash seguem no
-  client, e sem conexão a navegação continua no client.
+  client, e sem conexão a navegação continua no client. Voltar e avançar entre
+  entradas do mesmo documento também seguem no client: os chunks dessas páginas
+  já carregaram, e uma leitura recusada ali recarrega pelo `Errored` raiz.
 - `Errored` raiz: uma falha de chunk registrada pelo listener ou um erro com
   `unknownFunction: true` recarrega a página uma vez em vez de mostrar o
   `ErrorFallback`, com a tela vazia até o documento novo chegar. É o caminho do
   clique que chega antes da resposta 404 do preload. A recarga roda no
-  `onSettled`, depois de o router gravar a URL do destino. A trava
-  `outdated-page-reload` no `sessionStorage` dura 30 segundos: se a falha voltar
-  dentro dela, o build novo também falhou e a página de erro aparece. Sem
-  `sessionStorage` ou sem conexão, a página de erro aparece direto.
+  `onSettled`, num `setTimeout`, depois de o router gravar a URL do destino. O
+  fallback lê o erro sem rastrear, para que um segundo erro não o reconstrua e
+  troque a recarga pendente pela página de erro. A trava `outdated-page-reload`
+  no `sessionStorage` dura 30 segundos: se a falha voltar dentro dela, o build
+  novo também falhou e a página de erro aparece. Sem `sessionStorage` ou sem
+  conexão, a página de erro aparece direto.
 
-Um envio recusado não se repete sozinho: o `ctx.retry` mandaria o mesmo carimbo
-e receberia 409 de novo. A rejeição com `unknownFunction: true` volta a quem
-chamou, e o `OutdatedPageNotice` pede para recarregar e enviar de novo, avisando
-que o que não foi salvo pode se perder.
+Um envio recusado não se repete sozinho: o `ctx.retry` repetiria a mesma chamada
+e receberia a mesma recusa, 409 pelo carimbo ou 404 pelo id ausente. A rejeição
+com `unknownFunction: true` volta a quem chamou, e o `OutdatedPageNotice` pede
+para recarregar e enviar de novo, avisando que o que não foi salvo pode se
+perder.
 
 Limites conhecidos:
 
@@ -536,9 +541,9 @@ Limites conhecidos:
   o `installServerComponents` ocupa a mesma vaga e vence quem configurar por
   último; os dois precisam ser compostos à mão.
 - O handler separa envio de leitura pelo ponto de chamada: fora de computação
-  rastreada e sem `GET`. Uma leitura direta feita depois de um `await` ou dentro
-  de `untrack` conta como envio e mostra o aviso. Leituras usam `query()` ou
-  `GET()`.
+  rastreada e sem `GET`. Uma leitura direta feita depois de um `await`, dentro
+  de `untrack` ou num preload de rota conta como envio e mostra o aviso.
+  Leituras usam `query()` ou `GET()`.
 - Uma falha de rede no import também marca a aba, e a próxima navegação sai por
   documento.
 - A falha de um `lazy()` dentro da página também chega ao `Errored` raiz e
@@ -610,13 +615,22 @@ pacote publicado e instalado mudou esse comportamento.
    o plugin mudar onde grava o `.vite/` ou deixar de guardar o id em memória,
    revise o módulo `moveViteMetadata` e a recusa por build descrita em
    [Validação e recuperação](#validação-e-recuperação).
-5. Reavalie o wrapper só se as notas da versão ou o código publicado indicarem
+5. Rode `vp run test:e2e src/tests/pages/OutdatedPage` e
+   `vp test run src/__tests__/App.dom.test.tsx`. A recuperação de página
+   desatualizada depende de quatro comportamentos do runtime: o
+   `vite:preloadError` entrega no `payload` o mesmo erro que chega ao `Errored`;
+   o `Errored` reporta o erro no console em desenvolvimento só com
+   `fallback.length` zero; um fallback que lê o erro sem rastrear não é
+   reconstruído por um erro posterior; e o router grava a URL do destino antes
+   da recarga adiada. Ver
+   [Página desatualizada após um deploy](#página-desatualizada-após-um-deploy).
+6. Reavalie o wrapper só se as notas da versão ou o código publicado indicarem
    que o runtime passou a recusar um `Error` devolvido como dado. Numa
    reprodução isolada, troque o `wrapInvocation` por um passthrough e confira o
    cenário `result` nos três canais pelos marcadores nos corpos brutos, sem
    confiar em teste verde. Verifique os artefatos de produção resolvidos;
    `NODE_ENV` sozinho não basta.
-6. Retire somente a interceptação que o runtime passou a cobrir. Preserve o
+7. Retire somente a interceptação que o runtime passou a cobrir. Preserve o
    transporte, o contrato de dados públicos, o hook, a contenção do middleware e
    seus testes. Registre comandos, resultados e limites na validação da
    atualização. Na reversão, restaure dependências e proteção juntas.
