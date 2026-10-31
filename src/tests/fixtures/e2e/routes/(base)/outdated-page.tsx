@@ -1,7 +1,20 @@
-import { query, useSearchParams, type RouteDefinition } from '@solidjs/router'
-import { createMemo, createSignal, Errored, Loading, Show } from 'solid-js'
+import {
+  query,
+  useBeforeLeave,
+  useSearchParams,
+  type RouteDefinition
+} from '@solidjs/router'
+import {
+  createMemo,
+  createSignal,
+  Errored,
+  Loading,
+  onSettled,
+  Show
+} from 'solid-js'
 
 import { LocalizedLink } from '@/components/atoms/LocalizedLink/index.tsx'
+import { registerUnsavedChanges } from '@/router/outdatedPage/index.ts'
 
 import { requestFixtureNote } from '../../outdated-page/requestFixtureNote/index.ts'
 
@@ -34,6 +47,16 @@ export default function OutdatedPage() {
   const [status, setStatus] = createSignal('Nada enviado')
   const [isLocalReadRequested, setIsLocalReadRequested] = createSignal(false)
   const [isRootReadRequested, setIsRootReadRequested] = createSignal(false)
+  const [draft, setDraft] = createSignal('')
+
+  // Guard de rascunho no padrão do router: só pergunta com !defaultPrevented,
+  // por isso a página também registra a checagem no guard de versão.
+  onSettled(() => registerUnsavedChanges(() => draft() !== ''))
+  useBeforeLeave(event => {
+    if (event.defaultPrevented || draft() === '') return
+    event.preventDefault()
+    setStatus('Saída bloqueada')
+  })
 
   async function send(): Promise<void> {
     try {
@@ -51,7 +74,11 @@ export default function OutdatedPage() {
       <h1>Página desatualizada</h1>
       <label>
         Rascunho
-        <textarea name="draft" />
+        <textarea
+          name="draft"
+          value={draft()}
+          onInput={event => setDraft(event.currentTarget.value)}
+        />
       </label>
       <LocalizedLink href="/about">Ir para Sobre</LocalizedLink>
       {/* O CSS de Sobre já vem no documento; o do UI kit, não. */}

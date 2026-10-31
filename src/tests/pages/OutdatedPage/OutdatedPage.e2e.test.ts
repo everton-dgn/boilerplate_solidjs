@@ -10,6 +10,7 @@ const HTTP_NOT_FOUND = 404
 const HTTP_CONFLICT = 409
 const FIXTURE_TITLE = 'Página desatualizada'
 const NOTICE_TITLE = 'O envio não foi concluído'
+const FALLBACK_NOTICE_TITLE = 'Parte da página não carregou'
 const ERROR_PAGE_FLAG = 'e2e-error-page'
 const DRAFT = 'Texto ainda não salvo'
 
@@ -153,7 +154,7 @@ const REFUSALS: Refusal[] = [
   }
 ]
 
-test('passar sobre um link sem o chunk não recarrega e o clique seguinte abre o destino', async ({
+test('passar sobre um link sem o chunk não recarrega, respeita o rascunho e depois abre o destino', async ({
   page
 }) => {
   const wasErrorPageShown = await watchErrorPage(page)
@@ -172,6 +173,14 @@ test('passar sobre um link sem o chunk não recarrega e o clique seguinte abre o
   await expect(page.getByLabel('Rascunho')).toHaveValue(DRAFT)
   expect(documents()).toBe(0)
 
+  // Com o rascunho registrado, o guard de versão cede ao guard da página.
+  await page.getByRole('link', { name: ABOUT.link }).click()
+  await expect(page.getByText('Saída bloqueada')).toBeVisible()
+  await expect(page.getByLabel('Rascunho')).toHaveValue(DRAFT)
+  expect(page.url()).toMatch(/\/pt\/outdated-page$/u)
+  expect(documents()).toBe(0)
+
+  await page.getByLabel('Rascunho').fill('')
   await page.getByRole('link', { name: ABOUT.link }).click()
   await expectDestinationDocument({
     page,
@@ -244,7 +253,7 @@ for (const { status, rewrite } of REFUSALS) {
   })
 }
 
-test('a leitura recusada dentro do limite local não mostra o aviso nem recarrega', async ({
+test('a leitura recusada dentro do limite local avisa sem recarregar e preserva o rascunho', async ({
   page
 }) => {
   await openFixture(
@@ -252,11 +261,23 @@ test('a leitura recusada dentro do limite local não mostra o aviso nem recarreg
     `?id=${encodeURIComponent(`success:${crypto.randomUUID()}`)}`
   )
   const documents = countDocumentRequests(page)
+  await page.getByLabel('Rascunho').fill(DRAFT)
   await refuseReads(page)
   await page.getByRole('button', { name: 'Ler nota', exact: true }).click()
   await expect(page.getByText('Leitura recusada')).toBeVisible()
+  const notice = page.getByRole('region', { name: FALLBACK_NOTICE_TITLE })
+  await expect(notice).toContainText('Recarregue para continuar.')
   await expect(page.getByRole('region', { name: NOTICE_TITLE })).toHaveCount(0)
+  await expect(page.getByLabel('Rascunho')).toHaveValue(DRAFT)
   expect(documents()).toBe(0)
+
+  await notice.getByRole('button', { name: 'Recarregar página' }).click()
+  await expect.poll(documents).toBe(1)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    FIXTURE_TITLE
+  )
+  const reloaded = await readNavigationEntry(page)
+  expect(reloaded?.type).toBe('reload')
 })
 
 test('a leitura recusada sem limite local recarrega uma vez e mostra a página de erro se voltar', async ({
@@ -279,6 +300,9 @@ test('a leitura recusada sem limite local recarrega uma vez e mostra a página d
   const reloaded = await readNavigationEntry(page)
   expect(reloaded?.type).toBe('reload')
   expect(await wasErrorPageShown()).toBe(false)
+  await expect(
+    page.getByRole('region', { name: FALLBACK_NOTICE_TITLE })
+  ).toHaveCount(0)
 
   // A recusa repetida dentro da janela da trava indica um build novo também
   // quebrado: a página de erro aparece em vez de outra recarga.
