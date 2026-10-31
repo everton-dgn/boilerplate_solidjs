@@ -571,10 +571,19 @@ Limites conhecidos:
   pode manter esse 404 para o hash. Falta conferir no deploy real. O Nitro
   oferece miss com `no-store` para diretórios públicos sem fallthrough, e o
   preset Vercel gera esse 404 após `filesystem`. Isso exige ajustar também a
-  regra genérica: os `errHeaders` são aplicados depois dos headers do erro.
-  Ainda falta validar uma configuração que preserve cache imutável dos acertos e
-  headers de segurança no Node e na Vercel; um middleware isolado não comprova
-  essa correção.
+  regra genérica: os `errHeaders` são aplicados depois dos headers do erro. A
+  experiência local com `publicAssets` em `/assets`, `fallthrough: false`,
+  `maxAge: 31536000` e `routeRules['/assets/**'].headers: false` confirmou o
+  miss em GET e HEAD para JS e CSS: 404 com `no-store`, corpo GET de 66 bytes
+  sem a página SSR e corpo HEAD vazio. Porém, os acertos GET e HEAD responderam
+  200 sem `Cache-Control`, e ambos os casos ficaram sem `X-Content-Type-Options`
+  e `Cross-Origin-Resource-Policy` no preview Node. O handler estático não
+  define cache nos acertos; retirar a regra genérica também retira esse cache no
+  Node. A configuração gerada da Vercel manteve cache imutável antes de
+  `filesystem` e 404 `no-store` depois dele. A experiência foi revertida por não
+  cumprir o contrato do Node. Ainda falta validar uma solução que preserve cache
+  e segurança nos dois destinos; um middleware isolado não comprova essa
+  correção. Não houve deploy de validação.
 - Publicar junto os assets dos releases anteriores evitaria a falha nas abas
   antigas. Isso exige uma etapa no pipeline de deploy e ainda não existe.
 
