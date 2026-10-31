@@ -3,9 +3,12 @@
   z-index: var(--z-index-toast);
   inset-block-start: max(16px, env(safe-area-inset-top));
   inset-inline: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  display: grid;
+  grid-template-areas:
+    'icon content close'
+    '. actions actions';
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
   gap: 12px;
   max-width: 480px;
   margin-inline: auto;
@@ -18,20 +21,26 @@
 }
 
 .icon {
+  grid-area: icon;
   display: flex;
-  flex-shrink: 0;
   padding-block-start: 2px;
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .content {
-  flex: 1 1 240px;
-  min-width: 0;
+  grid-area: content;
   overflow-wrap: anywhere;
+}
+
+.close {
+  grid-area: close;
+  margin-block-start: -8px;
+  margin-inline-end: -8px;
 }
 
 .title {
   margin: 0;
+  color: var(--color-warning-text);
   font-weight: var(--font-weight-500);
   font-size: var(--font-size-14);
 }
@@ -42,8 +51,7 @@
 }
 
 .actions {
+  grid-area: actions;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-inline-start: auto;
+  justify-self: end;
 }

@@ -85,15 +85,16 @@ export function OutdatedPageNotice() {
             <Button size="sm" onClick={() => globalThis.location.reload()}>
               {m.outdatedPageNotice_reload()}
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={m.outdatedPageNotice_dismiss()}
-              onClick={dismiss}
-            >
-              <IconClose width={18} height={18} />
-            </Button>
           </div>
+          <Button
+            class={S.close}
+            variant="ghost"
+            size="icon"
+            aria-label={m.outdatedPageNotice_dismiss()}
+            onClick={dismiss}
+          >
+            <IconClose width={18} height={18} />
+          </Button>
         </section>
       )}
     </Show>
