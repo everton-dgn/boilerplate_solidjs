@@ -84,11 +84,13 @@ const componentPlugins = () =>
 
 const appPlugins = (mode: string) =>
   lazyPlugins(async () => {
-    const [modules, { nitro }, { markdownPrerender }] = await Promise.all([
-      loadComponentModules(),
-      import('nitro/vite'),
-      import('./tooling/markdownPrerender/index.ts')
-    ])
+    const [modules, { nitro }, { markdownPrerender }, { moveViteMetadata }] =
+      await Promise.all([
+        loadComponentModules(),
+        import('nitro/vite'),
+        import('./tooling/markdownPrerender/index.ts'),
+        import('./tooling/moveViteMetadata/index.ts')
+      ])
     return [
       modules.i18n(),
       icons(modules),
@@ -101,7 +103,7 @@ const appPlugins = (mode: string) =>
         },
         ssr: true,
         serverFunctions: {
-          configure: './src/infra/server/configureServerErrors/index.ts'
+          serverSetup: './src/infra/server/configureServerErrors/index.ts'
         }
       }),
       modules.fileRoutes(
@@ -114,7 +116,7 @@ const appPlugins = (mode: string) =>
       nitro({
         serverEntry: false,
         preset: 'vercel',
-        modules: [markdownPrerender]
+        modules: [markdownPrerender, moveViteMetadata]
       })
     ]
   })

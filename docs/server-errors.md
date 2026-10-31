@@ -16,7 +16,7 @@ quando houver consumidores. Novos imports de erros públicos usam
 
 O [registro central](../src/infra/server/configureServerErrors/index.ts) usa
 `configureServerFunctionsServer({ wrapInvocation })`. O
-[Vite](../vite.config.ts) o carrega por `serverFunctions.configure`, cobrindo
+[Vite](../vite.config.ts) o carrega por `serverFunctions.serverSetup`, cobrindo
 server functions chamadas diretamente no SSR e pelo transporte HTTP. O mesmo
 módulo instala, em todos os modos, o hook `configureServerErrors({ onError })`
 de `@solidjs/web`; a troca pelo erro público acontece só em produção.
@@ -476,15 +476,28 @@ de recarga. Essa recusa sai antes do `wrapInvocation` e do hook de
 `configureServerErrors`, sem corpo em produção e sem linha `[server-error]`.
 
 O plugin do Solid também carimba as chamadas de produção que não usam GET com o
-header `X-Server-Function-Build`, para o servidor recusar com 409 uma chamada de
-outro build cujo id sobreviveu ao deploy. Com o Nitro essa checagem fica
-inativa: o plugin grava o manifesto com o id em
-`dist/.vite/solid-server-functions.json`, procura o arquivo em
-`dist/client/.vite/` e gera o `configureServerFunctionsServer` sem `buildId`. Um
-arquivo antigo nesse segundo caminho seria lido e faria o servidor recusar com
-409 toda chamada carimbada. As chamadas de `query()` usam GET e saem sem o
-carimbo. A exceção é quando os argumentos passam do limite de URL do runtime: o
-client envia a leitura por POST, com o carimbo, e ela passa pela checagem.
+header `X-Server-Function-Build`, e o `configureServerFunctionsServer` que ele
+gera recebe o mesmo id em `buildId`. Uma chamada carimbada por outro build, cuja
+função manteve o id no deploy, recebe 409 sem executar a função, com
+`X-Server-Function-Unknown`, o id do servidor em `X-Server-Function-Build` e
+`Cache-Control: no-store`. O client rejeita com `unknownFunction: true`, como no
+404, e a recuperação é a mesma; a recusa também sai antes do `wrapInvocation` e
+do hook, sem corpo em produção. O carimbo é composto com o `prepareRequest` que
+o app passar a `configureServerFunctionsClient`, importado de
+`@solidjs/web/server-functions/client`. Uma chamada sem o header continua
+aceita: o id é público no bundle, e a checagem só detecta um client de outro
+build. As chamadas de `query()` usam GET e saem sem o carimbo. A exceção é
+quando os argumentos passam do limite de URL do runtime: o client envia a
+leitura por POST, com o carimbo, e ela passa pela checagem. Em desenvolvimento
+não há id nem checagem.
+
+Com o Nitro, o client e o servidor saem do mesmo build, e o servidor recebe o id
+que o plugin guarda em memória. O plugin também grava o id e as server functions
+que o client alcança em `.vite/solid-server-functions.json`, ao lado do
+`manifest.json` do Vite, no diretório público. O
+[módulo `moveViteMetadata`](../tooling/moveViteMetadata/index.ts) move esse
+`.vite/` para `dist/.vite/` no fim do build, então nenhum dos dois é publicado;
+os testes leem os arquivos de lá.
 
 Após alterar essa fronteira, execute:
 
@@ -531,20 +544,21 @@ pacote publicado e instalado mudou esse comportamento.
    substituiria sem aviso. O de `renderToStream` fica registrado no render e
    vale também para as server functions chamadas diretamente durante ele.
    Confira se `src/entry-server.tsx` e o plugin continuam sem repassá-lo e se o
-   módulo `configure` ainda carrega antes do primeiro dispatch.
+   módulo `serverSetup` ainda carrega antes do primeiro dispatch.
 3. Rode
    `vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError`
    no build de produção. Os marcadores nos corpos brutos, os controles positivos
    e o teardown do log são a regressão da fronteira. Se o runtime mudar as
    mensagens que chegam ao navegador, meça antes de ajustar as tolerâncias de
    `pageerror`, inclusive com CPU limitada a 20x.
-4. Depois do build, confira se a chamada `configureServerFunctionsServer(`
-   gerada pelo plugin, a que traz `endpoint:`, no `server.mjs` em
-   `.vercel/output/functions/`, traz `buildId:` com o id que o client carimba em
-   `X-Server-Function-Build`. Enquanto não trouxer, a recusa por build descrita
-   em [Validação e recuperação](#validação-e-recuperação) segue inativa. Quando
-   passar a trazer, cubra o contrato com um teste do build e avalie o tratamento
-   de `unknownFunction` no client.
+4. Rode `vp run test:e2e:production src/tests/pages/BuildOutput`. O teste
+   confere que o id do manifesto em `dist/.vite/`, o `buildId:` da chamada
+   `configureServerFunctionsServer(` que traz `endpoint:` em
+   `.vercel/output/functions/` e o id que o client carimba em
+   `X-Server-Function-Build` são iguais, e que `/.vite/` não sai no estático. Se
+   o plugin mudar onde grava o `.vite/` ou deixar de guardar o id em memória,
+   revise o módulo `moveViteMetadata` e a recusa por build descrita em
+   [Validação e recuperação](#validação-e-recuperação).
 5. Reavalie o wrapper só se as notas da versão ou o código publicado indicarem
    que o runtime passou a recusar um `Error` devolvido como dado. Numa
    reprodução isolada, troque o `wrapInvocation` por um passthrough e confira o
@@ -588,8 +602,8 @@ teria precedência sobre o hook global, desviaria a sanitização e o log e
 deixaria o estado sem marcação, e o Markdown publicaria com `hasErrors: false`.
 O registro do hook chama `observeRenderFailures()`; até lá a fábrica cria o
 estado com `hasErrors` indefinido, e o Markdown recusa a página. Sem o
-`serverFunctions.configure` do Vite, que carrega o registro, todo `.md` responde
-500 e o prerender interrompe o build.
+`serverFunctions.serverSetup` do Vite, que carrega o registro, todo `.md`
+responde 500 e o prerender interrompe o build.
 
 O hook encontra o estado pelo evento que o runtime associa à falha. As falhas do
 serializador, o `onCleanup` que lança e o fallback de `<Errored>` chegam sem o

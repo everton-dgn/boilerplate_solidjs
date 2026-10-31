@@ -92,6 +92,11 @@ armazenada no cache do navegador, sem modificar o HTML da aplicação.
   neles só `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`, além do
   cache imutável em `/images/` e do `Content-Type` dos `.md`; a CSP e as
   políticas de frame só têm efeito nas respostas que passam pelo middleware.
+  Pelo mesmo motivo, um arquivo que não deve ser público precisa sair de
+  `.vercel/output/static`: o middleware não consegue bloqueá-lo. O build move
+  para `dist/.vite/` o diretório `.vite/`, com o manifesto do Vite e o das
+  server functions, que listam caminhos do código-fonte
+  ([`moveViteMetadata`](../tooling/moveViteMetadata/index.ts)).
 - `Cross-Origin-Embedder-Policy: require-corp` bloqueia recursos de outra origem
   sem `Cross-Origin-Resource-Policy` ou CORS. Ao adicionar fontes, imagens ou
   scripts externos, confira se o provedor envia esses cabeçalhos ou revise a
