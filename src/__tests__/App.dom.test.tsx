@@ -70,6 +70,17 @@ function expectBoundaryReport(message: string): void {
   expect(reported).toHaveProperty('message', message)
 }
 
+function renderApp(): HTMLDivElement {
+  return renderComponent(
+    () => (
+      <Loading>
+        <App />
+      </Loading>
+    ),
+    { providers: false }
+  )
+}
+
 describe('feedback de erro da aplicação', () => {
   // O primeiro render do Router carrega as rotas lazy. Sem aquecimento, esse
   // custo cai no primeiro caso que chega ao layout e estoura o expect.poll
@@ -152,4 +163,30 @@ describe('feedback de erro da aplicação', () => {
       expectBoundaryReport('Detalhe interno que não deve aparecer')
     }
   )
+
+  it('recarrega uma vez no erro de versão e mostra a página de erro se ele voltar', async () => {
+    globalThis.sessionStorage.clear()
+    const reload = vi
+      .spyOn(globalThis.location, 'reload')
+      .mockImplementation(() => {
+        /* Permanece no documento do teste. */
+      })
+    onTestFinished(() => {
+      renderHome.mockReset()
+    })
+    renderHome.mockImplementation(() => {
+      throw Object.assign(new Error('Função fora do build'), {
+        unknownFunction: true
+      })
+    })
+    const recovering = renderApp()
+    await expect.poll(() => reload.mock.calls.length).toBe(1)
+    expect(recovering.querySelector('[data-error-variant]')).toBeNull()
+
+    const failing = renderApp()
+    await expect
+      .poll(() => failing.querySelector('h1')?.textContent)
+      .toBe('Something went wrong!')
+    expect(reload).toHaveBeenCalledOnce()
+  })
 })
