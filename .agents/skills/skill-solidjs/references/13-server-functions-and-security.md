@@ -59,7 +59,7 @@ Armadilha: prefixo / aceita //evil.example e /\evil.example. Mesma origem aceita
 
 Contrato: configureServerFunctionsClient.prepareRequest é hook único; componha políticas. Método ausente/alterado é recusado antes do fetch; só method é verificado. Preserve init/signal; trocar body é permitido. Invoke aceita só signal/keepalive/priority.
 
-No build de produção com o runtime padrão, o `@solidjs/vite-plugin` envolve `configureServerFunctionsClient`, importado da raiz ou de `/client`, e põe o header `X-Server-Function-Build` em `init.headers` das chamadas não GET antes do hook do app. O hook precisa preservar esse header; o servidor responde 409 a outro build e o client rejeita com `unknownFunction: true`. Fonte: `dist` do plugin instalado, sem sonda própria.
+No build de produção com o runtime padrão, o `@solidjs/vite-plugin` envolve `configureServerFunctionsClient`, importada da raiz ou de `/client`, e põe o header `X-Server-Function-Build` em `init.headers` das chamadas não GET antes do hook do app. O hook precisa preservar esse header; o servidor responde 409 a outro build e o client rejeita com `unknownFunction: true`. Fonte: `dist` do plugin instalado, sem sonda própria.
 
 Receita:
 ```ts
