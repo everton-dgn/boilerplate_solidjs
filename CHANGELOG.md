@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.13.2 - 2026-10-31
+
+### Fixed
+
+- keep the Vite metadata out of the published output (bf894dc)
+- update the Solid Vite plugin to next.54 (c7eeab3)
+
 ## 1.13.1 - 2026-10-30
 
 ### Fixed
