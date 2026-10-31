@@ -16,6 +16,7 @@ const subjects: Record<string, readonly string[]> = {
   'src/tests/pages/OutsideError': ['OutsideError'],
   'src/tests/pages/SeoIndexes': ['SeoIndexes'],
   'src/tests/pages/AgentReadiness': ['AgentReadiness'],
+  'src/tests/pages/BuildOutput': ['BuildOutput'],
   'src/tests/pages/I18n': ['I18n'],
   'src/tests/pages/Markdown': ['Markdown'],
   'src/tests/pages/UiKit': ['UiKit'],
