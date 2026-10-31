@@ -4,6 +4,7 @@ import { Loading } from 'solid-js'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import App from '../App.tsx'
+import { recordChunkFailure } from '../router/outdatedPage/index.ts'
 
 const { renderHome, checkProvider, checkTopbar } = vi.hoisted(() => ({
   renderHome: vi.fn<() => JSX.Element>(),
@@ -181,12 +182,35 @@ describe('feedback de erro da aplicação', () => {
     })
     const recovering = renderApp()
     await expect.poll(() => reload.mock.calls.length).toBe(1)
-    expect(recovering.querySelector('[data-error-variant]')).toBeNull()
+    expect(recovering.textContent).toBe('')
 
     const failing = renderApp()
     await expect
       .poll(() => failing.querySelector('h1')?.textContent)
       .toBe('Something went wrong!')
     expect(reload).toHaveBeenCalledOnce()
+  })
+
+  it('recarrega quando o erro que chega é a falha de chunk registrada', async () => {
+    globalThis.sessionStorage.clear()
+    const reload = vi
+      .spyOn(globalThis.location, 'reload')
+      .mockImplementation(() => {
+        /* Permanece no documento do teste. */
+      })
+    onTestFinished(() => {
+      renderHome.mockReset()
+    })
+    // O helper de preload despacha o mesmo erro que o import rejeita.
+    const chunkFailure = new TypeError(
+      'Failed to fetch dynamically imported module'
+    )
+    recordChunkFailure(chunkFailure)
+    renderHome.mockImplementation(() => {
+      throw chunkFailure
+    })
+    const recovering = renderApp()
+    await expect.poll(() => reload.mock.calls.length).toBe(1)
+    expect(recovering.textContent).toBe('')
   })
 })

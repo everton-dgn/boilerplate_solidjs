@@ -39,8 +39,9 @@ export function installOutdatedPageDetection(): () => void {
   // mesma vaga (docs/server-errors.md#página-desatualizada-após-um-deploy).
   configureServerFunctionsClient({
     responseHandler: {
-      // Leituras do render (computação rastreada, query(), GET(), live() e
-      // preloads) rejeitam até um Errored, e o fallback global recarrega.
+      // Leituras do render (computação rastreada) e as declaradas com GET,
+      // como query(), GET() e live(), inclusive em preloads, rejeitam até um
+      // Errored, e o fallback global recarrega.
       capture: ({ meta }) => getObserver() === null && !isDeclaredRead(meta),
       // Qualquer valor devolvido resolveria a chamada; sem ele o runtime
       // rejeita com unknownFunction e o chamador mantém o próprio tratamento.

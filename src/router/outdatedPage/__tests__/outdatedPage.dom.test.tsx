@@ -50,7 +50,9 @@ function spyDocumentNavigation(): DocumentNavigation {
   }
 }
 
-async function renderGuardedRouter(): Promise<GuardedRouter> {
+async function renderGuardedRouter(
+  history = memoryHistory('/en/start')
+): Promise<GuardedRouter> {
   let navigate: Navigate | undefined
   function Page() {
     navigate = useNavigate()
@@ -63,7 +65,7 @@ async function renderGuardedRouter(): Promise<GuardedRouter> {
     )
   }
   const Router = createRouter({
-    history: memoryHistory('/en/start'),
+    history,
     routes: [{ path: '*all', component: Page }]
   })
   const host = renderComponent(
@@ -124,6 +126,18 @@ describe('guard de página desatualizada', () => {
     const { host, navigate } = await renderGuardedRouter()
     navigate()(href)
     await expect.poll(() => host.textContent).toBe(rendered)
+    expect(assign).not.toHaveBeenCalled()
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  it('deixa no client o voltar entre entradas do mesmo documento', async () => {
+    const { assign, replace } = spyDocumentNavigation()
+    const history = memoryHistory('/en/start')
+    const { host, navigate } = await renderGuardedRouter(history)
+    navigate()('/en/start?q=1')
+    await expect.poll(() => host.textContent).toBe('/en/start?q=1')
+    history.back()
+    await expect.poll(() => host.textContent).toBe('/en/start')
     expect(assign).not.toHaveBeenCalled()
     expect(replace).not.toHaveBeenCalled()
   })

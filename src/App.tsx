@@ -1,5 +1,5 @@
 import { getRequestEvent, isServer, type JSX } from '@solidjs/web'
-import { Errored, onSettled, type ParentProps } from 'solid-js'
+import { Errored, onSettled, untrack, type ParentProps } from 'solid-js'
 
 import { OutdatedPageNotice } from '@/components/atoms/OutdatedPageNotice/index.tsx'
 import { Provider } from '@/components/atoms/Provider/index.tsx'
@@ -23,10 +23,13 @@ function ServerFailureGate(props: ParentProps) {
   return <>{props.children}</>
 }
 
-// O router grava a URL do destino quando a navegação recusada assenta.
+// O router grava a URL do destino num onSettled sem owner, que pode ficar para
+// o passe seguinte da fila; o setTimeout recarrega depois que ela esvazia.
 function ReloadWhenSettled() {
   onSettled(() => {
-    globalThis.location.reload()
+    setTimeout(() => {
+      globalThis.location.reload()
+    }, 0)
   })
   return null
 }
@@ -43,9 +46,11 @@ function renderRootFallback(error: unknown): JSX.Element {
 
 export default function App() {
   // Os parâmetros em rest mantêm fallback.length em zero, condição para o
-  // Errored do Solid reportar o erro no console em desenvolvimento.
+  // Errored do Solid reportar o erro no console em desenvolvimento. O erro é
+  // lido sem rastrear: um erro posterior reconstruiria o fallback, e a trava já
+  // gravada trocaria a recarga pendente pela página de erro.
   return (
-    <Errored fallback={(...args) => renderRootFallback(args[0]())}>
+    <Errored fallback={(...args) => renderRootFallback(untrack(args[0]))}>
       <ServerFailureGate>
         <Provider>
           {/* Dentro do Errored raiz: o fallback global desmonta o aviso. */}
