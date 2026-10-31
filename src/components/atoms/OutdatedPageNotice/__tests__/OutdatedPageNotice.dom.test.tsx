@@ -134,16 +134,18 @@ describe('aviso de página desatualizada', () => {
   })
 
   it('remove os dois ouvintes ao desmontar', () => {
+    const addListener = vi.spyOn(globalThis, 'addEventListener')
     const removeListener = vi.spyOn(globalThis, 'removeEventListener')
     const { dispose } = mountNotice()
     dispose()
-    expect(removeListener).toHaveBeenCalledWith(
-      REFUSED_SUBMIT_EVENT,
-      expect.any(Function)
-    )
-    expect(removeListener).toHaveBeenCalledWith(
-      OUTDATED_FALLBACK_EVENT,
-      expect.any(Function)
-    )
+    for (const type of [REFUSED_SUBMIT_EVENT, OUTDATED_FALLBACK_EVENT]) {
+      const registrations = addListener.mock.calls.filter(
+        ([event]) => event === type
+      )
+      expect(registrations).toHaveLength(1)
+      const listener = registrations[0]?.[1]
+      assert(listener)
+      expect(removeListener).toHaveBeenCalledWith(type, listener)
+    }
   })
 })

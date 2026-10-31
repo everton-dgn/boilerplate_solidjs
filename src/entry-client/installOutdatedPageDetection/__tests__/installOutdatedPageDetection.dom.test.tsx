@@ -5,7 +5,15 @@ import {
   GET,
   UNKNOWN_HEADER
 } from '@solidjs/web/server-functions/client'
-import { createEffect, createRoot, Errored, flush, untrack } from 'solid-js'
+import {
+  createEffect,
+  createRoot,
+  Errored,
+  flush,
+  lazy,
+  Loading,
+  untrack
+} from 'solid-js'
 
 import {
   OUTDATED_FALLBACK_EVENT,
@@ -33,6 +41,12 @@ type Answer = { status: number; isLabelled: boolean }
 type ThrowerProps = { error: unknown }
 // O registro real alimenta o mesmo WeakSet que isVersionError consulta.
 type OutdatedPageActual = { recordChunkFailure: (error: unknown) => void }
+
+function waitForNextTask(): Promise<unknown> {
+  const { promise, resolve } = Promise.withResolvers<unknown>()
+  setTimeout(resolve, 0, null)
+  return promise
+}
 
 function answerWith({ status, isLabelled }: Answer): void {
   configureServerFunctionsClient({
@@ -199,7 +213,7 @@ describe('aviso de parte da página', () => {
     renderInsideLocalBoundary(refusal)
     renderInsideLocalBoundary(refusal)
     await expect.poll(events).toBe(1)
-    await Promise.resolve()
+    await waitForNextTask()
     expect(events()).toBe(1)
   })
 
@@ -214,10 +228,57 @@ describe('aviso de parte da página', () => {
     await expect.poll(events).toBe(1)
   })
 
+  it('avisa uma vez quando o import de lazy falha após o evento de preload', async () => {
+    const actual = await vi.importActual<OutdatedPageActual>(
+      '@/router/outdatedPage/index.ts'
+    )
+    recordChunkFailure.mockImplementation(actual.recordChunkFailure)
+    onTestFinished(() => {
+      recordChunkFailure.mockReset()
+    })
+    const events = countEvents(OUTDATED_FALLBACK_EVENT)
+    const failure = new TypeError('Failed to fetch dynamically imported module')
+    const event = Object.assign(
+      new Event('vite:preloadError', { cancelable: true }),
+      { payload: failure }
+    )
+    const MissingChunk = lazy(async () => {
+      try {
+        await Promise.reject(failure)
+      } catch (error) {
+        globalThis.dispatchEvent(event)
+        if (!event.defaultPrevented) throw error
+      }
+      return { default: () => <p>Import cancelado</p> }
+    })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const dispose = render(
+      () => (
+        <Errored fallback={<p>Parte recusada</p>}>
+          <Loading fallback={<p>Carregando</p>}>
+            <MissingChunk />
+          </Loading>
+        </Errored>
+      ),
+      host
+    )
+    onTestFinished(() => {
+      dispose()
+      host.remove()
+    })
+    await expect.poll(() => host.textContent).toBe('Parte recusada')
+    await expect.poll(events).toBe(1)
+    await waitForNextTask()
+    expect(event.defaultPrevented).toBe(false)
+    expect(recordChunkFailure).toHaveBeenCalledExactlyOnceWith(failure)
+    expect(events()).toBe(1)
+  })
+
   it('ignora o erro que não é de versão', async () => {
     const events = countEvents(OUTDATED_FALLBACK_EVENT)
     renderInsideLocalBoundary(new Error('Detalhe interno'))
-    await Promise.resolve()
+    await waitForNextTask()
     expect(events()).toBe(0)
   })
 
@@ -231,7 +292,7 @@ describe('aviso de parte da página', () => {
     renderInsideLocalBoundary(
       Object.assign(new Error('Recusada'), { unknownFunction: true })
     )
-    await Promise.resolve()
+    await waitForNextTask()
     expect(events()).toBe(0)
   })
 })
