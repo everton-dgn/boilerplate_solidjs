@@ -8,12 +8,22 @@ const RELOAD_STORAGE_KEY = 'outdated-page-reload'
 // quebrado. A janela corta o laço sem impedir a recuperação de outro deploy.
 const RELOAD_WINDOW_MS = 30_000
 
-// O estado só muda no navegador: os detectores rodam a partir do entry-client.
+type UnsavedChangesCheck = () => boolean
+type RemoveUnsavedChanges = () => void
+
+// O estado só muda no navegador: os detectores rodam a partir do entry-client,
+// e as páginas registram as checagens dentro de onSettled.
 const chunkFailures = new WeakSet<object>()
+const unsavedChangesChecks = new Set<UnsavedChangesCheck>()
 let isOutdated = false
 
 function isOffline(): boolean {
   return !globalThis.navigator.onLine
+}
+
+function hasUnsavedChanges(): boolean {
+  for (const check of unsavedChangesChecks) if (check()) return true
+  return false
 }
 
 function hasRecentReload(now: number): boolean {
@@ -54,11 +64,22 @@ export function claimOutdatedPageReload(): boolean {
   }
 }
 
+export function registerUnsavedChanges(
+  check: UnsavedChangesCheck
+): RemoveUnsavedChanges {
+  unsavedChangesChecks.add(check)
+  return () => {
+    unsavedChangesChecks.delete(check)
+  }
+}
+
 export function createOutdatedPageGuard(): void {
   if (isServer) return
   useBeforeLeave(event => {
     if (event.defaultPrevented || typeof event.to === 'number') return
-    if (!isOutdated || isOffline()) return
+    // Este guard é inscrito antes das rotas e o preventDefault é compartilhado:
+    // sem a checagem, o guard de rascunho da página nunca chegaria a perguntar.
+    if (!isOutdated || isOffline() || hasUnsavedChanges()) return
     const target = new URL(event.to, globalThis.location.href)
     // Query e hash seguem no client: um campo ligado à URL recarregaria a
     // página a cada tecla.

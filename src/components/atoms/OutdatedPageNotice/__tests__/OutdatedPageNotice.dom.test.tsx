@@ -2,7 +2,10 @@ import { m } from '@paraglide/messages.js'
 import { render } from '@solidjs/web'
 import { flush } from 'solid-js'
 
-import { REFUSED_SUBMIT_EVENT } from '@/constants/outdated-page.ts'
+import {
+  OUTDATED_FALLBACK_EVENT,
+  REFUSED_SUBMIT_EVENT
+} from '@/constants/outdated-page.ts'
 
 import { OutdatedPageNotice } from '../index.tsx'
 
@@ -29,6 +32,17 @@ function mountNotice(): MountedNotice {
 function reportRefusedSubmit(): void {
   globalThis.dispatchEvent(new Event(REFUSED_SUBMIT_EVENT))
   flush()
+}
+
+function reportOutdatedFallback(): void {
+  globalThis.dispatchEvent(new Event(OUTDATED_FALLBACK_EVENT))
+  flush()
+}
+
+function readTitle(host: HTMLElement): string | null | undefined {
+  const titleId = host.querySelector('section')?.getAttribute('aria-labelledby')
+  assert(titleId)
+  return document.querySelector(`#${titleId}`)?.textContent
 }
 
 function findButton({ host, name }: ButtonQuery): HTMLButtonElement {
@@ -91,12 +105,44 @@ describe('aviso de página desatualizada', () => {
     expect(document.activeElement).toBe(origin)
   })
 
-  it('remove o ouvinte ao desmontar', () => {
+  it('avisa que parte da página não carregou e reabre depois de fechado', () => {
+    const { host } = mountNotice()
+    reportOutdatedFallback()
+    expect(readTitle(host)).toBe(m.outdatedPageNotice_fallbackTitle())
+    expect(host.querySelector('[role="alert"]')).toHaveTextContent(
+      m.outdatedPageNotice_fallbackDescription()
+    )
+    findButton({ host, name: m.outdatedPageNotice_dismiss() }).click()
+    flush()
+    expect(host.querySelector('section')).toBeNull()
+    reportOutdatedFallback()
+    expect(readTitle(host)).toBe(m.outdatedPageNotice_fallbackTitle())
+  })
+
+  it('troca o aviso de parte da página pelo de envio', () => {
+    const { host } = mountNotice()
+    reportOutdatedFallback()
+    reportRefusedSubmit()
+    expect(readTitle(host)).toBe(m.outdatedPageNotice_title())
+  })
+
+  it('mantém o aviso de envio quando outra parte da página falha', () => {
+    const { host } = mountNotice()
+    reportRefusedSubmit()
+    reportOutdatedFallback()
+    expect(readTitle(host)).toBe(m.outdatedPageNotice_title())
+  })
+
+  it('remove os dois ouvintes ao desmontar', () => {
     const removeListener = vi.spyOn(globalThis, 'removeEventListener')
     const { dispose } = mountNotice()
     dispose()
     expect(removeListener).toHaveBeenCalledWith(
       REFUSED_SUBMIT_EVENT,
+      expect.any(Function)
+    )
+    expect(removeListener).toHaveBeenCalledWith(
+      OUTDATED_FALLBACK_EVENT,
       expect.any(Function)
     )
   })

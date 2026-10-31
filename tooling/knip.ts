@@ -72,6 +72,7 @@ const config = {
     'src/components/atoms/ToastProvider/useToast/index.ts!',
     'src/primitives/createLocalizedNavigate/index.ts!',
     'src/i18n/localizedRedirect/index.ts!',
+    'src/router/outdatedPage/index.ts!',
     'env.ts!',
     // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.
     'src/tests/fixtures/e2e/middleware/index.ts',

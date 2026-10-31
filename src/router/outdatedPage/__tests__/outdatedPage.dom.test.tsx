@@ -3,7 +3,9 @@ import {
   memoryHistory,
   useBeforeLeave,
   useLocation,
-  useNavigate
+  useNavigate,
+  type BeforeLeaveEventArgs,
+  type MemoryHistoryAdapter
 } from '@solidjs/router'
 import { flush } from 'solid-js'
 import type { MockInstance } from 'vite-plus/test'
@@ -15,11 +17,17 @@ import {
   createOutdatedPageGuard,
   isVersionError,
   markPageOutdated,
-  recordChunkFailure
+  recordChunkFailure,
+  registerUnsavedChanges
 } from '../index.ts'
 
 type Navigate = ReturnType<typeof useNavigate>
 type GuardedRouter = { host: HTMLDivElement; navigate: () => Navigate }
+type GuardedRouterOptions = {
+  history?: MemoryHistoryAdapter
+  shouldCancelFirst?: boolean
+  onPageLeave?: (event: BeforeLeaveEventArgs) => void
+}
 type LocationWrite = MockInstance<(url: string | URL) => void>
 type DocumentNavigation = { assign: LocationWrite; replace: LocationWrite }
 
@@ -51,13 +59,15 @@ function spyDocumentNavigation(): DocumentNavigation {
   }
 }
 
-async function renderGuardedRouter(
+async function renderGuardedRouter({
   history = memoryHistory('/en/start'),
-  shouldCancel = false
-): Promise<GuardedRouter> {
+  shouldCancelFirst = false,
+  onPageLeave
+}: GuardedRouterOptions = {}): Promise<GuardedRouter> {
   let navigate: Navigate | undefined
   function Page() {
     navigate = useNavigate()
+    if (onPageLeave) useBeforeLeave(onPageLeave)
     const location = useLocation()
     return (
       <output>
@@ -74,7 +84,7 @@ async function renderGuardedRouter(
     () => (
       <Router>
         {props => {
-          if (shouldCancel) useBeforeLeave(event => event.preventDefault())
+          if (shouldCancelFirst) useBeforeLeave(event => event.preventDefault())
           createOutdatedPageGuard()
           return props.children
         }}
@@ -111,12 +121,53 @@ describe('guard de página desatualizada', () => {
 
   it('respeita o cancelamento de um guard anterior', async () => {
     const { assign, replace } = spyDocumentNavigation()
-    const { host, navigate } = await renderGuardedRouter(undefined, true)
+    const { host, navigate } = await renderGuardedRouter({
+      shouldCancelFirst: true
+    })
     navigate()('/en/other')
     flush()
     expect(host.textContent).toBe('/en/start')
     expect(assign).not.toHaveBeenCalled()
     expect(replace).not.toHaveBeenCalled()
+  })
+
+  // O guard de versão é inscrito antes das rotas: sem o registro, o guard de
+  // rascunho da página veria defaultPrevented e não perguntaria.
+  it('deixa a navegação no client para a página com alterações não salvas', async () => {
+    const { assign } = spyDocumentNavigation()
+    onTestFinished(registerUnsavedChanges(() => true))
+    let wasPrevented: boolean | undefined
+    const { host, navigate } = await renderGuardedRouter({
+      onPageLeave: event => {
+        wasPrevented = event.defaultPrevented
+      }
+    })
+    navigate()('/en/other')
+    await expect.poll(() => host.textContent).toBe('/en/other')
+    expect(wasPrevented).toBe(false)
+    expect(assign).not.toHaveBeenCalled()
+  })
+
+  it('basta uma checagem com alterações para manter a navegação no client', async () => {
+    const { assign } = spyDocumentNavigation()
+    onTestFinished(registerUnsavedChanges(() => false))
+    onTestFinished(registerUnsavedChanges(() => true))
+    const { host, navigate } = await renderGuardedRouter()
+    navigate()('/en/other')
+    await expect.poll(() => host.textContent).toBe('/en/other')
+    expect(assign).not.toHaveBeenCalled()
+  })
+
+  it('volta a trocar por documento depois de remover a checagem', async () => {
+    const { assign } = spyDocumentNavigation()
+    const removeCheck = registerUnsavedChanges(() => true)
+    removeCheck()
+    const { navigate } = await renderGuardedRouter()
+    navigate()('/en/other')
+    flush()
+    expect(assign).toHaveBeenCalledWith(
+      `${globalThis.location.origin}/en/other`
+    )
   })
 
   it('preserva o replace na navegação de documento', async () => {
@@ -146,7 +197,7 @@ describe('guard de página desatualizada', () => {
   it('deixa no client o voltar entre entradas do mesmo documento', async () => {
     const { assign, replace } = spyDocumentNavigation()
     const history = memoryHistory('/en/start')
-    const { host, navigate } = await renderGuardedRouter(history)
+    const { host, navigate } = await renderGuardedRouter({ history })
     navigate()('/en/start?q=1')
     await expect.poll(() => host.textContent).toBe('/en/start?q=1')
     history.back()

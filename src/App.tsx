@@ -1,5 +1,12 @@
 import { getRequestEvent, isServer, type JSX } from '@solidjs/web'
-import { Errored, onSettled, untrack, type ParentProps } from 'solid-js'
+import {
+  createSignal,
+  Errored,
+  onSettled,
+  Show,
+  untrack,
+  type ParentProps
+} from 'solid-js'
 
 import { OutdatedPageNotice } from '@/components/atoms/OutdatedPageNotice/index.tsx'
 import { Provider } from '@/components/atoms/Provider/index.tsx'
@@ -23,15 +30,31 @@ function ServerFailureGate(props: ParentProps) {
   return <>{props.children}</>
 }
 
+// Um beforeunload da página pode cancelar a recarga, e o primeiro SSR depois
+// do deploy pode pegar o servidor a frio. Passado o prazo, a página de erro
+// substitui a tela vazia.
+const RELOAD_STALL_MS = 10_000
+
 // O router grava a URL do destino num onSettled sem owner, que pode ficar para
 // o passe seguinte da fila; o setTimeout recarrega depois que ela esvazia.
 function ReloadWhenSettled() {
+  const [isStalled, setIsStalled] = createSignal(false)
   onSettled(() => {
     setTimeout(() => {
       globalThis.location.reload()
     }, 0)
+    const stall = setTimeout(() => {
+      setIsStalled(true)
+    }, RELOAD_STALL_MS)
+    return () => {
+      clearTimeout(stall)
+    }
   })
-  return null
+  return (
+    <Show when={isStalled()}>
+      <ErrorFallback kind="runtime" />
+    </Show>
+  )
 }
 
 // Um chunk ou uma server function que o deploy novo não tem não é falha da

@@ -59,6 +59,10 @@ vi.mock(import('virtual:file-routes'), async importOriginal => {
 // Prazo do aquecimento: cobre o carregamento a frio dos módulos, não o
 // comportamento verificado pelos casos.
 const WARM_UP_TIMEOUT_MS = 5000
+// O fallback raiz troca a tela vazia pela página de erro em 10 s; o teste
+// confere um ponto antes e outro depois do prazo.
+const BEFORE_STALL_MS = 8000
+const PAST_STALL_MS = 2000
 
 // TODO: Em desenvolvimento, o Errored do Solid registra no console o erro que a
 // boundary capturou quando o fallback não recebe
@@ -212,5 +216,33 @@ describe('feedback de erro da aplicação', () => {
     const recovering = renderApp()
     await expect.poll(() => reload.mock.calls.length).toBe(1)
     expect(recovering.textContent).toBe('')
+  })
+
+  it('mostra a página de erro se a recarga não trocar o documento', async () => {
+    globalThis.sessionStorage.clear()
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    onTestFinished(() => {
+      vi.useRealTimers()
+      renderHome.mockReset()
+    })
+    // Um beforeunload que cancela a recarga deixa o documento no lugar.
+    const reload = vi
+      .spyOn(globalThis.location, 'reload')
+      .mockImplementation(() => {
+        /* Permanece no documento do teste. */
+      })
+    renderHome.mockImplementation(() => {
+      throw Object.assign(new Error('Função fora do build'), {
+        unknownFunction: true
+      })
+    })
+    const host = renderApp()
+    await vi.waitFor(() => {
+      expect(reload).toHaveBeenCalledOnce()
+    })
+    await vi.advanceTimersByTimeAsync(BEFORE_STALL_MS)
+    expect(host.textContent).toBe('')
+    await vi.advanceTimersByTimeAsync(PAST_STALL_MS)
+    expect(host.querySelector('h1')?.textContent).toBe('Something went wrong!')
   })
 })

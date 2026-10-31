@@ -1,12 +1,16 @@
+import { render } from '@solidjs/web'
 import {
   configureServerFunctionsClient,
   createServerReference,
   GET,
   UNKNOWN_HEADER
 } from '@solidjs/web/server-functions/client'
-import { createEffect, createRoot, flush } from 'solid-js'
+import { createEffect, createRoot, Errored, flush, untrack } from 'solid-js'
 
-import { REFUSED_SUBMIT_EVENT } from '@/constants/outdated-page.ts'
+import {
+  OUTDATED_FALLBACK_EVENT,
+  REFUSED_SUBMIT_EVENT
+} from '@/constants/outdated-page.ts'
 
 import { installOutdatedPageDetection } from '../index.ts'
 
@@ -26,6 +30,9 @@ const HTTP_CONFLICT = 409
 const HTTP_INTERNAL_SERVER_ERROR = 500
 
 type Answer = { status: number; isLabelled: boolean }
+type ThrowerProps = { error: unknown }
+// O registro real alimenta o mesmo WeakSet que isVersionError consulta.
+type OutdatedPageActual = { recordChunkFailure: (error: unknown) => void }
 
 function answerWith({ status, isLabelled }: Answer): void {
   configureServerFunctionsClient({
@@ -37,16 +44,37 @@ function answerWith({ status, isLabelled }: Answer): void {
   })
 }
 
-function countRefusedSubmitEvents(): () => number {
+function countEvents(type: string): () => number {
   let count = 0
   function listener(): void {
     count += 1
   }
-  globalThis.addEventListener(REFUSED_SUBMIT_EVENT, listener)
+  globalThis.addEventListener(type, listener)
   onTestFinished(() => {
-    globalThis.removeEventListener(REFUSED_SUBMIT_EVENT, listener)
+    globalThis.removeEventListener(type, listener)
   })
   return () => count
+}
+
+function Thrower(props: ThrowerProps): never {
+  throw untrack(() => props.error)
+}
+
+function renderInsideLocalBoundary(error: unknown): void {
+  const host = document.createElement('div')
+  document.body.append(host)
+  const dispose = render(
+    () => (
+      <Errored fallback={<p>Parte recusada</p>}>
+        <Thrower error={error} />
+      </Errored>
+    ),
+    host
+  )
+  onTestFinished(() => {
+    dispose()
+    host.remove()
+  })
 }
 
 // O render chama a leitura dentro de uma computação rastreada; a fase de
@@ -80,7 +108,7 @@ describe('detecção de página desatualizada', () => {
   it.each([HTTP_CONFLICT, HTTP_NOT_FOUND])(
     'avisa o envio recusado com %i e mantém a rejeição unknownFunction',
     async status => {
-      const events = countRefusedSubmitEvents()
+      const events = countEvents(REFUSED_SUBMIT_EVENT)
       answerWith({ status, isLabelled: true })
       const save = createServerReference('save-1')
       await expect(save()).rejects.toMatchObject({
@@ -93,7 +121,7 @@ describe('detecção de página desatualizada', () => {
   )
 
   it('marca a página na leitura declarada com GET, sem avisar', async () => {
-    const events = countRefusedSubmitEvents()
+    const events = countEvents(REFUSED_SUBMIT_EVENT)
     answerWith({ status: HTTP_NOT_FOUND, isLabelled: true })
     const read = GET(createServerReference('read-1'))
     await expect(read()).rejects.toMatchObject({ unknownFunction: true })
@@ -102,7 +130,7 @@ describe('detecção de página desatualizada', () => {
   })
 
   it('marca a página na chamada feita numa computação rastreada, sem avisar', async () => {
-    const events = countRefusedSubmitEvents()
+    const events = countEvents(REFUSED_SUBMIT_EVENT)
     answerWith({ status: HTTP_NOT_FOUND, isLabelled: true })
     const read = createServerReference('read-2')
     await expect(callInsideComputation(() => read())).rejects.toMatchObject({
@@ -116,7 +144,7 @@ describe('detecção de página desatualizada', () => {
     { status: HTTP_CONFLICT, isLabelled: false },
     { status: HTTP_INTERNAL_SERVER_ERROR, isLabelled: true }
   ])('ignora a resposta $status fora do contrato de versão', async answer => {
-    const events = countRefusedSubmitEvents()
+    const events = countEvents(REFUSED_SUBMIT_EVENT)
     answerWith(answer)
     const save = createServerReference('save-2')
     await expect(save()).rejects.toMatchObject({ status: answer.status })
@@ -142,7 +170,7 @@ describe('detecção de página desatualizada', () => {
     onTestFinished(() => {
       installOutdatedPageDetection()
     })
-    const events = countRefusedSubmitEvents()
+    const events = countEvents(REFUSED_SUBMIT_EVENT)
     globalThis.dispatchEvent(new Event('vite:preloadError'))
     answerWith({ status: HTTP_CONFLICT, isLabelled: true })
     const save = createServerReference('save-3')
@@ -150,5 +178,60 @@ describe('detecção de página desatualizada', () => {
     expect(events()).toBe(0)
     expect(recordChunkFailure).not.toHaveBeenCalled()
     expect(markPageOutdated).not.toHaveBeenCalled()
+  })
+})
+
+describe('aviso de parte da página', () => {
+  // O descarte devolvido vira o teardown do beforeAll.
+  beforeAll(installOutdatedPageDetection)
+
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {
+      /* O Errored de desenvolvimento reporta o erro capturado. */
+    })
+  })
+
+  it('avisa uma vez a recusa capturada por Errored locais', async () => {
+    const events = countEvents(OUTDATED_FALLBACK_EVENT)
+    const refusal = Object.assign(new Error('Recusada'), {
+      unknownFunction: true
+    })
+    renderInsideLocalBoundary(refusal)
+    renderInsideLocalBoundary(refusal)
+    await expect.poll(events).toBe(1)
+    await Promise.resolve()
+    expect(events()).toBe(1)
+  })
+
+  it('avisa a falha de chunk registrada', async () => {
+    const actual = await vi.importActual<OutdatedPageActual>(
+      '@/router/outdatedPage/index.ts'
+    )
+    const events = countEvents(OUTDATED_FALLBACK_EVENT)
+    const chunkFailure = new TypeError('Failed to fetch module')
+    actual.recordChunkFailure(chunkFailure)
+    renderInsideLocalBoundary(chunkFailure)
+    await expect.poll(events).toBe(1)
+  })
+
+  it('ignora o erro que não é de versão', async () => {
+    const events = countEvents(OUTDATED_FALLBACK_EVENT)
+    renderInsideLocalBoundary(new Error('Detalhe interno'))
+    await Promise.resolve()
+    expect(events()).toBe(0)
+  })
+
+  it('para de avisar depois do descarte', async () => {
+    const dispose = installOutdatedPageDetection()
+    dispose()
+    onTestFinished(() => {
+      installOutdatedPageDetection()
+    })
+    const events = countEvents(OUTDATED_FALLBACK_EVENT)
+    renderInsideLocalBoundary(
+      Object.assign(new Error('Recusada'), { unknownFunction: true })
+    )
+    await Promise.resolve()
+    expect(events()).toBe(0)
   })
 })
