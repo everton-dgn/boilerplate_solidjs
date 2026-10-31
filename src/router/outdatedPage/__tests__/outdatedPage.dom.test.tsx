@@ -48,6 +48,10 @@ function writeNothing(): void {
   /* A escrita não importa quando a leitura já foi recusada. */
 }
 
+function hasDraft(): boolean {
+  return true
+}
+
 function spyDocumentNavigation(): DocumentNavigation {
   return {
     assign: vi.spyOn(globalThis.location, 'assign').mockImplementation(() => {
@@ -152,6 +156,17 @@ describe('guard de página desatualizada', () => {
     const { assign } = spyDocumentNavigation()
     onTestFinished(registerUnsavedChanges(() => false))
     onTestFinished(registerUnsavedChanges(() => true))
+    const { host, navigate } = await renderGuardedRouter()
+    navigate()('/en/other')
+    await expect.poll(() => host.textContent).toBe('/en/other')
+    expect(assign).not.toHaveBeenCalled()
+  })
+
+  it('mantém a proteção quando só um de dois registros da mesma checagem sai', async () => {
+    const { assign } = spyDocumentNavigation()
+    const removeFirst = registerUnsavedChanges(hasDraft)
+    onTestFinished(registerUnsavedChanges(hasDraft))
+    removeFirst()
     const { host, navigate } = await renderGuardedRouter()
     navigate()('/en/other')
     await expect.poll(() => host.textContent).toBe('/en/other')

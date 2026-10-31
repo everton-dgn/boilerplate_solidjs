@@ -49,7 +49,8 @@ function announceOutdatedFallback(error: unknown): void {
 export function installOutdatedPageDetection(): () => void {
   globalThis.addEventListener('vite:preloadError', handlePreloadError)
   // O runtime chama o hook uma vez por erro, para todo boundary que mostra
-  // fallback. A vaga é única: um monitor de erros precisa ser composto aqui.
+  // fallback. A vaga é única, e um onError passado a render ou hydrate tem
+  // precedência: um monitor de erros precisa ser composto aqui.
   configureClientErrors({ onError: announceOutdatedFallback })
   // O runtime guarda um único responseHandler; server components ocupariam a
   // mesma vaga (docs/server-errors.md#página-desatualizada-após-um-deploy).

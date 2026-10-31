@@ -519,12 +519,6 @@ que o client alcança em `.vite/solid-server-functions.json`, ao lado do
 `.vite/` para `dist/.vite/` no fim do build, então nenhum dos dois é publicado;
 os testes leem os arquivos de lá.
 
-A aba também pode pedir um chunk" até o limite do `lazy()`) pelo texto abaixo,
-preservando os dois limites finais sobre o 404 de asset e a publicação de assets
-anteriores (568-588). Depois, substituir o passo 5 do roteiro "Atualizar o
-Solid" (633-641) pelo último parágrafo abaixo. Quebrar as linhas em cerca de 80
-colunas.
-
 A aba também pode pedir um chunk ou uma folha CSS com o hash do build anterior,
 que o deploy novo não publica. A recuperação segue uma regra: a página só
 recarrega sozinha quando o usuário já pediu para sair dela ou quando o fallback
@@ -618,7 +612,9 @@ Limites conhecidos:
   último; os dois precisam ser compostos à mão.
 - O hook de `configureClientErrors` também é único e é a vaga natural de um
   monitor de erros. Um monitor instalado depois substitui o hook e desliga o
-  aviso de fallback sem erro; ele precisa ser composto dentro de
+  aviso de fallback sem erro. Um `onError` passado a `render` ou `hydrate` tem o
+  mesmo efeito, porque o runtime prefere o hook da raiz ao ambiente. Nos dois
+  casos, o monitor precisa ser composto dentro de
   `installOutdatedPageDetection`.
 - O handler separa envio de leitura pelo ponto de chamada: fora de computação
   rastreada e sem `GET`. Uma leitura direta feita depois de um `await`, dentro
@@ -658,11 +654,14 @@ Limites conhecidos:
   Nitro mudar esse comportamento. Ele cobre a configuração gerada, não o CDN: a
   precedência do `no-store` sobre o cache da rota de `/assets` segue a ordem das
   rotas e foi validada num deploy real em
-  [nitrojs/nitro#4474](https://github.com/nitrojs/nitro/pull/4474). Continuam no
-  SSR, com o cache da route rule, `/assets` e `/assets/` sem nome de arquivo,
-  caminhos com segmento vazio e métodos diferentes de GET e HEAD; nenhuma URL
-  gerada pelo Vite tem esse formato. O 404 do miss não leva a CSP, o HSTS nem as
-  políticas de frame, que só valem nas respostas do middleware.
+  [nitrojs/nitro#4474](https://github.com/nitrojs/nitro/pull/4474). No
+  `vp run start`, o miss só vale para GET e HEAD em `/assets/<arquivo>`, e
+  continuam no SSR, com o cache da route rule, `/assets`, `/assets/`, caminhos
+  com segmento vazio e outros métodos. Na Vercel, só `/assets` sem barra chega à
+  função: a rota 404 `no-store` depois de `filesystem` cobre o resto, com
+  qualquer método. Nenhuma URL gerada pelo Vite tem esses formatos. O 404 do
+  miss não leva a CSP, o HSTS nem as políticas de frame, que só valem nas
+  respostas do middleware.
 
 ## Atualizar o Solid
 

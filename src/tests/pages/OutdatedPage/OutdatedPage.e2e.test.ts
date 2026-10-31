@@ -300,9 +300,6 @@ test('a leitura recusada sem limite local recarrega uma vez e mostra a página d
   const reloaded = await readNavigationEntry(page)
   expect(reloaded?.type).toBe('reload')
   expect(await wasErrorPageShown()).toBe(false)
-  await expect(
-    page.getByRole('region', { name: FALLBACK_NOTICE_TITLE })
-  ).toHaveCount(0)
 
   // A recusa repetida dentro da janela da trava indica um build novo também
   // quebrado: a página de erro aparece em vez de outra recarga.
@@ -311,4 +308,8 @@ test('a leitura recusada sem limite local recarrega uma vez e mostra a página d
     'Algo deu errado!'
   )
   expect(documents()).toBe(1)
+  // O Errored raiz desmonta o aviso: a página de erro aparece sozinha.
+  await expect(
+    page.getByRole('region', { name: FALLBACK_NOTICE_TITLE })
+  ).toHaveCount(0)
 })

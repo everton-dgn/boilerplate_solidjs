@@ -37,7 +37,8 @@ export function OutdatedPageNotice() {
     setNoticeKind('submit')
   }
 
-  // O aviso de envio visível não cede lugar ao de uma parte da página.
+  // O envio recusado pede uma ação da pessoa; uma falha passiva de outra parte
+  // da página não esconde esse aviso.
   function showFallback(): void {
     setNoticeKind(kind => kind ?? 'fallback')
   }
