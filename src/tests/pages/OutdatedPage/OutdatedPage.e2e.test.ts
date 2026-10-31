@@ -14,7 +14,14 @@ const ERROR_PAGE_FLAG = 'e2e-error-page'
 const DRAFT = 'Texto ainda não salvo'
 
 type Destination = { link: string; url: RegExp; title: string }
-type DestinationCheck = { page: Page; destination: Destination }
+// O guard troca de documento com assign; o Errored raiz, com reload.
+type NavigationType = 'navigate' | 'reload'
+type NavigationEntry = { name: string; type: string }
+type DestinationCheck = {
+  page: Page
+  destination: Destination
+  navigation: NavigationType
+}
 type AssetBlock = { page: Page; extension: RegExp }
 type DocumentCounter = () => number
 type Refusal = {
@@ -88,10 +95,13 @@ async function blockNewAssets({ page, extension }: AssetBlock): Promise<void> {
   })
 }
 
-function readNavigationEntry(page: Page): Promise<string | undefined> {
-  return page.evaluate(
-    () => performance.getEntriesByType('navigation')[0]?.name
-  )
+function readNavigationEntry(page: Page): Promise<NavigationEntry | undefined> {
+  return page.evaluate(() => {
+    const [entry] = performance.getEntriesByType('navigation')
+    return entry instanceof PerformanceNavigationTiming
+      ? { name: entry.name, type: entry.type }
+      : undefined
+  })
 }
 
 async function refuseReads(page: Page): Promise<void> {
@@ -108,13 +118,17 @@ async function refuseReads(page: Page): Promise<void> {
 
 async function expectDestinationDocument({
   page,
-  destination
+  destination,
+  navigation
 }: DestinationCheck): Promise<void> {
   await expect(page).toHaveURL(destination.url)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     destination.title
   )
-  expect(await readNavigationEntry(page)).toBe(page.url())
+  expect(await readNavigationEntry(page)).toEqual({
+    name: page.url(),
+    type: navigation
+  })
 }
 
 const REFUSALS: Refusal[] = [
@@ -159,7 +173,11 @@ test('passar sobre um link sem o chunk não recarrega e o clique seguinte abre o
   expect(documents()).toBe(0)
 
   await page.getByRole('link', { name: ABOUT.link }).click()
-  await expectDestinationDocument({ page, destination: ABOUT })
+  await expectDestinationDocument({
+    page,
+    destination: ABOUT,
+    navigation: 'navigate'
+  })
   expect(documents()).toBe(1)
   expect(await wasErrorPageShown()).toBe(false)
 })
@@ -180,7 +198,11 @@ for (const { name, extension, destination } of [
     await page
       .getByRole('link', { name: destination.link })
       .dispatchEvent('click')
-    await expectDestinationDocument({ page, destination })
+    await expectDestinationDocument({
+      page,
+      destination,
+      navigation: 'reload'
+    })
     expect(documents()).toBe(1)
     expect(await wasErrorPageShown()).toBe(false)
   })
@@ -213,7 +235,11 @@ for (const { status, rewrite } of REFUSALS) {
 
     // A recusa marca a aba: a próxima troca de página já sai por documento.
     await page.getByRole('link', { name: ABOUT.link }).click()
-    await expectDestinationDocument({ page, destination: ABOUT })
+    await expectDestinationDocument({
+      page,
+      destination: ABOUT,
+      navigation: 'navigate'
+    })
     expect(documents()).toBe(1)
   })
 }
@@ -250,6 +276,8 @@ test('a leitura recusada sem limite local recarrega uma vez e mostra a página d
     FIXTURE_TITLE
   )
   await expect.poll(() => hydrationFinished(page)).toBe(true)
+  const reloaded = await readNavigationEntry(page)
+  expect(reloaded?.type).toBe('reload')
   expect(await wasErrorPageShown()).toBe(false)
 
   // A recusa repetida dentro da janela da trava indica um build novo também
