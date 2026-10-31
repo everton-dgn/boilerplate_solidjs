@@ -653,15 +653,16 @@ Limites conhecidos:
   `.vercel/output/config.json` e o 404 no preview, e falha se uma atualização do
   Nitro mudar esse comportamento. Ele cobre a configuração gerada, não o CDN: a
   precedência do `no-store` sobre o cache da rota de `/assets` segue a ordem das
-  rotas e foi validada num deploy real em
-  [nitrojs/nitro#4474](https://github.com/nitrojs/nitro/pull/4474). No
-  `vp run start`, o miss só vale para GET e HEAD em `/assets/<arquivo>`, e
-  continuam no SSR, com o cache da route rule, `/assets`, `/assets/`, caminhos
-  com segmento vazio e outros métodos. Na Vercel, só `/assets` sem barra chega à
-  função: a rota 404 `no-store` depois de `filesystem` cobre o resto, com
-  qualquer método. Nenhuma URL gerada pelo Vite tem esses formatos. O 404 do
-  miss não leva a CSP, o HSTS nem as políticas de frame, que só valem nas
-  respostas do middleware.
+  rotas. O autor de
+  [nitrojs/nitro#4474](https://github.com/nitrojs/nitro/pull/4474) conferiu essa
+  ordem num deploy próprio na Vercel; o deploy deste repositório ainda não foi
+  conferido. No `vp run start`, o miss só vale para GET e HEAD em
+  `/assets/<arquivo>`, e continuam no SSR, com o cache da route rule, `/assets`,
+  `/assets/`, caminhos com segmento vazio e outros métodos. Na Vercel, só
+  `/assets` sem barra chega à função: a rota 404 `no-store` depois de
+  `filesystem` cobre o resto, com qualquer método. Nenhuma URL gerada pelo Vite
+  tem esses formatos. O 404 do miss não leva a CSP, o HSTS nem as políticas de
+  frame, que só valem nas respostas do middleware.
 
 ## Atualizar o Solid
 
