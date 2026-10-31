@@ -67,6 +67,12 @@ export function claimOutdatedPageReload(): boolean {
 export function registerUnsavedChanges(
   check: UnsavedChangesCheck
 ): RemoveUnsavedChanges {
+  if (isServer) {
+    return () => {
+      // Nenhuma checagem é registrada no servidor.
+    }
+  }
+
   // Uma entrada por registro: a mesma checagem registrada por duas telas não
   // perde a proteção quando uma delas desmonta.
   const entry: UnsavedChangesCheck = () => check()
