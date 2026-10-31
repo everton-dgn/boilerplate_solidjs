@@ -299,7 +299,8 @@ release. Add a tool name to select part of the graph. For example, run
 - No `ToastProvider`, mantenha junto ao JSX os callbacks curtos de pausa e
   fechamento que usam o `id` de cada item do `For`. O handler da seção que lê a
   origem do foco usa `createFocusOriginHandler`, compartilhado com
-  `OutdatedPageNotice`, e atualiza `focusOrigin` no callback local. Preserve funções próprias para encontrar o vizinho e devolver o foco.
+  `OutdatedPageNotice`, e atualiza `focusOrigin` no callback local. Preserve
+  funções próprias para encontrar o vizinho e devolver o foco.
 - Callbacks de `ref` com uma chamada simples podem permanecer inline. Quando
   houver atribuição com `=` ou lógica adicional, extraia uma função nomeada.
   Callbacks de renderização e outras props seguem seus contratos próprios.
@@ -472,8 +473,8 @@ release. Add a tool name to select part of the graph. For example, run
   guia.
 - Após mudar essa fronteira, rode `vp run test:tooling`, os testes Node
   pertinentes e `vp run test:e2e src/tests/pages/BackendError
-  src/tests/pages/OutsideError src/tests/pages/OutdatedPage`. Preserve no CI a verificação do corpo completo
-  em SSR inicial, streaming e chamada HTTP.
+  src/tests/pages/OutsideError src/tests/pages/OutdatedPage`. Preserve no CI a
+  verificação do corpo completo em SSR inicial, streaming e chamada HTTP.
 - Em atualizações do Solid ou do plugin, siga o roteiro "Atualizar o Solid" do
   guia: só retire o wrapper quando uma reprodução sem essa interceptação provar
   a cobertura na versão instalada.
