@@ -468,6 +468,23 @@ precisam ser repetidas. Para retry local com query, invalide a chave antes de
 `reset()`: `revalidate(getData.key); reset()`. Confirme uma nova chamada ao
 backend.
 
+Após alterar essa fronteira, execute:
+
+```bash
+vp run test:tooling
+vp run test:unit
+vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError src/tests/pages/OutdatedPage
+vp run typecheck
+vp run check:ci
+```
+
+O [CI](../.github/workflows/ci.yml) executa `test:tooling` e a suíte E2E
+completa; `vp run validate` e o `pre-push` rodam `test:tooling` localmente, o
+que inclui as duas políticas. Os testes da política verificam as regras no
+parser real e seu registro no lint completo, com casos recusados e permitidos
+para cada exceção. Consulte os resultados de cada execução nos logs da validação
+local e do CI.
+
 ### Página desatualizada após um deploy
 
 Uma aba aberta antes de um deploy continua com o JS do build anterior até
@@ -551,26 +568,15 @@ Limites conhecidos:
 - O asset ausente cai no SSR e responde 404 em HTML com
   `Cache-Control: public, max-age=31536000, immutable`, porque o Nitro aplica a
   route rule de `/assets/**` também ao erro. Depois de um rollback, o navegador
-  pode manter esse 404 para o hash. Falta conferir no deploy real.
+  pode manter esse 404 para o hash. Falta conferir no deploy real. O Nitro
+  oferece miss com `no-store` para diretórios públicos sem fallthrough, e o
+  preset Vercel gera esse 404 após `filesystem`. Isso exige ajustar também a
+  regra genérica: os `errHeaders` são aplicados depois dos headers do erro.
+  Ainda falta validar uma configuração que preserve cache imutável dos acertos e
+  headers de segurança no Node e na Vercel; um middleware isolado não comprova
+  essa correção.
 - Publicar junto os assets dos releases anteriores evitaria a falha nas abas
   antigas. Isso exige uma etapa no pipeline de deploy e ainda não existe.
-
-Após alterar essa fronteira, execute:
-
-```bash
-vp run test:tooling
-vp run test:unit
-vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError src/tests/pages/OutdatedPage
-vp run typecheck
-vp run check:ci
-```
-
-O [CI](../.github/workflows/ci.yml) executa `test:tooling` e a suíte E2E
-completa; `vp run validate` e o `pre-push` rodam `test:tooling` localmente, o
-que inclui as duas políticas. Os testes da política verificam as regras no
-parser real e seu registro no lint completo, com casos recusados e permitidos
-para cada exceção. Consulte os resultados de cada execução nos logs da validação
-local e do CI.
 
 ## Atualizar o Solid
 
