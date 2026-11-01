@@ -49,7 +49,7 @@ Receita:
 </>
 ```
 
-Armadilha: Show remove nó ao limpar erro; novo nó preenchido pode não anunciar. Região por item exige nó vazio; o exemplo de tarefas usa outro contrato: o alert só monta quando há falha (de validação, de gravação ou de carga, esta pelo fallback de `Errored`); sem falha, nenhum alert aparece. DOM não prova anúncio.
+Armadilha: Show remove nó ao limpar erro; novo nó preenchido pode não anunciar. Região por item exige nó vazio; o exemplo de tarefas usa outro contrato: o alert só monta quando há falha (de validação, de gravação ou de carga, que chega pelo fallback de `Errored`); sem falha, nenhum alert aparece. DOM não prova anúncio.
 
 ## Foco e ciclo do formulário
 
