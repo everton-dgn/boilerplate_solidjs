@@ -13,7 +13,7 @@ import {
   isVersionError,
   markPageOutdated,
   recordChunkFailure
-} from '@/router/outdatedPage/index.ts'
+} from '@/primitives/createOutdatedPageGuard/index.ts'
 
 function isDeclaredRead(meta: unknown): boolean {
   return (

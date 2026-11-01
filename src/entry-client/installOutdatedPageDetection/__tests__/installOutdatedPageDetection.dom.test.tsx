@@ -27,11 +27,14 @@ const { markPageOutdated, recordChunkFailure } = vi.hoisted(() => ({
   recordChunkFailure: vi.fn<(error: unknown) => void>()
 }))
 
-vi.mock(import('@/router/outdatedPage/index.ts'), async importOriginal => ({
-  ...(await importOriginal()),
-  markPageOutdated,
-  recordChunkFailure
-}))
+vi.mock(
+  import('@/primitives/createOutdatedPageGuard/index.ts'),
+  async importOriginal => ({
+    ...(await importOriginal()),
+    markPageOutdated,
+    recordChunkFailure
+  })
+)
 
 const HTTP_NOT_FOUND = 404
 const HTTP_CONFLICT = 409
@@ -219,7 +222,7 @@ describe('aviso de parte da página', () => {
 
   it('avisa a falha de chunk registrada', async () => {
     const actual = await vi.importActual<OutdatedPageActual>(
-      '@/router/outdatedPage/index.ts'
+      '@/primitives/createOutdatedPageGuard/index.ts'
     )
     const events = countEvents(OUTDATED_FALLBACK_EVENT)
     const chunkFailure = new TypeError('Failed to fetch module')
@@ -230,7 +233,7 @@ describe('aviso de parte da página', () => {
 
   it('avisa uma vez quando o import de lazy falha após o evento de preload', async () => {
     const actual = await vi.importActual<OutdatedPageActual>(
-      '@/router/outdatedPage/index.ts'
+      '@/primitives/createOutdatedPageGuard/index.ts'
     )
     recordChunkFailure.mockImplementation(actual.recordChunkFailure)
     onTestFinished(() => {

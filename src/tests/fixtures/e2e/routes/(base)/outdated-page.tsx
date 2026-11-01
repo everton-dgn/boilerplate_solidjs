@@ -14,7 +14,7 @@ import {
 } from 'solid-js'
 
 import { LocalizedLink } from '@/components/atoms/LocalizedLink/index.tsx'
-import { registerUnsavedChanges } from '@/router/outdatedPage/index.ts'
+import { registerUnsavedChanges } from '@/primitives/createOutdatedPageGuard/index.ts'
 
 import { requestFixtureNote } from '../../outdated-page/requestFixtureNote/index.ts'
 

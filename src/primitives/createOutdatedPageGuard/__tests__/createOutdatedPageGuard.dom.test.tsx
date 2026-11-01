@@ -107,7 +107,7 @@ async function renderGuardedRouter({
 }
 
 // A marca vale até a próxima carga de documento e não volta atrás no módulo.
-// O caso da aba ainda atual fica em outdatedPage.initial.dom.test.tsx, que
+// O caso da aba ainda atual fica em createOutdatedPageGuard.initial.dom.test.tsx, que
 // carrega o módulo isolado.
 describe('guard de página desatualizada', () => {
   beforeEach(markPageOutdated)

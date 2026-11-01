@@ -4,7 +4,7 @@ import { Loading } from 'solid-js'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import App from '../App.tsx'
-import { recordChunkFailure } from '../router/outdatedPage/index.ts'
+import { recordChunkFailure } from '../primitives/createOutdatedPageGuard/index.ts'
 
 const { renderHome, checkProvider, checkTopbar } = vi.hoisted(() => ({
   renderHome: vi.fn<() => JSX.Element>(),

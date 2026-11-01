@@ -565,10 +565,10 @@ A recuperação usa três peças:
   confere `!e.defaultPrevented`, como o exemplo do router, nunca chegaria a
   perguntar. Por isso, uma página com alterações não salvas registra, além do
   próprio `useBeforeLeave`, uma checagem com `registerUnsavedChanges`, importado
-  de `@/router/outdatedPage/index.ts`, dentro de `onSettled` e devolvendo a
-  remoção como limpeza. Enquanto alguma checagem devolver `true`, o guard de
-  versão deixa a navegação no client. Se o usuário confirmar a saída com
-  `e.retry(true)`, a navegação também segue no client, e a página continua
+  de `@/primitives/createOutdatedPageGuard/index.ts`, dentro de `onSettled` e
+  devolvendo a remoção como limpeza. Enquanto alguma checagem devolver `true`, o
+  guard de versão deixa a navegação no client. Se o usuário confirmar a saída
+  com `e.retry(true)`, a navegação também segue no client, e a página continua
   marcada para a próxima.
 - `Errored` raiz: uma falha de chunk registrada pelo listener ou um erro com
   `unknownFunction: true` recarrega a página uma vez em vez de mostrar o
