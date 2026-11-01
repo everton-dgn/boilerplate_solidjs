@@ -14,6 +14,7 @@ const subjects: Record<string, readonly string[]> = {
   'src/tests/pages/FragmentCss': ['FragmentCss'],
   'src/tests/pages/LateRedirect': ['LateRedirect'],
   'src/tests/pages/OutsideError': ['OutsideError'],
+  'src/tests/pages/OutdatedPage': ['OutdatedPage'],
   'src/tests/pages/SeoIndexes': ['SeoIndexes'],
   'src/tests/pages/AgentReadiness': ['AgentReadiness'],
   'src/tests/pages/BuildOutput': ['BuildOutput'],

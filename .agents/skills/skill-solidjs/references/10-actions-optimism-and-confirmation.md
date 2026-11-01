@@ -1,6 +1,6 @@
 # Actions, otimismo e confirmação
 
-Contratos do runtime da [base verificada](../SKILL.md). `action` aqui vem de `solid-js`; a função homônima do router tem outro contrato.
+Contratos do runtime da [base verificada](../SKILL.md). `action` aqui vem de `solid-js`; a `formAction` do router (com o alias depreciado `action`) tem outro contrato.
 
 ## Geradores e reentrada
 

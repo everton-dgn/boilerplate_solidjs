@@ -11,8 +11,9 @@ const QUALITY = /^q\s*=\s*(?<quality>0(?:\.\d{0,3})?|1(?:\.0{0,3})?)$/iu
 const EXACT_SPECIFICITY = 4
 const TYPE_SPECIFICITY = 2
 const UTF8 = /^charset\s*=\s*(?:utf-8|"utf-8")$/iu
-// RFC 7763: a resposta é CommonMark com extensões GFM, então as duas variantes
-// são atendidas.
+// O parâmetro variant é do RFC 7763 e as variantes GFM e CommonMark são
+// registradas pelo RFC 7764: a resposta é CommonMark com extensões GFM, então as
+// duas são atendidas.
 const MARKDOWN_VARIANT =
   /^variant\s*=\s*(?:gfm|commonmark|"(?:gfm|commonmark)")$/iu
 const PARAMETERS = [UTF8, MARKDOWN_VARIANT]

@@ -44,7 +44,7 @@ O contexto é o próprio provider, sem `.Provider`. Uma primitive que lê contex
 
 ## Capturar diagnósticos
 
-Os diagnósticos do build dev saem no console com prefixo `[CODE]`: `console.error` para severidade erro e `console.warn` para as demais. Para diagnósticos de erro que não passam por esse relatório, como o halt, o rodapé `repair guide` chega sozinho em `console.warn` numa microtask, uma vez por código e por instância do motor. Por isso a captura só restaura o console depois de uma microtask:
+Os diagnósticos do build dev saem no console com prefixo `[CODE]`: `console.error` para severidade erro e `console.warn` para as demais. Para diagnósticos de erro que não passam por esse relatório, como o halt, o rodapé de reparo chega sozinho em `console.warn` (começa com `[CODE] repair guide:` na base histórica e com `[CODE] what it means and how to fix it:` em pacotes posteriores) numa microtask, uma vez por código e por instância do motor. Por isso a captura só restaura o console depois de uma microtask:
 
 ```ts
 // support/capture-console.ts
@@ -61,7 +61,7 @@ export type ConsoleCapture = {
 
 type ConsoleMethod = (...args: unknown[]) => void
 
-const FOOTER = /^\[[A-Z][A-Z0-9_]*\] repair guide:/
+const FOOTER = /^\[[A-Z][A-Z0-9_]*\] (?:what it means and how to fix it|repair guide):/
 const CODE = /^\[([A-Z][A-Z0-9_]*)\]/
 
 const readCode = (entry: ConsoleEntry): string | undefined => CODE.exec(entry.text)?.[1]

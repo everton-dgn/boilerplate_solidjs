@@ -4,12 +4,15 @@
 
 ## Política de conteúdo
 
-Os cabeçalhos de segurança saem do middleware, não do `vercel.json`. O
-`securityHeaders` grava em toda resposta da cadeia `Strict-Transport-Security`,
-`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
-`Permissions-Policy`, `Cross-Origin-Opener-Policy`,
-`Cross-Origin-Embedder-Policy`, `Cross-Origin-Resource-Policy` e a
-`Content-Security-Policy`. Os valores ficam em
+Os cabeçalhos de segurança das respostas da função saem do middleware. Para
+arquivos estáticos, o `vercel.json` configura `X-Content-Type-Options` e
+`Cross-Origin-Resource-Policy`, conforme os
+[limites conhecidos](#limites-conhecidos). O `securityHeaders` grava em toda
+resposta da cadeia `Strict-Transport-Security`, `X-Frame-Options`,
+`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`,
+`Cross-Origin-Opener-Policy`, `Cross-Origin-Embedder-Policy`,
+`Cross-Origin-Resource-Policy` e a `Content-Security-Policy`. Os valores ficam
+em
 [`securityHeaders/constants.ts`](../src/middleware/securityHeaders/constants.ts).
 A contenção de falhas grava os mesmos cabeçalhos no 500, na página de erro e no
 controle lançado.
@@ -60,14 +63,14 @@ cria o estado de integridade do render e o conclui pelo `onCompleteAll`, que a
 entrada gerada pelo plugin não passa ao `renderToStream`; sem esse estado
 concluído, todo `.md` responde 500 e o prerender interrompe o build. O plugin
 exige o par cliente/servidor quando uma dessas entradas existe, e
-`entry-client.tsx` confere o idioma e instala a guarda de histórico antes de
-`hydrate()`, código que só poderia ir para `start.clientSetup` se as duas
-entradas fossem geradas. Ambas usam a mesma árvore de `Document` e `App`. Com as
-entradas autorais, o plugin deixa de gerar o `DefaultErrorBoundary` de produção
-e a opção `start.productionErrorBoundary` não tem efeito; o `Errored` raiz do
-`App` continua responsável pela página de erro. Uma exceção no próprio
-`Document` sai síncrona do `renderToStream` e a contenção de falhas responde o
-500 em texto, com o log fixo.
+`entry-client.tsx` confere o idioma e instala a detecção de página desatualizada
+e a guarda de histórico antes de `hydrate()`, código que só poderia ir para
+`start.clientSetup` se as duas entradas fossem geradas. Ambas usam a mesma
+árvore de `Document` e `App`. Com as entradas autorais, o plugin deixa de gerar
+o `DefaultErrorBoundary` de produção e a opção `start.productionErrorBoundary`
+não tem efeito; o `Errored` raiz do `App` continua responsável pela página de
+erro. Uma exceção no próprio `Document` sai síncrona do `renderToStream` e a
+contenção de falhas responde o 500 em texto, com o log fixo.
 
 ## Validação e CSS em streaming
 
@@ -91,8 +94,13 @@ armazenada no cache do navegador, sem modificar o HTML da aplicação.
   gerados no build) saem do CDN sem passar pela função. O `vercel.json` grava
   neles só `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`, além do
   cache imutável em `/images/` e do `Content-Type` dos `.md`; a CSP e as
-  políticas de frame só têm efeito nas respostas que passam pelo middleware.
-  Pelo mesmo motivo, um arquivo que não deve ser público precisa sair de
+  políticas de frame só têm efeito nas respostas que passam pelo middleware. Em
+  `/assets/`, os mesmos dois cabeçalhos também saem da route rule do Nitro no
+  `vite.config.ts`, com os valores de `SECURITY_HEADERS`, e chegam ao 404 de um
+  asset ausente em qualquer host e aos acertos na Vercel e no `node-server`. O
+  bloco `/assets/(.*)` do `vercel.json` fica como redundância; ao mudar um
+  desses valores em `SECURITY_HEADERS`, mude também o `vercel.json`. Pelo mesmo
+  motivo, um arquivo que não deve ser público precisa sair de
   `.vercel/output/static`: o middleware não consegue bloqueá-lo. O build move
   para `dist/.vite/` o diretório `.vite/`, com o manifesto do Vite e o das
   server functions, que listam caminhos do código-fonte

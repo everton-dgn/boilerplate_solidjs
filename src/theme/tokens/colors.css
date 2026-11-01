@@ -61,6 +61,7 @@
   --color-success: oklch(0.62 0.16 150);
   --color-info: oklch(0.62 0.15 250);
   --color-warning: oklch(0.72 0.16 75);
+  --color-warning-text: light-dark(oklch(0.55 0.13 70), var(--color-warning));
   --color-primary-hover: color-mix(
     in oklab,
     var(--color-primary) 90%,

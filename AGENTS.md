@@ -10,6 +10,10 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 
 `vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name.
 
+## Running Scripts
+
+Run TypeScript and JavaScript files with `vpx <file>`, for example `vpx ./scripts/seed.ts --dry-run`. It handles enums, decorators, JSX, and tsconfig `paths`, so do not add `tsx` or `ts-node` to run scripts. `vpx --watch <file>` reruns the file when a file it uses changes, in place of `tsx watch`. `vp node <file>` runs plain Node.js.
+
 ## Tool Versions
 
 Run `vp toolchain` to show versions and relationships in the active Vite+
@@ -45,6 +49,10 @@ release. Add a tool name to select part of the graph. For example, run
   `gh` e módulos `node:`. O pre-push roda o Knip (`vp run dead-code`) em
   paralelo com `test:tooling` e `test:release`; no CI, o Knip roda no job
   `Quality`.
+- As tarefas do `vite.config.ts` que executam arquivos de `tooling/`, como o
+  `i18n:generate` e o lint de CSS, usam `bun tooling/<arquivo>.ts`. O `vpx`
+  recomendado no bloco gerenciado acima vale para scripts avulsos, fora desses
+  fluxos.
 - Para validar mudanças, use `vp run check:ci` e `vp run test`, não os
   comandos embutidos `vp check` e `vp test` citados acima: eles pulam o
   `i18n:generate` e o lint de CSS.
@@ -298,8 +306,9 @@ release. Add a tool name to select part of the graph. For example, run
   e o JSX para entender o elemento.
 - No `ToastProvider`, mantenha junto ao JSX os callbacks curtos de pausa e
   fechamento que usam o `id` de cada item do `For`. O handler da seção que lê a
-  origem do foco, aplica uma guarda e atualiza `focusOrigin` fica em uma função
-  nomeada. Preserve funções próprias para encontrar o vizinho e devolver o foco.
+  origem do foco usa `createFocusOriginHandler`, compartilhado com
+  `OutdatedPageNotice`, e atualiza `focusOrigin` no callback local. Preserve
+  funções próprias para encontrar o vizinho e devolver o foco.
 - Callbacks de `ref` com uma chamada simples podem permanecer inline. Quando
   houver atribuição com `=` ou lógica adicional, extraia uma função nomeada.
   Callbacks de renderização e outras props seguem seus contratos próprios.
@@ -434,7 +443,11 @@ release. Add a tool name to select part of the graph. For example, run
 - Antes de alterar cabeçalhos, CSP, nonce ou as entradas de renderização, leia
   [docs/security.md](docs/security.md). Os cabeçalhos saem do middleware, com
   os valores em `src/middleware/securityHeaders/constants.ts`; não devolva a
-  CSP nem os demais cabeçalhos ao `vercel.json`.
+  CSP nem os demais cabeçalhos das respostas da função ao `vercel.json`. Os
+  blocos de estáticos do `vercel.json` repetem só `X-Content-Type-Options` e
+  `Cross-Origin-Resource-Policy`, porque esses arquivos não passam pela função;
+  ao mudar esses valores em `SECURITY_HEADERS`, atualize também o `vercel.json`
+  ([limites conhecidos](docs/security.md#limites-conhecidos)).
 - Não acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts ao `script-src`,
   nem `'unsafe-inline'` ao `style-src`.
 - Não renderize `<style>` nem use a prop `style` em JSX renderizado no SSR: a
@@ -472,8 +485,8 @@ release. Add a tool name to select part of the graph. For example, run
   guia.
 - Após mudar essa fronteira, rode `vp run test:tooling`, os testes Node
   pertinentes e `vp run test:e2e src/tests/pages/BackendError
-  src/tests/pages/OutsideError`. Preserve no CI a verificação do corpo completo
-  em SSR inicial, streaming e chamada HTTP.
+  src/tests/pages/OutsideError src/tests/pages/OutdatedPage`. Preserve no CI a
+  verificação do corpo completo em SSR inicial, streaming e chamada HTTP.
 - Em atualizações do Solid ou do plugin, siga o roteiro "Atualizar o Solid" do
   guia: só retire o wrapper quando uma reprodução sem essa interceptação provar
   a cobertura na versão instalada.

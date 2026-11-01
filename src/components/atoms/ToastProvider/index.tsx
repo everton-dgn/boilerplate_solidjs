@@ -1,5 +1,5 @@
 import { m } from '@paraglide/messages.js'
-import { dynamicComponent, type JSX } from '@solidjs/web'
+import { dynamicComponent } from '@solidjs/web'
 import { For, type ParentProps, untrack } from 'solid-js'
 import IconWarning from '~icons/hugeicons/alert-02'
 import IconError from '~icons/hugeicons/alert-circle'
@@ -7,6 +7,8 @@ import IconClose from '~icons/hugeicons/cancel-01'
 import IconSuccess from '~icons/hugeicons/checkmark-circle-02'
 import IconInfo from '~icons/hugeicons/information-circle'
 import IconLoading from '~icons/hugeicons/loader-circle'
+
+import { createFocusOriginHandler } from '@/helpers/createFocusOriginHandler/index.ts'
 
 import { ToastContext } from './context.ts'
 import { createToastState } from './createToastState/index.ts'
@@ -58,14 +60,9 @@ export function ToastProvider(props: ParentProps) {
 
   const state = createToastState({ beforeRemove: releaseFocus })
 
-  const rememberFocusOrigin: JSX.FocusEventHandler<
-    HTMLElement,
-    FocusEvent
-  > = event => {
-    const origin = event.relatedTarget
-    if (origin instanceof Node && event.currentTarget.contains(origin)) return
-    focusOrigin = origin instanceof HTMLElement ? origin : undefined
-  }
+  const rememberFocusOrigin = createFocusOriginHandler(origin => {
+    focusOrigin = origin
+  })
 
   return (
     <ToastContext value={state.api}>

@@ -2,7 +2,7 @@
 
 ## Formas públicas
 
-Contrato: `createStore(value, options?)` retorna store gravável e setter. `createStore(fn, seed, options?)` deriva estrutura gravável; fn aceita Promise/AsyncIterable e retorna `[Refreshable<Store<T>>, StoreSetter<T>]`. `createProjection(fn, seed, options?)` retorna só `Refreshable<Store<T>>`. Objetos/arrays reativos não são accessors. Seed pode ser `Partial<T>`: estrutura inicial do draft, sem garantir campos antes da primeira resposta. Promise pendente lança `NotReadyError`; resolução publica granularmente e descarta resposta obsoleta.
+Contrato: `createStore(value, options?)` retorna store gravável e setter. `createStore(fn, seed, options?)` deriva estrutura gravável; fn aceita Promise/AsyncIterable e retorna `[Refreshable<Store<T>>, StoreSetter<T>]`. `createProjection(fn, seed, options?)` retorna só `Refreshable<Store<T>>`. Objetos/arrays reativos não são accessors. Seed fornece a estrutura inicial do draft, sem garantir campos antes da primeira resposta. No pacote instalado, seu tipo é `NoFn<T> | Store<NoFn<T>>`. A forma sem draft aceita `() => T | Promise<T> | AsyncIterable<T>`, restringe `T` por `NoArray<T>` e permite omitir o seed (`seed?: null`). Promise pendente lança `NotReadyError`; resolução publica granularmente e descarta resposta obsoleta.
 
 Receita:
 

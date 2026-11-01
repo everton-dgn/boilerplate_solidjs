@@ -1,7 +1,7 @@
 import { createRouter, useLocation } from '@solidjs/router'
 import { render } from '@solidjs/web'
 
-import { createLocaleNavigationGuard } from '@/router/createLocaleNavigationGuard/index.ts'
+import { createLocaleNavigationGuard } from '@/primitives/createLocaleNavigationGuard/index.ts'
 
 import { installLocaleHistoryGuard } from '../index.ts'
 

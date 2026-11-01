@@ -4,6 +4,7 @@ import { Loading } from 'solid-js'
 import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import App from '../App.tsx'
+import { recordChunkFailure } from '../primitives/createOutdatedPageGuard/index.ts'
 
 const { renderHome, checkProvider, checkTopbar } = vi.hoisted(() => ({
   renderHome: vi.fn<() => JSX.Element>(),
@@ -58,6 +59,10 @@ vi.mock(import('virtual:file-routes'), async importOriginal => {
 // Prazo do aquecimento: cobre o carregamento a frio dos módulos, não o
 // comportamento verificado pelos casos.
 const WARM_UP_TIMEOUT_MS = 5000
+// O fallback raiz troca a tela vazia pela página de erro em 10 s; o teste
+// confere um ponto antes e outro depois do prazo.
+const BEFORE_STALL_MS = 8000
+const PAST_STALL_MS = 2000
 
 // TODO: Em desenvolvimento, o Errored do Solid registra no console o erro que a
 // boundary capturou quando o fallback não recebe
@@ -68,6 +73,17 @@ function expectBoundaryReport(message: string): void {
   const reported: unknown = calls[0]?.[0]
   expect(reported).toBeInstanceOf(Error)
   expect(reported).toHaveProperty('message', message)
+}
+
+function renderApp(): HTMLDivElement {
+  return renderComponent(
+    () => (
+      <Loading>
+        <App />
+      </Loading>
+    ),
+    { providers: false }
+  )
 }
 
 describe('feedback de erro da aplicação', () => {
@@ -152,4 +168,81 @@ describe('feedback de erro da aplicação', () => {
       expectBoundaryReport('Detalhe interno que não deve aparecer')
     }
   )
+
+  it('recarrega uma vez no erro de versão e mostra a página de erro se ele voltar', async () => {
+    globalThis.sessionStorage.clear()
+    const reload = vi
+      .spyOn(globalThis.location, 'reload')
+      .mockImplementation(() => {
+        /* Permanece no documento do teste. */
+      })
+    onTestFinished(() => {
+      renderHome.mockReset()
+    })
+    renderHome.mockImplementation(() => {
+      throw Object.assign(new Error('Função fora do build'), {
+        unknownFunction: true
+      })
+    })
+    const recovering = renderApp()
+    await expect.poll(() => reload.mock.calls.length).toBe(1)
+    expect(recovering.textContent).toBe('')
+
+    const failing = renderApp()
+    await expect
+      .poll(() => failing.querySelector('h1')?.textContent)
+      .toBe('Something went wrong!')
+    expect(reload).toHaveBeenCalledOnce()
+  })
+
+  it('recarrega quando o erro que chega é a falha de chunk registrada', async () => {
+    globalThis.sessionStorage.clear()
+    const reload = vi
+      .spyOn(globalThis.location, 'reload')
+      .mockImplementation(() => {
+        /* Permanece no documento do teste. */
+      })
+    onTestFinished(() => {
+      renderHome.mockReset()
+    })
+    // O helper de preload despacha o mesmo erro que o import rejeita.
+    const chunkFailure = new TypeError(
+      'Failed to fetch dynamically imported module'
+    )
+    recordChunkFailure(chunkFailure)
+    renderHome.mockImplementation(() => {
+      throw chunkFailure
+    })
+    const recovering = renderApp()
+    await expect.poll(() => reload.mock.calls.length).toBe(1)
+    expect(recovering.textContent).toBe('')
+  })
+
+  it('mostra a página de erro se a recarga não trocar o documento', async () => {
+    globalThis.sessionStorage.clear()
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    onTestFinished(() => {
+      vi.useRealTimers()
+      renderHome.mockReset()
+    })
+    // Um beforeunload que cancela a recarga deixa o documento no lugar.
+    const reload = vi
+      .spyOn(globalThis.location, 'reload')
+      .mockImplementation(() => {
+        /* Permanece no documento do teste. */
+      })
+    renderHome.mockImplementation(() => {
+      throw Object.assign(new Error('Função fora do build'), {
+        unknownFunction: true
+      })
+    })
+    const host = renderApp()
+    await vi.waitFor(() => {
+      expect(reload).toHaveBeenCalledOnce()
+    })
+    await vi.advanceTimersByTimeAsync(BEFORE_STALL_MS)
+    expect(host.textContent).toBe('')
+    await vi.advanceTimersByTimeAsync(PAST_STALL_MS)
+    expect(host.querySelector('h1')?.textContent).toBe('Something went wrong!')
+  })
 })

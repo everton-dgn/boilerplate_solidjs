@@ -26,13 +26,13 @@ Rotas de API são módulos de `src/routes` que exportam `GET`, `POST` ou outro
 método HTTP em vez de `export default`. O `createAPIHandler` em
 `src/middleware/index.ts` responde a essas requisições antes do SSR e deixa
 passar as demais. Depois dele, `restrictPageMethods` responde 405, com
-`Allow: GET, HEAD`, a métodos de escrita em caminhos de página sem handler: o
-render trataria o pedido como um GET no idioma base. O caminho relativo a
-`src/routes` vira a URL sem a extensão, o segmento `index` e os grupos entre
-parênteses. Assim, `(seo)/sitemap.xml/index.ts` atende `/sitemap.xml`; colchetes
-continuam indicando parâmetros dinâmicos. Uma rota pode devolver
-`Response.redirect()`: como os headers dessa resposta são imutáveis, o
-middleware grava os cabeçalhos de segurança numa cópia.
+`Allow: GET, HEAD`, a qualquer outro método, como POST ou OPTIONS, em caminhos
+de página sem handler: o render trataria o pedido como um GET no idioma base. O
+caminho relativo a `src/routes` vira a URL sem a extensão, o segmento `index` e
+os grupos entre parênteses. Assim, `(seo)/sitemap.xml/index.ts` atende
+`/sitemap.xml`; colchetes continuam indicando parâmetros dinâmicos. Uma rota
+pode devolver `Response.redirect()`: como os headers dessa resposta são
+imutáveis, o middleware grava os cabeçalhos de segurança numa cópia.
 
 Para correlacionar os eventos de uma requisição, use `getTraceContext()` de
 `@solidjs/web`: ele continua o `traceparent` W3C recebido ou cria um trace para
@@ -63,6 +63,18 @@ módulos de servidor usam `server-only`; consulte o
 utilitários sem estado reativo próprio, como `makeThemeChannel`, que devolve seu
 descarte. O prefixo `create` identifica primitives com estado ou efeitos
 reativos, como `createTheme`.
+
+`entry-client/` reúne os módulos que só o `entry-client.tsx` consome e que rodam
+uma vez, no boot do navegador, antes de `hydrate()`. O prefixo `install`
+identifica quem registra ouvintes e ganchos globais, como o evento
+`vite:preloadError` e as vagas únicas de `configureClientErrors` e do cliente de
+server functions, e devolve a função que desfaz o registro:
+`installLocaleHistoryGuard` e `installOutdatedPageDetection`. Diferente de
+`create`, não tem estado reativo nem owner; diferente de `make`, configura o
+`window` ou um runtime inteiro em vez de abrir um recurso isolado. O
+`entry-client.tsx` reúne os descartes em um único `import.meta.hot.dispose`. A
+pasta pertence à camada de entrada, e `helpers`, `infra` e `primitives` não a
+importam.
 
 Imports de CSS Modules usam o nome `S`, por exemplo,
 `import S from './styles.module.css'`. A regra local

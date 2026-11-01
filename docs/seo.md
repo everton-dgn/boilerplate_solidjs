@@ -202,14 +202,14 @@ export const route = {
 
 O `llms.txt` coleta os mesmos metadados pelo manifesto, sem renderizar páginas
 nem executar preloads, e publica só as páginas que declaram `route.info.llms`. O
-arquivo é um índice curado para modelos de linguagem, não um sitemap, e não tem
-limite de tamanho: em sites grandes, meça os textos reais, selecione as páginas
-que explicam o produto e agrupe-as. `llms: true` inclui a página; sem seção
-herdada, ela entra na seção padrão `Pages`. `{ section: 'Guias' }` cria ou
-reutiliza uma seção com esse nome, na ordem em que aparece no manifesto;
-`{ optional: true }` move a página para a seção `Optional`, que o formato
-reserva ao conteúdo que o modelo pode pular, e uma seção declarada com esse nome
-se funde a ela. A configuração é herdada pela cadeia de rotas: um layout com
+arquivo é um índice curado para modelos de linguagem e não tem limite de
+tamanho: em sites grandes, meça os textos reais, selecione as páginas que
+explicam o produto e agrupe-as. `llms: true` inclui a página; sem seção herdada,
+ela entra na seção padrão `Pages`. `{ section: 'Guias' }` cria ou reutiliza uma
+seção com esse nome, na ordem em que aparece no manifesto; `{ optional: true }`
+move a página para a seção `Optional`, que o formato reserva ao conteúdo que o
+modelo pode pular, e uma seção declarada com esse nome se funde a ela. A
+configuração é herdada pela cadeia de rotas: um layout com
 `llms: { section: 'Docs' }` inclui suas filhas nessa seção, uma filha pode sair
 com `llms: false` ou sobrescrever só o campo que declara, e `llms: true` numa
 filha reativa a inclusão preservando seção e marcação opcional herdadas.
@@ -226,10 +226,10 @@ controlada separadamente por `route.info.markdown`; quando a folha declara
 ## Sitemap e rotas dinâmicas
 
 No sitemap, uma rota com parâmetro entra pelas entradas de `route.info.sitemap`:
-uma função, síncrona ou assíncrona, que devolve `{ path, lastmod? }` com
-caminhos absolutos do site, enumerados a partir da fonte de dados. O módulo da
-rota entra no bundle do cliente, então banco e SDK ficam numa server function
-chamada pela fonte, conforme o
+uma função, síncrona ou assíncrona, que devolve uma lista de
+`{ path, lastmod? }` com caminhos absolutos do site, enumerados a partir da
+fonte de dados. O módulo da rota entra no bundle do cliente, então banco e SDK
+ficam numa server function chamada pela fonte, conforme o
 [contrato de erros no servidor](server-errors.md). A fonte recebe um
 `AbortSignal` que aborta no prazo das fontes, na desconexão do cliente e ao fim
 da leitura, inclusive quando outra fonte falha; repasse-o à leitura para
@@ -273,11 +273,13 @@ limite precisa de vários arquivos e de um índice de sitemaps.
 import type { RouteDefinition } from '@solidjs/router'
 
 import { listPostEntries } from './listPostEntries/index.ts'
+import { seo } from './seo.ts'
 
-// blog/[slug].tsx: `listPostEntries` é uma server function que devolve
-// `{ path: '/blog/meu-post', lastmod: '2026-09-21' }` por registro publicado.
+// blog/[slug]/index.tsx: `listPostEntries` é uma server function que devolve
+// `{ path: '/blog/meu-post', lastmod: '2026-09-21' }` por registro publicado, e o
+// `seo.ts` ao lado declara `type: 'article'`.
 export const route = {
-  info: { seo: { type: 'article' }, sitemap: listPostEntries }
+  info: { seo, sitemap: listPostEntries }
 } satisfies RouteDefinition
 ```
 
@@ -292,11 +294,11 @@ também os metadados das páginas.
 
 ### Capacidade e medição
 
-O coletor do `llms.txt` percorre todas as rotas do manifesto e resolve os
-metadados de cada página antes de aplicar `route.info.llms` e `noindex`. O custo
-da coleta cresce com o total de rotas: selecionar menos páginas encurta o texto
-publicado, mas a travessia e a resolução de metadados continuam passando por
-todas.
+O coletor do `llms.txt` percorre todas as rotas estáticas do manifesto (os ramos
+com parâmetro ficam de fora) e resolve os metadados antes de aplicar
+`route.info.llms` e `noindex`. O custo da coleta cresce com o total de rotas
+estáticas: selecionar menos páginas encurta o texto publicado, mas a travessia e
+a resolução de metadados continuam passando por todas elas.
 
 A ordem de grandeza vem de uma medição histórica, feita em setembro de 2026 num
 Apple M2 Pro, sobre uma versão intermediária em que `route.info.llms` era
@@ -398,8 +400,7 @@ Rotas com parâmetro ficam sempre na requisição, porque o build não conhece s
 valores. A elegibilidade usa o SEO efetivo, inclusive a herança e um
 `noindex: false` explícito no filho. `llms` continua independente: decide a
 inclusão no índice. Login e conteúdo por visitante não devem optar pela
-publicação. O opt-in é um compromisso de conteúdo público, não um mecanismo de
-autorização.
+publicação. O opt-in só declara que o conteúdo é público e não controla acesso.
 
 `/pt/index.md` representa a home e `/pt/about.md` representa a página sobre. Uma
 página cujo último segmento é `index` acrescenta `/index.md`: `/pt/index` usa
@@ -507,17 +508,18 @@ GET com `Accept: text/markdown` recebe Markdown diretamente, sem redirect para
 arquivo. A negociação respeita pesos e especificidade, com HTML em empate. O
 acesso explícito a `.md` exige somente que Markdown seja aceitável, mesmo quando
 HTML tenha peso maior; uma exclusão exata `text/markdown;q=0` prevalece sobre
-curingas. Além do peso, só `charset=utf-8` e, em `text/markdown`, as variantes
-`GFM` e `CommonMark` do RFC 7763 são aceitos; outro parâmetro descarta a faixa.
-O cabeçalho é lido numa varredura linear, então um `Accept` longo não custa
-tempo quadrático. Nenhum formato aceitável na página publicada resulta em 406.
-Query strings permanecem no SSR. HEAD renderiza a mesma representação e remove o
-corpo. APIs, assets, RPC e métodos de escrita ficam fora da negociação. Num
-caminho de página sem handler de API para o método, POST, PUT, PATCH, DELETE e
-OPTIONS recebem 405 com `Allow: GET, HEAD`: sem essa resposta, o handler do
-plugin renderizaria a página com status 200 no idioma base, fora do contexto de
-idioma. Os formulários do router enviam ao endpoint das server functions, que
-não passa por essa restrição.
+curingas. Além do peso, só `charset=utf-8` e, em `text/markdown`, o parâmetro
+`variant` do RFC 7763 com `GFM` ou `CommonMark` (variantes registradas pelo
+RFC 7764) são aceitos; outro parâmetro descarta a faixa. O cabeçalho é lido numa
+varredura linear, então um `Accept` longo não custa tempo quadrático. Nenhum
+formato aceitável na página publicada resulta em 406. Query strings permanecem
+no SSR. HEAD renderiza a mesma representação e remove o corpo. APIs, assets, RPC
+e métodos de escrita ficam fora da negociação. Num caminho de página sem handler
+de API para o método, POST, PUT, PATCH, DELETE e OPTIONS recebem 405 com
+`Allow: GET, HEAD`: sem essa resposta, o handler do plugin renderizaria a página
+com status 200 no idioma base, fora do contexto de idioma. Os formulários do
+router enviam ao endpoint das server functions, que não passa por essa
+restrição.
 
 A localização preserva URL > cookie > Accept-Language. Redirects seguros para
 uma página elegível da mesma origem preservam a intenção `.md`; o middleware não

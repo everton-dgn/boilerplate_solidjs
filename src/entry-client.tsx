@@ -5,6 +5,7 @@ import { onHydrationEnd } from 'solid-js'
 import App from './App.tsx'
 import Document from './Document.tsx'
 import { installLocaleHistoryGuard } from './entry-client/installLocaleHistoryGuard/index.ts'
+import { installOutdatedPageDetection } from './entry-client/installOutdatedPageDetection/index.ts'
 
 const [navigation] = performance.getEntriesByType('navigation')
 const loadedLocale = navigation
@@ -20,8 +21,15 @@ if (
 ) {
   location.reload()
 } else {
+  const disposeOutdatedPageDetection = installOutdatedPageDetection()
   const disposeLocaleHistoryGuard = installLocaleHistoryGuard()
-  if (import.meta.hot) import.meta.hot.dispose(disposeLocaleHistoryGuard)
+  // O Vite guarda um único dispose por módulo.
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      disposeOutdatedPageDetection()
+      disposeLocaleHistoryGuard()
+    })
+  }
 
   hydrate(() => {
     const tree = (

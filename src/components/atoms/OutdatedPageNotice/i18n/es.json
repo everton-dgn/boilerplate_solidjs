@@ -1,0 +1,8 @@
+{
+  "outdatedPageNotice_title": "El envío no se completó",
+  "outdatedPageNotice_description": "Es posible que la página esté desactualizada. Recarga e inténtalo de nuevo. Lo que aún no guardaste puede perderse.",
+  "outdatedPageNotice_reload": "Recargar página",
+  "outdatedPageNotice_dismiss": "Cerrar aviso",
+  "outdatedPageNotice_fallbackTitle": "Una parte de la página no se cargó",
+  "outdatedPageNotice_fallbackDescription": "Es posible que la página esté desactualizada. Recarga para continuar. Lo que aún no guardaste puede perderse."
+}

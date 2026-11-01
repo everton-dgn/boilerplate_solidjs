@@ -1,0 +1,57 @@
+.notice {
+  position: fixed;
+  z-index: var(--z-index-toast);
+  inset-block-start: max(16px, env(safe-area-inset-top));
+  inset-inline: 16px;
+  display: grid;
+  grid-template-areas:
+    'icon content close'
+    '. actions actions';
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  max-width: 480px;
+  margin-inline: auto;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  background: var(--color-popover);
+  color: var(--color-popover-foreground);
+  box-shadow: var(--shadow-sm);
+}
+
+.icon {
+  grid-area: icon;
+  display: flex;
+  padding-block-start: 2px;
+  color: var(--color-warning-text);
+}
+
+.content {
+  grid-area: content;
+  overflow-wrap: anywhere;
+}
+
+.close {
+  grid-area: close;
+  margin-block-start: -8px;
+  margin-inline-end: -8px;
+}
+
+.title {
+  margin: 0;
+  color: var(--color-warning-text);
+  font-weight: var(--font-weight-500);
+  font-size: var(--font-size-14);
+}
+
+.description {
+  margin: 4px 0 0;
+  font-size: var(--font-size-14);
+}
+
+.actions {
+  grid-area: actions;
+  display: flex;
+  justify-self: end;
+}

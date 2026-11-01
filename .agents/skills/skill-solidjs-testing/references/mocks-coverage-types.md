@@ -6,7 +6,7 @@ Mocke o adapter de HTTP, SDK ou banco, preservando `solid-js` e `@solidjs/web` r
 
 ## `vi.resetModules` e instâncias do motor
 
-No projeto servidor, o plugin faz inline de `solid-js` e `@solidjs/web`. `vi.resetModules()` seguido de novo import pode criar outro motor: owners de uma instância ficam invisíveis para a outra, sem aviso. Ao reimportar um módulo que captura ambiente, reimporte o motor e todos os consumidores juntos. Na postura cliente verificada, `solid-js` é externo e mantém a instância.
+Com a configuração padrão do plugin instalado em modo de teste, `solid-js` e `@solidjs/web` passam por inline tanto no projeto servidor quanto nos projetos cliente executados em Node. No ramo servidor, o plugin só acrescenta sua lista quando `server.deps.inline` não tem valor verdadeiro. No ramo cliente, `inline: true` já inclui todas as dependências; uma entrada de `server.deps.external` correspondente a `solid-js` impede a injeção da lista do plugin. `vi.resetModules()` seguido de novo import pode criar outro motor para os módulos inline: owners de uma instância ficam invisíveis para a outra, sem aviso. Ao reimportar um módulo que captura ambiente, reimporte o motor e todos os consumidores juntos.
 
 ## Bibliotecas auxiliares
 

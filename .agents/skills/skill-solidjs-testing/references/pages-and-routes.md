@@ -26,7 +26,7 @@ it('renders the initial route', async () => {
 - Dados de `query` são lidos por memo sob `Loading`. Mocke o I/O consumido pela query.
 - O link ativo recebe `aria-current="page"`; links são elementos `a` comuns.
 
-## E2e com Playwright
+## E2E com Playwright
 
 HTML visível pode ser apenas SSR. Espere um sinal de cliente pronto e execute uma interação cujo resultado dependa da hidratação; preservar o nó não prova que os handlers funcionam.
 
