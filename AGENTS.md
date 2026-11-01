@@ -435,7 +435,11 @@ release. Add a tool name to select part of the graph. For example, run
 - Antes de alterar cabeçalhos, CSP, nonce ou as entradas de renderização, leia
   [docs/security.md](docs/security.md). Os cabeçalhos saem do middleware, com
   os valores em `src/middleware/securityHeaders/constants.ts`; não devolva a
-  CSP nem os demais cabeçalhos ao `vercel.json`.
+  CSP nem os demais cabeçalhos das respostas da função ao `vercel.json`. Os
+  blocos de estáticos do `vercel.json` repetem só `X-Content-Type-Options` e
+  `Cross-Origin-Resource-Policy`, porque esses arquivos não passam pela função;
+  ao mudar esses valores em `SECURITY_HEADERS`, atualize também o `vercel.json`
+  ([limites conhecidos](docs/security.md#limites-conhecidos)).
 - Não acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts ao `script-src`,
   nem `'unsafe-inline'` ao `style-src`.
 - Não renderize `<style>` nem use a prop `style` em JSX renderizado no SSR: a

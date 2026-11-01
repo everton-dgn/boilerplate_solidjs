@@ -4,14 +4,14 @@
 
 ## Pré-requisitos
 
-As versões exatas vivem no `package.json`, não nesta página:
+As versões exatas vivem no `package.json`:
 
 - Vite+: instale o CLI global conforme o
   [guia oficial](https://viteplus.dev/guide/). Ele seleciona o Node e o
   gerenciador de pacotes declarados no projeto.
-- Node: o runtime do Vitest, testes de tooling e SSR de produção.
-  `devEngines.runtime` fixa a versão exata, dentro da linha declarada em
-  `engines.node`.
+- Node: o runtime do Vitest, dos testes de tooling fora de `tooling/release/` e
+  do SSR de produção. `devEngines.runtime` fixa a versão exata, dentro da linha
+  declarada em `engines.node`.
 - Bun: o instalador e runtime de desenvolvimento, build, Knip, lint de CSS e
   automação de release, fixado em `packageManager`. O Vite+ seleciona essa
   versão para a instalação e para o comando `bun`.
@@ -54,9 +54,10 @@ plugin do Solid, que lê o nonce de `event.nonce` após a cadeia de middleware.
 Ele renderiza pelas entradas autorais `src/entry-server.tsx` e
 `src/entry-client.tsx`, que o plugin exige em par. A de servidor cria o estado
 de integridade do render e o conclui pelo `onCompleteAll`, que a entrada gerada
-não passa ao `renderToStream`; a de cliente confere o idioma e instala a guarda
-de histórico antes da hidratação. As requisições de server functions usam a
-integração nativa entre Solid e Nitro/srvx.
+não passa ao `renderToStream`; a de cliente confere o idioma e instala a
+detecção de página desatualizada e a guarda de histórico antes da hidratação. As
+requisições de server functions usam a integração nativa entre Solid e
+Nitro/srvx.
 
 A entrada do cliente publica o marcador de testes com `onHydrationEnd`, dentro
 da passagem raiz de `hydrate()`. Ele acompanha o fim da fase, inclusive quando
@@ -138,7 +139,7 @@ no HTML da requisição seguinte.
 | `vp run lint`                 | CSS, lint e tipos com cache do Vite+                                              |
 | `vp run lint:css`             | Verificar as regras de CSS                                                        |
 | `vp run format`               | Formatar código com Oxfmt                                                         |
-| `vp run check:ci`             | Formatação, lint e tipos da aplicação                                             |
+| `vp run check:ci`             | CSS, formatação, lint e tipos da aplicação                                        |
 | `vp run check:fix`            | Formatação + lint corrigindo o que for possível                                   |
 | `vp run test`                 | Todos os projetos de teste da aplicação                                           |
 | `vp run test:tooling`         | Testes de tooling em Node, exceto release                                         |

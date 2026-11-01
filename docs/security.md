@@ -4,12 +4,15 @@
 
 ## Política de conteúdo
 
-Os cabeçalhos de segurança saem do middleware, não do `vercel.json`. O
-`securityHeaders` grava em toda resposta da cadeia `Strict-Transport-Security`,
-`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
-`Permissions-Policy`, `Cross-Origin-Opener-Policy`,
-`Cross-Origin-Embedder-Policy`, `Cross-Origin-Resource-Policy` e a
-`Content-Security-Policy`. Os valores ficam em
+Os cabeçalhos de segurança das respostas da função saem do middleware. Para
+arquivos estáticos, o `vercel.json` configura `X-Content-Type-Options` e
+`Cross-Origin-Resource-Policy`, conforme os
+[limites conhecidos](#limites-conhecidos). O `securityHeaders` grava em toda
+resposta da cadeia `Strict-Transport-Security`, `X-Frame-Options`,
+`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`,
+`Cross-Origin-Opener-Policy`, `Cross-Origin-Embedder-Policy`,
+`Cross-Origin-Resource-Policy` e a `Content-Security-Policy`. Os valores ficam
+em
 [`securityHeaders/constants.ts`](../src/middleware/securityHeaders/constants.ts).
 A contenção de falhas grava os mesmos cabeçalhos no 500, na página de erro e no
 controle lançado.
@@ -60,14 +63,14 @@ cria o estado de integridade do render e o conclui pelo `onCompleteAll`, que a
 entrada gerada pelo plugin não passa ao `renderToStream`; sem esse estado
 concluído, todo `.md` responde 500 e o prerender interrompe o build. O plugin
 exige o par cliente/servidor quando uma dessas entradas existe, e
-`entry-client.tsx` confere o idioma e instala a guarda de histórico antes de
-`hydrate()`, código que só poderia ir para `start.clientSetup` se as duas
-entradas fossem geradas. Ambas usam a mesma árvore de `Document` e `App`. Com as
-entradas autorais, o plugin deixa de gerar o `DefaultErrorBoundary` de produção
-e a opção `start.productionErrorBoundary` não tem efeito; o `Errored` raiz do
-`App` continua responsável pela página de erro. Uma exceção no próprio
-`Document` sai síncrona do `renderToStream` e a contenção de falhas responde o
-500 em texto, com o log fixo.
+`entry-client.tsx` confere o idioma e instala a detecção de página desatualizada
+e a guarda de histórico antes de `hydrate()`, código que só poderia ir para
+`start.clientSetup` se as duas entradas fossem geradas. Ambas usam a mesma
+árvore de `Document` e `App`. Com as entradas autorais, o plugin deixa de gerar
+o `DefaultErrorBoundary` de produção e a opção `start.productionErrorBoundary`
+não tem efeito; o `Errored` raiz do `App` continua responsável pela página de
+erro. Uma exceção no próprio `Document` sai síncrona do `renderToStream` e a
+contenção de falhas responde o 500 em texto, com o log fixo.
 
 ## Validação e CSS em streaming
 

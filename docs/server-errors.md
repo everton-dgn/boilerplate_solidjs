@@ -590,9 +590,9 @@ Uma leitura ou um `lazy()` recusados dentro de um `Errored` local não recarrega
 a página. O limite local existe para manter o resto da tela funcionando, e uma
 recarga apagaria o que estiver digitado ao lado dele. Tentar de novo também não
 resolve, porque o id não existe no build novo. O `OutdatedPageNotice` mostra
-"Parte da página não carregou" com o botão Recarregar, e a próxima navegação já
-sai por documento. Um fallback local pode trocar o próprio "Tentar de novo" por
-uma ação de recarga conferindo `isVersionError(error())`.
+"Parte da página não carregou" com o botão "Recarregar página", e a próxima
+navegação já sai por documento. Um fallback local pode trocar o próprio "Tentar
+de novo" por uma ação de recarga conferindo `isVersionError(error())`.
 
 Um envio recusado não se repete sozinho: o `ctx.retry` repetiria a mesma chamada
 e receberia a mesma recusa, 409 pelo carimbo ou 404 pelo id ausente. A rejeição
@@ -708,7 +708,7 @@ pacote publicado e instalado mudou esse comportamento.
    revise o módulo `moveViteMetadata` e a recusa por build descrita em
    [Validação e recuperação](#validação-e-recuperação).
 5. Rode `vp run test:e2e src/tests/pages/OutdatedPage` e
-   `vp test run src/__tests__/App.dom.test.tsx`. A recuperação de página
+   `vp run test src/__tests__/App.dom.test.tsx`. A recuperação de página
    desatualizada depende de seis comportamentos do runtime: o
    `vite:preloadError` entrega no `payload` o mesmo erro que chega ao `Errored`;
    o `Errored` reporta o erro no console em desenvolvimento só com

@@ -193,7 +193,9 @@ O `unplugin-icons` carrega a coleção `my-images` de `src/assets/images/` com
 ```tsx
 import SolidLogo from '~icons/my-images/solid'
 
-<SolidLogo width="96" height="90" />
+import S from './styles.module.css'
+
+<SolidLogo class={S.logo} />
 ```
 
 Adicione arquivos `.svg` nessa pasta e importe pelo nome, sem extensão. As cores

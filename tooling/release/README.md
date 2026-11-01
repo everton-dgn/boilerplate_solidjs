@@ -143,12 +143,14 @@ configurações da Vercel e executa `vercel build --prod` uma vez. O secret
 inspeção e o empacotamento do output rodam sem ele. A documentação da Vercel
 passa o token também ao `vercel build`, por isso o build o mantém. O Playwright
 testa esse output sem recompilar, recebendo apenas as variáveis públicas
-`VITE_*` daquele arquivo, sem as credenciais de backend. O job empacota somente
-`.vercel/output` em tar, preservando permissões e links, e compara o conteúdo e
-a listagem dos arquivos após os testes antes de enviá-lo ao GitHub Actions. O
-build recusa links que saiam do output e funções com `filePathMap`, pois essas
-referências exigiriam publicar arquivos fora do artefato testado. O Nitro atual
-gera a função com suas dependências dentro do output.
+`VITE_*` do `.vercel/.env.production.local` baixado pelo `vercel pull`, sem as
+credenciais de backend. O job empacota somente `.vercel/output` em tar,
+preservando permissões e links, e compara o conteúdo e a listagem dos arquivos
+após os testes antes de enviá-lo ao GitHub Actions. O passo
+`Package deployment artifact` recusa links que saiam do output e funções com
+`filePathMap`, pois essas referências exigiriam publicar arquivos fora do
+artefato testado. O Nitro atual gera a função com suas dependências dentro do
+output.
 
 O job `deploy` roda sob o grupo de concorrência `vercel-production`. Antes de
 qualquer preparo, consulta o head da `main` pela API e só publica se ele ainda
