@@ -64,6 +64,18 @@ utilitários sem estado reativo próprio, como `makeThemeChannel`, que devolve s
 descarte. O prefixo `create` identifica primitives com estado ou efeitos
 reativos, como `createTheme`.
 
+`entry-client/` reúne os módulos que só o `entry-client.tsx` consome e que rodam
+uma vez, no boot do navegador, antes de `hydrate()`. O prefixo `install`
+identifica quem registra ouvintes e ganchos globais, como o evento
+`vite:preloadError` e as vagas únicas de `configureClientErrors` e do cliente de
+server functions, e devolve a função que desfaz o registro:
+`installLocaleHistoryGuard` e `installOutdatedPageDetection`. Diferente de
+`create`, não tem estado reativo nem owner; diferente de `make`, configura o
+`window` ou um runtime inteiro em vez de abrir um recurso isolado. O
+`entry-client.tsx` reúne os descartes em um único `import.meta.hot.dispose`. A
+pasta pertence à camada de entrada, e `helpers`, `infra` e `primitives` não a
+importam.
+
 Imports de CSS Modules usam o nome `S`, por exemplo,
 `import S from './styles.module.css'`. A regra local
 `project/css-modules-import` do lint exige esse formato.
