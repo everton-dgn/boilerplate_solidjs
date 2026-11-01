@@ -611,11 +611,11 @@ Limites conhecidos:
   o `installServerComponents` ocupa a mesma vaga e vence quem configurar por
   último; os dois precisam ser compostos à mão.
 - O hook de `configureClientErrors` também é único e é a vaga natural de um
-  monitor de erros. Um monitor instalado depois substitui o hook e desliga o
-  aviso de fallback sem erro. Um `onError` passado a `render` ou `hydrate` tem o
-  mesmo efeito, porque o runtime prefere o hook da raiz ao ambiente. Nos dois
-  casos, o monitor precisa ser composto dentro de
-  `installOutdatedPageDetection`.
+  monitor de erros. Um monitor instalado depois substitui o hook em silêncio, e
+  o aviso de fallback deixa de aparecer para os erros de versão. Um `onError`
+  passado a `render` ou `hydrate` tem o mesmo efeito, porque o runtime prefere o
+  hook da raiz ao ambiente. Nos dois casos, o monitor precisa ser composto
+  dentro de `installOutdatedPageDetection`.
 - O handler separa envio de leitura pelo ponto de chamada: fora de computação
   rastreada e sem `GET`. Uma leitura direta feita depois de um `await`, dentro
   de `untrack` ou num preload de rota conta como envio e mostra o aviso de
