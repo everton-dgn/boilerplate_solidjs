@@ -207,14 +207,14 @@ test('as pastas colocalizadas das entradas pertencem à camada de entrada', () =
         code: 'import value from "@/routerExtra/value.ts"; import other from "@/entry-clientExtra/value.ts"'
       },
       {
-        filename: 'src/router/createLocaleNavigationGuard/index.ts',
+        filename: 'src/router/guard/index.ts',
         code: 'import { Button } from "@/components/atoms/Button/index.tsx"'
       }
     ],
     invalid: [
       {
         filename: 'src/helpers/example.ts',
-        code: 'import { createLocaleNavigationGuard } from "@/router/createLocaleNavigationGuard/index.ts"'
+        code: 'import { guard } from "@/router/guard/index.ts"'
       },
       {
         filename: 'src/primitives/example.ts',

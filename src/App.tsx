@@ -13,13 +13,13 @@ import { Provider } from '@/components/atoms/Provider/index.tsx'
 import { ErrorFallback } from '@/components/organisms/ErrorFallback/index.tsx'
 import { createSeo } from '@/primitives/createSeo/index.ts'
 
+import { createLocaleNavigationGuard } from './primitives/createLocaleNavigationGuard/index.ts'
 import {
   claimOutdatedPageReload,
   createOutdatedPageGuard,
   isVersionError
 } from './primitives/createOutdatedPageGuard/index.ts'
 import { Router } from './router.ts'
-import { createLocaleNavigationGuard } from './router/createLocaleNavigationGuard/index.ts'
 
 import './theme/globalStyles.css'
 
