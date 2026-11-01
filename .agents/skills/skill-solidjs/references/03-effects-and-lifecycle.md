@@ -53,7 +53,7 @@ Armadilha: arrow sem chaves pode transformar retorno em cleanup. Dev lança no p
 
 ## Erros por fase
 
-Contrato: `{ effect, error }` no lugar de apply recebe em error falhas do compute/upstream, incluindo rejeições async. Falha de compute sem handler num effect não renderizador é registrada, pula apply e mantém o sistema. Falha no apply vai ao boundary ou provoca halt. O braço error não captura indiscriminadamente erros de apply.
+Contrato: `{ effect, error }` no lugar de apply recebe em error falhas do compute/upstream, incluindo rejeições async. Falha de compute sem handler num effect não renderizador é registrada, pula apply e mantém o sistema. Falha no apply vai à boundary ou provoca halt. O braço error não captura indiscriminadamente erros de apply.
 
 Receita: trate falha esperada do apply com try/catch local. Handler recebe erro original, escreve estado e observa assentado: recuperação antes da fase imperativa pode executar sucesso, e transação retida adia o handler. Relançar escala para boundary/halt. Resultados esperados de domínio não devem expor detalhes internos. Consulte o [contrato de EffectBundle](https://v2.solidjs.com/reference/solid-js/reactivity/create-effect#effectbundle) com essa separação de fases.
 

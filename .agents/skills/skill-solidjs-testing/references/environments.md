@@ -7,7 +7,7 @@ Escolha pela [prova necessária](../SKILL.md#escolha-pela-prova-necessária); co
 - `<p>{count()}</p>` começando em 0 renderiza vazio; a atualização seguinte lança `TypeError: Cannot set properties of null (setting 'data')` (atribuição de `data` em `null`) e causa `REACTIVITY_HALTED`. Chromium mantém o zero. Teste esse caminho numérico no browser mode, sem convertê-lo em string só para passar.
 - Não há `reportError`; confira o [canal do halt](mount-dispose-diagnostics.md#halt-reativo) no navegador.
 - O plugin injeta `@testing-library/jest-dom/vitest` em `setupFiles` quando instalado, exceto se um caminho de setup já contém `jest-dom`. Não registre os matchers duas vezes.
-- `toHaveTextContent('n=1')` aceita `n=10`, inclusive em `expect.element`. Para valor exato, use `textContent` com `toBe` ou regex ancorada.
+- No jest-dom de happy-dom e jsdom, `toHaveTextContent('n=1')` aceita `n=10`. Para valor exato, use `textContent` com `toBe` ou regex ancorada. No browser mode, `expect.element(...).toHaveTextContent('n=1')` compara o texto inteiro; a busca parcial e a regex ficam em `toMatchTextContent`.
 - Um `PointerEvent` sintético só atravessa shadow root com `composed: true`. A restauração de foco após reordenar `For` foi observada em happy-dom e Chromium; isso não cobre todo comportamento de foco.
 
 ## jsdom

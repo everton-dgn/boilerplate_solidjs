@@ -6,7 +6,7 @@ Contratos na skill principal: [SSR e hidratação](../../skill-solidjs/reference
 
 - `renderToString` e `renderToStream` rodam só no projeto `environment: 'node'` com o plugin.
 - O HTML dos projetos de teste sai sem chaves `_hk`, mesmo com `solid({ ssr: true })`. Só `solid({ solid: { hydratable: true } })`, num projeto de servidor separado, devolve as chaves; asserções sobre HTML hidratável só valem nesse projeto.
-- Hidratação de ponta a ponta fica fora do Vitest: teste no e2e contra o build ([páginas](pages-and-routes.md#e2e-com-playwright)). A verificação de hidratação roda num `setTimeout`; espere uma macrotask antes de afirmar ausência de mismatch.
+- Hidratação de ponta a ponta fica fora do Vitest: teste no E2E contra o build ([páginas](pages-and-routes.md#e2e-com-playwright)). A verificação de hidratação roda num `setTimeout`; espere uma macrotask antes de afirmar ausência de mismatch.
 - Para stream, leia o `readable` com um reader e um portão controlado pelo teste: o primeiro chunk traz o fallback, e o conteúdo chega depois da liberação.
 
 A prova de streaming precisa observar o primeiro chunk enquanto a fonte ainda está bloqueada; só depois libere a Promise e consuma o restante. Aguardar o HTML completo antes da asserção não distingue streaming de resposta retida.

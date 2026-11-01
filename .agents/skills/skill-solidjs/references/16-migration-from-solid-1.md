@@ -6,7 +6,7 @@ Contrato: API depreciada pode seguir exportada por compatibilidade sem ser recom
 
 ## APIs do Solid 1 ausentes na base
 
-A tabela de correções 1.x → 2.0 da skill oficial (`node_modules/solid-js/skills/solid-2.0/SKILL.md`, ou a `CHEATSHEET.md` do pacote quando a pasta `skills/` não existir) cobre os substitutos diretos, como `Index`, `onMount`, `createSelector`, `createResource`, `createComputed`, `startTransition`, os subcaminhos `solid-js/web` e `solid-js/store`, `produce`, `classList` e `attr:`/`bool:`. As tabelas abaixo ficam só com os nomes que ela não cobre. Os cuidados dos substitutos diretos ficam nas referências de cada tema, e a tabela oficial omite estas duas ressalvas:
+A tabela de correções 1.x → 2.0 da skill oficial (`node_modules/solid-js/skills/solid-2.0/SKILL.md`, ou a `CHEATSHEET.md` do pacote quando a pasta `skills/` não existir) cobre os substitutos diretos, como `Index`, `onMount`, `createSelector`, `createResource`, `createComputed`, `startTransition`, os subcaminhos `solid-js/web` e `solid-js/store`, `produce`, `classList` e `attr:`/`bool:`. As tabelas abaixo guardam os nomes que ela não cobre e as linhas cuja observação acrescenta um cuidado ausente da tabela oficial. Os cuidados dos substitutos diretos ficam nas referências de cada tema, e a tabela oficial omite estas duas ressalvas:
 
 - `mutate` de `createResource` não tem export nem linha na tabela oficial, que troca só `loading`, `error` e `refetch`. Escolha o substituto pela durabilidade que o código esperava: escrita por `createOptimistic` ou `createOptimisticStore` dentro de uma `action` reverte no settle, e o valor durável vem do `refresh` da fonte ([sobreposição e estado durável](10-actions-optimism-and-confirmation.md#sobreposição-e-estado-durável)); o setter de uma derivação gravável, `createSignal(fn)` ou `createStore(fn, seed)`, vale até a fonte reexecutar ([derivação gravável](02-reactivity-and-ownership.md#derivação-gravável-e-função-armazenada)).
 - `classList` trocado por `class` em objeto ou array junta numa só prop o que eram duas. Ao passar de `class="base" classList={{ ativo: x() }}` para `class={['base', { ativo: x() }]}`, confira a composição e a precedência no DOM quando o mesmo token aparece em mais de uma entrada, sem presumir qual vence; se o objeto vem de um signal mutado sem trocar a referência, esse signal precisa de `equals: false` para reexecutar o binding ([classes e estilos](07-dom-events-and-refs.md#classes-e-estilos)).
@@ -34,7 +34,7 @@ Armadilha: não faça substituição global. Import pode ser mecânico, mas life
 
 | Padrão anterior | Direção no Solid 2 | Cuidado |
 | --- | --- | --- |
-| `solid-js/h`, `/html`, `/universal` | `@solidjs/h`, `@solidjs/html`, `@solidjs/universal` | `solid-js` só exporta `.`, `./refresh`, `./attribution`, `./internal` e `./package.json`; instale só o renderer real |
+| `solid-js/h`, `/html`, `/universal` | `@solidjs/h`, `@solidjs/html`, `@solidjs/universal` | `solid-js` só exporta `.`, `./refresh`, `./attribution`, `./internal` (mais `./internal/container-trace` no pacote instalado) e `./package.json`; instale só o renderer real |
 | `jsxImportSource: "solid-js"` | `"@solidjs/web"` no DOM compilado | Não misturar com hyperscript |
 | `indexArray` | `mapArray` com keying posicional | Contrato de item e índice muda |
 | `unwrap` | `snapshot` | View plain e leitura não rastreada |

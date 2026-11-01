@@ -6,7 +6,7 @@ Base: [revisão verificada](../SKILL.md), com o `@solidjs/router` instalado junt
 
 Contrato: core, renderer, compilador e roteador têm contratos e versões próprios; o conjunto válido é o resolvido no lockfile. O core Solid 2 incorporou server functions e partes do fluxo HTTP, mas isso não decide roteamento, cache por rota, deploy nem autenticação.
 
-Armadilha: pacote que aceita Solid 1 em `peerDependencies` não é compatível porque o nome contém Solid. A tag `latest` pode seguir na linha do Solid 1 enquanto um canal de prévia atende ao Solid 2; peer exato de uma RC não aceita outra RC; intervalo semver aceito não prova funcionamento (Solid Query e Kobalte exigem conferência por publicação). Confira `npm view <lib> peerDependencies` (ou `bun info <lib> peerDependencies`) antes de adotar. Uma lib pode compilar JSX e falhar em runtime por depender de `onMount`, efeito de fase única, setter por caminho ou owner antigo. Procure cópias duplicadas de `solid-js` e `@solidjs/signals`, sobretudo em workspaces e pacotes linkados. Não remova peer warnings à força nem crie aliases para caminhos internos: as saídas são versão compatível, adaptação pequena documentada, substituição ou manter a versão atual.
+Armadilha: pacote que aceita Solid 1 em `peerDependencies` não fica compatível só porque o nome contém Solid. A tag `latest` pode seguir na linha do Solid 1 enquanto um canal de prévia atende ao Solid 2; peer exato de uma RC não aceita outra RC; intervalo semver aceito não prova funcionamento (Solid Query e Kobalte exigem conferência por publicação). Confira `npm view <lib> peerDependencies` (ou `bun info <lib> peerDependencies`) antes de adotar. Uma lib pode compilar JSX e falhar em runtime por depender de `onMount`, efeito de fase única, setter por caminho ou owner antigo. Procure cópias duplicadas de `solid-js` e `@solidjs/signals`, sobretudo em workspaces e pacotes linkados. Não remova peer warnings à força nem crie aliases para caminhos internos: as saídas são versão compatível, adaptação pequena documentada, substituição ou manter a versão atual.
 
 ## Router 2: superfície instalada
 
@@ -14,7 +14,7 @@ Contrato: o router instalado exporta
 
 - montagem: `createRouter`, `defineRoute`, `defineRoutes`, `browserHistory`, `hashHistory`, `memoryHistory`;
 - navegação e leitura: `useNavigate`, `useLocation`, `useParams`, `useSearchParams`, `useMatch`, `useRouteMatches`, `useHref`, `useResolvedPath`, `useIsRouting`, `useLinkState`, `usePreloadRoute`, `useBeforeLeave` e `createBeforeLeave(): BeforeLeaveLifecycle` (`subscribe(listener)` devolve o cancelamento e `confirm(to, options?)` devolve boolean; é a guarda que `useBeforeLeave` instala sob demanda no router, então prefira o hook);
-- dados: `query`, `revalidate`, `action`, `useAction`, `useSubmissions` e `liveQuery` (experimental; a documentação de dados o omite).
+- dados: `query`, `revalidate`, `formAction` (o router instalado mantém `action` como alias depreciado), `useAction` (depreciado: chame a server function ou a `action` do core), `useSubmissions` e `liveQuery` (experimental).
 
 Não existem `Router`, `Route`, `A`, `Navigate`, `createAsync`, `createAsyncStore`, `useSubmission`, `cache`, `json`, `createMemoryHistory` nem `MemoryRouter`. O `Router` da receita é a instância retornada por `createRouter`, usada como componente num host real, com children explícitos: `render(() => <Router>{props => props.children}</Router>, host)`; `render()` recebe um `MountableElement`, não objeto de opções. `redirect`, `reload` e `respond` vêm de `@solidjs/web`. `viewTransition` e um hook como `useViewTransitionState` não existem; componha um wrapper sobre `document.startViewTransition`. O router instalado junto da base verificada também exporta `serverRouteComponent`, experimental e ausente no router da base anterior; seu contrato não foi validado nesta skill. `createResource`, `createAsync` e `createAsyncStore` também não existem em `solid-js`: leitura assíncrona passa por `query(fn, name)` lida por `createMemo`, `createProjection` ou `createOptimistic`, sob `Loading`/`Errored`.
 
@@ -46,7 +46,7 @@ export const Router = createRouter({ routes: [{ path: "/", component: Todos }] }
 Regras sustentadas pelo código instalado:
 
 - `query(fn, name)` devolve função com `key` e `keyFor(...args)`; `revalidate(getTodos.key)` invalida todas as entradas, `revalidate(getTodos.keyFor(id))` só uma.
-- A action do router tem `url`, `with(...args)`, `onSubmit(hook)` e `onSettled(hook)`. `.onSubmit` executa dentro da transação otimista; escreva a sobreposição nesse hook. A action geradora de `solid-js` tem outro contrato, sem `.with`.
+- A `formAction` do router tem `url`, `with(...args)`, `onSubmit(hook)` e `onSettled(hook)`. `.onSubmit` executa dentro da transação otimista; escreva a sobreposição nesse hook. A action geradora de `solid-js` tem outro contrato, sem `.with`.
 - Chamada programática da action pode rejeitar mesmo depois de registrar o erro em `useSubmissions`; trate a Promise no handler. Observar o histórico não contém a rejeição.
 - Action que termina sem erro e sem metadados revalida todas as queries; com `X-Revalidate`, só as chaves declaradas; se lança, nenhuma (leitura do código, sem teste de runtime). `X-Revalidate: *` equivale a `REVALIDATE_ALL` de `@solidjs/web`; chaves nomeadas usam prefix-match; lista vazia não casa nada. Teste o cache depois da invalidação: checar só o header dá falso-verde.
 - Server function lida por `query` que viaja como GET precisa de `GET(fn)` no módulo servidor; sem ele, GET responde 405 com `Allow: POST`.
@@ -81,7 +81,7 @@ Contrato: leia as folhas que o componente precisa. Na base verificada de `@solid
 
 Armadilha: `deep` na store inteira, seletor que percorre milhares de registros por tecla ou snapshot para espalhar tudo eliminam a granularidade; desestruturar no corpo para "otimizar" remove atualizações; envolver tudo em `createMemo` custa nós. Comparar cada linha de uma lista grande contra um signal de seleção cria fan-out amplo; um mapa derivado por chave ou uma projection reduz invalidações, mas só com problema medido, e teste a fidelidade da seleção depois.
 
-Use IDs estáveis para reconciliar; escolha `reconcile`/keyed para manter identidade sem esconder mudanças de campos. `shallow` serve a ingestão imutável e coleções grandes, não é default. Não converta entidades em proxies e de volta a JSON repetidamente; valide na entrada, mapeie para domínio e devolva do servidor só o necessário.
+Use IDs estáveis para reconciliar; escolha `reconcile`/keyed para manter identidade sem esconder mudanças de campos. `shallow` serve à ingestão imutável e a coleções grandes, não é default. Não converta entidades em proxies e de volta a JSON repetidamente; valide na entrada, mapeie para domínio e devolva do servidor só o necessário.
 
 Armadilha: em monorepo, cópias independentes de `solid-js` quebram reatividade cruzada sem erro visível (um `effect` de uma cópia não rastreia `signal` da outra). Declare `solid-js`, `solid-js/*` e `@solidjs/web` como `external` no build de pacote interno; dentro do Vite, prefira `resolve.dedupe` ([ambiente](01-environment-imports-and-types.md)).
 

@@ -18,7 +18,7 @@ Os contratos da API ficam na [skill-solidjs](../skill-solidjs/SKILL.md); esta sk
 - Em modo test, o plugin compila `hydratable: false` mesmo com `ssr: true`. SSR no Vitest e hidratação de um build servido são provas diferentes.
 - O agendador usa `queueMicrotask`. Não a inclua em `toFake`; `flush()` drena trabalho síncrono, sem resolver Promises. Use a [tabela de espera](references/settle-and-wait.md#tabela-de-assentamento).
 - Um erro não contido pode parar o motor para os testes seguintes. `createRoot` não recupera o halt; `render` só o faz em dev. Testes que provocam halt precisam de [isolamento e reset](references/mount-dispose-diagnostics.md#halt-reativo).
-- Não mocke `solid-js` ou `@solidjs/web`. `vi.resetModules()` pode duplicar o motor no projeto servidor; confira [mocks e tipos](references/mocks-coverage-types.md).
+- Não mocke `solid-js` ou `@solidjs/web`. Na configuração padrão do plugin em modo de teste, o motor passa por inline nos projetos servidor e cliente executados em Node; `vi.resetModules()` seguido de novo import pode duplicá-lo. Confira as exceções e os cuidados em [mocks e tipos](references/mocks-coverage-types.md).
 
 ## Escolha pela prova necessária
 

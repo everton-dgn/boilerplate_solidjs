@@ -12,14 +12,14 @@ O `@solidjs/vite-plugin` decide a postura no hook `config`, a partir do `test.en
 | `environment: 'happy-dom'` (ou `'jsdom'`) | cliente; jest-dom injetado se instalado | componentes, páginas com router em memória |
 | `browser.enabled` com Chromium | cliente | eventos reais, foco, layout, números no DOM |
 | `environment: 'node'` | servidor (`server.dev.js`) | `renderToString`, `renderToStream`, módulos de servidor |
-| Sem `environment` e sem `extends` | o plugin preenche `jsdom` | evite: o ambiente fica implícito |
+| Sem `environment` e sem `extends` | herda a configuração da raiz; com `solid()` e sem ambiente explícito herdado, cliente em Node, sem DOM | grafo cliente, após conferir as opções herdadas; o plugin não define `test.environment` |
 
 Armadilhas de postura errada:
 
 - Primitive num projeto `node`: o memo não recalcula (2 em vez de 4), o effect nunca aplica e o setter avisa `SERVER_WRITE`.
 - Projeto `node` sem o plugin não transforma TSX. Ele continua certo para módulos de servidor sem TSX nem grafo reativo.
 - `renderToString` num projeto DOM devolve `undefined` e registra `renderToString is not supported in the browser`.
-- Projeto inline sem `extends` não herda `resolve`, `alias`, `define` nem `plugins` da raiz: aliases como `@/` falham até repetir a config.
+- Projeto inline com `extends: false` não herda `resolve`, `alias`, `define` nem `plugins` da raiz: aliases como `@/` falham até repetir a config. Sem `extends`, o Vitest herda a raiz e mescla os arrays; não registre o mesmo plugin ou setup na raiz e no projeto.
 
 ## Configuração de referência
 

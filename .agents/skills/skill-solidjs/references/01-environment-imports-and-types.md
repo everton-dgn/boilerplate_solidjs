@@ -10,7 +10,7 @@ Receita: fixe versões exatas e lockfile ao atualizar; confira a resolução do 
 resolve: { dedupe: ['solid-js', '@solidjs/web', '@solidjs/router', '@solidjs/signals'] }
 ```
 
-Armadilha: Motores independentes não rastreiam signals entre si, sem erro. Confira que `solid-js`, `@solidjs/web` e `@solidjs/signals` resolvem cada um para um único diretório real, que nenhum pacote do conjunto está declarado por dist-tag e que `@solidjs/router` não é da linha 0.x ou 1.x. `--force`, overrides e peers relaxados não provam compatibilidade. Não atualize dependências a cada tarefa.
+Armadilha: motores independentes não rastreiam signals entre si, sem erro. Confira que `solid-js`, `@solidjs/web` e `@solidjs/signals` resolvem cada um para um único diretório real, que nenhum pacote do conjunto está declarado por dist-tag e que `@solidjs/router` não é da linha 0.x ou 1.x. `--force`, overrides e peers relaxados não provam compatibilidade. Não atualize dependências a cada tarefa.
 
 ## Tags, plugin e compilador
 
@@ -18,7 +18,7 @@ Contrato: em 2026-09-29, `latest` de `solid-js` e router escolhe Solid 1; `next`
 
 Receita: tags: `npm view <pacote> dist-tags`; offline, lockfile/manifesto instalado, tags não verificadas. Após atualização, teste dev e produção. Backend padrão native; compiler babel isola JSX, mas demais transformações exigem @solidjs/compiler.
 
-Armadilha: Tag ou primeiro pacote no diretório do layout isolado do gerenciador (`node_modules/.bun` no Bun, `.pnpm` no pnpm), que pode guardar várias versões lado a lado, pode escolher outra RC transitiva; Babel não elimina o compilador nativo.
+Armadilha: tag ou primeiro pacote no diretório do layout isolado do gerenciador (`node_modules/.bun` no Bun, `.pnpm` no pnpm), que pode guardar várias versões lado a lado, pode escolher outra RC transitiva; Babel não elimina o compilador nativo.
 
 O core da base verificada ainda importa `ROOT_ERROR_HOOK`, `configureClientErrors` e `isStatic` de `@solidjs/signals`; uma cópia transitiva antiga sem esses exports causa `MISSING_EXPORT`. Confira com o `why` do gerenciador (`vp why solid-js` e `vp why @solidjs/signals`, ou o equivalente) antes de contornar o erro com aliases. A faixa `^` do [manifesto do core](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/solid/package.json) não garante alinhamento no lockfile.
 
@@ -35,7 +35,7 @@ import { dynamic, hydrate, Portal, render } from '@solidjs/web'
 import type { ComponentProps, JSX, ValidComponent } from '@solidjs/web'
 ```
 
-Receita: Alias SolidElement distingue DOM. Marcadores `server-only`/`client-only` fazem o build recusar imports na direção errada.
+Receita: alias SolidElement distingue DOM. Marcadores `server-only`/`client-only` fazem o build recusar imports na direção errada.
 
 Armadilha: `solid-js/store`, `solid-js/web` e `solid-js/types/*` não são entradas desta base. Mapa público: `.`, `./refresh`, `./attribution`, `./internal` e `./package.json`, mas `internal`, `dist`, `src` e imports diretos de `@solidjs/signals` não são APIs de aplicação. `mergeProps` de web é interno ao compilador; use `merge`. Marcadores de ambiente não autorizam acesso no servidor.
 
