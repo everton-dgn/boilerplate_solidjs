@@ -41,6 +41,20 @@ const LOCAL_MODULES = SEO_ENTRIES.flatMap(
 ).toSorted()
 
 test.describe('índices na árvore real de produção', () => {
+  for (const method of ['GET', 'HEAD']) {
+    for (const path of ['/sitemaps/pages/1', '/sitemaps/blog/1']) {
+      test(`recusa ${method} ${path} sem sufixo XML`, async ({ request }) => {
+        const response = await request.fetch(path, {
+          method,
+          maxRedirects: 0
+        })
+        expect(response.status()).toBe(HTTP_NOT_FOUND)
+        expect(response.headers()['cache-control']).toBe('no-store')
+        expect(await response.body()).toHaveLength(0)
+      })
+    }
+  }
+
   test('serve sitemap.xml sem redirecionamento', async ({ request }) => {
     const response = await request.get('/sitemap.xml', { maxRedirects: 0 })
     expect(response.status()).toBe(HTTP_OK)
