@@ -83,9 +83,10 @@ export function renderPart({
 export async function respondIndex(read: ReadOptions): Promise<Response> {
   const { options, catalog, byteBudget } = read
   const { siteUrl, sources, method = 'GET' } = options
-  const { partCount, legacy, indexCount, indexXml } = await planIndex(read)
+  const { partCount, arrayEntries, indexCount, indexXml } =
+    await planIndex(read)
   if (partCount <= 1 && sources.length === 0) {
-    const entries = [...(await catalog.readSinglePart()), ...legacy]
+    const entries = [...(await catalog.readSinglePart()), ...arrayEntries]
     if (entries.length === 0) return errorResponse(HTTP_NOT_FOUND)
     const xml = combinedSitemapXml({ entries, siteUrl, byteBudget })
     if (xml) return xmlResponse({ xml, method })

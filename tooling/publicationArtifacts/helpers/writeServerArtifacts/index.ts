@@ -32,13 +32,8 @@ function buildManifest({
   identities,
   partDigests
 }: ManifestOptions): string {
-  const {
-    buildId,
-    siteUrl,
-    byteBudget,
-    hasLegacySources,
-    hasPartitionSources
-  } = inventory
+  const { buildId, siteUrl, byteBudget, hasArraySources, hasPartitionSources } =
+    inventory
   const identityDigest = identities && digestBytes(identities)
   const generation = createHash('sha256')
     .update(
@@ -47,7 +42,7 @@ function buildManifest({
         buildId,
         siteUrl,
         byteBudget,
-        hasLegacySources,
+        hasArraySources,
         hasPartitionSources,
         parts: partDigests.map(({ hash }) => hash),
         identities: identityDigest?.hash
@@ -63,8 +58,8 @@ function buildManifest({
     pagePartCount: partDigests.length,
     partBytes: partDigests.map(({ size }) => size),
     isRootStatic:
-      !hasLegacySources && !hasPartitionSources && partDigests.length > 0,
-    hasLegacySources,
+      !hasArraySources && !hasPartitionSources && partDigests.length > 0,
+    hasArraySources,
     hasPartitionSources,
     identities: identityDigest
       ? {

@@ -98,7 +98,7 @@ function source(
   }
 }
 
-function legacyManifest(sources: SitemapRouteInfo[]) {
+function arrayManifest(sources: SitemapRouteInfo[]) {
   return {
     ...manifest,
     sources,
@@ -208,7 +208,7 @@ describe('admissão do sitemap', () => {
     expect(controller.getMetrics()).toMatchObject({ active: 0, sources: 0 })
   })
 
-  it('não inicia o legado seguinte depois de uma falha e funciona com capacidade 1', async () => {
+  it('não inicia a fonte em array seguinte depois de uma falha e funciona com capacidade 1', async () => {
     const controller = useController({
       total: 1,
       sitemap: 1,
@@ -219,7 +219,7 @@ describe('admissão do sitemap', () => {
     const next = vi.fn<() => SitemapEntry[]>(() => [])
     const response = await buildSitemapIndexResponse({
       ...sourceOptions,
-      manifest: legacyManifest([
+      manifest: arrayManifest([
         () => {
           throw new Error('Falha')
         },
@@ -232,23 +232,23 @@ describe('admissão do sitemap', () => {
     expect(controller.getMetrics()).toMatchObject({ active: 0, sources: 0 })
     const healthy = await buildSitemapIndexResponse({
       ...sourceOptions,
-      manifest: legacyManifest([() => [{ path: '/blog/a' }]]),
+      manifest: arrayManifest([() => [{ path: '/blog/a' }]]),
       sources: []
     })
     expect(healthy.status).toBe(HTTP_OK)
     await healthy.text()
   })
 
-  it('executa fontes legadas uma por vez', async () => {
+  it('executa fontes em array uma por vez', async () => {
     const controller = useController()
     const first = Promise.withResolvers<SitemapEntry[]>()
     const second = vi.fn<() => SitemapEntry[]>(() => [{ path: '/blog/b' }])
     const pending = buildSitemapPartResponse({
       ...sourceOptions,
-      manifest: legacyManifest([() => first.promise, second]),
+      manifest: arrayManifest([() => first.promise, second]),
       sources: [],
-      kind: 'legacy',
-      part: 'legacy'
+      kind: 'array',
+      part: 'array'
     })
     await vi.waitFor(() => expect(controller.getMetrics().sources).toBe(1))
     expect(second).not.toHaveBeenCalled()
@@ -343,7 +343,7 @@ describe('limites antes da fonte', () => {
     await vi.waitFor(() => expect(controller.getMetrics().active).toBe(1))
     for (const options of [
       { ...partOptions, sources: [], source: 'absent' },
-      { ...partOptions, sources: [], kind: 'legacy' as const }
+      { ...partOptions, sources: [], kind: 'array' as const }
     ]) {
       const response = await buildSitemapPartResponse(options)
       expect(response.status).toBe(HTTP_NOT_FOUND)

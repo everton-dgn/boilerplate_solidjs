@@ -6,11 +6,11 @@
 
 O build gera `/sitemaps/pages/N.xml`, `/llms.txt` e `/_markdown/static.json`. A
 raiz `/sitemap.xml` também vira arquivo quando há páginas e não existem fontes
-legadas nem particionadas. Uma fonte legada que retorne vazio continua dinâmica:
-o build não a consulta para decidir se a raiz pode ser estática. O inventário
-interno `/sitemaps/static.json` só responde na fase de prerender, identificada
-pelo processo do build. Um header enviado pelo cliente não libera essa fase. O
-inventário público de Markdown contém somente caminhos publicáveis.
+em array nem particionadas. Uma fonte em array que retorne vazio continua
+dinâmica: o build não a consulta para decidir se a raiz pode ser estática. O
+inventário interno `/sitemaps/static.json` só responde na fase de prerender,
+identificada pelo processo do build. Um header enviado pelo cliente não libera
+essa fase. O inventário público de Markdown contém somente caminhos publicáveis.
 
 O build confere os bytes dos arquivos publicados e grava um manifesto junto do
 bundle da função. `createPublicationBuild()` gera um identificador por build;
@@ -22,13 +22,13 @@ que tenha acesso de escrita ao diretório da função.
 
 A origem lê esse manifesto uma vez por instância; falha de leitura ou validação
 resulta em 503 `no-store`, sem reconstruir todas as páginas na requisição. Sem
-legado, não carrega um conjunto de identidades estáticas. Com legado, carrega
-uma vez as URLs exatas para preservar a prioridade das páginas estáticas. Esse
-caminho ainda tem custo O(N) e orçamento de 32 MiB para o arquivo de
-identidades. O manifesto tem teto de 1 MiB. A leitura limita a alocação antes de
-validar JSON e hash, e o nome do arquivo de identidades é fixo. Acima desses
-orçamentos, migre o catálogo para fontes particionadas. O matcher das fontes
-também é preparado uma vez na primeira consulta dinâmica.
+fonte em array, não carrega um conjunto de identidades estáticas. Com ela,
+carrega uma vez as URLs exatas para preservar a prioridade das páginas
+estáticas. Esse caminho ainda tem custo O(N) e orçamento de 32 MiB para o
+arquivo de identidades. O manifesto tem teto de 1 MiB. A leitura limita a
+alocação antes de validar JSON e hash, e o nome do arquivo de identidades é
+fixo. Acima desses orçamentos, migre o catálogo para fontes particionadas. O
+matcher das fontes também é preparado uma vez na primeira consulta dinâmica.
 
 `src/infra/server/publication/` limita o trabalho dinâmico por processo: quatro
 produtores, com até dois de sitemap e dois de Markdown; quatro leituras de
@@ -39,8 +39,8 @@ capacidade do backend. Aumentar o orçamento de uma resposta exige conferir a
 reserva total; um pedido cujo orçamento não cabe é recusado.
 
 Não há fila nem retry interno. Admissão recusada responde 503 pequeno,
-`no-store` e `Retry-After: 1`; Markdown preserva também `private`. As fontes
-legadas executam em sequência, e o prazo cobre o trabalho inteiro. O término do
+`no-store` e `Retry-After: 1`; Markdown preserva também `private`. As fontes em
+array executam em sequência, e o prazo cobre o trabalho inteiro. O término do
 produtor e o consumo ou cancelamento do corpo liberam recursos separados. Uma
 fonte que nunca assenta mantém sua capacidade ocupada: corrija o timeout e o
 cancelamento no adapter e recicle a instância pelo procedimento da hospedagem
@@ -63,15 +63,15 @@ controlador não impõe um teto global ao backend. Contadores agregados estão
 disponíveis por `getPublicationMetrics()` para integração com a observabilidade
 da aplicação, sem endpoint público em produção.
 
-O caminho legado tem custo por requisição: o índice lê o array e serializa a
-parte legada para validar seus bytes. Com uma única parte estática e sem fontes
-particionadas, também tenta serializar a união até o orçamento antes de decidir
-entre `urlset` e índice. Essa tentativa percorre até uma parte estática mais o
-legado; não usa o cache de preparo para eliminar a serialização da resposta. A
-rota `legacy.xml` também valida e depois serializa sua resposta. Esses custos
-são limitados pelo orçamento de cada parte, mas se repetem quando a requisição
-chega à origem. Para catálogos grandes, use o registro particionado, cuja
-consulta de uma parte não percorre o catálogo inteiro.
+A fonte em array tem custo por requisição: o índice lê o array e serializa a
+parte `array.xml` para validar seus bytes. Com uma única parte estática e sem
+fontes particionadas, também tenta serializar a união até o orçamento antes de
+decidir entre `urlset` e índice. Essa tentativa percorre até uma parte estática
+mais as fontes em array; não usa o cache de preparo para eliminar a serialização
+da resposta. A rota `array.xml` também valida e depois serializa sua resposta.
+Esses custos são limitados pelo orçamento de cada parte, mas se repetem quando a
+requisição chega à origem. Para catálogos grandes, use o registro particionado,
+cuja consulta de uma parte não percorre o catálogo inteiro.
 
 ```tsx
 import type { RouteDefinition } from '@solidjs/router'
@@ -149,19 +149,19 @@ Consultar a primeira parte depois dessa preparação levou 319 ms e 308 ms,
 respectivamente. Naquela implementação, cada instância nova pagava a preparação
 proporcional ao inventário. Agora o particionamento e os XML estáticos são
 preparados no build. A aplicação ainda precisa dimensionar esse build e o custo
-residual das identidades quando usa legado. Catálogos vindos de dados devem
-preferir fontes particionadas.
+residual das identidades quando usa fonte em array. Catálogos vindos de dados
+devem preferir fontes particionadas.
 
 O piloto posterior, já com artefatos de build, preparou 100 mil páginas
 sintéticas em 10,1 s e serializou e gravou suas 29 partes em mais 8,6 s. Foram
 300 mil URLs nos três idiomas e 120,1 MB de XML. A primeira leitura do manifesto
-por um leitor novo levou 0,8 ms; carregar as 100 mil identidades do legado levou
-16,2 ms, com arquivo de 3,6 MB. Essas leituras ocorreram no mesmo processo que
-preparou os arquivos, com filesystem aquecido, e não medem cold start do
-processo ou do sistema operacional. O pico de RSS de toda a execução foi 720 MB,
-incluindo Vitest, preparação e serialização. Esse pico dimensiona o piloto de
-build, não a memória de uma função nova. Não houve compilação de 100 mil
-arquivos de rota nem carga HTTP nessa medição.
+por um leitor novo levou 0,8 ms; carregar as 100 mil identidades usadas com
+fonte em array levou 16,2 ms, com arquivo de 3,6 MB. Essas leituras ocorreram no
+mesmo processo que preparou os arquivos, com filesystem aquecido, e não medem
+cold start do processo ou do sistema operacional. O pico de RSS de toda a
+execução foi 720 MB, incluindo Vitest, preparação e serialização. Esse pico
+dimensiona o piloto de build, não a memória de uma função nova. Não houve
+compilação de 100 mil arquivos de rota nem carga HTTP nessa medição.
 
 Com catálogos virtuais de 100 mil e 1 milhão de registros, a consulta direta de
 um lote de mil registros levou 159 ms e 147 ms na primeira chamada, e 124 ms e

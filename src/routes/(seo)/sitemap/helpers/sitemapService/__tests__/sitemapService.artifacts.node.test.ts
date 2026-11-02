@@ -49,7 +49,7 @@ vi.mock(import('@/infra/server/publication/index.ts'), async importOriginal => {
 type ArtifactOptions = {
   buildId?: string
   parts?: number
-  hasLegacySources?: boolean
+  hasArraySources?: boolean
   hasPartitionSources?: boolean
   pages?: readonly SitemapEntry[]
   byteBudget?: number
@@ -72,7 +72,7 @@ const BUILD_ID = 'build-under-test'
 const SHA256_LENGTH = 64
 const DIGEST = { size: 100, hash: 'a'.repeat(SHA256_LENGTH) }
 const staticEntry = { path: '/blog/static', lastmod: '2026-01-01' }
-const legacyEntry = { path: '/blog/legacy' }
+const arrayEntry = { path: '/blog/array' }
 const matchRoute = matchSitemapRoute([
   { path: '/blog/:slug', page: true },
   { path: '/blog/static', page: true }
@@ -101,7 +101,7 @@ function identityBytes({ pages, hasUnion }: IdentityBytesOptions): Uint8Array {
 async function writeArtifacts({
   buildId = BUILD_ID,
   parts = 2,
-  hasLegacySources = false,
+  hasArraySources = false,
   hasPartitionSources = false,
   pages = [staticEntry],
   byteBudget = BYTE_BUDGET
@@ -115,11 +115,11 @@ async function writeArtifacts({
       siteUrl,
       byteBudget,
       pagePartCount: parts,
-      hasLegacySources,
+      hasArraySources,
       hasPartitionSources,
       identities: null
     },
-    identities: hasLegacySources
+    identities: hasArraySources
       ? identityBytes({ pages, hasUnion: parts <= 1 })
       : undefined,
     partDigests: Array.from({ length: parts }, () => DIGEST)
@@ -156,7 +156,7 @@ async function readIndex(options: ServiceOptions): Promise<string> {
   return response.text()
 }
 
-function legacy(read: () => SitemapEntry[]): Partial<SitemapManifest> {
+function withArraySource(read: () => SitemapEntry[]): Partial<SitemapManifest> {
   return { sources: [read], sourceRoutes: ['/blog/:slug'] }
 }
 
@@ -205,12 +205,12 @@ describe('sitemap servido por artefatos', () => {
     expect(reached.status).toBe(HTTP_SERVICE_UNAVAILABLE)
     const root = await buildSitemapIndexResponse(options)
     expect(root.status).toBe(HTTP_SERVICE_UNAVAILABLE)
-    const missingLegacy = await buildSitemapPartResponse({
+    const missingArray = await buildSitemapPartResponse({
       ...options,
-      kind: 'legacy',
-      part: 'legacy'
+      kind: 'array',
+      part: 'array'
     })
-    expect(missingLegacy.status).toBe(HTTP_NOT_FOUND)
+    expect(missingArray.status).toBe(HTTP_NOT_FOUND)
     expect(options.readRoutes).not.toHaveBeenCalled()
   })
 
@@ -266,30 +266,30 @@ describe('sitemap servido por artefatos', () => {
     expect(second).toContain('/sitemaps/catalog/b.xml')
   })
 
-  it('une uma parte ao legado, muda por pedido e carrega identidades uma vez', async () => {
+  it('une uma parte à fonte em array, muda por pedido e carrega identidades uma vez', async () => {
     const directory = await writeArtifacts({
       parts: 1,
-      hasLegacySources: true
+      hasArraySources: true
     })
-    let current = [{ path: '/blog/legacy' }]
-    const options = runtime({ manifest: legacy(() => current) })
+    let current = [{ path: '/blog/array' }]
+    const options = runtime({ manifest: withArraySource(() => current) })
     const first = await readIndex(options)
     expect(first).toContain('<urlset')
     expect(first).toContain('/blog/static</loc><lastmod>2026-01-01')
-    expect(first).toContain('/blog/legacy')
+    expect(first).toContain('/blog/array')
     await rm(path.join(directory, SITEMAP_IDENTITIES_FILE))
     current = [{ path: '/blog/other' }]
     const second = await readIndex(options)
     expect(second).toContain('/blog/other')
-    expect(second).not.toContain('/blog/legacy')
+    expect(second).not.toContain('/blog/array')
   })
 
-  it('duplicata legada preserva os metadados estáticos', async () => {
-    await writeArtifacts({ parts: 1, hasLegacySources: true })
+  it('duplicata de fonte em array preserva os metadados estáticos', async () => {
+    await writeArtifacts({ parts: 1, hasArraySources: true })
     const options = runtime({
-      manifest: legacy(() => [
+      manifest: withArraySource(() => [
         { path: `/pt${staticEntry.path}`, lastmod: '2026-02-02' },
-        legacyEntry
+        arrayEntry
       ])
     })
     const xml = await readIndex(options)
@@ -300,7 +300,7 @@ describe('sitemap servido por artefatos', () => {
 
   it('decide urlset ou índice pelos bytes exatos da união', async () => {
     const exact = encoder.encode(
-      buildSitemap({ entries: [staticEntry, legacyEntry], siteUrl })
+      buildSitemap({ entries: [staticEntry, arrayEntry], siteUrl })
     ).byteLength
     for (const { byteBudget, expected, absent } of [
       { byteBudget: exact, expected: '<urlset', absent: '<sitemapindex' },
@@ -308,11 +308,11 @@ describe('sitemap servido por artefatos', () => {
     ]) {
       await writeArtifacts({
         parts: 1,
-        hasLegacySources: true,
+        hasArraySources: true,
         byteBudget
       })
       const options = runtime({
-        manifest: legacy(() => [legacyEntry]),
+        manifest: withArraySource(() => [arrayEntry]),
         byteBudget
       })
       const response = await buildSitemapIndexResponse(options)
@@ -334,17 +334,20 @@ describe('sitemap servido por artefatos', () => {
       const byteBudget = SITEMAP_BYTE_LIMIT
       await writeArtifacts({
         parts: 1,
-        hasLegacySources: true,
+        hasArraySources: true,
         pages,
         byteBudget
       })
       const within = await readIndex(
-        runtime({ manifest: legacy(() => [legacyEntry]), byteBudget })
+        runtime({ manifest: withArraySource(() => [arrayEntry]), byteBudget })
       )
       expect(within).toContain('<urlset')
       const above = await readIndex(
         runtime({
-          manifest: legacy(() => [legacyEntry, { path: '/blog/other' }]),
+          manifest: withArraySource(() => [
+            arrayEntry,
+            { path: '/blog/other' }
+          ]),
           byteBudget
         })
       )
@@ -352,23 +355,23 @@ describe('sitemap servido por artefatos', () => {
     }
   )
 
-  it('legado vazio não publica parte e omite a referência', async () => {
-    await writeArtifacts({ parts: 2, hasLegacySources: true })
-    const options = runtime({ manifest: legacy(() => []) })
+  it('fonte em array vazia não publica parte e omite a referência', async () => {
+    await writeArtifacts({ parts: 2, hasArraySources: true })
+    const options = runtime({ manifest: withArraySource(() => []) })
     const xml = await readIndex(options)
     expect(xml).toContain('/sitemaps/pages/2.xml')
-    expect(xml).not.toContain('/sitemaps/legacy.xml')
+    expect(xml).not.toContain('/sitemaps/array.xml')
     const part = await buildSitemapPartResponse({
       ...options,
-      kind: 'legacy',
-      part: 'legacy'
+      kind: 'array',
+      part: 'array'
     })
     expect(part.status).toBe(HTTP_NOT_FOUND)
   })
 
-  it('legado vazio sem páginas continua 404', async () => {
-    await writeArtifacts({ parts: 0, hasLegacySources: true, pages: [] })
-    const options = runtime({ manifest: legacy(() => []) })
+  it('fonte em array vazia sem páginas continua 404', async () => {
+    await writeArtifacts({ parts: 0, hasArraySources: true, pages: [] })
+    const options = runtime({ manifest: withArraySource(() => []) })
     const response = await buildSitemapIndexResponse(options)
     expect(response.status).toBe(HTTP_NOT_FOUND)
   })
@@ -440,11 +443,11 @@ describe('artefatos ausentes ou de outra geração', () => {
     await writeArtifacts({
       buildId: 'other-build',
       parts: 1,
-      hasLegacySources: true,
+      hasArraySources: true,
       pages
     })
-    const read = vi.fn<() => SitemapEntry[]>(() => [legacyEntry])
-    const options = runtime({ manifest: legacy(read) })
+    const read = vi.fn<() => SitemapEntry[]>(() => [arrayEntry])
+    const options = runtime({ manifest: withArraySource(read) })
     const response = await buildSitemapIndexResponse(options)
     expect({
       status: response.status,
@@ -498,26 +501,26 @@ describe('artefatos ausentes ou de outra geração', () => {
   it('recusa identidades alteradas, ausentes e sem referência', async () => {
     const directory = await writeArtifacts({
       parts: 1,
-      hasLegacySources: true
+      hasArraySources: true
     })
     const file = path.join(directory, SITEMAP_IDENTITIES_FILE)
-    const read = vi.fn<() => SitemapEntry[]>(() => [legacyEntry])
+    const read = vi.fn<() => SitemapEntry[]>(() => [arrayEntry])
     await writeFile(file, '{"urls":[],"entries":[]}')
     const changed = await buildSitemapIndexResponse(
-      runtime({ manifest: legacy(read) })
+      runtime({ manifest: withArraySource(read) })
     )
     expect(changed.status).toBe(HTTP_SERVICE_UNAVAILABLE)
     await rm(file)
     const missing = await buildSitemapIndexResponse(
-      runtime({ manifest: legacy(read) })
+      runtime({ manifest: withArraySource(read) })
     )
     expect(missing.status).toBe(HTTP_SERVICE_UNAVAILABLE)
     expect(read).not.toHaveBeenCalled()
     await writeArtifacts({ parts: 1 })
     const unreferenced = await buildSitemapPartResponse({
-      ...runtime({ manifest: legacy(read) }),
-      kind: 'legacy',
-      part: 'legacy'
+      ...runtime({ manifest: withArraySource(read) }),
+      kind: 'array',
+      part: 'array'
     })
     expect(unreferenced.status).toBe(HTTP_NOT_FOUND)
   })

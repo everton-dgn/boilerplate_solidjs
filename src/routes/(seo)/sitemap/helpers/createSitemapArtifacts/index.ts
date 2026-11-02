@@ -46,7 +46,7 @@ const ManifestSchema = v.object({
   pagePartCount: v.pipe(SafeCountSchema, v.maxValue(SITEMAP_URL_LIMIT)),
   partBytes: v.array(PositiveCountSchema),
   isRootStatic: v.boolean(),
-  hasLegacySources: v.boolean(),
+  hasArraySources: v.boolean(),
   hasPartitionSources: v.boolean(),
   identities: v.nullable(IdentityFileSchema)
 })
@@ -126,7 +126,7 @@ function assertManifest(manifest: SitemapArtifactManifest): void {
     pagePartCount,
     partBytes,
     isRootStatic,
-    hasLegacySources,
+    hasArraySources,
     hasPartitionSources,
     identities
   } = manifest
@@ -134,8 +134,8 @@ function assertManifest(manifest: SitemapArtifactManifest): void {
     partBytes.length === pagePartCount &&
     partBytes.every(bytes => bytes <= byteBudget) &&
     isRootStatic ===
-      (!hasLegacySources && !hasPartitionSources && pagePartCount > 0) &&
-    hasLegacySources === (identities !== null)
+      (!hasArraySources && !hasPartitionSources && pagePartCount > 0) &&
+    hasArraySources === (identities !== null)
   if (!isCoherent) throw new Error('Manifesto incoerente')
   const expected = import.meta.env.PUBLICATION_BUILD_ID
   if (!expected || buildId !== expected) {

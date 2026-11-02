@@ -21,7 +21,7 @@ import {
 } from './helpers/sitemapResponse/index.ts'
 import {
   readPartitionEntries,
-  readLegacyPart
+  readArrayPart
 } from './helpers/sourceEntries/index.ts'
 import type {
   InventoryOptions,
@@ -81,18 +81,20 @@ async function respondPages({
   return renderPart({ entries: page, options, byteBudget })
 }
 
-async function respondLegacy({
+async function respondArrayPart({
   options,
   catalog,
   byteBudget
 }: PartResponseOptions): Promise<Response> {
-  if (!(await catalog.readHasLegacy())) return errorResponse(HTTP_NOT_FOUND)
+  if (!(await catalog.readHasArraySources())) {
+    return errorResponse(HTTP_NOT_FOUND)
+  }
   return publishSitemap({
     options,
     byteBudget,
     run: async context => {
       readRegistry({ catalog, sources: options.sources })
-      const entries = await readLegacyPart({
+      const entries = await readArrayPart({
         options,
         catalog,
         byteBudget,
@@ -149,8 +151,8 @@ export async function buildSitemapIndexResponse(
     const catalog = createCatalog({ options, byteBudget })
     const { partCount, isFileRoot } = await catalog.readSummary()
     if (isFileRoot) throw new Error('Raiz estática fora da camada de arquivos')
-    const hasLegacy = await catalog.readHasLegacy()
-    if (partCount === 0 && !hasLegacy && sources.length === 0) {
+    const hasArraySources = await catalog.readHasArraySources()
+    if (partCount === 0 && !hasArraySources && sources.length === 0) {
       return errorResponse(HTTP_NOT_FOUND)
     }
     return await publishSitemap({
@@ -181,8 +183,8 @@ export async function buildSitemapPartResponse(
       case 'pages': {
         return await respondPages(request)
       }
-      case 'legacy': {
-        return await respondLegacy(request)
+      case 'array': {
+        return await respondArrayPart(request)
       }
       case 'source': {
         return await respondSource(request)
@@ -211,7 +213,7 @@ export async function buildSitemapInventoryResponse(
     const catalog = createCatalog({ options, byteBudget })
     readRegistry({ catalog, sources })
     const { partCount } = await catalog.readSummary()
-    const hasLegacySources = await catalog.readHasLegacy()
+    const hasArraySources = await catalog.readHasArraySources()
     const hasPartitionSources = sources.length > 0
     const hasUnion = partCount <= 1 && !hasPartitionSources
     return Response.json({
@@ -220,9 +222,9 @@ export async function buildSitemapInventoryResponse(
       siteUrl,
       byteBudget,
       pagePartCount: partCount,
-      hasLegacySources,
+      hasArraySources,
       hasPartitionSources,
-      identities: hasLegacySources
+      identities: hasArraySources
         ? {
             urls: [...(await catalog.readIdentities())],
             entries: hasUnion ? await catalog.readSinglePart() : []

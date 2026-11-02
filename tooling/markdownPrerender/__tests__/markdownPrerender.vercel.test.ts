@@ -92,7 +92,7 @@ async function fixture({
         siteUrl: SITE_URL,
         byteBudget: 4_194_304,
         pagePartCount: 0,
-        hasLegacySources: false,
+        hasArraySources: false,
         hasPartitionSources: false,
         identities: null
       })

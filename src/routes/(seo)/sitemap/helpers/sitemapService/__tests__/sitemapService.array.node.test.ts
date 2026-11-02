@@ -38,17 +38,17 @@ const matchRoute = matchSitemapRoute([
   { path: '/about', page: true }
 ])
 const entries = [{ path: '/blog/static', lastmod: '2026-01-01' }]
-const legacyEntry = { path: '/blog/legacy' }
+const arrayEntry = { path: '/blog/array' }
 const manifest = {
   entries,
-  sources: [() => [legacyEntry]],
+  sources: [() => [arrayEntry]],
   sourceRoutes: ['/blog/:slug'],
   dynamicRoutes: [{ path: '/blog/:slug', isIndexable: true }]
 }
 const options = { manifest, sources: [], siteUrl, signal, matchRoute }
 const encoder = new TextEncoder()
 
-describe('compatibilidade do sitemap legado com partes estáticas', () => {
+describe('fontes em array com partes estáticas', () => {
   beforeEach(() => {
     vi.stubEnv('DEV', false)
     vi.spyOn(console, 'error').mockReturnValue()
@@ -57,7 +57,7 @@ describe('compatibilidade do sitemap legado com partes estáticas', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it.each(['/blog/static', '/about'])(
-    'descarta a duplicata estática %s sem publicar os metadados legados',
+    'descarta a duplicata estática %s sem publicar os metadados da fonte em array',
     async staticPath => {
       const context = {
         ...options,
@@ -67,7 +67,7 @@ describe('compatibilidade do sitemap legado com partes estáticas', () => {
           sources: [
             () => [
               { path: `/pt${staticPath}`, lastmod: '2026-02-02' },
-              legacyEntry
+              arrayEntry
             ]
           ]
         }
@@ -79,17 +79,17 @@ describe('compatibilidade do sitemap legado com partes estáticas', () => {
         locales.map(() => '<lastmod>2026-01-01</lastmod>')
       )
       expect(xml.match(/<loc>/gu)).toHaveLength(
-        locales.length * [entries[0], legacyEntry].length
+        locales.length * [entries[0], arrayEntry].length
       )
       const part = await buildSitemapPartResponse({
         ...context,
-        kind: 'legacy',
-        part: 'legacy'
+        kind: 'array',
+        part: 'array'
       })
       expect(part.status).toBe(HTTP_OK)
       const partXml = await part.text()
       expect(partXml.match(/<loc>[^<]*<\/loc>/gu)).toStrictEqual(
-        locales.map(locale => `<loc>${siteUrl}/${locale}/blog/legacy</loc>`)
+        locales.map(locale => `<loc>${siteUrl}/${locale}/blog/array</loc>`)
       )
     }
   )
@@ -98,8 +98,8 @@ describe('compatibilidade do sitemap legado com partes estáticas', () => {
     { values: [] },
     { values: [{ path: '/blog/static' }] },
     { values: [{ path: '/about' }] }
-  ])('omite uma parte legada sem entradas próprias', async ({ values }) => {
-    const readLegacy = vi.fn<() => SitemapEntry[]>(() => values)
+  ])('omite a parte de array sem entradas próprias', async ({ values }) => {
+    const readArraySource = vi.fn<() => SitemapEntry[]>(() => values)
     const pages = [...entries, { path: '/about' }]
     const byteBudget = Math.max(
       ...pages.map(
@@ -110,18 +110,18 @@ describe('compatibilidade do sitemap legado com partes estáticas', () => {
     const context = {
       ...options,
       byteBudget,
-      manifest: { ...manifest, entries: pages, sources: [readLegacy] }
+      manifest: { ...manifest, entries: pages, sources: [readArraySource] }
     }
     const root = await buildSitemapIndexResponse(context)
     expect(root.status).toBe(HTTP_OK)
     const xml = await root.text()
     expect(xml).toContain('<sitemapindex')
-    expect(xml).not.toContain('/sitemaps/legacy.xml')
-    expect(readLegacy).toHaveBeenCalledOnce()
+    expect(xml).not.toContain('/sitemaps/array.xml')
+    expect(readArraySource).toHaveBeenCalledOnce()
     const part = await buildSitemapPartResponse({
       ...context,
-      kind: 'legacy',
-      part: 'legacy'
+      kind: 'array',
+      part: 'array'
     })
     expect({
       status: part.status,
@@ -129,10 +129,10 @@ describe('compatibilidade do sitemap legado com partes estáticas', () => {
     }).toStrictEqual({ status: HTTP_NOT_FOUND, cacheControl: 'no-store' })
   })
 
-  it('publica índice quando estáticos e legado cabem separados, mas a união excede bytes', async () => {
-    const readLegacy = vi.fn<() => SitemapEntry[]>(() => [legacyEntry])
+  it('publica índice quando estáticos e fonte em array cabem separados, mas a união excede bytes', async () => {
+    const readArraySource = vi.fn<() => SitemapEntry[]>(() => [arrayEntry])
     const byteBudget = Math.max(
-      ...[entries, [legacyEntry]].map(
+      ...[entries, [arrayEntry]].map(
         part =>
           encoder.encode(buildSitemap({ entries: part, siteUrl })).byteLength
       )
@@ -140,15 +140,15 @@ describe('compatibilidade do sitemap legado com partes estáticas', () => {
     const context = {
       ...options,
       byteBudget,
-      manifest: { ...manifest, sources: [readLegacy] }
+      manifest: { ...manifest, sources: [readArraySource] }
     }
     const root = await buildSitemapIndexResponse(context)
     expect(root.status).toBe(HTTP_OK)
     const xml = await root.text()
     expect(xml).toContain('/sitemaps/pages/1.xml')
-    expect(xml).toContain('/sitemaps/legacy.xml')
-    expect(readLegacy).toHaveBeenCalledOnce()
-    for (const kind of ['pages', 'legacy'] as const) {
+    expect(xml).toContain('/sitemaps/array.xml')
+    expect(readArraySource).toHaveBeenCalledOnce()
+    for (const kind of ['pages', 'array'] as const) {
       const part = await buildSitemapPartResponse({
         ...context,
         kind,
@@ -176,7 +176,7 @@ describe('compatibilidade do sitemap legado com partes estáticas', () => {
       expect(root.status).toBe(HTTP_OK)
       const xml = await root.text()
       expect(xml).toContain('/sitemaps/pages/1.xml')
-      expect(xml).toContain('/sitemaps/legacy.xml')
+      expect(xml).toContain('/sitemaps/array.xml')
     }
   )
 })

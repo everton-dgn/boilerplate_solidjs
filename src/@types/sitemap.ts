@@ -21,7 +21,7 @@ export type SitemapEntry = {
 // Fonte das URLs de uma rota com parâmetros, declarada em
 // `route.info.sitemap`. O módulo da rota entra no bundle do cliente, então
 // banco e SDK entram por server function. Roda a cada request do sitemap, em
-// sequência com as demais fontes legadas, e nunca no build; cache de dados,
+// sequência com as demais fontes em array, e nunca no build; cache de dados,
 // quando necessário, fica dentro da fonte. O sinal aborta no prazo das fontes,
 // na desconexão do cliente e ao fim da leitura: repasse-o à leitura para que
 // ela seja cancelada, e não só deixe de ser esperada. A Promise precisa cobrir

@@ -40,12 +40,12 @@ describe('contexto compartilhado dos handlers de sitemap', () => {
       const root = await import('../../sitemap.xml/index.ts')
       const pages = await import('../../sitemaps/pages/[part].xml/index.ts')
       const source = await import('../../sitemaps/[source]/[part].xml/index.ts')
-      const legacy = await import('../../sitemaps/legacy.xml/index.ts')
+      const arrayRoute = await import('../../sitemaps/array.xml/index.ts')
       const calls: [Handler, string, number][] = [
         [root.GET, '/sitemap.xml', HTTP_OK],
         [pages.GET, '/sitemaps/pages/1.xml', HTTP_OK],
         [source.GET, '/sitemaps/absent/a.xml', HTTP_NOT_FOUND],
-        [legacy.GET, '/sitemaps/legacy.xml', HTTP_NOT_FOUND]
+        [arrayRoute.GET, '/sitemaps/array.xml', HTTP_NOT_FOUND]
       ]
       for (const [handler, path, status] of calls) {
         const response = await handler({
@@ -99,11 +99,11 @@ describe('contexto compartilhado dos handlers de sitemap', () => {
     vi.stubEnv('PROD', true)
     vi.stubEnv(PUBLICATION_PHASE_ENV, PUBLICATION_PRERENDER_PHASE)
     vi.stubEnv('PUBLICATION_BUILD_ID', 'build-under-test')
-    const readLegacy = vi.fn<() => SitemapEntry[]>(() => [])
+    const readArraySource = vi.fn<() => SitemapEntry[]>(() => [])
     const collector = await import('../helpers/collectSitemapEntries/index.ts')
     vi.spyOn(collector, 'collectSitemapEntries').mockReturnValue({
       entries: [{ path: '/' }],
-      sources: [readLegacy],
+      sources: [readArraySource],
       sourceRoutes: ['/blog/:slug']
     })
     const inventory = await import('../../sitemaps/static.json/index.ts')
@@ -112,10 +112,10 @@ describe('contexto compartilhado dos handlers de sitemap', () => {
     await expect(response.json()).resolves.toMatchObject({
       buildId: 'build-under-test',
       pagePartCount: 1,
-      hasLegacySources: true,
+      hasArraySources: true,
       hasPartitionSources: false,
       identities: { entries: [{ path: '/' }] }
     })
-    expect(readLegacy).not.toHaveBeenCalled()
+    expect(readArraySource).not.toHaveBeenCalled()
   })
 })

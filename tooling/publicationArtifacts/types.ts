@@ -15,7 +15,7 @@ export type SitemapInventory = {
   siteUrl: string
   byteBudget: number
   pagePartCount: number
-  hasLegacySources: boolean
+  hasArraySources: boolean
   hasPartitionSources: boolean
   identities: SitemapIdentityList | null
 }

@@ -128,7 +128,7 @@ export function createDirectCatalog(options: DirectOptions): PageCatalog {
         partCount: cachedPageParts(options).length,
         isFileRoot: false
       }),
-    readHasLegacy: () => Promise.resolve(manifest.sources.length > 0),
+    readHasArraySources: () => Promise.resolve(manifest.sources.length > 0),
     readPart: index => Promise.resolve(cachedPageParts(options)[index - 1]),
     readSinglePart: () => Promise.resolve(cachedPageParts(options)[0] ?? []),
     readIdentities: () => Promise.resolve(cachedIdentities(options)),
@@ -162,9 +162,9 @@ export function createArtifactCatalog({
         isFileRoot: manifest.isRootStatic
       }
     },
-    readHasLegacy: async () => {
-      const { hasLegacySources } = await readManifest()
-      return hasLegacySources
+    readHasArraySources: async () => {
+      const { hasArraySources } = await readManifest()
+      return hasArraySources
     },
     readPart: async index => {
       const { pagePartCount } = await readManifest()

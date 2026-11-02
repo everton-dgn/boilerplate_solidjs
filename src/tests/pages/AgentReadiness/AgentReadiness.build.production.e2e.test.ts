@@ -59,7 +59,7 @@ const sitemapManifestSchema = v.looseObject({
   pagePartCount: v.number(),
   partBytes: v.array(v.number()),
   isRootStatic: v.boolean(),
-  hasLegacySources: v.boolean(),
+  hasArraySources: v.boolean(),
   hasPartitionSources: v.boolean(),
   identities: v.null()
 })
@@ -357,7 +357,7 @@ test('publishes sitemap, llms.txt and the Markdown list as build artifacts', asy
     expect(await hasStaticFile(path), path).toBe(true)
   }
   expect(await hasStaticFile(SITEMAP_INVENTORY_PATH)).toBe(false)
-  expect(await hasStaticFile('/sitemaps/legacy.xml')).toBe(false)
+  expect(await hasStaticFile('/sitemaps/array.xml')).toBe(false)
   const inventory = await request.get(SITEMAP_INVENTORY_PATH, {
     headers: { 'x-nitro-prerender': SITEMAP_INVENTORY_PATH },
     maxRedirects: 0
@@ -375,7 +375,7 @@ test('publishes sitemap, llms.txt and the Markdown list as build artifacts', asy
     pagePartCount: 1,
     partBytes: [body.byteLength],
     isRootStatic: true,
-    hasLegacySources: false,
+    hasArraySources: false,
     hasPartitionSources: false,
     identities: null
   })

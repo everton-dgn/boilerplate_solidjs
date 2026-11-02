@@ -7,7 +7,7 @@ export const SITEMAP_IDENTITIES_FILE = 'sitemap-identities.json'
 export const SITEMAP_ARTIFACT_VERSION = 1
 // O manifesto cresce com o número de partes, limitado pelo índice do sitemap.
 export const SITEMAP_MANIFEST_MAX_BYTES = 1_048_576
-// Com fonte legada, a instância carrega este arquivo inteiro uma vez. O teto
+// Com fonte em array, a instância carrega este arquivo inteiro uma vez. O teto
 // limita esse custo O(N); acima dele o build falha e o catálogo deve migrar
 // para fontes particionadas.
 export const SITEMAP_IDENTITIES_MAX_BYTES = 33_554_432

@@ -13,7 +13,7 @@ export type SitemapArtifactManifest = {
   pagePartCount: number
   partBytes: readonly number[]
   isRootStatic: boolean
-  hasLegacySources: boolean
+  hasArraySources: boolean
   hasPartitionSources: boolean
   identities: SitemapIdentityFile | null
 }

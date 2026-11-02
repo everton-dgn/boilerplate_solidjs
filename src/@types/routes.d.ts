@@ -99,10 +99,10 @@ declare module "virtual:file-routes" {
       $$route?: undefined;
     },
     {
-      path: "/(seo)/sitemaps/legacy.xml/";
+      path: "/(seo)/sitemaps/array.xml/";
       page: false;
-      $HEAD: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/legacy.xml/index"), Extract<"HEAD", keyof typeof import("../routes/(seo)/sitemaps/legacy.xml/index")>>>;
-      $GET: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/legacy.xml/index"), Extract<"GET", keyof typeof import("../routes/(seo)/sitemaps/legacy.xml/index")>>>;
+      $HEAD: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/array.xml/index"), Extract<"HEAD", keyof typeof import("../routes/(seo)/sitemaps/array.xml/index")>>>;
+      $GET: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/array.xml/index"), Extract<"GET", keyof typeof import("../routes/(seo)/sitemaps/array.xml/index")>>>;
       $$route?: undefined;
     },
     {

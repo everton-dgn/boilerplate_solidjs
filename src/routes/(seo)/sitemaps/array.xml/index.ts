@@ -11,8 +11,8 @@ function respond({ request }: APIEvent): Promise<Response> {
     sources: sitemapSources,
     siteUrl: resolveSiteUrl('/'),
     signal: request.signal,
-    kind: 'legacy',
-    part: 'legacy',
+    kind: 'array',
+    part: 'array',
     method: request.method
   })
 }

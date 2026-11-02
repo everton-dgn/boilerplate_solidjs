@@ -16,7 +16,7 @@ type PageSummary = { partCount: number; isFileRoot: boolean }
 export type ServiceOptions = ServiceSettings & SitemapContext
 
 export type PartOptions = ServiceOptions & {
-  kind: 'pages' | 'source' | 'legacy'
+  kind: 'pages' | 'source' | 'array'
   part: string
   source?: string
 }
@@ -32,10 +32,10 @@ export type PagePartsOptions = {
 
 // Fronteira entre a geração direta (desenvolvimento e prerender) e o manifesto
 // pronto de produção. A identidade exata fica atrás de `readIdentities` para só
-// existir em memória quando há fonte legada.
+// existir em memória quando há fonte em array.
 export type PageCatalog = {
   readSummary: () => Promise<PageSummary>
-  readHasLegacy: () => Promise<boolean>
+  readHasArraySources: () => Promise<boolean>
   readPart: (index: number) => Promise<readonly SitemapEntry[] | undefined>
   readSinglePart: () => Promise<readonly SitemapEntry[]>
   readIdentities: () => Promise<ReadonlySet<string>>

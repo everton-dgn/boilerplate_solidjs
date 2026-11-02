@@ -4,11 +4,11 @@ import { SITEMAP_URL_LIMIT } from '@/routes/(seo)/sitemap/constants.ts'
 import { createSitemapIndexBuilder } from '../../../createSitemapIndexBuilder/index.ts'
 import { SOURCE_ID_PATTERN } from '../../constants.ts'
 import type { ReadOptions } from '../../types.ts'
-import { readLegacyPart } from '../sourceEntries/index.ts'
+import { readArrayPart } from '../sourceEntries/index.ts'
 
 type IndexPlan = {
   partCount: number
-  legacy: SitemapEntry[]
+  arrayEntries: SitemapEntry[]
   indexCount: number
   indexXml?: string
 }
@@ -54,9 +54,9 @@ export async function planIndex(read: ReadOptions): Promise<IndexPlan> {
   for (let index = 1; index <= partCount; index += 1) {
     builder.add(new URL(`/sitemaps/pages/${index}.xml`, siteUrl).href)
   }
-  const legacy = (await readLegacyPart(read)) ?? []
-  if (legacy.length > 0) {
-    builder.add(new URL('/sitemaps/legacy.xml', siteUrl).href)
+  const arrayEntries = (await readArrayPart(read)) ?? []
+  if (arrayEntries.length > 0) {
+    builder.add(new URL('/sitemaps/array.xml', siteUrl).href)
   }
   for (const source of sources) {
     context.signal.throwIfAborted()
@@ -64,5 +64,5 @@ export async function planIndex(read: ReadOptions): Promise<IndexPlan> {
   }
   const indexCount = builder.count()
   const indexXml = indexCount > 0 ? builder.finish() : undefined
-  return { partCount, legacy, indexCount, indexXml }
+  return { partCount, arrayEntries, indexCount, indexXml }
 }

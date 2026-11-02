@@ -45,7 +45,7 @@ const InventorySchema = v.object({
   siteUrl: v.pipe(v.string(), v.url()),
   byteBudget: v.pipe(CountSchema, v.minValue(1)),
   pagePartCount: CountSchema,
-  hasLegacySources: v.boolean(),
+  hasArraySources: v.boolean(),
   hasPartitionSources: v.boolean(),
   identities: v.nullable(IdentityListSchema)
 })
@@ -59,7 +59,7 @@ function readInventory(
 ): SitemapInventory | undefined {
   try {
     const inventory = v.parse(InventorySchema, JSON.parse(contents ?? ''))
-    return inventory.hasLegacySources === (inventory.identities !== null)
+    return inventory.hasArraySources === (inventory.identities !== null)
       ? inventory
       : undefined
   } catch {
@@ -120,11 +120,11 @@ export function publicationArtifacts({
         return
       }
     }
-    const { pagePartCount, hasLegacySources, hasPartitionSources } = inventory
+    const { pagePartCount, hasArraySources, hasPartitionSources } = inventory
     for (let index = 1; index <= pagePartCount; index += 1) {
       xmlPaths.add(partPath(index))
     }
-    if (pagePartCount > 0 && !hasLegacySources && !hasPartitionSources) {
+    if (pagePartCount > 0 && !hasArraySources && !hasPartitionSources) {
       xmlPaths.add(SITEMAP_ROOT)
     }
     for (const path of xmlPaths) queue.add(path)

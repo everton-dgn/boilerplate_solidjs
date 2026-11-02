@@ -59,19 +59,21 @@ Um grupo de idiomas que sozinho ultrapasse o orçamento falha, assim como um
 índice excessivo; não há índices aninhados nem publicação parcial com status de
 sucesso.
 
-O contrato legado de `route.info.sitemap` continua adequado a listas pequenas.
-Ele devolve um array inteiro, portanto o consumidor não consegue impedir a
-alocação que a fonte faz antes de retornar. Ao ultrapassar os limites, migre a
-fonte para o registro particionado descrito abaixo.
+O contrato de `route.info.sitemap`, chamado aqui de fonte em array, continua
+adequado a listas pequenas. Ele devolve um array inteiro, portanto o consumidor
+não consegue impedir a alocação que a fonte faz antes de retornar. Ao
+ultrapassar os limites, migre a fonte para o registro particionado descrito
+abaixo.
 
-Duplicatas legadas de páginas estáticas indexáveis são descartadas, preservando
-os metadados da página estática, inclusive se a fonte legada declarar outra
-rota. Essa entrada não é publicada pela fonte; as entradas restantes precisam
-pertencer à rota que a declara. O índice consulta o legado uma vez e omite
-`legacy.xml` quando não sobra nenhuma entrada própria. Se estáticos e legado
-couberem separadamente, mas a soma exceder a contagem ou os bytes,
-`/sitemap.xml` publica um índice com as partes válidas. Uma parte legada que
-sozinha excede os limites continua causando falha explícita.
+Entradas de fontes em array que repetem páginas estáticas indexáveis são
+descartadas, preservando os metadados da página estática, inclusive se a fonte
+declarar outra rota. Essa entrada não é publicada pela fonte; as entradas
+restantes precisam pertencer à rota que a declara. O índice consulta as fontes
+em array uma vez e omite `array.xml` quando não sobra nenhuma entrada própria.
+Se estáticos e fontes em array couberem separadamente, mas a soma exceder a
+contagem ou os bytes, `/sitemap.xml` publica um índice com as partes válidas.
+Uma parte `array.xml` que sozinha excede os limites continua causando falha
+explícita.
 
 Os quatro handlers compartilham os módulos em `src/routes/(seo)/sitemap/`. Essa
 pasta organiza o serviço e não declara uma rota. Em produção, eles reutilizam o
@@ -108,7 +110,7 @@ garantem estabilidade. A fonte deve manter suas partes disjuntas. Duplicatas na
 mesma resposta, IDs inválidos e entradas pertencentes a outra rota são
 recusados. A propriedade da URL usa o roteador real, inclusive a prioridade de
 páginas estáticas, e respeita `noindex` efetivo. Não registre duas fontes para a
-mesma rota nem combine a fonte legada e a particionada nessa rota.
+mesma rota nem combine a fonte em array e a particionada nessa rota.
 
 As respostas têm consistência eventual. Por exemplo, o crawler lê o índice às
 10h, uma parte é removida às 10h01 e ele consulta essa parte às 10h02: quando a

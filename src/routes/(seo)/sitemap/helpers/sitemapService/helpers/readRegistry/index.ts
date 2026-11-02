@@ -35,12 +35,12 @@ function getRegistry(
       ?.filter(route => route.isIndexable)
       .map(route => route.path)
   )
-  const legacy = new Set(manifest.sourceRoutes)
+  const arrayRoutes = new Set(manifest.sourceRoutes)
   for (const source of sources) {
     if (
       !SOURCE_ID_PATTERN.test(source.id) ||
       source.id === 'pages' ||
-      source.id === 'legacy' ||
+      source.id === 'array' ||
       ids.has(source.id)
     ) {
       throw new Error('ID de fonte inválido')
@@ -49,8 +49,8 @@ function getRegistry(
     if (routes.has(source.routePath)) {
       throw new Error('Duas fontes na mesma rota')
     }
-    if (legacy.has(source.routePath)) {
-      throw new Error('Fonte legada e particionada na mesma rota')
+    if (arrayRoutes.has(source.routePath)) {
+      throw new Error('Fonte em array e particionada na mesma rota')
     }
     routes.add(source.routePath)
     if (!eligible.has(source.routePath)) {

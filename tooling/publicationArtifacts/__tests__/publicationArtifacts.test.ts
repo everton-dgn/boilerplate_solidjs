@@ -51,7 +51,7 @@ const InventorySchema = v.object({
   siteUrl: v.string(),
   byteBudget: v.number(),
   pagePartCount: v.number(),
-  hasLegacySources: v.boolean(),
+  hasArraySources: v.boolean(),
   hasPartitionSources: v.boolean(),
   identities: v.null()
 })
@@ -63,7 +63,7 @@ function inventory(overrides: Partial<SitemapInventory> = {}): string {
     siteUrl: SITE_URL,
     byteBudget: BYTE_BUDGET,
     pagePartCount: 2,
-    hasLegacySources: false,
+    hasArraySources: false,
     hasPartitionSources: false,
     identities: null,
     ...overrides
@@ -124,7 +124,7 @@ function readManifest({ serverDir }: Pick<Paths, 'serverDir'>) {
   )
 }
 
-it('publica partes e raiz estática sem legado nem fonte particionada', async () => {
+it('publica partes e raiz estática sem fonte em array nem particionada', async () => {
   const published = await publish()
   assert.deepEqual(
     [...published.queue],
@@ -148,7 +148,7 @@ it('publica partes e raiz estática sem legado nem fonte particionada', async ()
     pagePartCount: 2,
     partBytes: [XML.length, XML.length],
     isRootStatic: true,
-    hasLegacySources: false,
+    hasArraySources: false,
     hasPartitionSources: false,
     identities: null
   })
@@ -159,7 +159,7 @@ it('publica partes e raiz estática sem legado nem fonte particionada', async ()
 })
 
 for (const dynamic of [
-  { hasLegacySources: true, identities: { urls: ['u'], entries: [] } },
+  { hasArraySources: true, identities: { urls: ['u'], entries: [] } },
   { hasPartitionSources: true }
 ]) {
   it(`mantém a raiz na função com ${Object.keys(dynamic)[0]}`, async () => {
@@ -194,7 +194,7 @@ it('não grava o inventário e recusa formas inválidas', () => {
   for (const contents of [
     'not json',
     inventory({ version: 2 }),
-    inventory({ hasLegacySources: true }),
+    inventory({ hasArraySources: true }),
     inventory({ identities: { urls: [], entries: [] } })
   ]) {
     const invalid: PrerenderRoute = { route: SITEMAP_INVENTORY_PATH, contents }
@@ -230,7 +230,7 @@ it('reprova o build sem SSR identificado', () => {
     siteUrl: SITE_URL,
     byteBudget: BYTE_BUDGET,
     pagePartCount: 0,
-    hasLegacySources: false,
+    hasArraySources: false,
     hasPartitionSources: false,
     identities: null
   })
@@ -256,7 +256,7 @@ it('falha no build quando as identidades excedem o orçamento', () => {
   const route: PrerenderRoute = {
     route: SITEMAP_INVENTORY_PATH,
     contents: inventory({
-      hasLegacySources: true,
+      hasArraySources: true,
       identities: {
         urls: ['x'.repeat(SITEMAP_IDENTITIES_MAX_BYTES)],
         entries: []
@@ -290,7 +290,7 @@ it('recusa XML no caminho, tipo, tamanho ou formato errados', async () => {
 
 it('não interfere em rotas fora do inventário', async () => {
   const { publication, queue } = await publish({ pagePartCount: 1 })
-  const route = xmlRoute('/sitemaps/legacy.xml')
+  const route = xmlRoute('/sitemaps/array.xml')
   const original = { ...route }
   assert.equal(generate({ publication, route, queue }), false)
   assert.deepEqual(route, original)
@@ -319,9 +319,9 @@ it('confronta o diretório publicado com os bytes aprovados', async () => {
   await rm(path.join(publicDir, 'sitemaps/pages/2.xml'))
   await assert.rejects(assertOutput, /sitemaps\/pages\/2\.xml \(not generated/u)
   await writePublic({ publicDir, route: '/sitemaps/pages/2.xml' })
-  await writePublic({ publicDir, route: '/sitemaps/legacy.xml' })
-  await assert.rejects(assertOutput, /legacy\.xml \(would shadow/u)
-  await rm(path.join(publicDir, 'sitemaps/legacy.xml'))
+  await writePublic({ publicDir, route: '/sitemaps/array.xml' })
+  await assert.rejects(assertOutput, /array\.xml \(would shadow/u)
+  await rm(path.join(publicDir, 'sitemaps/array.xml'))
   await assert.doesNotReject(assertOutput)
 })
 
@@ -383,7 +383,7 @@ it('aprova conteúdo arbitrário pelo digest e aplica o teto quando pedido', asy
 
 it('referencia as identidades pelo hash e não deixa temporários', async () => {
   const identities = { urls: ['https://example.com/en/a'], entries: [] }
-  const published = await publish({ hasLegacySources: true, identities })
+  const published = await publish({ hasArraySources: true, identities })
   await published.publication.assertPublished({
     publicDir: published.publicDir,
     prerenderedRoutes: registered(published)

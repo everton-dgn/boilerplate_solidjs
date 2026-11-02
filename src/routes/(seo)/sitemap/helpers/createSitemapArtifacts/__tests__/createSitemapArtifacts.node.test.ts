@@ -60,19 +60,19 @@ function manifest(overrides: Partial<Manifest> = {}): Manifest {
     pagePartCount: 2,
     partBytes: [PART_BYTES, PART_BYTES],
     isRootStatic: true,
-    hasLegacySources: false,
+    hasArraySources: false,
     hasPartitionSources: false,
     identities: null,
     ...overrides
   }
 }
 
-function legacyManifest(
+function arrayManifest(
   identities: Partial<NonNullable<Manifest['identities']>> = {}
 ): Manifest {
   return manifest({
     isRootStatic: false,
-    hasLegacySources: true,
+    hasArraySources: true,
     identities: {
       file: SITEMAP_IDENTITIES_FILE,
       bytes: new TextEncoder().encode(IDENTITIES).byteLength,
@@ -135,7 +135,7 @@ describe('leitura limitada dos artefatos do sitemap', () => {
   })
 
   it('devolve manifesto e identidades válidos, uma vez por instância', async () => {
-    const directory = await writeManifest(JSON.stringify(legacyManifest()))
+    const directory = await writeManifest(JSON.stringify(arrayManifest()))
     await writeFile(path.join(directory, SITEMAP_IDENTITIES_FILE), IDENTITIES)
     const artifacts = createSitemapArtifacts()
     const { urls } = await artifacts.readIdentities()
@@ -223,7 +223,10 @@ describe('leitura limitada dos artefatos do sitemap', () => {
       name: 'parte acima do orçamento',
       edit: { partBytes: [PART_BYTES, BYTE_BUDGET + 1] }
     },
-    { name: 'raiz estática com legado', edit: { hasLegacySources: true } },
+    {
+      name: 'raiz estática com fonte em array',
+      edit: { hasArraySources: true }
+    },
     { name: 'raiz dinâmica sem fontes', edit: { isRootStatic: false } },
     { name: 'build ausente', edit: { buildId: '' } },
     { name: 'build longo', edit: { buildId: 'x'.repeat(BUILD_ID_LIMIT + 1) } }
@@ -245,16 +248,16 @@ describe('leitura limitada dos artefatos do sitemap', () => {
     { name: 'tamanho zero', edit: { bytes: 0 } },
     { name: 'hash malformado', edit: { sha256: 'x' } }
   ])('recusa identidades com $name sem abri-las', async ({ edit }) => {
-    await writeManifest(JSON.stringify(legacyManifest(edit)))
+    await writeManifest(JSON.stringify(arrayManifest(edit)))
     await expect(createSitemapArtifacts().readIdentities()).rejects.toThrow(
       SCHEMA_FAILURE
     )
     expect(open).toHaveBeenCalledOnce()
   })
 
-  it('recusa legado sem referência às identidades', async () => {
+  it('recusa fonte em array sem referência às identidades', async () => {
     await writeManifest(
-      JSON.stringify({ ...legacyManifest(), identities: null })
+      JSON.stringify({ ...arrayManifest(), identities: null })
     )
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
       'Manifesto incoerente'
@@ -262,7 +265,7 @@ describe('leitura limitada dos artefatos do sitemap', () => {
   })
 
   it('recusa identidades maiores que o declarado antes de carregá-las', async () => {
-    const directory = await writeManifest(JSON.stringify(legacyManifest()))
+    const directory = await writeManifest(JSON.stringify(arrayManifest()))
     const file = path.join(directory, SITEMAP_IDENTITIES_FILE)
     await writeFile(file, IDENTITIES)
     await truncate(file, SITEMAP_IDENTITIES_MAX_BYTES + 1)
@@ -294,9 +297,7 @@ describe('leitura limitada dos artefatos do sitemap', () => {
       }
     ]
     for (const { contents, edit, failure } of cases) {
-      const directory = await writeManifest(
-        JSON.stringify(legacyManifest(edit))
-      )
+      const directory = await writeManifest(JSON.stringify(arrayManifest(edit)))
       await writeFile(path.join(directory, SITEMAP_IDENTITIES_FILE), contents)
       await expect(createSitemapArtifacts().readIdentities()).rejects.toThrow(
         failure

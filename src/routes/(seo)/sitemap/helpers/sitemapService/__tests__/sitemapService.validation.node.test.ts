@@ -121,7 +121,7 @@ describe('validação do registro e dos limites', () => {
   it.each([
     { id: 'bad/segment', routePath: '/blog/:slug' },
     { id: 'pages', routePath: '/blog/:slug' },
-    { id: 'legacy', routePath: '/blog/:slug' },
+    { id: 'array', routePath: '/blog/:slug' },
     { id: 'blog', routePath: '/absent/:slug' }
   ])('recusa registro inválido $id', async invalid => {
     const response = await buildSitemapIndexResponse({
@@ -154,7 +154,7 @@ describe('validação do registro e dos limites', () => {
     expect(sameRoute.status).toBe(HTTP_SERVICE_UNAVAILABLE)
   })
 
-  it('recusa fonte particionada na mesma rota legada', async () => {
+  it('recusa fonte particionada na mesma rota de uma fonte em array', async () => {
     const response = await buildSitemapIndexResponse({
       manifest: { ...manifest, sourceRoutes: ['/blog/:slug'] },
       sources: [source()],
@@ -280,14 +280,14 @@ describe('compatibilidade e ciclo de vida das fontes', () => {
     vi.restoreAllMocks()
   })
 
-  it('preserva a primeira entrada da fonte legada e rejeita rota errada', async () => {
-    const legacy = {
+  it('preserva a primeira entrada da fonte em array e rejeita rota errada', async () => {
+    const routeManifest = {
       ...manifest,
       sources: [() => [{ path: '/blog/a' }, { path: '/pt/blog/a' }]],
       sourceRoutes: ['/blog/:slug']
     }
     const response = await buildSitemapIndexResponse({
-      manifest: legacy,
+      manifest: routeManifest,
       sources: [],
       siteUrl,
       signal,
@@ -299,7 +299,7 @@ describe('compatibilidade e ciclo de vida das fontes', () => {
       xml.match(/<loc>https:\/\/example.com\/pt\/blog\/a<\/loc>/gu)
     ).toHaveLength(1)
     const wrong = await buildSitemapIndexResponse({
-      manifest: { ...legacy, sources: [() => [{ path: '/other' }]] },
+      manifest: { ...routeManifest, sources: [() => [{ path: '/other' }]] },
       sources: [],
       siteUrl,
       signal,
@@ -391,9 +391,9 @@ describe('prazo e cancelamento das fontes', () => {
     vi.restoreAllMocks()
   })
 
-  it('compartilha o prazo entre leitura legada e lista de partições', async () => {
+  it('compartilha o prazo entre leitura em array e lista de partições', async () => {
     vi.useFakeTimers()
-    const legacy = Promise.withResolvers<SitemapEntry[]>()
+    const arrayRead = Promise.withResolvers<SitemapEntry[]>()
     const partitions = Promise.withResolvers<string[]>()
     const listPartitions = vi.fn<() => Promise<string[]>>(
       () => partitions.promise
@@ -401,7 +401,7 @@ describe('prazo e cancelamento das fontes', () => {
     const pending = buildSitemapIndexResponse({
       manifest: {
         ...manifest,
-        sources: [() => legacy.promise],
+        sources: [() => arrayRead.promise],
         sourceRoutes: ['/blog/:slug'],
         dynamicRoutes: [
           ...manifest.dynamicRoutes,
@@ -420,9 +420,9 @@ describe('prazo e cancelamento das fontes', () => {
       signal,
       matchRoute
     })
-    const legacyDuration = SITEMAP_SOURCES_TIMEOUT_MS - 1
-    await vi.advanceTimersByTimeAsync(legacyDuration)
-    legacy.resolve([{ path: '/blog/a' }])
+    const arrayDuration = SITEMAP_SOURCES_TIMEOUT_MS - 1
+    await vi.advanceTimersByTimeAsync(arrayDuration)
+    arrayRead.resolve([{ path: '/blog/a' }])
     await vi.advanceTimersByTimeAsync(0)
     expect(listPartitions).toHaveBeenCalledOnce()
     await vi.advanceTimersByTimeAsync(1)

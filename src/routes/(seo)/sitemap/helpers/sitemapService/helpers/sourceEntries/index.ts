@@ -25,7 +25,7 @@ type PartitionReadOptions = ReadOptions & {
 const EntriesSchema = v.array(EntrySchema)
 const ENTRY_LIMIT = Math.floor(SITEMAP_URL_LIMIT / locales.length)
 
-async function readLegacySources({
+async function readArraySources({
   options,
   catalog,
   context
@@ -39,11 +39,11 @@ async function readLegacySources({
     context.signal.throwIfAborted()
     const result = await context.readSource({ key: source, run: source })
     if (!Array.isArray(result) || count + result.length > ENTRY_LIMIT) {
-      throw new Error('Fonte legada excede limite')
+      throw new Error('Fonte em array excede limite')
     }
     count += result.length
     const routePath = manifest.sourceRoutes?.[index]
-    // A prioridade estática do contrato legado descarta duplicatas antes
+    // A prioridade estática do contrato em array descarta duplicatas antes
     // da propriedade da fonte, sem publicar seus metadados nessa URL.
     const entries = normalizeSitemapEntries({
       entries: v.parse(EntriesSchema, result),
@@ -55,7 +55,7 @@ async function readLegacySources({
       routePath &&
       entries.some(entry => matchRoute?.(entry.path) !== routePath)
     ) {
-      throw new Error('Fonte legada publicou outra rota')
+      throw new Error('Fonte em array publicou outra rota')
     }
     collected.push(entries)
   }
@@ -77,14 +77,14 @@ function normalizeUnique(
   return normalizeSitemapEntries({ entries, siteUrl })
 }
 
-export async function readLegacyPart(
+export async function readArrayPart(
   read: ReadOptions
 ): Promise<SitemapEntry[] | undefined> {
   const { options, catalog, byteBudget } = read
   const { siteUrl } = options
   if (catalog.readRoutes().manifest.sources.length === 0) return undefined
   const entries = normalizeSitemapEntries({
-    entries: await readLegacySources(read),
+    entries: await readArraySources(read),
     siteUrl
   })
   validateLocations({ entries, siteUrl })
