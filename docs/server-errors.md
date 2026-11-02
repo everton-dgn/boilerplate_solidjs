@@ -138,6 +138,22 @@ plugin usa, com `serverFunctions.endpoint` e o `base` do Vite já aplicados;
 mudar essas opções não exige editar o middleware. No projeto Node do Vitest, um
 alias troca esse módulo por um stub com o valor padrão.
 
+O cancelamento da própria requisição não é falha. Quando o valor capturado é o
+`signal.reason` da requisição, com o sinal abortado, a contenção responde o 500
+em texto, sem log e sem chamar o render. Esse caso cobre a desconexão do cliente
+e o prazo da publicação, que chegam pelo mesmo sinal, porque o render em modo
+`async` rejeita com esse motivo ao ser abandonado. A comparação é por
+identidade: qualquer outro valor lançado com o sinal abortado continua
+registrado como falha, inclusive um `AbortError` de outro sinal ou um erro que
+traga o motivo em `cause`. Na página de erro, o critério usa o sinal de
+`event.request`, que é o que o render lê: o cancelamento não acrescenta a linha
+`[error-page]`, e a falha original já foi registrada antes do render. Um erro
+distinto desse render mantém a linha. Em desenvolvimento o valor é relançado,
+como qualquer outro. Um motivo primitivo não tem identidade própria e se
+confunde com o mesmo valor lançado. O patch preserva também motivos como `null`,
+`false`, zero, string vazia e `NaN`; o middleware usa `Object.is` para comparar
+o motivo sem perder esses valores.
+
 A contenção só alcança a janela da cadeia de middleware. A criação do evento, o
 commit da resposta e falhas do corpo depois que a `Response` sai ficam fora
 dela. O comportamento foi medido no preview do Nitro; o runtime da Vercel não
@@ -846,7 +862,10 @@ consumidores de streaming. A proteção de publicação não confunde essa rejei
 com término do backend: `protectServerOperation` registra as Promises no
 contexto assíncrono da publicação, e a vaga permanece ocupada até elas
 assentarem. Operações comuns, fora desse contexto, preservam o comportamento
-anterior. As regressões ficam em `markdownContent.abort.node.test.ts`,
+anterior. `containFailures` reconhece essa rejeição pela identidade com
+`signal.reason`, então o motivo precisa chegar sem embrulho; caso contrário, o
+cancelamento volta ao log `[middleware]`. As regressões ficam em
+`markdownContent.abort.node.test.ts`, `containFailures.abort.node.test.ts`,
 `publicationScope.node.test.ts` e no cenário HTTP de desconexão de
 `PublicationLoad`. Ao atualizar o Solid, confira também esse contrato antes de
 remover o patch.

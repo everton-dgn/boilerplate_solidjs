@@ -21,6 +21,14 @@ type Containment = {
   next: Render
   isRendered: boolean
 }
+type Failure = { error: unknown; request: Request }
+
+// O render abandonado rejeita com o próprio motivo do sinal. Só esse valor é
+// cancelamento: outro erro é falha real, mesmo com o sinal abortado.
+function isCancellation({ error, request }: Failure): boolean {
+  const { signal } = request
+  return signal.aborted && Object.is(error, signal.reason)
+}
 
 function publicTextFailure(): Response {
   return applySecurityHeaders(
@@ -52,7 +60,10 @@ async function renderErrorPage(render: Render): Promise<Response> {
       })
     )
   } catch (error) {
-    logServerFailure({ source: 'error-page', error })
+    // O render lê o sinal do evento, e a falha original já foi registrada.
+    if (!isCancellation({ error, request: event.request })) {
+      logServerFailure({ source: 'error-page', error })
+    }
     return publicTextFailure()
   }
 }
@@ -71,6 +82,7 @@ async function containedResponse({
       // ou objeto hostil) tornam o controle uma falha.
     }
   }
+  if (isCancellation({ error, request })) return publicTextFailure()
   logServerFailure({ source: 'middleware', error })
   return isPageRequest(request) && !isRendered
     ? renderErrorPage(next)

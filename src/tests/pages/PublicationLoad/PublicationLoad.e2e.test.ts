@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { get as getHttp, type IncomingMessage } from 'node:http'
 import { env } from 'node:process'
 
@@ -318,6 +319,9 @@ test('retains backend work after disconnect and releases it after settlement', a
   baseURL
 }) => {
   if (!baseURL) throw new Error('Missing test base URL')
+  const serverLog = env.SERVER_LOG_FILE
+  if (!serverLog) throw new Error('Missing server log file')
+  const previousLog = await readFile(serverLog, 'utf8')
   const controller = new AbortController()
   const pending = startRequest({ baseURL, signal: controller.signal })
   try {
@@ -338,6 +342,11 @@ test('retains backend work after disconnect and releases it after settlement', a
       .toBe(0)
     const idle = await readProbe({ request })
     expect(idle.publication.reservedBytes).toBe(0)
+    const currentLog = await readFile(serverLog, 'utf8')
+    expect(currentLog.startsWith(previousLog)).toBe(true)
+    expect(currentLog.slice(previousLog.length)).not.toContain(
+      '[middleware] Unexpected failure; private details omitted'
+    )
   } finally {
     controller.abort()
     await releaseAll({ request, pending: [pending] })
