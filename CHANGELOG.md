@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+## 1.14.0 - 2026-11-02
+
+### Added
+
+- bound runtime work and publish static indexes at build (1abfcba)
+- support scalable content publication (8eff7d3)
+- pin the outdated page notice close button to the top and tint its title
+  (66b192f)
+- leave live pages in place when a version refusal hits them (5f3cc16)
+- recover tabs left on an outdated build (7212088)
+
+### Fixed
+
+- respect routing phases in asset checks (6b82118)
+- reject sitemap parts without the xml suffix (37a164c)
+- keep expected cancellation out of failure logs (06b8c60)
+- update knip and refresh transitive dependencies (28aee81)
+- keep each unsaved changes registration and tighten the outdated page docs
+  (5144e44)
+- answer missing assets with an uncached 404 (c6b0f62)
+- keep the pending reload when a later error reaches the root boundary (408e5a3)
+
 ## 1.13.2 - 2026-10-31
 
 ### Fixed
