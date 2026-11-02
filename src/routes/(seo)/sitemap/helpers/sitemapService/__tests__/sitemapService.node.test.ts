@@ -69,6 +69,19 @@ function source(entries: string[]): SitemapPartitionSource {
 }
 
 describe('sitemap particionado', () => {
+  it('responde 404 para catálogo de páginas vazio', async () => {
+    const response = await buildSitemapIndexResponse({
+      manifest: { ...manifest, entries: [] },
+      sources: [],
+      siteUrl,
+      signal,
+      matchRoute
+    })
+    expect(response.status).toBe(HTTP_NOT_FOUND)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    await expect(response.text()).resolves.toBe('')
+  })
+
   it('divide páginas estáticas por bytes e mantém urlset pequeno', async () => {
     const small = await buildSitemapIndexResponse({
       manifest,
@@ -120,6 +133,68 @@ describe('sitemap particionado', () => {
     expect(rejected.status).toBe(HTTP_SERVICE_UNAVAILABLE)
   })
 
+  it('divide dois grupos somente quando a soma excede o orçamento de bytes', async () => {
+    const entries = [
+      { path: `/${'a'.repeat(LONG_PATH_CHARS)}` },
+      { path: `/${'b'.repeat(LONG_PATH_CHARS)}` }
+    ]
+    const encoder = new TextEncoder()
+    const combined = buildSitemap({ entries, siteUrl })
+    const exact = encoder.encode(combined).byteLength
+    const options = {
+      manifest: { ...manifest, entries },
+      sources: [],
+      siteUrl,
+      signal,
+      matchRoute,
+      byteBudget: exact
+    }
+    const atLimit = await buildSitemapIndexResponse(options)
+    expect({
+      status: atLimit.status,
+      body: await atLimit.text()
+    }).toStrictEqual({
+      status: HTTP_OK,
+      body: combined
+    })
+
+    const splitOptions = { ...options, byteBudget: exact - 1 }
+    const aboveLimit = await buildSitemapIndexResponse(splitOptions)
+    const index = await aboveLimit.text()
+    expect({
+      status: aboveLimit.status,
+      parts: [...index.matchAll(/<loc>(?<url>[^<]+)<\/loc>/gu)].map(
+        match => match.groups?.url
+      )
+    }).toStrictEqual({
+      status: HTTP_OK,
+      parts: [
+        `${siteUrl}/sitemaps/pages/1.xml`,
+        `${siteUrl}/sitemaps/pages/2.xml`
+      ]
+    })
+
+    for (const [position, entry] of entries.entries()) {
+      const response = await buildSitemapPartResponse({
+        ...splitOptions,
+        kind: 'pages',
+        part: String(position + 1)
+      })
+      expect(response.status).toBe(HTTP_OK)
+      const body = await response.text()
+      expect(body).toBe(buildSitemap({ entries: [entry], siteUrl }))
+      expect(encoder.encode(body).byteLength).toBeLessThanOrEqual(exact - 1)
+    }
+    const missing = await buildSitemapPartResponse({
+      ...splitOptions,
+      kind: 'pages',
+      part: '3'
+    })
+    expect(missing.status).toBe(HTTP_NOT_FOUND)
+  })
+})
+
+describe('limites de URLs e seleção de fontes', () => {
   it(
     'mantém o count exato em um urlset e divide uma entrada acima',
     { timeout: 30_000 },

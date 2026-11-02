@@ -48,9 +48,3 @@ export type ReadOptions = {
   byteBudget: number
   context: PublicationContext
 }
-
-export type PublishOptions = {
-  options: ServiceOptions
-  byteBudget: number
-  run: (context: PublicationContext) => Promise<Response>
-}

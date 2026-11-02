@@ -5,12 +5,12 @@ import { fileURLToPath } from 'node:url'
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import * as v from 'valibot'
 
+import { readLlmsIndex } from '@/../tooling/markdownPrerender/helpers/readLlmsIndex/index.ts'
 import { LLMS_DESCRIBEDBY_LINK, LLMS_FULL_PATH } from '@/constants/llms.ts'
 import {
   PUBLICATION_ARTIFACT_DIR,
   SITEMAP_MANIFEST_FILE
 } from '@/constants/publication.ts'
-import { readLlmsIndex } from '@/routes/(seo)/llms.txt/helpers/readLlmsIndex/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 type Destination = { url: URL; fragments: Set<string> }

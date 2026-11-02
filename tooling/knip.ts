@@ -76,8 +76,6 @@ const config = {
     'src/i18n/localizedRedirect/index.ts!',
     'src/primitives/createOutdatedPageGuard/index.ts!',
     'env.ts!',
-    // Contrato do llms.txt consumido pelo build do agregado, fora do grafo runtime.
-    'src/routes/(seo)/llms.txt/helpers/readLlmsIndex/index.ts!',
     // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.
     'src/tests/fixtures/e2e/middleware/index.ts',
     // A CI roda a prova com `vp exec node`, que o plugin de GitHub Actions do

@@ -1,5 +1,8 @@
-import { buildLlmsText } from '../../buildLlmsText/index.ts'
-import { readLlmsIndex } from '../index.ts'
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
+
+import { buildLlmsText } from '../../../src/routes/(seo)/llms.txt/helpers/buildLlmsText/index.ts'
+import { readLlmsIndex } from '../helpers/readLlmsIndex/index.ts'
 
 const SITE_URL = 'https://example.com/'
 
@@ -34,7 +37,7 @@ describe('leitura do índice llms.txt', () => {
         }
       ]
     })
-    expect(readLlmsIndex(text)).toStrictEqual({
+    assert.deepEqual(readLlmsIndex(text), {
       title: String.raw`Site \[beta\]`,
       description: String.raw`A \`site\` with \\ backslash`,
       links: [
@@ -58,8 +61,8 @@ describe('leitura do índice llms.txt', () => {
   })
 
   it('falha sem título e aceita um índice sem links', () => {
-    expect(() => readLlmsIndex('no title')).toThrow('llms.txt has no title')
-    expect(readLlmsIndex('# Site\n')).toStrictEqual({
+    assert.throws(() => readLlmsIndex('no title'), /llms\.txt has no title/u)
+    assert.deepEqual(readLlmsIndex('# Site\n'), {
       title: 'Site',
       description: '',
       links: []

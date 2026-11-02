@@ -8,7 +8,6 @@ import {
   PUBLICATION_PRERENDER_PHASE
 } from '../../src/constants/publication.ts'
 import { MARKDOWN_PRERENDER_PATH } from '../../src/middleware/markdownContent/constants.ts'
-import { readLlmsIndex } from '../../src/routes/(seo)/llms.txt/helpers/readLlmsIndex/index.ts'
 import { SITEMAP_INVENTORY_PATH } from '../publicationArtifacts/constants.ts'
 import { publicationArtifacts } from '../publicationArtifacts/index.ts'
 import {
@@ -20,6 +19,7 @@ import {
 import { digestBytes, readRouteBytes } from './helpers/artifactDigest/index.ts'
 import { assertStaticOutput } from './helpers/assertStaticOutput/index.ts'
 import { inspectMarkdownArtifact } from './helpers/inspectMarkdownArtifact/index.ts'
+import { readLlmsIndex } from './helpers/readLlmsIndex/index.ts'
 import { selectLlmsFullDocuments } from './helpers/selectLlmsFullDocuments/index.ts'
 import { writeLlmsFull } from './helpers/writeLlmsFull/index.ts'
 import { writeVercelRoutes } from './helpers/writeVercelRoutes/index.ts'

@@ -57,23 +57,21 @@ function pageParts({
     const groupBytes =
       encoder.encode(buildSitemap({ entries: [entry], siteUrl })).byteLength -
       frameBytes
-    if (frameBytes + groupBytes > byteBudget) {
+    const shouldSplitByUrls =
+      (current.length + 1) * locales.length > SITEMAP_URL_LIMIT
+    if (
+      (current.length === 0 && shouldSplitByUrls) ||
+      frameBytes + groupBytes > byteBudget
+    ) {
       throw new Error('Grupo de idiomas excede limite')
     }
-    if (
-      (current.length + 1) * locales.length > SITEMAP_URL_LIMIT ||
-      currentBytes + groupBytes > byteBudget
-    ) {
-      if (current.length === 0) {
-        throw new Error('Grupo de idiomas excede limite')
-      }
+    if (shouldSplitByUrls || currentBytes + groupBytes > byteBudget) {
       parts.push(current)
-      current = [entry]
-      currentBytes = frameBytes + groupBytes
-    } else {
-      current.push(entry)
-      currentBytes += groupBytes
+      current = []
+      currentBytes = frameBytes
     }
+    current.push(entry)
+    currentBytes += groupBytes
   }
   if (current.length > 0) parts.push(current)
   return parts

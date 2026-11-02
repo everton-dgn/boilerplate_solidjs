@@ -645,6 +645,9 @@ de caracteres nem proibição de tags isoladas. O resultado fica em
 
 ### Agregado llms-full.txt
 
+O leitor do índice fica em `tooling/markdownPrerender/helpers/readLlmsIndex/`,
+junto do gerador que o consome. Seus testes usam o runner Node de tooling.
+
 O build gera `/llms-full.txt` a partir dos Markdown estáticos aprovados,
 selecionados pelos links editoriais do `/llms.txt`, inclusive os casos de uso de
 `LLMS_USE_CASES`. Inclui somente documentos no idioma base e deduplica um mesmo
