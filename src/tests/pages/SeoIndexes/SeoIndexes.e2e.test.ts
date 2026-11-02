@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 const HTTP_OK = 200
+const HTTP_NOT_FOUND = 404
 // Entradas publicadas pela fonte de `blog/[slug]`.
 const BLOG_ENTRIES = 2
 const HOME_TITLE = 'SolidJS Boilerplate | Web applications with SSR'
@@ -21,7 +22,24 @@ test.describe('índices gerados do manifesto de rotas', () => {
     expect(sitemap.status()).toBe(HTTP_OK)
     expect(sitemap.headers()['content-type']).toContain('application/xml')
     expect(sitemap.headers()['cache-control']).toBe(cacheControl)
-    const xml = await sitemap.text()
+    const index = await sitemap.text()
+    expect(index).toContain('<sitemapindex')
+    expect(index).toContain(`${siteUrl}/sitemaps/catalog/a.xml`)
+    const parts = [...index.matchAll(/<loc>(?<url>[^<]+)<\/loc>/gu)]
+    const bodies = await Promise.all(
+      parts.map(async match => {
+        const location = new URL(String(match.groups?.url))
+        expect(location.origin).toBe(siteUrl)
+        const response = await request.get(location.pathname)
+        expect(response.status()).toBe(HTTP_OK)
+        return response.text()
+      })
+    )
+    const xml = bodies.join('\n')
+    expect(xml).toContain(`<loc>${siteUrl}/pt/catalog/a-1</loc>`)
+    const missingPart = await request.get('/sitemaps/catalog/removed.xml')
+    expect(missingPart.status()).toBe(HTTP_NOT_FOUND)
+    expect(missingPart.headers()['cache-control']).toBe('no-store')
     expect(xml).toContain(`<loc>${siteUrl}/pt</loc>`)
     expect(xml).toContain(`<loc>${siteUrl}/pt/backend-error</loc>`)
     expect(xml).toContain(`<loc>${siteUrl}/pt/seo-public</loc>`)
@@ -99,16 +117,18 @@ test.describe('índices gerados do manifesto de rotas', () => {
       `${siteUrl}/en/markdown-optout`
     ])
     expect(new Set(llmsUrls)).toStrictEqual(
-      new Set(
-        sitemapUrls
+      new Set([
+        ...sitemapUrls
           .filter(
             url =>
               String(url).startsWith(`${siteUrl}/en`) &&
               !sitemapOnly.has(String(url)) &&
-              !String(url).startsWith(`${siteUrl}/en/blog/`)
+              !String(url).startsWith(`${siteUrl}/en/blog/`) &&
+              !String(url).startsWith(`${siteUrl}/en/catalog/`)
           )
-          .map(url => markdownUrls.get(String(url)) ?? url)
-      )
+          .map(url => markdownUrls.get(String(url)) ?? url),
+        `${siteUrl}/llms-full.txt`
+      ])
     )
     // Uma entrada da fonte com caminho errado só apareceria no Search Console.
     // As URLs usam a origem pública; o servidor de teste responde pelo caminho.

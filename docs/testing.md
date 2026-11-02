@@ -211,6 +211,30 @@ cobre falhas de serialização, `onCleanup` que lança e fallback de `<Errored>`
 com HTML 200, inclusive por um `redirect()`; os E2E de streaming do Markdown
 cobrem renders com falha no servidor.
 
+A publicação também é conferida pelo inventário completo dos Markdown estáticos
+e pelos destinos internos do `llms.txt`. A verificação deduplica requisições e
+limita a concorrência; não busca links externos. Esses conjuntos não precisam
+coincidir com o sitemap: a seleção editorial, a elegibilidade de Markdown e a
+indexação têm controles próprios. O critério de tamanho do conteúdo da
+demonstração permanece separado dessa verificação, para aceitar páginas curtas
+nas aplicações derivadas.
+
+Os testes de tooling exercitam MIME incorreto, `.md.html`, redirects, omissões,
+UTF-8, corpo vazio e exemplos legítimos de HTML no Markdown. O agregado
+`llms-full.txt` exige seleção determinística, corpos completos, deduplicação,
+limite de bytes, caminhos contidos e publicação somente após a conclusão. Zero
+documentos selecionados deve omitir tanto o arquivo quanto seu anúncio; um
+agregado residual nessa condição deve falhar o build e preservar o arquivo para
+diagnóstico.
+
+No sitemap, os cenários de contagem e bytes são independentes, para que um teto
+não esconda o outro. Os testes cobrem grupos de idiomas indivisíveis, URLs
+localizadas longas, propriedade da rota pelo matcher nativo e fontes com
+timeout, cancelamento, entradas inválidas ou vazias. A fixture particionada
+exercita o índice e as partes por HTTP; uma consulta de parte deve ler somente
+seu lote. Mudanças entre requisições são testadas como consistência eventual,
+incluindo 404 com `no-store` depois de remover uma parte anunciada.
+
 Essas verificações cobrem o build e o preview local. Cache e regras de domínio
 da Vercel continuam exigindo conferência no site publicado.
 

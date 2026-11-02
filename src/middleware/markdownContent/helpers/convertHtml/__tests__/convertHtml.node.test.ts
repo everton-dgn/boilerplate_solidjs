@@ -85,6 +85,23 @@ describe('markdown conversion filters', () => {
     expect(markdown).toContain('[About](https://example.com/about)')
   })
 
+  it('resolves fragment-only links against the source page', async () => {
+    const markdown = await convertHtml({
+      response: new Response(
+        '<main><h2 id="team">Team</h2><p><a href="#team">Team section</a> <a href="#">Top</a> <a href="javascript:void(0)">Script</a></p><details><summary>More</summary><a href="#faq">FAQ</a></details></main>'
+      ),
+      url: 'https://example.com/en/about?version=2',
+      signal: new AbortController().signal
+    })
+    expect(markdown).toContain(
+      '[Team section](https://example.com/en/about?version=2#team)'
+    )
+    expect(markdown).toContain('[Top](#)')
+    expect(markdown).toContain('[Script](#)')
+    expect(markdown).toContain('https://example.com/en/about?version=2#faq')
+    expect(markdown).not.toMatch(/\]\(#[^)]/u)
+  })
+
   it('drops images without alt text or title', async () => {
     const markdown = await convertHtml({
       response: new Response(

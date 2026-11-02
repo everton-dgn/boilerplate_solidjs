@@ -1,5 +1,7 @@
 import { baseLocale } from '@paraglide/runtime.js'
 
+import { LLMS_FULL_PATH } from '@/constants/llms.ts'
+
 import type { LlmsPage } from './types.ts'
 
 // Nome em inglês, o idioma das notas, do idioma em que o índice é montado.
@@ -33,3 +35,13 @@ export const LLMS_USE_CASES: readonly LlmsPage[] = [
     isOptional: false
   }
 ]
+
+// O build gera o arquivo só quando o índice cita uma página com Markdown
+// estático; o mesmo critério decide este link.
+export const LLMS_FULL_PAGE: LlmsPage = {
+  path: LLMS_FULL_PATH,
+  title: 'Full Markdown of the static pages',
+  description: `Complete Markdown of the static pages linked in this index, in ${INDEX_LANGUAGE}, in one file generated at build time. Links to pages converted on request are listed there as not included.`,
+  section: 'Optional',
+  isOptional: true
+}

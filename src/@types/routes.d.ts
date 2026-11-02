@@ -87,8 +87,29 @@ declare module "virtual:file-routes" {
     {
       path: "/(seo)/sitemap.xml/";
       page: false;
+      $HEAD: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemap.xml/index"), Extract<"HEAD", keyof typeof import("../routes/(seo)/sitemap.xml/index")>>>;
       $GET: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemap.xml/index"), Extract<"GET", keyof typeof import("../routes/(seo)/sitemap.xml/index")>>>;
-      $HEAD: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemap.xml/index"), Extract<"GET", keyof typeof import("../routes/(seo)/sitemap.xml/index")>>>;
+      $$route?: undefined;
+    },
+    {
+      path: "/(seo)/sitemaps/:source/:part.xml/";
+      page: false;
+      $HEAD: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/[source]/[part].xml/index"), Extract<"HEAD", keyof typeof import("../routes/(seo)/sitemaps/[source]/[part].xml/index")>>>;
+      $GET: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/[source]/[part].xml/index"), Extract<"GET", keyof typeof import("../routes/(seo)/sitemaps/[source]/[part].xml/index")>>>;
+      $$route?: undefined;
+    },
+    {
+      path: "/(seo)/sitemaps/legacy.xml/";
+      page: false;
+      $HEAD: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/legacy.xml/index"), Extract<"HEAD", keyof typeof import("../routes/(seo)/sitemaps/legacy.xml/index")>>>;
+      $GET: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/legacy.xml/index"), Extract<"GET", keyof typeof import("../routes/(seo)/sitemaps/legacy.xml/index")>>>;
+      $$route?: undefined;
+    },
+    {
+      path: "/(seo)/sitemaps/pages/:part.xml/";
+      page: false;
+      $HEAD: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/pages/[part].xml/index"), Extract<"HEAD", keyof typeof import("../routes/(seo)/sitemaps/pages/[part].xml/index")>>>;
+      $GET: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/pages/[part].xml/index"), Extract<"GET", keyof typeof import("../routes/(seo)/sitemaps/pages/[part].xml/index")>>>;
       $$route?: undefined;
     }
   ];

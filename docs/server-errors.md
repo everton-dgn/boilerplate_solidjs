@@ -299,6 +299,15 @@ pela origem `sitemap` a linha fixa
 `[sitemap] Unexpected failure; private details omitted`, com a classe e os
 frames descritos em [Log de falhas](#log-de-falhas), sem a mensagem do erro.
 
+Fontes particionadas ficam no registro `src/infra/server/sitemapSources/`, fora
+de `route.info` e do bundle do cliente. Seus callbacks também usam os adapters
+protegidos para banco e SDK e repassam o sinal à consulta. O índice lista IDs
+públicos, e a leitura de uma parte retorna somente seu lote de `path` e
+`lastmod`. Falhas continuam usando a resposta vazia 503 e o mesmo log fixo. Uma
+parte removida ou vazia responde 404 com `no-store`; a diferença entre o índice
+anterior e essa leitura faz parte da consistência eventual descrita no
+[guia de SEO](seo.md#fontes-particionadas).
+
 Nunca copie `error.message`, `cause`, propriedades, corpo upstream ou issues do
 validador para a saída. Para uma falha pública, use `createPublicError()`.
 Somente `publicErrors` pode usar `markSafeError`, que autoriza a serialização do

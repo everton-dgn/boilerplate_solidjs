@@ -1,5 +1,9 @@
 import { m } from '@paraglide/messages.js'
-import { extractLocaleFromRequest } from '@paraglide/runtime.js'
+import {
+  baseLocale,
+  extractLocaleFromRequest,
+  extractLocaleFromUrl
+} from '@paraglide/runtime.js'
 import type { RequestEvent } from '@solidjs/web'
 import { pageRoutes } from 'virtual:file-routes'
 
@@ -11,6 +15,7 @@ import {
   HTTP_NOT_FOUND,
   HTTP_OK
 } from '@/constants/http.ts'
+import { LLMS_DESCRIBEDBY_LINK } from '@/constants/llms.ts'
 import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { publicErrorMessage } from '@/infra/server/publicErrors/index.ts'
@@ -157,12 +162,38 @@ function isStaticListing(request: Request): boolean {
   )
 }
 
+// Uma página com opt-in estático que o matcher resolve para outra rota ou para
+// fora das páginas seria omitida sem aviso; o build recusa essas divergências.
+// O noindex herdado continua excluindo a página sem erro. O idioma de cada
+// arquivo vem da URL, para o llms-full.txt não depender do formato do índice.
 function listStaticMarkdown(): Response {
-  const paths = collectStaticMarkdownPages(pageRoutes)
-    .map(path => new URL(resolveSiteUrl(path)))
-    .filter(url => isEligible(url))
-    .map(url => markdownPath(url.pathname))
-  return uncachedResponse(Response.json(paths))
+  const paths: string[] = []
+  const baseLocalePaths: string[] = []
+  const mismatches: string[] = []
+  for (const page of collectStaticMarkdownPages(pageRoutes)) {
+    const url = new URL(resolveSiteUrl(page))
+    const info = Router.match(url.href).map(match => match.info)
+    if (
+      !isPagePath({ pathname: url.pathname, method: 'GET' }) ||
+      info.at(-1)?.markdown !== true
+    ) {
+      mismatches.push(url.pathname)
+      continue
+    }
+    if (!isMarkdownRoute(info)) continue
+    const path = markdownPath(url.pathname)
+    paths.push(path)
+    if (extractLocaleFromUrl(url) === baseLocale) baseLocalePaths.push(path)
+  }
+  return uncachedResponse(
+    Response.json({
+      siteUrl: resolveSiteUrl('/'),
+      baseLocale,
+      paths,
+      baseLocalePaths,
+      mismatches
+    })
+  )
 }
 
 async function resolveRedirect({
@@ -201,6 +232,19 @@ async function resolveRedirect({
     `${target.pathname}${target.search}${target.hash}`
   )
   return redirect
+}
+
+// Só o Markdown publicado com sucesso anuncia o índice; o append preserva os
+// valores de Link herdados do render.
+function markdownHeaders(response: Response): Headers {
+  const headers = new Headers(response.headers)
+  for (const name of ['content-length', 'content-encoding', 'etag']) {
+    headers.delete(name)
+  }
+  headers.set('content-type', 'text/markdown; charset=utf-8')
+  if (response.status === HTTP_OK) headers.append('link', LLMS_DESCRIBEDBY_LINK)
+  if (response.status === HTTP_NOT_FOUND) headers.set('x-robots-tag', 'noindex')
+  return headers
 }
 
 async function renderMarkdown({
@@ -256,18 +300,11 @@ async function renderMarkdown({
     url: resolveSiteUrl(`${url.pathname}${url.search}`),
     signal
   })
-  const headers = new Headers(response.headers)
-  for (const name of ['content-length', 'content-encoding', 'etag']) {
-    headers.delete(name)
-  }
-  headers.set('content-type', 'text/markdown; charset=utf-8')
-  if (response.status === HTTP_NOT_FOUND) headers.set('x-robots-tag', 'noindex')
-  return uncachedResponse(
-    appendVary({
-      response: new Response(markdown, { status: response.status, headers }),
-      field: 'Accept'
-    })
-  )
+  const converted = new Response(markdown, {
+    status: response.status,
+    headers: markdownHeaders(response)
+  })
+  return uncachedResponse(appendVary({ response: converted, field: 'Accept' }))
 }
 
 async function boundedRender(

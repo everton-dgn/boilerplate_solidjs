@@ -202,23 +202,23 @@ export const route = {
 
 O `llms.txt` coleta os mesmos metadados pelo manifesto, sem renderizar páginas
 nem executar preloads, e publica só as páginas que declaram `route.info.llms`. O
-arquivo é um índice curado para modelos de linguagem e não tem limite de
-tamanho: em sites grandes, meça os textos reais, selecione as páginas que
-explicam o produto e agrupe-as. `llms: true` inclui a página; sem seção herdada,
-ela entra na seção padrão `Pages`. `{ section: 'Guias' }` cria ou reutiliza uma
-seção com esse nome, na ordem em que aparece no manifesto; `{ optional: true }`
-move a página para a seção `Optional`, que o formato reserva ao conteúdo que o
-modelo pode pular, e uma seção declarada com esse nome se funde a ela. A
-configuração é herdada pela cadeia de rotas: um layout com
-`llms: { section: 'Docs' }` inclui suas filhas nessa seção, uma filha pode sair
-com `llms: false` ou sobrescrever só o campo que declara, e `llms: true` numa
-filha reativa a inclusão preservando seção e marcação opcional herdadas.
-`noindex: true` exclui a página do sitemap e do llms.txt, mesmo com a flag. O
-filtro considera a configuração efetiva da página, incluindo herança e a rota de
-índice filha. O resolvedor fica colocalizado em
-`src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. O índice sai no idioma
-base. Rotas com parâmetro ficam fora mesmo com `llms`, e as fontes de
-`route.info.sitemap` não alimentam esse índice. A publicação de Markdown é
+arquivo é um índice curado para modelos de linguagem. O formato não define um
+teto de tamanho; os limites do runtime e da hospedagem continuam valendo. Em
+sites grandes, meça os textos reais, selecione as páginas que explicam o produto
+e agrupe-as. `llms: true` inclui a página; sem seção herdada, ela entra na seção
+padrão `Pages`. `{ section: 'Guias' }` cria ou reutiliza uma seção com esse
+nome, na ordem em que aparece no manifesto; `{ optional: true }` move a página
+para a seção `Optional`, que o formato reserva ao conteúdo que o modelo pode
+pular, e uma seção declarada com esse nome se funde a ela. A configuração é
+herdada pela cadeia de rotas: um layout com `llms: { section: 'Docs' }` inclui
+suas filhas nessa seção, uma filha pode sair com `llms: false` ou sobrescrever
+só o campo que declara, e `llms: true` numa filha reativa a inclusão preservando
+seção e marcação opcional herdadas. `noindex: true` exclui a página do sitemap e
+do llms.txt, mesmo com a flag. O filtro considera a configuração efetiva da
+página, incluindo herança e a rota de índice filha. O resolvedor fica
+colocalizado em `src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. O índice
+sai no idioma base. Rotas com parâmetro ficam fora mesmo com `llms`, e as fontes
+de `route.info.sitemap` não alimentam esse índice. A publicação de Markdown é
 controlada separadamente por `route.info.markdown`; quando a folha declara
 `markdown: true` ou `'dynamic'`, o link do índice aponta para o `.md`
 (`/en/about.md`), e nas demais, para o HTML.
@@ -251,8 +251,8 @@ que vai para o XML, então `/a/../b` e `/b`, `/café` e `/caf%C3%A9` ou
 `/pt/blog/x` e `/blog/x` contam como a mesma página. `lastmod` fora do W3C
 Datetime é omitido. Falha de qualquer fonte, entrada inválida, prazo estourado
 ou sitemap acima dos limites do protocolo (de URLs e de bytes, em
-`sitemap.xml/constants.ts`) respondem 503 sem corpo e com `no-store`, e o
-servidor registra a linha fixa `[sitemap]` descrita em
+`sitemap/constants.ts`) respondem 503 sem corpo e com `no-store`, e o servidor
+registra a linha fixa `[sitemap]` descrita em
 [erros no servidor](server-errors.md#log-de-falhas). O crawler tenta de novo, e
 o CDN não guarda um sitemap parcial por uma hora. A resposta de sucesso traz
 `stale-if-error=86400`: depois que a cópia em cache expira, se a função
@@ -262,12 +262,51 @@ e de DNS; que o 503 desta rota também acione a cópia antiga é uma hipótese a
 não medida. Títulos carregados em runtime ainda podem usar `useHead`, mas essas
 alterações não são lidas pelo gerador.
 
-Os limites são conferidos uma única vez, depois de gerar uma URL por idioma, com
-alternates e `x-default`: a quantidade de caminhos aceita é o limite de URLs
-dividido pelo número de idiomas. Veja a
-[integração dos índices com i18n](i18n.md#índices-de-seo). O endpoint gera um
-único sitemap, sem divisão automática: uma aplicação que passe de qualquer
-limite precisa de vários arquivos e de um índice de sitemaps.
+Cada página gera uma URL por idioma, com alternates e `x-default`. Os idiomas da
+mesma página ficam juntos numa parte. O inventário estático é dividido
+automaticamente pela contagem de URLs e pelos bytes UTF-8 do XML completo,
+incluindo alternates e escapes. Veja a
+[integração dos índices com i18n](i18n.md#índices-de-seo).
+
+Inventários pequenos preservam `/sitemap.xml` como `urlset`. Com várias partes
+ou uma fonte particionada, essa entrada publica um `sitemapindex`, e o
+`robots.txt` continua apontando para ela. Cada arquivo respeita 50.000 URLs e
+52.428.800 bytes sem compressão. O orçamento operacional inicial é menor, 4 MiB
+por resposta, configurável em `src/routes/(seo)/sitemap/constants.ts` dentro do
+teto do protocolo. As URLs localizadas também precisam caber em 2048 caracteres.
+Um grupo de idiomas que sozinho ultrapasse o orçamento falha, assim como um
+índice excessivo; não há índices aninhados nem publicação parcial com status de
+sucesso.
+
+O contrato legado de `route.info.sitemap` continua adequado a listas pequenas.
+Ele devolve um array inteiro, portanto o consumidor não consegue impedir a
+alocação que a fonte faz antes de retornar. Ao ultrapassar os limites, migre a
+fonte para o registro particionado descrito abaixo.
+
+Duplicatas legadas de páginas estáticas indexáveis são descartadas, preservando
+os metadados da página estática, inclusive se a fonte legada declarar outra
+rota. Essa entrada não é publicada pela fonte; as entradas restantes precisam
+pertencer à rota que a declara. O índice consulta o legado uma vez e omite
+`legacy.xml` quando não sobra nenhuma entrada própria. Se estáticos e legado
+couberem separadamente, mas a soma exceder a contagem ou os bytes,
+`/sitemap.xml` publica um índice com as partes válidas. Uma parte legada que
+sozinha excede os limites continua causando falha explícita.
+
+Os quatro handlers compartilham os módulos em `src/routes/(seo)/sitemap/`. Essa
+pasta organiza o serviço e não declara uma rota. Em produção, eles reutilizam o
+mesmo manifesto e matcher por instância, inclusive ao consultar uma parte depois
+do índice. Em desenvolvimento, o contexto é refeito a cada chamada. Os
+resultados das fontes dinâmicas não entram nesse cache.
+
+O caminho legado tem custo por requisição: o índice lê o array e serializa a
+parte legada para validar seus bytes. Com uma única parte estática e sem fontes
+particionadas, também tenta serializar a união até o orçamento antes de decidir
+entre `urlset` e índice. Essa tentativa percorre até uma parte estática mais o
+legado; não usa o cache de preparo para eliminar a serialização da resposta. A
+rota `legacy.xml` também valida e depois serializa sua resposta. Esses custos
+são limitados pelo orçamento de cada parte, mas se repetem quando a requisição
+chega à origem. Para catálogos grandes, use o registro particionado, cuja
+consulta de uma parte não percorre o catálogo inteiro.
 
 ```tsx
 import type { RouteDefinition } from '@solidjs/router'
@@ -285,6 +324,52 @@ export const route = {
 
 Para que `noindex` seja respeitado pelas listas, declare-o em `route.info.seo`,
 em vez de acrescentar apenas uma tag HTML avulsa.
+
+### Fontes particionadas
+
+Catálogos grandes usam `src/infra/server/sitemapSources/`, marcado como
+`server-only`, separado dos metadados que entram no cliente. Cada
+`SitemapPartitionSource` declara um `id`, o `routePath` da página dinâmica,
+`listPartitions(signal)` e `readPartition({ id, limit, signal })`. A aplicação
+derivada implementa as consultas ao banco ou serviço; o boilerplate entrega o
+contrato, o serviço HTTP e uma fonte de teste.
+
+`listPartitions` devolve os IDs públicos para o índice. `readPartition` lê
+somente a parte solicitada e respeita o limite e o cancelamento. O limite de
+leitura inclui uma posição adicional para detectar uma parte excessiva; se essa
+posição for preenchida, a publicação falha em vez de truncar a parte. Fazer uma
+consulta global e depois recortar o array dentro desse callback mantém o custo
+do catálogo inteiro. Use uma consulta limitada na origem dos dados.
+
+`limit` limita a contagem de registros, não os bytes do XML. Uma parte abaixo
+dessa contagem ainda pode ultrapassar o orçamento por causa do comprimento das
+URLs, dos escapes e dos alternates por idioma. Dimensione as partições na fonte
+para respeitar os dois limites. O servidor verifica o tamanho exato e responde
+503 com `no-store` se a parte exceder o orçamento, sem truncá-la.
+
+IDs precisam ser estáveis e públicos, sem tokens nem cursores privados. Faixas
+imutáveis de IDs são uma opção; posição numa lista ou categoria editável não
+garantem estabilidade. A fonte deve manter suas partes disjuntas. Duplicatas na
+mesma resposta, IDs inválidos e entradas pertencentes a outra rota são
+recusados. A propriedade da URL usa o roteador real, inclusive a prioridade de
+páginas estáticas, e respeita `noindex` efetivo. Não registre duas fontes para a
+mesma rota nem combine a fonte legada e a particionada nessa rota.
+
+As respostas têm consistência eventual. Por exemplo, o crawler lê o índice às
+10h, uma parte é removida às 10h01 e ele consulta essa parte às 10h02: quando a
+requisição chega à origem, recebe 404 com `no-store`. Uma cópia ainda válida no
+CDN pode responder com o conteúdo anterior. Uma parte nova aparece quando o
+índice e o crawler forem atualizados. Uma entrada transferida entre partes pode
+aparecer duas vezes ou ficar temporariamente ausente nas leituras feitas em
+momentos diferentes. Esse comportamento também se aplica a deploy e rollback.
+
+Cada resposta é validada e publicada inteira. Fonte vazia ou parte removida
+responde 404 com `no-store`; falha, timeout, schema inválido ou excesso responde
+503 sem corpo e com `no-store`. GET e HEAD preservam o mesmo status e os
+metadados. Cache de processo ou CDN não garante retenção de gerações antigas nem
+coordenação entre instâncias. Se o produto exigir que todo índice continue
+consultável após atualizações, será necessário acrescentar publicação versionada
+e retenção em armazenamento compartilhado, com política e custo próprios.
 
 A travessia do manifesto é iterativa, para não depender do limite de recursão do
 JavaScript; o teste de `walkStaticRoutes` cobre 10 mil layouts aninhados e 10
@@ -306,9 +391,9 @@ booleano e ainda não havia seções. Com 100 mil rotas sintéticas, a coleta de
 caminhos levou cerca de 33 ms e o `llms.txt` completo cerca de 230 ms, com corpo
 de cerca de 12 MB e diferença de heap perto de 108 MiB entre o início e o fim da
 geração (não é pico de memória). O sitemap completo de 10 mil rotas levou cerca
-de 7 ms. Os scripts e registros dessa medição não existem mais, e a versão atual
-não foi medida de novo. Os números servem para dimensionar e não valem como meta
-nem como limite da CI.
+de 7 ms. Os scripts e registros dessa medição não existem mais, e o coletor
+atual do `llms.txt` não foi medido de novo. Os números servem para dimensionar e
+não valem como meta nem como limite da CI.
 
 Para comparar uma mudança em `walkStaticRoutes`, `collectLlmsPages` ou no
 coletor do sitemap, meça fora do repositório:
@@ -316,12 +401,12 @@ coletor do sitemap, meça fora do repositório:
 - copie os helpers da revisão de base como linha de base e carregue as duas
   versões pelo Vite instalado, importando `collectLlmsPages` e a assinatura
   atual de `buildLlmsText`;
-- rode pares antes/depois em processos Node novos, alternando a ordem a cada par
-  e sem outros benchmarks na máquina (a medição histórica usou 20 pares por
-  cenário);
-- em cada processo, faça uma primeira chamada e três repetições; use a mediana
-  das repetições do processo e, entre os processos, a mediana e o P95 pelo
-  método do posto mais próximo, que com 20 observações é só indicativo;
+- comece com um piloto do cenário mais caro e use seu custo para definir o
+  número de execuções dentro do orçamento, incluindo preparação e análise;
+- quando a decisão exigir comparação estatística, rode pares antes/depois em
+  processos Node novos, alternando a ordem e sem outros benchmarks na máquina;
+  justifique o tamanho da amostra e não apresente percentis de uma coleta curta
+  como garantia de latência;
 - deixe fora do cronômetro a carga dos módulos, a criação das rotas sintéticas e
   o GC explícito entre chamadas;
 - mantenha fixa a ordem das operações (caminhos, metadados, `llms.txt`,
@@ -334,13 +419,42 @@ coleta e a serialização. Importação de páginas reais, preloads, SSR, rede, 
 compressão e concorrência entre requisições ficam fora, então o resultado não
 prevê a latência HTTP.
 
+Para fontes particionadas, aumente o catálogo virtual mantendo constante o
+tamanho do lote solicitado. A fonte sintética deve criar apenas esse lote;
+materializar todos os registros antes do cronômetro esconde o custo que se
+pretende detectar. Registre chamadas a `listPartitions` e `readPartition`, bytes
+de resposta, tempo e memória. Meça a preparação estática separadamente, em duas
+escalas, porque ela tem custo proporcional ao inventário. Uma amostra isolada
+revela custo e chamadas indevidas, mas não comprova capacidade sob carga
+concorrente.
+
+O piloto da implementação particionada, em novembro de 2026 num Apple M2 Pro com
+32 GiB, executou cada cenário em um processo novo, uma vez. Com inventário
+estático sintético, preparar o índice levou 986 ms para 10 mil páginas e 9.487
+ms para 100 mil. Consultar a primeira parte depois dessa preparação levou 319 ms
+e 308 ms, respectivamente. A preparação é proporcional ao inventário e fica em
+cache somente na instância: uma instância nova paga esse custo de novo.
+Aplicações com inventários desse porte devem considerar esse custo de partida e
+preferir fontes particionadas para catálogos que vêm de dados.
+
+Com catálogos virtuais de 100 mil e 1 milhão de registros, a consulta direta de
+um lote de mil registros levou 159 ms e 147 ms na primeira chamada, e 124 ms e
+125 ms na segunda. Cada consulta chamou `readPartition` uma vez e não chamou
+`listPartitions`. O índice listou 100 e mil IDs, respectivamente. O lote
+produziu os mesmos 1.216.503 bytes nas duas escalas; o catálogo inteiro não foi
+materializado. O pico de RSS dos processos foi cerca de 378 MiB no cenário
+estático de 100 mil e 299 MiB no dinâmico de 100 mil, incluindo Vitest e seus
+módulos. Esses valores não isolam a memória da aplicação. O piloto verifica
+custo e quantidade de operações, sem demonstrar latência HTTP, percentis ou
+capacidade sob concorrência.
+
 O [protocolo de sitemap](https://www.sitemaps.org/protocol.html) limita cada
 arquivo a 50 mil URLs e 52.428.800 bytes sem compressão, os valores de
-`sitemap.xml/constants.ts`; por isso a medição histórica de 100 mil rotas cobriu
-só o coletor do sitemap, sem gerar um XML único, que seria inválido. O
-`llms.txt` não tem limite equivalente, e o corpo de 12 MB com 100 mil páginas
-mostra por que um site grande precisa selecionar o que publica. `noindex` sai
-como metatag HTML, conforme a
+`sitemap/constants.ts`; por isso a medição histórica de 100 mil rotas cobriu só
+o coletor do sitemap, sem gerar um XML único, que seria inválido. O `llms.txt`
+não tem limite equivalente, e o corpo de 12 MB com 100 mil páginas mostra por
+que um site grande precisa selecionar o que publica. `noindex` sai como metatag
+HTML, conforme a
 [documentação do Google sobre bloqueio de indexação](https://developers.google.com/search/docs/crawling-indexing/block-indexing);
 excluir essas páginas do `llms.txt` é uma política deste projeto, que a medição
 não verifica em buscadores nem em agentes.
@@ -368,9 +482,10 @@ com `Disallow: /`, e o link do sitemap. Buscadores e agentes que leem páginas a
 pedido do usuário continuam liberados, porque são o público do llms.txt.
 `Disallow` é um pedido que robôs mal comportados ignoram e não remove URL do
 índice; para isso, use `noindex` em `route.info.seo`. Em produção o processo
-guarda em memória a resposta do robots e do llms.txt e a leitura do manifesto do
-sitemap, porque o manifesto, os grupos e a URL do site são fixos no build; as
-fontes do sitemap rodam a cada request. O llms.txt é montado dentro do contexto
+guarda em memória a resposta do robots e do llms.txt e o inventário estático do
+sitemap, porque o manifesto, os grupos e a URL do site são fixos no build. As
+fontes dinâmicas são consultadas conforme o endpoint: o índice lista partes e
+cada parte lê seu próprio lote. O llms.txt é montado dentro do contexto
 Paraglide do idioma base (`baseLocale` do runtime), inclusive a descrição do
 site e os metadados das páginas, para que nem a requisição que preenche a
 memória nem um contexto de outro idioma mudem o texto. A nota sobre o idioma do
@@ -440,7 +555,45 @@ troca a resposta por 500 público. Uma página que falhe ou não seja gravada, o
 uma lista inválida ou que não passe pelo prerender, interrompe o build. O Nitro
 só falha por rota com erro registrado; uma rejeição no fetch ou na gravação
 deixaria o arquivo de fora sem falhar, e por isso o módulo confere no fim que
-cada `.md` da lista foi gravado. O resultado fica em `.vercel/output/static`.
+cada `.md` da lista foi gravado. A validação confere também status, MIME,
+`fileName` real, UTF-8 e conteúdo. Um redirect ou um documento HTML gravado como
+`.md.html` não satisfaz a publicação esperada. Uma página curta ou um exemplo
+legítimo de HTML dentro do Markdown continuam válidos; não há mínimo universal
+de caracteres nem proibição de tags isoladas. O resultado fica em
+`.vercel/output/static`.
+
+### Agregado llms-full.txt
+
+O build gera `/llms-full.txt` a partir dos Markdown estáticos aprovados,
+selecionados pelos links editoriais do `/llms.txt`, inclusive os casos de uso de
+`LLMS_USE_CASES`. Inclui somente documentos no idioma base e deduplica um mesmo
+documento referenciado em mais de uma seção. A ordem é determinística e o
+cabeçalho declara o idioma e a cobertura. Links HTML e conteúdo dinâmico ficam
+fora dessa cobertura; o agregado não consulta URLs arbitrárias nem congela o
+banco de dados. URLs com query também ficam fora, pois podem representar uma
+leitura diferente do arquivo estático. Fragmentos selecionam o mesmo documento e
+não causam a repetição de seu corpo.
+
+Os corpos completos são lidos e escritos incrementalmente, com validação de
+caminhos e symlinks. A publicação usa um arquivo temporário promovido somente
+depois da conclusão. O orçamento inicial é 10 MiB, configurável em
+`tooling/markdownPrerender/constants.ts`; excesso interrompe o build sem truncar
+o conteúdo. O arquivo preserva os links do documento e associa fragmentos não
+vazios, como `#equipe`, à página de origem, para que a leitura conjunta não
+transforme uma âncora de uma página em âncora de outra. O destino neutro `#`
+permanece neutro, inclusive quando o conversor o usa para remover uma URL
+insegura.
+
+Quando não há documentos selecionados, o build omite o agregado e o anúncio. Um
+`llms-full.txt` preexistente na saída estática interrompe o build, mesmo nessa
+situação, para impedir a publicação de conteúdo residual. Quando existe, o
+índice o anuncia sem selecioná-lo como entrada de si mesmo. O nome é mutável e
+não recebe cache `immutable`. Não há um segundo gerador runtime: o servidor de
+desenvolvimento não serve esse arquivo, mesmo quando o índice o anuncia. Use o
+build e o preview para verificar o destino. O tamanho de um arquivo estático não
+deve ser confundido com o limite de resposta de função.
+
+### Artefatos e roteamento da plataforma
 
 Na Vercel, um `index.md` estático também pode atender à URL do diretório. Depois
 que o preset do Nitro gera o `config.json`, o módulo antecipa suas regras da
@@ -531,12 +684,24 @@ conteúdo de sucesso pelo alias Markdown. Um `X-Robots-Tag` com `noindex` ou
 
 As respostas convertidas na requisição recebem `text/markdown; charset=utf-8`,
 `private, no-store`, `Vary: Accept` adicional ao Vary existente e CSP com
-`script-src 'none'`. Os arquivos do build são servidos pela camada estática, sem
-passar pela função: o `vercel.json` define `Content-Type`, `nosniff` e
-`Cross-Origin-Resource-Policy`, e o cache segue o padrão da Vercel para
-estáticos. Eles não gravam cookie de idioma nem `Content-Language`; o idioma vem
-da URL. O preview local (`vp run start`) não aplica o `vercel.json` e serve
-`.md` como `application/octet-stream`.
+`script-src 'none'`. Uma conversão com sucesso também acrescenta
+`Link: </llms.txt>; rel="describedby"`, preservando os valores de `Link`
+recebidos do render. GET e HEAD mantêm os mesmos metadados. Os arquivos do build
+são servidos pela camada estática, sem passar pela função: o `vercel.json`
+define `Content-Type`, `nosniff` e `Cross-Origin-Resource-Policy`, e o cache
+segue o padrão da Vercel para estáticos. Eles não gravam cookie de idioma nem
+`Content-Language`; o idioma vem da URL. O preview local (`vp run start`) não
+aplica o `vercel.json` e serve `.md` como `application/octet-stream`.
+
+O módulo de build acrescenta ao `config.json` da Vercel uma regra de descoberta
+para a extensão `.md` e, quando gerado, para `/llms-full.txt`. A regra tem
+`continue: true` e acrescenta somente `Link`, sem gerar uma regra por documento.
+Ela também pode alcançar um erro respondido pela função: o cabeçalho descreve o
+site e não comprova existência, elegibilidade ou sucesso da URL. Status,
+`no-store` e `noindex` da resposta continuam valendo. O tipo do agregado é
+configurado como override do arquivo existente, sem mudar o MIME de um 404
+quando o agregado não foi gerado. O preview Nitro não aplica essa configuração;
+os testes do artefato Vercel e os testes HTTP locais são provas distintas.
 
 Os limites ficam em `src/middleware/markdownContent/constants.ts`: espera de SSR
 cancelável e tamanho máximo do HTML antes da conversão síncrona. Timeout e

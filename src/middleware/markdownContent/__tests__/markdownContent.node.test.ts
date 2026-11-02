@@ -7,6 +7,7 @@ import {
 } from '@solidjs/web'
 import { createMemo, Loading, onCleanup } from 'solid-js'
 
+import { LLMS_DESCRIBEDBY_LINK } from '@/constants/llms.ts'
 import { SITE } from '@/constants/site/index.ts'
 import { Router } from '@/router.ts'
 
@@ -211,10 +212,36 @@ describe('build-time Markdown', () => {
     )
     expect(next).not.toHaveBeenCalled()
     expect(response.headers.get('cache-control')).toBe('private, no-store')
-    await expect(response.json()).resolves.toStrictEqual([
-      '/pt/index.md',
-      '/en/about.md'
-    ])
+    await expect(response.json()).resolves.toStrictEqual({
+      siteUrl: new URL('/', SITE.url).href,
+      baseLocale: 'en',
+      paths: ['/pt/index.md', '/en/about.md'],
+      baseLocalePaths: ['/en/about.md'],
+      mismatches: []
+    })
+  })
+
+  it('reports static opt-ins that the matcher resolves to another route', async () => {
+    vi.spyOn(Router, 'match').mockImplementation(href => {
+      const { pathname } = new URL(href)
+      return [
+        {
+          path: pathname,
+          pattern: pathname,
+          match: pathname,
+          params: {},
+          info: { markdown: pathname === '/en/about' ? 'dynamic' : true }
+        }
+      ]
+    })
+    const response = await markdownContent(
+      prerender(MARKDOWN_PRERENDER_PATH),
+      () => html()
+    )
+    await expect(response.json()).resolves.toMatchObject({
+      paths: ['/pt/index.md', '/en/private.md'],
+      mismatches: ['/en/about']
+    })
   })
 
   it('keeps the listing path private outside the prerender', async () => {
@@ -698,5 +725,88 @@ describe('markdown resource bounds', () => {
     const response = await pending
     expect(response.status).toBe(HTTP_SERVER_ERROR)
     expect(cleanup).toHaveBeenCalledOnce()
+  })
+})
+
+describe('HTTP Link discovery', () => {
+  beforeEach(mockPublishedRoute)
+
+  it('appends the llms.txt describedby link to converted Markdown', async () => {
+    for (const path of ['/en/about.md', '/en/about']) {
+      const response = await markdownContent(event({ path }), () => html())
+      expect(response.status).toBe(HTTP_OK)
+      expect(response.headers.get('link')).toBe(LLMS_DESCRIBEDBY_LINK)
+      expect(response.headers.get('vary')).toBe('Cookie, Accept')
+      expect(response.headers.get('cache-control')).toBe('private, no-store')
+    }
+  })
+
+  it('composes the describedby link after a Link from the render', async () => {
+    const preload = '</assets/app.css>; rel=preload; as=style'
+    const response = await markdownContent(event(), () =>
+      Promise.resolve(
+        new Response('<main><h1>Title</h1></main>', {
+          headers: { 'content-type': 'text/html', link: preload }
+        })
+      )
+    )
+    expect(response.headers.get('link')).toBe(
+      `${preload}, ${LLMS_DESCRIBEDBY_LINK}`
+    )
+  })
+
+  it('sends the same status and headers on HEAD and GET', async () => {
+    const get = await markdownContent(event({ path: '/en/about.md' }), () =>
+      html()
+    )
+    const head = await markdownContent(
+      event({ method: 'HEAD', path: '/en/about.md' }),
+      () => html()
+    )
+    expect(head.status).toBe(get.status)
+    expect(Object.fromEntries(head.headers)).toStrictEqual(
+      Object.fromEntries(get.headers)
+    )
+    expect(head.headers.get('link')).toBe(LLMS_DESCRIBEDBY_LINK)
+    await expect(head.text()).resolves.toBe('')
+  })
+
+  it('does not announce the index on Markdown errors, refusals or redirects', async () => {
+    const responses = [
+      await markdownContent(event(), () =>
+        html('<main><h1>Not found</h1></main>', HTTP_NOT_FOUND)
+      ),
+      await markdownContent(event({ accept: 'application/json' }), () =>
+        html()
+      ),
+      await markdownContent(event({ path: '/en/about.md' }), () =>
+        Promise.resolve(
+          new Response(null, {
+            status: HTTP_REDIRECT,
+            headers: { location: '/en/contact' }
+          })
+        )
+      ),
+      await markdownContent(event({ path: '/en/about.md' }), () =>
+        Promise.resolve(
+          new Response('<main>Private</main>', {
+            headers: { 'content-type': 'text/html', 'x-robots-tag': 'noindex' }
+          })
+        )
+      )
+    ]
+    const incomplete = event()
+    incomplete.locals.ssrRenderState = { hasErrors: false, hasCompleted: false }
+    responses.push(await markdownContent(incomplete, () => html()))
+    expect(responses.map(response => response.status)).toStrictEqual([
+      HTTP_NOT_FOUND,
+      HTTP_NOT_ACCEPTABLE,
+      HTTP_REDIRECT,
+      HTTP_NOT_FOUND,
+      HTTP_SERVER_ERROR
+    ])
+    for (const response of responses) {
+      expect(response.headers.has('link')).toBe(false)
+    }
   })
 })

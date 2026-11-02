@@ -10,25 +10,41 @@ import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { localizeHref } from '@/i18n/urls/index.ts'
 import { Router } from '@/router.ts'
 
-import { LLMS_NOTES, LLMS_USE_CASES } from './constants.ts'
+import { LLMS_FULL_PAGE, LLMS_NOTES, LLMS_USE_CASES } from './constants.ts'
 import { buildLlmsText } from './helpers/buildLlmsText/index.ts'
 import { collectLlmsPages } from './helpers/collectLlmsPages/index.ts'
 import type { LlmsPage } from './types.ts'
 
-function localizePage(page: LlmsPage): LlmsPage {
+type LocalizedPage = { page: LlmsPage; hasStaticMarkdown: boolean }
+
+const ROUTE_PARAMETER = /[:*]/u
+
+// Só `markdown: true` numa rota sem parâmetro vira arquivo no build; `dynamic`
+// e parâmetros continuam convertidos na requisição.
+function localizePage(page: LlmsPage): LocalizedPage {
   const path = localizeHref({ href: page.path, locale: baseLocale })
+  const matches = Router.match(path)
+  const info = matches.map(match => match.info)
+  if (!isMarkdownRoute(info)) {
+    return { page: { ...page, path }, hasStaticMarkdown: false }
+  }
   return {
-    ...page,
-    path: isMarkdownRoute(Router.match(path).map(match => match.info))
-      ? markdownPath(path)
-      : path
+    page: { ...page, path: markdownPath(path) },
+    hasStaticMarkdown:
+      info.at(-1)?.markdown === true &&
+      !ROUTE_PARAMETER.test(matches.at(-1)?.pattern ?? '')
   }
 }
 
+// O build confere que o anúncio coincide com os documentos do llms-full.txt.
 function collectPages(): LlmsPage[] {
-  return [...LLMS_USE_CASES, ...collectLlmsPages(pageRoutes)].map(page =>
-    localizePage(page)
+  const localized = [...LLMS_USE_CASES, ...collectLlmsPages(pageRoutes)].map(
+    page => localizePage(page)
   )
+  const pages = localized.map(({ page }) => page)
+  return localized.some(({ hasStaticMarkdown }) => hasStaticMarkdown)
+    ? [...pages, LLMS_FULL_PAGE]
+    : pages
 }
 
 const renderLlmsText = memoizeOnce({

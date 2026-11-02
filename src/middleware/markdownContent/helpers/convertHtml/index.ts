@@ -8,6 +8,8 @@ type ConvertOptions = { response: Response; url: string; signal: AbortSignal }
 // Com espaço ou controle antes do esquema, o mdream resolve o valor pela origem
 // pública.
 const UNSAFE_URL = /^(?:javascript|vbscript|data):/iu
+// O `#` isolado é o destino neutro aplicado aos esquemas inseguros.
+const FRAGMENT_URL = /^#./u
 
 // Nessas regiões o mdream emite o link como HTML e já descarta esses esquemas.
 const RAW_HTML_REGIONS = new Set([
@@ -72,29 +74,36 @@ function isInsidePlainContainers({ parent }: ElementNode): boolean {
   return PLAIN_CONTAINERS.has(parent.name) && isInsidePlainContainers(parent)
 }
 
-// O mdream compartilha um objeto congelado entre elementos sem atributos.
-const cleanupPlugin = createPlugin({
-  processAttributes(node) {
-    const { name, attributes } = node
-    // Reduzido a texto, o link faria o mdream emitir um título interno como
-    // HTML bruto no início da linha, onde o texto escapado volta a ser tag.
-    if (
-      name === 'a' &&
-      UNSAFE_URL.test(attributes.href ?? '') &&
-      !isInsideRawHtml(node)
-    ) {
-      node.attributes = { ...attributes, href: '#' }
+// O mdream compartilha um objeto congelado entre elementos sem atributos. Ele
+// mantém relativo um destino só de fragmento, que no llms-full.txt apontaria
+// para o próprio agregado; o plugin o resolve pela página de origem.
+const createCleanupPlugin = (url: string) =>
+  createPlugin({
+    processAttributes(node) {
+      const { name, attributes } = node
+      // Reduzido a texto, o link faria o mdream emitir um título interno como
+      // HTML bruto no início da linha, onde o texto escapado volta a ser tag.
+      if (
+        name === 'a' &&
+        UNSAFE_URL.test(attributes.href ?? '') &&
+        !isInsideRawHtml(node)
+      ) {
+        node.attributes = { ...attributes, href: '#' }
+      }
+      const href = node.attributes.href ?? ''
+      if (name === 'a' && FRAGMENT_URL.test(href)) {
+        node.attributes = { ...node.attributes, href: new URL(href, url).href }
+      }
+      if (
+        name === 'img' &&
+        !attributes.alt?.trim() &&
+        !attributes.title?.trim() &&
+        isInsidePlainContainers(node)
+      ) {
+        node.attributes = { ...attributes, 'data-md-exclude': '' }
+      }
     }
-    if (
-      name === 'img' &&
-      !attributes.alt?.trim() &&
-      !attributes.title?.trim() &&
-      isInsidePlainContainers(node)
-    ) {
-      node.attributes = { ...attributes, 'data-md-exclude': '' }
-    }
-  }
-})
+  })
 
 export async function convertHtml({
   response,
@@ -113,7 +122,7 @@ export async function convertHtml({
     plugins: [
       isolateMainPlugin(),
       filterPlugin({ exclude: EXCLUDED_ELEMENTS }),
-      cleanupPlugin
+      createCleanupPlugin(url)
     ]
   })
 }

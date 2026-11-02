@@ -1,3 +1,9 @@
+type SitemapPartitionReadOptions = {
+  id: string
+  limit: number
+  signal: AbortSignal
+}
+
 // Uma URL do sitemap: caminho absoluto do site (`/blog/post`) e, quando a
 // página tem data de alteração confiável, `lastmod` em W3C Datetime
 // (`2026-09-21` ou `2026-09-21T10:00:00Z`). Fora desse formato, a data é
@@ -17,3 +23,12 @@ export type SitemapEntry = {
 export type SitemapRouteInfo = (
   signal: AbortSignal
 ) => readonly SitemapEntry[] | Promise<readonly SitemapEntry[]>
+
+export type SitemapPartitionSource = {
+  id: string
+  routePath: string
+  listPartitions: (signal: AbortSignal) => Promise<readonly string[]>
+  readPartition: (
+    options: SitemapPartitionReadOptions
+  ) => Promise<readonly SitemapEntry[]>
+}
