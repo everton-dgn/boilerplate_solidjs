@@ -21,6 +21,14 @@ página em `src/tests/pages/<Pasta>/` declaram seus assuntos no mapa `subjects`
 desse arquivo. A primeira suíte E2E de uma página nova exige a entrada
 correspondente, e os arquivos dessas pastas usam só o ambiente `e2e`.
 
+Suítes extensas podem ser divididas por responsabilidade usando os
+qualificadores do nome. A preparação compartilhada fica em `fixtures.ts` dentro
+do mesmo `__tests__`; tipos e constantes compartilhados podem ficar em
+`types.ts` e `constants.ts`. Esses três módulos de apoio não são arquivos
+executáveis de teste. A exceção de nomes não se aplica às pastas de páginas E2E
+nem dispensa as regras de colocalização. Preserve o isolamento por arquivo e a
+limpeza dos recursos da fixture ao dividir uma suíte.
+
 Teste regras e resultados observáveis: recuperação após erro, navegação,
 seleção, persistência e sincronização. Componentes de apresentação simples não
 precisam de suíte própria para conferir montagem, textos estáticos, classes ou o

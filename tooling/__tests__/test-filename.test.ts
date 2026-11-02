@@ -30,6 +30,11 @@ describe('test filename policy', () => {
   ]
 
   const invalidTestPaths = [
+    'src/helpers/isTheme/__tests__/fixtures.test.ts',
+    'src/helpers/isTheme/__tests__/helpers/fixtures.ts',
+    'src/tests/pages/Home/fixtures.ts',
+    'src/tests/pages/Home/__tests__/fixtures.ts',
+    'tooling/release/__tests__/fixtures.test.ts',
     'src/routes/(seo)/llms.txt/__tests__/llms.node.test.ts',
     'src/routes/(seo)/llms.txt/__tests__/llms.txt.test.ts',
     'src/components/DropdownMenu/__tests__/dropdown-menu.browser.test.tsx',
@@ -64,6 +69,10 @@ describe('test filename policy', () => {
   ]
 
   const ignoredPaths = [
+    'src/helpers/isTheme/__tests__/fixtures.ts',
+    'src/helpers/isTheme/__tests__/types.ts',
+    'src/helpers/isTheme/__tests__/constants.ts',
+    'tooling/release/__tests__/fixtures.ts',
     'src/App.tsx',
     'src/tests/fixtures/routes/index.tsx',
     'tooling/lint.ts',

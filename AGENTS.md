@@ -492,8 +492,10 @@ release. Add a tool name to select part of the graph. For example, run
 ## Erros no servidor e chamadas de backend
 
 - Antes de alterar backend, server functions ou tratamento SSR, leia
-  [docs/server-errors.md](docs/server-errors.md). Toda operação deve terminar em
-  dados públicos ou em um erro público novo antes de chegar ao Solid.
+  [docs/server-errors.md](docs/server-errors.md) e o guia correspondente:
+  [chamadas de backend](docs/server-errors/backend.md) ou
+  [integridade do SSR](docs/server-errors/ssr-integrity.md). Toda operação deve
+  terminar em dados públicos ou em um erro público novo antes de chegar ao Solid.
 - HTTP usa `requestJson`. SDK e banco exigem adapter em `src/infra/server/`,
   com `server-only` e `protectServerOperation({ run })` envolvendo leitura,
   validação e saída. `allowControl` pertence somente ao registro global de

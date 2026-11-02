@@ -53,6 +53,13 @@ function dottedSubject({
   )
 }
 
+function isTestSupportModule(file: string): boolean {
+  return (
+    !file.startsWith('src/tests/pages/') &&
+    /\/__tests__\/(?:fixtures|types|constants)\.ts$/u.test(file)
+  )
+}
+
 export function testFilenameError(file: string): string | undefined {
   const normalized = path.posix.normalize(file.replaceAll('\\', '/'))
   if (!/^(?:src|tooling)\//u.test(normalized)) return undefined
@@ -61,6 +68,7 @@ export function testFilenameError(file: string): string | undefined {
   const inPages =
     directory === 'src/tests/pages' || directory.startsWith('src/tests/pages/')
   const inTests = directory.split('/').includes('__tests__') || inPages
+  if (isTestSupportModule(normalized)) return undefined
   if (!/\.(?:test|spec|test-d)\.[cm]?[jt]sx?$/u.test(basename) && !inTests) {
     return undefined
   }
