@@ -99,6 +99,13 @@ const config = {
   'filesystem-routing': false,
   // O Kingfisher é externo; o vp do script start vem de uma devDependency.
   ignoreBinaries: ['kingfisher', 'vp!'],
+  // A regressão resolve srvx pela árvore do Nitro para testar o adapter real,
+  // sem fixar uma segunda cópia como dependência direta do projeto.
+  ignoreIssues: {
+    'src/middleware/securityHeaders/__tests__/securityHeaders.node.test.ts': [
+      'unlisted'
+    ]
+  },
   treatConfigHintsAsErrors: true
 } satisfies KnipConfig
 
