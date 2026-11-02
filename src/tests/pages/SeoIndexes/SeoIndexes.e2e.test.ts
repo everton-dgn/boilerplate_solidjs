@@ -11,6 +11,25 @@ const SITE_DESCRIPTION =
   'A foundation for web applications with SolidJS, TypeScript and Vite+, with server-side rendering and light and dark themes.'
 
 test.describe('índices gerados do manifesto de rotas', () => {
+  for (const method of ['GET', 'HEAD']) {
+    test(`recusa ${method} de partição existente sem sufixo XML`, async ({
+      request
+    }) => {
+      const canonical = await request.fetch('/sitemaps/catalog/a.xml', {
+        method,
+        maxRedirects: 0
+      })
+      expect(canonical.status()).toBe(HTTP_OK)
+      const invalid = await request.fetch('/sitemaps/catalog/a', {
+        method,
+        maxRedirects: 0
+      })
+      expect(invalid.status()).toBe(HTTP_NOT_FOUND)
+      expect(invalid.headers()['cache-control']).toBe('no-store')
+      expect(await invalid.body()).toHaveLength(0)
+    })
+  }
+
   test('gera sitemap, robots e llms.txt a partir do manifesto de rotas', async ({
     request
   }) => {
