@@ -1,10 +1,14 @@
 import 'server-only'
-import {
-  HTTP_INTERNAL_SERVER_ERROR,
-  HTTP_SERVICE_UNAVAILABLE
-} from '@/constants/http.ts'
-
 import { withPublicationScope } from '../publicationScope/index.ts'
+import { DEFAULT_LIMITS } from './constants.ts'
+import { observeSettlement } from './helpers/observeSettlement/index.ts'
+import {
+  createOutputResponse,
+  errorResponse,
+  handleHeadResponse,
+  overloadResponse,
+  shouldBypassOutput
+} from './helpers/publicationResponse/index.ts'
 import type {
   PublicationContext,
   PublicationLimits,
@@ -13,72 +17,12 @@ import type {
   SourceOptions
 } from './types.ts'
 
-type OutputOptions = {
-  response: Response
-  signal: AbortSignal
-  maxOutputBytes: number
-  releaseOutput: () => void
-}
 type PublicationController = {
   runPublication: (options: PublicationOptions) => Promise<Response>
   getMetrics: () => PublicationMetrics
 }
-type AbortListenerHolder = { onAbort?: () => void }
-type HeadOptions = {
-  response: Response
-  abortPromise: Promise<never>
-  signal: AbortSignal
-  releaseOutput: () => void
-}
-
-// Four process-local slots cap overlap; two per class leave room for both
-// workloads. The 16 MiB reservation is an initial output budget, to calibrate
-// against the serial HTTP pilot and actual backend capacity.
-const DEFAULT_RESERVED_BYTES = 16_777_216
-
-const DEFAULT_LIMITS: PublicationLimits = {
-  total: 4,
-  sitemap: 2,
-  markdown: 2,
-  sources: 4,
-  perSource: 2,
-  outputs: 4,
-  reservedBytes: DEFAULT_RESERVED_BYTES
-}
-
 function positive(value: number): boolean {
   return Number.isSafeInteger(value) && value > 0
-}
-
-function errorResponse(): Response {
-  return new Response(null, {
-    status: HTTP_INTERNAL_SERVER_ERROR,
-    headers: { 'cache-control': 'no-store' }
-  })
-}
-
-function overloadResponse(method: string): Response {
-  return new Response(method === 'HEAD' ? null : 'Service unavailable\n', {
-    status: HTTP_SERVICE_UNAVAILABLE,
-    headers: {
-      'content-type': 'text/plain; charset=utf-8',
-      'cache-control': 'no-store',
-      'retry-after': '1'
-    }
-  })
-}
-
-async function observeSettlement(
-  task: Promise<unknown>,
-  settle: () => void
-): Promise<void> {
-  try {
-    await task
-  } catch {
-    // The caller observes the original rejection.
-  } finally {
-    settle()
-  }
 }
 
 class PublicationOverloadError extends Error {
@@ -87,123 +31,6 @@ class PublicationOverloadError extends Error {
 
 function asError(reason: unknown): Error {
   return reason instanceof Error ? reason : new Error('Publication aborted')
-}
-
-function shouldBypassOutput(
-  response: Response,
-  kind: PublicationOptions['kind']
-): boolean {
-  return (
-    !response.body ||
-    (kind === 'markdown' &&
-      !response.headers.get('content-type')?.startsWith('text/markdown'))
-  )
-}
-
-async function handleHeadResponse({
-  response,
-  abortPromise,
-  signal,
-  releaseOutput
-}: HeadOptions): Promise<Response> {
-  const cancellation = response.body?.cancel()
-  if (!cancellation) {
-    releaseOutput()
-    return new Response(null, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers
-    })
-  }
-  void observeSettlement(cancellation, releaseOutput)
-  try {
-    await Promise.race([cancellation, abortPromise])
-  } catch (error) {
-    if (signal.aborted) return errorResponse()
-    throw error
-  }
-  return new Response(null, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: response.headers
-  })
-}
-
-function createOutputResponse({
-  response,
-  signal,
-  maxOutputBytes,
-  releaseOutput
-}: OutputOptions): Response {
-  if (!response.body) throw new Error('Publication response has no body')
-  const reader = response.body.getReader()
-  let bytes = 0
-  let outputController: ReadableStreamDefaultController<Uint8Array>
-  let hasStreamEnded = false
-  const isEnded = () => hasStreamEnded
-  const listener: AbortListenerHolder = {}
-  const finishOutput = () => {
-    if (listener.onAbort) signal.removeEventListener('abort', listener.onAbort)
-    releaseOutput()
-  }
-  const stop = async (reason: unknown) => {
-    if (isEnded()) return
-    hasStreamEnded = true
-    try {
-      outputController.error(reason)
-    } catch {
-      /* Already closed by the consumer. */
-    }
-    try {
-      await reader.cancel(reason)
-    } catch {
-      /* Cancellation is best effort. */
-    }
-    finishOutput()
-  }
-  listener.onAbort = () => {
-    void stop(signal.reason)
-  }
-  const body = new ReadableStream<Uint8Array>(
-    {
-      start(target) {
-        outputController = target
-      },
-      async pull(target) {
-        if (isEnded()) return
-        try {
-          signal.throwIfAborted()
-          const chunk = await reader.read()
-          if (isEnded()) return
-          if (chunk.done) {
-            hasStreamEnded = true
-            target.close()
-            finishOutput()
-            return
-          }
-          bytes += chunk.value.byteLength
-          if (bytes > maxOutputBytes) {
-            void stop(new Error('Publication output limit exceeded'))
-            return
-          }
-          target.enqueue(chunk.value)
-        } catch (error) {
-          void stop(error)
-        }
-      },
-      cancel(reason) {
-        return stop(reason)
-      }
-    },
-    { highWaterMark: 0 }
-  )
-  signal.addEventListener('abort', listener.onAbort, { once: true })
-  if (signal.aborted) listener.onAbort()
-  return new Response(body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: response.headers
-  })
 }
 
 function createMetrics(): PublicationMetrics {
