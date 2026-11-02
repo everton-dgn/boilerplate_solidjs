@@ -14,6 +14,8 @@ const HTTP_INTERNAL_SERVER_ERROR = 500
 
 const PAGE = '/pt/markdown-contract/sample'
 const LOCALES = ['pt', 'en', 'es']
+const LOCALE_REQUESTS = 12
+const CONCURRENT_MARKDOWN_REQUESTS = 2
 // A ordem dos atributos não faz parte do contrato do HTML.
 const MARKDOWN_ALTERNATE =
   /<link\b(?=[^>]*\brel="alternate")(?=[^>]*\btype="text\/markdown")(?=[^>]*\bhref="(?<href>[^"]+)")[^>]*>/u
@@ -170,28 +172,38 @@ for (const locale of LOCALES) {
 test('isolates simultaneous locale cookies in settled content', async ({
   request
 }) => {
-  await Promise.all(
-    Array.from({ length: 12 }, async (_, index) => {
-      const locale = LOCALES[index % LOCALES.length]
-      const other = LOCALES[(index + 1) % LOCALES.length]
-      const id = crypto.randomUUID()
-      for (const label of ['first', 'second']) {
-        await releaseFixtureGate({ request, id: `${id}:${label}` })
-      }
-      const response = await request.get(
-        `/${locale}/markdown-contract/sample.md?id=${id}`,
-        {
-          headers: { cookie: `locale=${other}` }
+  for (
+    let offset = 0;
+    offset < LOCALE_REQUESTS;
+    offset += CONCURRENT_MARKDOWN_REQUESTS
+  ) {
+    await Promise.all(
+      Array.from(
+        { length: CONCURRENT_MARKDOWN_REQUESTS },
+        async (_, position) => {
+          const index = offset + position
+          const locale = LOCALES[index % LOCALES.length]
+          const other = LOCALES[(index + 1) % LOCALES.length]
+          const id = crypto.randomUUID()
+          for (const label of ['first', 'second']) {
+            await releaseFixtureGate({ request, id: `${id}:${label}` })
+          }
+          const response = await request.get(
+            `/${locale}/markdown-contract/sample.md?id=${id}`,
+            {
+              headers: { cookie: `locale=${other}` }
+            }
+          )
+          expect(response.status()).toBe(HTTP_OK)
+          expect(response.headers()['content-language']).toBe(locale)
+          const body = await response.text()
+          expect(body).toContain(`first:${locale}:resolved`)
+          expect(body).toContain(`second:${locale}:resolved`)
+          expect(body).not.toContain(`:${other}:resolved`)
         }
       )
-      expect(response.status()).toBe(HTTP_OK)
-      expect(response.headers()['content-language']).toBe(locale)
-      const body = await response.text()
-      expect(body).toContain(`first:${locale}:resolved`)
-      expect(body).toContain(`second:${locale}:resolved`)
-      expect(body).not.toContain(`:${other}:resolved`)
-    })
-  )
+    )
+  }
 })
 
 test('localizes explicit Markdown URLs without losing their suffix', async ({

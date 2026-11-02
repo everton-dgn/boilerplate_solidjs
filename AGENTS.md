@@ -30,6 +30,35 @@ release. Add a tool name to select part of the graph. For example, run
 
 <!--VITE PLUS END-->
 
+## Dimensionamento das aplicações derivadas
+
+- Este repositório é um boilerplate para aplicações de qualquer porte. As
+  páginas, os dados e o tráfego demonstrativos não representam o tamanho das
+  aplicações que serão construídas com ele. Nunca use o tamanho atual da
+  demonstração como justificativa para descartar requisitos de escala.
+- Ao escolher uma solução, examine o crescimento do volume de dados, da
+  concorrência e do número de idiomas. Identifique custo por requisição e por
+  build, memória, armazenamento e limites do ambiente de execução. Declare
+  quais custos crescem com o conjunto inteiro e quais ficam limitados por lote
+  ou operação.
+- Considere aplicações pequenas e grandes, com dados estáticos ou dinâmicos,
+  múltiplas instâncias e atualizações concorrentes quando esses cenários
+  afetarem o contrato. Limites operacionais devem ser explícitos e
+  configuráveis quando pertinente, com comportamento definido ao excedê-los.
+  Não prometa capacidade ilimitada.
+- Prefira caminhos que funcionem com a configuração padrão e permitam crescer
+  sem reescrever o contrato público. Se determinada escala exigir paginação,
+  processamento fora da requisição ou persistência compartilhada, implemente
+  o contrato necessário ao escopo e documente a responsabilidade da aplicação
+  derivada. Não trate cache por processo como persistência compartilhada.
+- Dimensione a validação pelos riscos e pelas fronteiras reais, incluindo
+  falhas e concorrência. Use cenários determinísticos para correção e medições
+  isoladas para custo; meça um piloto antes de ampliar a carga. Os testes da
+  demonstração não comprovam capacidade de produção.
+- Considerar aplicações de qualquer porte não autoriza infraestrutura
+  especulativa, dependências novas ou ampliação de escopo. Explicite o limite
+  da solução atual e a mudança concreta exigida para ultrapassá-lo.
+
 ## Runtime dos comandos
 
 - Use `vp run dev` e `vp run build`: os scripts chamam o CLI local do Vite+
@@ -463,8 +492,10 @@ release. Add a tool name to select part of the graph. For example, run
 ## Erros no servidor e chamadas de backend
 
 - Antes de alterar backend, server functions ou tratamento SSR, leia
-  [docs/server-errors.md](docs/server-errors.md). Toda operação deve terminar em
-  dados públicos ou em um erro público novo antes de chegar ao Solid.
+  [docs/server-errors.md](docs/server-errors.md) e o guia correspondente:
+  [chamadas de backend](docs/server-errors/backend.md) ou
+  [integridade do SSR](docs/server-errors/ssr-integrity.md). Toda operação deve
+  terminar em dados públicos ou em um erro público novo antes de chegar ao Solid.
 - HTTP usa `requestJson`. SDK e banco exigem adapter em `src/infra/server/`,
   com `server-only` e `protectServerOperation({ run })` envolvendo leitura,
   validação e saída. `allowControl` pertence somente ao registro global de

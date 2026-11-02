@@ -1,309 +1,32 @@
-import { m } from '@paraglide/messages.js'
-import { extractLocaleFromRequest } from '@paraglide/runtime.js'
 import type { RequestEvent } from '@solidjs/web'
-import { pageRoutes } from 'virtual:file-routes'
 
-import {
-  HTTP_BAD_REQUEST,
-  HTTP_INTERNAL_SERVER_ERROR,
-  HTTP_MULTIPLE_CHOICES,
-  HTTP_NOT_ACCEPTABLE,
-  HTTP_NOT_FOUND,
-  HTTP_OK
-} from '@/constants/http.ts'
-import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
-import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
-import { publicErrorMessage } from '@/infra/server/publicErrors/index.ts'
-import { Router } from '@/router.ts'
+import { HTTP_BAD_REQUEST, HTTP_NOT_FOUND } from '@/constants/http.ts'
+import { runPublication } from '@/infra/server/publication/index.ts'
 
 import { appendVary } from '../helpers/appendVary/index.ts'
-import { isHtmlResponse } from '../helpers/isHtmlResponse/index.ts'
-import { localizeRequest } from '../localizeRequest/index.ts'
 import {
   acceptsMarkdown,
   negotiatePageFormat
 } from '../negotiatePageFormat/index.ts'
 import { isPagePath } from '../requestClassification/index.ts'
-import { applySecurityHeaders } from '../securityHeaders/index.ts'
 import type { Next } from '../types.ts'
-import { MARKDOWN_PRERENDER_PATH, MARKDOWN_TIMEOUT_MS } from './constants.ts'
-import { collectStaticMarkdownPages } from './helpers/collectStaticMarkdownPages/index.ts'
-import { convertHtml } from './helpers/convertHtml/index.ts'
-
-type RenderOptions = {
-  event: RequestEvent
-  render: Next
-  original: Request
-  url: URL
-  isDirect: boolean
-  isPublished: boolean
-  signal: AbortSignal
-}
-type TextOptions = {
-  status: number
-  body: string | null
-  headers: Record<string, string>
-}
-type PublicOptions = { status: number; request: Request }
-type Publication = { response: Response; isPublished: boolean }
-type RedirectOptions = { response: Response; url: URL; request: Request }
-type RouteRequest = { request: Request; url: URL; isPublished: boolean }
-
-const VARY_HEADERS = 'Accept, Cookie, Accept-Language'
-// none equivale a noindex, nofollow; em max-image-preview, só limita a prévia.
-const NOINDEX = /(?<!max-image-preview\s*:\s*)\b(?:noindex|none)\b/iu
-
-function uncachedResponse(response: Response): Response {
-  response.headers.set('cache-control', 'private, no-store')
-  return applySecurityHeaders(response)
-}
-
-function textResponse({ status, body, headers }: TextOptions): Response {
-  return uncachedResponse(
-    new Response(body, {
-      status,
-      headers: { 'content-type': 'text/plain; charset=utf-8', ...headers }
-    })
-  )
-}
-
-// O adaptador roda fora do contexto de idioma do paraglide; o idioma da
-// mensagem vem da requisição original, na ordem do localizeRequest.
-function publicResponse({ status, request }: PublicOptions): Response {
-  return textResponse({
-    status,
-    body:
-      status === HTTP_INTERNAL_SERVER_ERROR
-        ? publicErrorMessage(extractLocaleFromRequest(request))
-        : null,
-    headers: { vary: VARY_HEADERS }
-  })
-}
-
-function unpublished(request: Request): Promise<Response> {
-  return localizeRequest({
-    request,
-    next: () =>
-      Promise.resolve(
-        textResponse({
-          status: HTTP_NOT_FOUND,
-          body: request.method === 'HEAD' ? null : m.notFound_description(),
-          headers: { 'x-robots-tag': 'noindex' }
-        })
-      )
-  })
-}
-
-function notAcceptable(request: Request): Promise<Response> {
-  return localizeRequest({
-    request,
-    next: () =>
-      Promise.resolve(
-        textResponse({
-          status: HTTP_NOT_ACCEPTABLE,
-          body: request.method === 'HEAD' ? null : 'text/html\ntext/markdown\n',
-          headers: { vary: VARY_HEADERS }
-        })
-      )
-  })
-}
-
-function documentUrl(request: Request): URL {
-  const url = new URL(request.url)
-  if (!url.pathname.endsWith('.md')) return url
-  const page = url.pathname.slice(0, -'.md'.length)
-  url.pathname = page.endsWith('/index')
-    ? page.slice(0, -'/index'.length) || '/'
-    : page
-  return url
-}
-
-function isEligible(url: URL): boolean {
-  return (
-    isPagePath({ pathname: url.pathname, method: 'GET' }) &&
-    isMarkdownRoute(Router.match(url.href).map(match => match.info))
-  )
-}
-
-function canPublish({ response, isPublished }: Publication): boolean {
-  return (
-    isPublished && !NOINDEX.test(response.headers.get('x-robots-tag') ?? '')
-  )
-}
-
-function canConvert({ response, isPublished }: Publication): boolean {
-  if (!isHtmlResponse(response)) return false
-  if (response.status === HTTP_NOT_FOUND) return true
-  return response.status === HTTP_OK && canPublish({ response, isPublished })
-}
-
-// Só a forma canônica publica: /pt.md ou /pt/about/.md duplicariam páginas
-// fora dos arquivos estáticos.
-function isUnpublished({ request, url, isPublished }: RouteRequest): boolean {
-  return (
-    markdownPath(url.pathname) !== new URL(request.url).pathname ||
-    request.headers.has('authorization') ||
-    (!isPublished && !Router.match(url.href).at(-1)?.pattern.includes('*'))
-  )
-}
-
-// O prerender do Nitro identifica suas requisições com este header; o build
-// grava cada caminho listado como arquivo `.md` estático. Qualquer cliente pode
-// enviá-lo: o header não autentica nada, e a lista precisa continuar pública.
-function isStaticListing(request: Request): boolean {
-  return (
-    request.headers.has('x-nitro-prerender') &&
-    new URL(request.url).pathname === MARKDOWN_PRERENDER_PATH
-  )
-}
-
-function listStaticMarkdown(): Response {
-  const paths = collectStaticMarkdownPages(pageRoutes)
-    .map(path => new URL(resolveSiteUrl(path)))
-    .filter(url => isEligible(url))
-    .map(url => markdownPath(url.pathname))
-  return uncachedResponse(Response.json(paths))
-}
-
-async function resolveRedirect({
-  response,
-  url,
-  request
-}: RedirectOptions): Promise<Response> {
-  // Nitro aceita redirects no prerender, mas o arquivo perde o status HTTP. Um
-  // cliente comum que envie o header só troca o redirect por 500 público.
-  if (request.headers.has('x-nitro-prerender')) {
-    await response.body?.cancel()
-    return publicResponse({ status: HTTP_INTERNAL_SERVER_ERROR, request })
-  }
-  // A resposta do render já saiu do securityHeaders; falta só o cache.
-  const redirect = appendVary({
-    response: new Response(response.body, response),
-    field: 'Accept'
-  })
-  redirect.headers.set('cache-control', 'private, no-store')
-  const location = response.headers.get('location')
-  if (!location) return redirect
-  const target = new URL(location, url)
-  if (
-    target.origin !== url.origin ||
-    target.username ||
-    target.password ||
-    target.pathname.startsWith('//') ||
-    target.pathname.endsWith('.md') ||
-    !isEligible(target)
-  ) {
-    return redirect
-  }
-  target.pathname = markdownPath(target.pathname)
-  redirect.headers.set(
-    'location',
-    `${target.pathname}${target.search}${target.hash}`
-  )
-  return redirect
-}
-
-async function renderMarkdown({
-  event,
-  render,
-  original,
-  url,
-  isDirect,
-  isPublished,
-  signal
-}: RenderOptions): Promise<Response> {
-  const response = await render()
-  signal.throwIfAborted()
-  if (
-    response.status >= HTTP_MULTIPLE_CHOICES &&
-    response.status < HTTP_BAD_REQUEST
-  ) {
-    return isDirect
-      ? resolveRedirect({ response, url, request: original })
-      : response
-  }
-  if (
-    isDirect &&
-    response.status === HTTP_OK &&
-    !canPublish({ response, isPublished })
-  ) {
-    await response.body?.cancel()
-    return publicResponse({ status: HTTP_NOT_FOUND, request: original })
-  }
-  const state = event.locals.ssrRenderState
-  if (
-    isHtmlResponse(response) &&
-    response.status === HTTP_INTERNAL_SERVER_ERROR &&
-    state?.hasErrors === true
-  ) {
-    await response.body?.cancel()
-    return publicResponse({
-      status: HTTP_INTERNAL_SERVER_ERROR,
-      request: original
-    })
-  }
-  if (!canConvert({ response, isPublished })) return response
-  if (state?.hasCompleted !== true || state.hasErrors !== false) {
-    await response.body?.cancel()
-    return publicResponse({
-      status: HTTP_INTERNAL_SERVER_ERROR,
-      request: original
-    })
-  }
-  // A origem pública resolve os links: no prerender a requisição é local.
-  const markdown = await convertHtml({
-    response,
-    url: resolveSiteUrl(`${url.pathname}${url.search}`),
-    signal
-  })
-  const headers = new Headers(response.headers)
-  for (const name of ['content-length', 'content-encoding', 'etag']) {
-    headers.delete(name)
-  }
-  headers.set('content-type', 'text/markdown; charset=utf-8')
-  if (response.status === HTTP_NOT_FOUND) headers.set('x-robots-tag', 'noindex')
-  return uncachedResponse(
-    appendVary({
-      response: new Response(markdown, { status: response.status, headers }),
-      field: 'Accept'
-    })
-  )
-}
-
-async function boundedRender(
-  options: Omit<RenderOptions, 'signal'>
-): Promise<Response> {
-  const { event, original, url } = options
-  const controller = new AbortController()
-  const signal = AbortSignal.any([original.signal, controller.signal])
-  const timeout = setTimeout(() => controller.abort(), MARKDOWN_TIMEOUT_MS)
-  const headers = new Headers(original.headers)
-  headers.set('accept', 'text/html')
-  event.renderMode = 'async'
-  event.request = new Request(url, { method: 'GET', headers, signal })
-  const aborted = Promise.withResolvers<Response>()
-  const onAbort = () => {
-    aborted.reject(new Error('Markdown request aborted'))
-  }
-  try {
-    signal.throwIfAborted()
-    signal.addEventListener('abort', onAbort, { once: true })
-    return await Promise.race([
-      renderMarkdown({ ...options, signal }),
-      aborted.promise
-    ])
-  } catch (error) {
-    // As demais falhas seguem para a contenção, que registra o log.
-    if (!signal.aborted) throw error
-    return publicResponse({
-      status: HTTP_INTERNAL_SERVER_ERROR,
-      request: original
-    })
-  } finally {
-    clearTimeout(timeout)
-    signal.removeEventListener('abort', onAbort)
-  }
-}
+import { MARKDOWN_TIMEOUT_MS, MAX_MARKDOWN_BYTES } from './constants.ts'
+import { boundedRender } from './helpers/boundedRender/index.ts'
+import {
+  normalizePublication,
+  notAcceptable,
+  publicResponse,
+  unpublished
+} from './helpers/markdownResponses/index.ts'
+import {
+  documentUrl,
+  isEligible,
+  isUnpublished
+} from './helpers/markdownRouting/index.ts'
+import {
+  isStaticListing,
+  listStaticMarkdown
+} from './helpers/staticMarkdownListing/index.ts'
 
 export async function markdownContent(
   event: RequestEvent,
@@ -340,18 +63,22 @@ export async function markdownContent(
     return isPublished ? appendVary({ response, field: 'Accept' }) : response
   }
   if (!isDirect && original.headers.has('authorization')) return render()
-  const response = await boundedRender({
-    event,
-    render,
-    original,
-    url,
-    isDirect,
-    isPublished
+  const response = await runPublication({
+    kind: 'markdown',
+    signal: original.signal,
+    method: original.method,
+    timeoutMs: MARKDOWN_TIMEOUT_MS,
+    maxOutputBytes: MAX_MARKDOWN_BYTES,
+    run: ({ signal }) =>
+      boundedRender({
+        event,
+        render,
+        original,
+        url,
+        isDirect,
+        isPublished,
+        signal
+      })
   })
-  if (original.method !== 'HEAD') return response
-  await response.body?.cancel()
-  return new Response(null, {
-    status: response.status,
-    headers: response.headers
-  })
+  return normalizePublication({ response, request: original })
 }

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { LLMS_DESCRIBEDBY_LINK } from '@/constants/llms.ts'
+
 const HTTP_OK = 200
 const HTTP_REDIRECT = 307
 const HTTP_NOT_FOUND = 404
@@ -29,6 +31,7 @@ for (const { locale, tag, missing } of LOCALES) {
       expect(negotiated.headers().vary?.toLowerCase().split(/,\s*/u)).toContain(
         'accept'
       )
+      expect(negotiated.headers().link).toBe(LLMS_DESCRIBEDBY_LINK)
       expect(await negotiated.text()).toContain('# ')
       const markdown = await request.get(markdownPath, {
         maxRedirects: 0,
@@ -74,6 +77,7 @@ for (const { locale, tag, missing } of LOCALES) {
       )
       expect(head.headers()['set-cookie']).toBeUndefined()
       expect(head.headers()['content-language']).toBe(locale)
+      expect(head.headers().link).toBe(LLMS_DESCRIBEDBY_LINK)
       expect(await head.body()).toHaveLength(0)
     })
   }
@@ -96,6 +100,9 @@ for (const { locale, tag, missing } of LOCALES) {
     )
     expect(response.headers()['x-robots-tag']).toBe('noindex')
     expect(response.headers()['cache-control']).toBe('private, no-store')
+    // A função não anuncia o índice em erros; na Vercel, a regra por
+    // extensão dos `.md` é outra camada, documentada à parte.
+    expect(response.headers().link).toBeUndefined()
     const body = await response.text()
     expect(body).toContain(`# ${missing}`)
     expect(body).toContain('404')
@@ -250,7 +257,9 @@ for (const accept of [
 }
 
 for (const endpoint of [
-  { path: '/llms.txt', contentType: 'text/markdown' },
+  // Arquivo do build: o tipo na Vercel vem do overrides, conferido no teste do
+  // build; o preview local usa a extensão.
+  { path: '/llms.txt', contentType: 'text/plain' },
   { path: '/sitemap.xml', contentType: 'application/xml' },
   { path: '/robots.txt', contentType: 'text/plain' },
   { path: '/images/og.png', contentType: 'image/png' },

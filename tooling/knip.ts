@@ -65,6 +65,8 @@ const config = {
     'src/infra/server/configureServerErrors/index.ts!',
     // API de transporte do boilerplate; o consumidor atual está na fixture E2E.
     'src/infra/server/requestJson/index.ts!',
+    // API pública de configuração e métricas; fixtures exercitam os consumidores.
+    'src/infra/server/publication/index.ts!',
     // Componentes e APIs públicas reutilizáveis, exercitados pelas fixtures.
     'src/components/atoms/Input/index.tsx!',
     'src/components/atoms/Textarea/index.tsx!',
@@ -84,6 +86,7 @@ const config = {
     'src/**/*.{ts,tsx}!',
     'tooling/**/*.ts',
     '!src/tests/**!',
+    '!src/**/__tests__/**!',
     '!src/**/*.test.{ts,tsx}!'
   ],
   // A config fica fora do caminho padrão e roda por tooling/css/check.ts.
@@ -95,6 +98,13 @@ const config = {
   'filesystem-routing': false,
   // O Kingfisher é externo; o vp do script start vem de uma devDependency.
   ignoreBinaries: ['kingfisher', 'vp!'],
+  // A regressão resolve srvx pela árvore do Nitro para testar o adapter real,
+  // sem fixar uma segunda cópia como dependência direta do projeto.
+  ignoreIssues: {
+    'src/middleware/securityHeaders/__tests__/securityHeaders.node.test.ts': [
+      'unlisted'
+    ]
+  },
   treatConfigHintsAsErrors: true
 } satisfies KnipConfig
 

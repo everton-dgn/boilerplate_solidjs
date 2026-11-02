@@ -21,6 +21,19 @@ página em `src/tests/pages/<Pasta>/` declaram seus assuntos no mapa `subjects`
 desse arquivo. A primeira suíte E2E de uma página nova exige a entrada
 correspondente, e os arquivos dessas pastas usam só o ambiente `e2e`.
 
+Suítes extensas podem ser divididas por responsabilidade usando os
+qualificadores do nome. A preparação compartilhada fica em `fixtures.ts` dentro
+do mesmo `__tests__`; tipos e constantes compartilhados podem ficar em
+`types.ts` e `constants.ts`. Esses três módulos de apoio não são arquivos
+executáveis de teste. A exceção de nomes não se aplica às pastas de páginas E2E
+nem dispensa as regras de colocalização. Preserve o isolamento por arquivo e a
+limpeza dos recursos da fixture ao dividir uma suíte.
+
+O Knip mantém `src/**/__tests__/` fora do inventário de produção. A fixture
+compartilhada de Markdown usa `v8 ignore file` para que seus helpers não entrem
+nos percentuais de cobertura da aplicação; os testes continuam executando esses
+helpers normalmente.
+
 Teste regras e resultados observáveis: recuperação após erro, navegação,
 seleção, persistência e sincronização. Componentes de apresentação simples não
 precisam de suíte própria para conferir montagem, textos estáticos, classes ou o
@@ -110,20 +123,74 @@ export padrão e a cadeia montada por `createMiddleware`.
 ## Testes da aplicação completa
 
 `vp run test:e2e` executa os testes em `src/tests/pages/**/*.e2e.test.ts`,
-exceto os arquivos `*.production.e2e.test.ts`, com Chromium. O Playwright gera o
-build e inicia o servidor de produção em `http://127.0.0.1:4317`, encerrando-o
-ao terminar. A porta precisa estar livre. Os cenários cobrem a página inicial,
-hidratação do seletor de tema, teclado, persistência e sincronização entre abas,
-cores no HTML inicial, layout e resposta 404 com navegação de volta ao início.
-Também cobrem a confidencialidade de erros do servidor: HTTP 500 de um backend
-local, exceção após a leitura, `Error` dentro do resultado, erro público e
-sucesso, cada um em SSR inicial, chamada pelo navegador e streaming, além de
-recarregamento ainda com falha, recuperação após o backend voltar e isolamento
-do bundle cliente. O SSR inicial também é verificado com JavaScript desativado.
-O detalhe está em [docs/server-errors.md](server-errors.md); o CI executa a
-suíte inteira, exceto quando a
+exceto os arquivos `*.production.e2e.test.ts` e a suíte isolada de carga
+`PublicationLoad.e2e.test.ts`, com Chromium. O Playwright gera o build e inicia
+o servidor de produção em `http://127.0.0.1:4317`, encerrando-o ao terminar. A
+porta precisa estar livre. Os cenários cobrem a página inicial, hidratação do
+seletor de tema, teclado, persistência e sincronização entre abas, cores no HTML
+inicial, layout e resposta 404 com navegação de volta ao início. Também cobrem a
+confidencialidade de erros do servidor: HTTP 500 de um backend local, exceção
+após a leitura, `Error` dentro do resultado, erro público e sucesso, cada um em
+SSR inicial, chamada pelo navegador e streaming, além de recarregamento ainda
+com falha, recuperação após o backend voltar e isolamento do bundle cliente. O
+SSR inicial também é verificado com JavaScript desativado. O detalhe está em
+[docs/server-errors.md](server-errors.md); o CI executa a suíte inteira, exceto
+quando a
 [prova de reaproveitamento](development.md#reutilização-da-validação-do-pr-na-main)
 dispensa `E2E (fixtures)`.
+
+### Carga da publicação
+
+Os testes funcionais de Markdown usam o projeto `markdown`, com um worker. O
+caso de isolamento de idiomas mantém 12 consultas, em pares concorrentes, para
+respeitar as duas vagas padrão. A suíte de carga verifica separadamente a recusa
+acima desse limite. O teardown dos logs aguarda os dois projetos.
+
+Execute `TEST_PUBLICATION_LOAD=true vp run test:e2e` para o piloto HTTP de
+publicação. A configuração seleciona somente `PublicationLoad`, com um worker,
+build próprio de fixtures e backend controlável. A flag é incompatível com rotas
+de produção. A suíte não roda junto dos demais E2E: suas requisições bloqueadas
+ocupam deliberadamente a capacidade de publicação e interfeririam nos outros
+testes. Esse piloto é uma execução explícita, fora da suíte padrão da CI.
+
+O primeiro cenário mantém renders de Markdown aguardando o backend até que a
+origem recuse uma requisição com 503. Confere no backend que a requisição
+recusada não começou o trabalho, consulta HTML normal durante a saturação e
+libera as operações para verificar recuperação e devolução das reservas. Uma
+segunda instância do mesmo build, na porta da primeira acrescida de dois, usa o
+mesmo backend e aceita trabalho enquanto a primeira está saturada. Os contadores
+de cada processo mostram por que o limite local se multiplica na frota.
+
+O segundo cenário converte um documento sintético com mais de 1 MB enquanto
+consulta páginas HTML. O endpoint `publication-probe`, exclusivo das fixtures,
+observa o atraso do event loop no processo do servidor, memória e contadores
+agregados. O gerador de carga roda em outro processo. Os anexos JSON dos testes
+preservam as amostras, o tamanho do corpo e os critérios definidos antes da
+medição: atraso máximo do event loop abaixo de 250 ms e maior duração das
+consultas HTML abaixo do maior valor da linha de base acrescido de 500 ms. Esses
+critérios são uma referência local inicial, não um SLO de produção.
+
+Rode o piloto sem outros benchmarks ou builds concorrentes. Comece com uma
+execução e investigue uma falha antes de repetir. As poucas amostras servem para
+detectar bloqueio e custo excessivo; não sustentam p99, capacidade da frota,
+comportamento do CDN ou cancelamento de sockets na Vercel. O pico de RSS é do
+processo inteiro, incluindo o runtime. O monitor é desativado no encerramento do
+teste, e o Playwright encerra os servidores que iniciou. A coleta só é válida
+quando o monitor confirma amostras antes e depois da carga. O estado do monitor
+fica em módulo compartilhado: o roteador empacota cada método HTTP
+separadamente.
+
+Outros dois cenários desconectam um cliente durante o render e pausam a leitura
+de uma resposta de 16 MiB. O primeiro confere que o backend pendente ainda ocupa
+a vaga após a desconexão e que ela é liberada quando o backend termina. O
+segundo observa a reserva de saída com produtor já encerrado, a recusa por falta
+de bytes e a liberação no prazo da fixture. Esses testes usam sockets locais;
+não medem a retenção do CDN da Vercel.
+
+Os dois últimos cenários consultam GET e HEAD da mesma parte em paralelo e
+removem uma parte após obter o índice, restaurando-a em seguida. Conferem corpos
+independentes, metadados equivalentes, 404 sem cache durante a ausência e
+recuperação após a restauração. A fonte controlável existe somente nas fixtures.
 
 `hydrationFinished()` lê o atributo `data-hydration-ended` do `<html>`,
 publicado pela API pública experimental `onHydrationEnd` do Solid. O registro
@@ -210,6 +277,30 @@ O teste de serialização do Markdown roda o render real com o hook instalado e
 cobre falhas de serialização, `onCleanup` que lança e fallback de `<Errored>`
 com HTML 200, inclusive por um `redirect()`; os E2E de streaming do Markdown
 cobrem renders com falha no servidor.
+
+A publicação também é conferida pelo inventário completo dos Markdown estáticos
+e pelos destinos internos do `llms.txt`. A verificação deduplica requisições e
+limita a concorrência; não busca links externos. Esses conjuntos não precisam
+coincidir com o sitemap: a seleção editorial, a elegibilidade de Markdown e a
+indexação têm controles próprios. O critério de tamanho do conteúdo da
+demonstração permanece separado dessa verificação, para aceitar páginas curtas
+nas aplicações derivadas.
+
+Os testes de tooling exercitam MIME incorreto, `.md.html`, redirects, omissões,
+UTF-8, corpo vazio e exemplos legítimos de HTML no Markdown. O agregado
+`llms-full.txt` exige seleção determinística, corpos completos, deduplicação,
+limite de bytes, caminhos contidos e publicação somente após a conclusão. Zero
+documentos selecionados deve omitir tanto o arquivo quanto seu anúncio; um
+agregado residual nessa condição deve falhar o build e preservar o arquivo para
+diagnóstico.
+
+No sitemap, os cenários de contagem e bytes são independentes, para que um teto
+não esconda o outro. Os testes cobrem grupos de idiomas indivisíveis, URLs
+localizadas longas, propriedade da rota pelo matcher nativo e fontes com
+timeout, cancelamento, entradas inválidas ou vazias. A fixture particionada
+exercita o índice e as partes por HTTP; uma consulta de parte deve ler somente
+seu lote. Mudanças entre requisições são testadas como consistência eventual,
+incluindo 404 com `no-store` depois de remover uma parte anunciada.
 
 Essas verificações cobrem o build e o preview local. Cache e regras de domínio
 da Vercel continuam exigindo conferência no site publicado.

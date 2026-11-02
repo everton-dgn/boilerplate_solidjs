@@ -1,23 +1,26 @@
 import type { APIEvent } from 'filesystem-routing/api'
-import { pageRoutes } from 'virtual:file-routes'
 
-import { memoizeOnce } from '@/helpers/memoizeOnce/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
+import { sitemapSources } from '@/infra/server/sitemapSources/index.ts'
+import { readSitemapContext } from '@/routes/(seo)/sitemap/helpers/readSitemapContext/index.ts'
 
-import { buildSitemapResponse } from './helpers/buildSitemapResponse/index.ts'
-import { collectSitemapEntries } from './helpers/collectSitemapEntries/index.ts'
-
-// Só a leitura do manifesto é memoizada: as fontes das rotas com parâmetros
-// rodam a cada request, porque seus dados mudam sem novo build.
-const readManifest = memoizeOnce({
-  isEnabled: import.meta.env.PROD,
-  render: () => collectSitemapEntries(pageRoutes)
-})
+import { buildSitemapIndexResponse } from '../sitemap/helpers/sitemapService/index.ts'
 
 export function GET({ request }: APIEvent): Promise<Response> {
-  return buildSitemapResponse({
-    manifest: readManifest(),
+  return buildSitemapIndexResponse({
+    ...readSitemapContext(),
+    sources: sitemapSources,
     siteUrl: resolveSiteUrl('/'),
     signal: request.signal
+  })
+}
+
+export function HEAD({ request }: APIEvent): Promise<Response> {
+  return buildSitemapIndexResponse({
+    ...readSitemapContext(),
+    sources: sitemapSources,
+    siteUrl: resolveSiteUrl('/'),
+    signal: request.signal,
+    method: 'HEAD'
   })
 }

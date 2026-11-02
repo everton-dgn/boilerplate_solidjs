@@ -30,7 +30,8 @@ de `@solidjs/web`; a troca pelo erro público acontece só em produção.
   descrito em [Idioma da mensagem pública](#idioma-da-mensagem-pública).
 - [logServerFailure](../src/infra/server/logServerFailure/index.ts) é o único
   ponto de log: grava a mensagem fixa da origem e, para um `Error`, só a classe
-  e os frames filtrados descritos em [Log de falhas](#log-de-falhas).
+  e os frames filtrados descritos em
+  [Log de falhas](server-errors/logging.md#log-de-falhas).
 - Os módulos importam `server-only`; o plugin impede que entrem no bundle
   cliente. O alias de testes existe somente no projeto Node.
 
@@ -55,11 +56,11 @@ quando o erro não era público. Sinais de controle (`Response` sem corpo,
 envelopes e `NotReadyError`) seguem a política padrão do runtime.
 `Response.error()` também não tem corpo, mas o status 0 não sai como HTTP, então
 ela vira falha pública. O caso do envelope lançado por uma query no SSR está em
-[Validação e recuperação](#validação-e-recuperação). O retorno do hook vai ao
-cliente sem nova sanitização, então ele nunca devolve o objeto recebido, nem um
-erro público, que pode ter ganhado campos depois de criado. O hook é síncrono e
-não lança, nem quando o log falha: uma falha dele faria o runtime registrar o
-erro do hook.
+[Validação e recuperação](server-errors/recovery.md#validação-e-recuperação). O
+retorno do hook vai ao cliente sem nova sanitização, então ele nunca devolve o
+objeto recebido, nem um erro público, que pode ter ganhado campos depois de
+criado. O hook é síncrono e não lança, nem quando o log falha: uma falha dele
+faria o runtime registrar o erro do hook.
 
 Limites do hook:
 
@@ -67,8 +68,9 @@ Limites do hook:
   de qualquer hook. O mesmo corpo leva "Internal Server Error" para a fonte e a
   mensagem pública para o boundary.
 - Em desenvolvimento o hook não troca o erro, como descrito em
-  [Log de falhas](#log-de-falhas): o navegador recebe o erro que o runtime
-  recebeu, que numa server function já é o erro público do wrapper.
+  [Log de falhas](server-errors/logging.md#log-de-falhas): o navegador recebe o
+  erro que o runtime recebeu, que numa server function já é o erro público do
+  wrapper.
 - Valores primitivos lançados não têm veredito por objeto; o hook roda e
   registra o log a cada vez que o runtime os encontra.
 
@@ -132,11 +134,28 @@ aceita um único render por requisição: se a cadeia falhar depois de já ter
 renderizado a página, a resposta também é o 500 em texto. Se o render de erro
 falhar, a resposta é o 500 em texto e o log ganha a linha `[error-page]`, com a
 classe e os frames do erro do render descritos em
-[Log de falhas](#log-de-falhas). A contenção lê o endpoint do export `endpoint`
-de `virtual:solid-server-function-handler`, o mesmo valor que o dispatcher do
-plugin usa, com `serverFunctions.endpoint` e o `base` do Vite já aplicados;
-mudar essas opções não exige editar o middleware. No projeto Node do Vitest, um
-alias troca esse módulo por um stub com o valor padrão.
+[Log de falhas](server-errors/logging.md#log-de-falhas). A contenção lê o
+endpoint do export `endpoint` de `virtual:solid-server-function-handler`, o
+mesmo valor que o dispatcher do plugin usa, com `serverFunctions.endpoint` e o
+`base` do Vite já aplicados; mudar essas opções não exige editar o middleware.
+No projeto Node do Vitest, um alias troca esse módulo por um stub com o valor
+padrão.
+
+O cancelamento da própria requisição não é falha. Quando o valor capturado é o
+`signal.reason` da requisição, com o sinal abortado, a contenção responde o 500
+em texto, sem log e sem chamar o render. Esse caso cobre a desconexão do cliente
+e o prazo da publicação, que chegam pelo mesmo sinal, porque o render em modo
+`async` rejeita com esse motivo ao ser abandonado. A comparação é por
+identidade: qualquer outro valor lançado com o sinal abortado continua
+registrado como falha, inclusive um `AbortError` de outro sinal ou um erro que
+traga o motivo em `cause`. Na página de erro, o critério usa o sinal de
+`event.request`, que é o que o render lê: o cancelamento não acrescenta a linha
+`[error-page]`, e a falha original já foi registrada antes do render. Um erro
+distinto desse render mantém a linha. Em desenvolvimento o valor é relançado,
+como qualquer outro. Um motivo primitivo não tem identidade própria e se
+confunde com o mesmo valor lançado. O patch preserva também motivos como `null`,
+`false`, zero, string vazia e `NaN`; o middleware usa `Object.is` para comparar
+o motivo sem perder esses valores.
 
 A contenção só alcança a janela da cadeia de middleware. A criação do evento, o
 commit da resposta e falhas do corpo depois que a `Response` sai ficam fora
@@ -169,662 +188,36 @@ testes Node e E2E conferem o texto esperado no idioma de cada caso.
 
 ## Log de falhas
 
-`logServerFailure({ source, error })` tenta registrar uma string de várias
-linhas em um único argumento de `console.error`:
-
-1. A mensagem fixa da origem, como
-   `[middleware] Unexpected failure; private details omitted`. O texto segue
-   igual byte a byte, porque o E2E conta as linhas que o contêm.
-2. Só quando `error instanceof Error`, o nome da classe, lido uma única vez de
-   `Object.getPrototypeOf(error).constructor.name` e gravado apenas se for uma
-   string com um identificador simples de até 64 caracteres. Outros valores não
-   são convertidos para texto. Nem `error.name` nem uma propriedade própria
-   `constructor` são usados.
-3. Até 10 frames do stack, um por linha.
-
-Os frames só são lidos quando `error.stack` começa pelo cabeçalho que o V8 monta
-com o `name` e a mensagem atuais: `<nome>: <message>` seguido de quebra de
-linha, ou só o nome quando a mensagem é vazia. O nome do cabeçalho precisa ser o
-`error.name` atual inteiro, um identificador simples de até 64 caracteres, ou,
-num erro interno do Node, esse nome seguido do `code`, como em
-`TypeError [ERR_INVALID_ARG_TYPE]`. Um `name` ou `code` com quebra de linha, que
-deixaria linhas do cabeçalho com forma de frame, também deixa o log sem frames.
-O cabeçalho inteiro é descartado, inclusive as linhas de uma mensagem com
-quebras. Um stack sobrescrito, ou um `name` ou uma mensagem trocados depois da
-primeira leitura do stack, deixa o log sem frames, porque não há como saber onde
-o cabeçalho termina.
-
-Depois do cabeçalho, só passam linhas `    at <função> (<local>)` ou
-`    at <local>`, com o local em `file://`, `node:` ou caminho absoluto, sem
-espaços, parênteses nem caracteres de controle ou de formatação (categoria
-Unicode `C`, como o ESC das sequências de terminal e o U+202E, que inverte a
-direção do texto), e terminado em `:linha:coluna`. Um frame real em `file://`
-traz esses caracteres codificados. A função admite os prefixos `async` e `new`,
-`<anonymous>` e o alias `[as nome]`; a forma sem função admite só o prefixo
-`async`, das funções anônimas assíncronas. Por causa dos parênteses, um frame
-que aponte para um arquivo fonte em pasta de grupo de rotas, como
-`src/routes/(seo)/`, é descartado. As demais linhas, como
-`async Promise.all (index 0)`, frames de `eval` e URLs HTTP, são descartadas sem
-interromper a leitura. A leitura para em 50 linhas, e uma linha acima de 1024
-caracteres é descartada antes das expressões regulares, que são ancoradas e sem
-repetições aninhadas.
-
-Ficam fora do log a mensagem, o `cause`, as propriedades próprias, `error.name`
-e qualquer dado de um valor que não seja `Error`. Uma falha na inspeção, como um
-getter que lança ou um Proxy hostil, deixa só a linha fixa. Se montar ou gravar
-a linha falhar, o logger tenta uma única vez registrar apenas a mensagem fixa,
-sem inspecionar o erro novamente. A falha dessa segunda tentativa é descartada.
-O logger é síncrono e não propaga falhas de inspeção, montagem ou acesso ao
-destino. Os consumidores mantêm a resposta pública mesmo sem log disponível. Se
-o destino escrever e depois lançar, a mensagem fixa pode aparecer duas vezes.
-
-No servidor de desenvolvimento, o hook de `configureServerErrors` devolve
-`undefined`, e o runtime envia ao navegador o erro que recebeu. Três chamadores
-passam `shouldPrintOriginal: true`, e o logger imprime o erro original numa
-segunda chamada de `console.error`, depois da linha filtrada:
-
-- O hook de `configureServerErrors`. Com o hook instalado, o runtime deixa de
-  imprimir essas falhas, e sem esse pedido a mensagem só chegaria ao navegador.
-- O `protectServerOperation`, que atende o wrapper e o `requestJson`. Ele troca
-  a falha pelo erro público antes do runtime, e o hook recebe só esse erro, sem
-  registrar log.
-- O sitemap, que responde 503 sem passar pelo runtime.
-
-As origens `[middleware]` e `[error-page]` não fazem o pedido, porque em
-desenvolvimento a contenção relança a exceção antes de registrar. Os
-diagnósticos de desenvolvimento do Solid também imprimem a mensagem, como o de
-um erro contido por `<Errored>`. O logger confere `import.meta.env.DEV` por
-conta própria e ignora o pedido em produção. Uma falha ao formatar o erro
-original é descartada.
-
-Limites conhecidos:
-
-- Um stack forjado que imite o cabeçalho e a gramática passa pelo filtro. O
-  mesmo vale para uma mensagem ou um `name` trocados por um prefixo do valor
-  original depois da primeira leitura do stack, e para um getter de `name` que
-  devolva um valor na formatação do V8 e outro, simples, na conferência. Esses
-  casos exigem código que altere o erro no próprio processo; um `name` ou `code`
-  recebido apenas como dado não entra no log.
-- O alias `[as nome]` de um frame mostra a propriedade usada na chamada, que
-  pode ter sido escolhida em tempo de execução.
-- Outro `Error.prepareStackTrace`, como o do module runner do Vite que o Vitest
-  instala, pode montar o cabeçalho sem o código dos erros do Node ou como
-  `Error: ` quando a mensagem é vazia; no segundo caso o log sai sem frames.
-  Frames com caminho relativo ou com espaços também são descartados.
+Veja [log de falhas](server-errors/logging.md#log-de-falhas).
 
 ## Como adicionar uma chamada
 
-Use `requestJson` dentro de uma server function, com um schema que selecione os
-campos públicos. O bloco abaixo é a forma simplificada da
-[fixture readBackend](../src/tests/fixtures/e2e/backend-error/readBackend/index.ts),
-a chamada de referência; a fixture acrescenta os cenários de falha que o E2E
-provoca e, como as demais fixtures que usam o transporte, só entra no build E2E:
-
-```ts
-import * as v from 'valibot'
-
-import { requestJson } from '@/infra/server/requestJson/index.ts'
-
-type BackendData = { message: string }
-
-export async function readBackend(id: string): Promise<BackendData> {
-  'use server'
-  return requestJson({
-    url: `http://127.0.0.1:4318/data?id=${encodeURIComponent(id)}`,
-    schema: v.object({ message: v.string() })
-  })
-}
-```
-
-O endereço é do backend de testes. Na integração real, resolva o endereço no
-servidor e defina a saída pública. `v.object` remove campos extras; schemas
-permissivos não substituem essa seleção. O status HTTP 500 não rejeita o
-`fetch`: `requestJson` verifica `response.ok` e cancela o corpo de falha sem
-lê-lo. Rede, JSON inválido e falha de schema também são protegidos. O transporte
-aplica um timeout de 10 s (combinado com `init.signal`, quando informado) e
-recusa corpos acima de 1 MB, cancelando o stream antes de lê-lo inteiro.
-
-Para SDK ou banco, crie um adapter em `infra/server` com `server-only` e envolva
-a operação inteira em `protectServerOperation({ run })`, incluindo leitura,
-validação e montagem da saída. Acrescente o pacote às restrições de import do
-lint, com exceção apenas para o adapter e teste da proteção.
-
-As fontes do sitemap (`route.info.sitemap`) seguem a mesma regra: a função
-declarada na rota chama uma server function, que faz a leitura protegida e
-devolve só `path` e `lastmod`. A fonte recebe um `AbortSignal` que aborta no
-prazo de 10 s, na desconexão do cliente e ao fim da leitura das fontes;
-repasse-o à leitura (por exemplo, em `init.signal` do `requestJson`) para
-cancelá-la. A rota do sitemap responde 503 sem corpo a qualquer falha e registra
-pela origem `sitemap` a linha fixa
-`[sitemap] Unexpected failure; private details omitted`, com a classe e os
-frames descritos em [Log de falhas](#log-de-falhas), sem a mensagem do erro.
-
-Nunca copie `error.message`, `cause`, propriedades, corpo upstream ou issues do
-validador para a saída. Para uma falha pública, use `createPublicError()`.
-Somente `publicErrors` pode usar `markSafeError`, que autoriza a serialização do
-erro inteiro. O wrapper sempre cria outro erro, mesmo se o anterior era público,
-para descartar campos adicionados depois. Novas mensagens de domínio exigem
-extensão explícita desse contrato e testes.
-
-O resultado admite valores simples, arrays comuns e objetos planos resolvidos.
-Arrays precisam ter `Array.prototype` como protótipo direto; subclasses são
-recusadas antes que a serialização herdada possa alterar a saída verificada.
-`Error`, classes, ciclos, getters, setters e promises aninhadas também são
-recusados, inclusive sob chaves `Symbol` e em propriedades não enumeráveis.
-Referências compartilhadas (grafo acíclico) são aceitas e verificadas uma única
-vez. Uma promise principal é aguardada e funções síncronas continuam síncronas.
-Essa verificação estrutural não identifica dados confidenciais em strings: o
-schema e o mapeamento continuam responsáveis pelos campos de negócio.
-
-`allowControl: true` pertence apenas ao registro global. Preserva suspensão,
-respostas sem corpo (exceto a de `Response.error()`, com status 0) e envelopes
-com dados verificados; o corpo do envelope é reconstruído desses dados. Headers
-e destinos devem ser definidos pela aplicação. Adapters não habilitam essa opção
-nem encaminham respostas upstream. Os logs, emitidos por `logServerFailure`,
-contêm a mensagem fixa da origem e, para um `Error`, só a classe e os frames
-descritos em [Log de falhas](#log-de-falhas), sem mensagem, `cause`,
-propriedades ou contexto da requisição. Diagnóstico detalhado e telemetria
-exigem uma integração própria.
+Veja
+[como adicionar uma chamada](server-errors/backend.md#como-adicionar-uma-chamada).
 
 ## O que o lint cobre
 
-[backendPolicy](../tooling/backendPolicy/index.ts) configura as regras nativas
-`no-restricted-globals`, `no-restricted-properties`, `no-restricted-imports` e
-`no-console` do Oxlint em `src`, incluindo fixtures, nas extensões `.ts`,
-`.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs` e `.cjs`:
-
-- Restringe `fetch` ao transporte e barra acesso direto a `XMLHttpRequest`,
-  `WebSocket` e `EventSource`, inclusive propriedades globais estáticas.
-- Restringe os transportes conhecidos do Node e `undici`.
-- Reserva `markSafeError` e `SAFE_ERROR` a `publicErrors` e o módulo inteiro de
-  configuração/dispatch de server functions (`@solidjs/web/server-functions` e
-  `@solidjs/web/server-functions/server`) a `configureServerErrors`. O import de
-  `configureServerErrors` pela raiz `@solidjs/web` também fica restrito a esse
-  módulo, inclusive em `publicErrors`: cada chamada substitui o hook global de
-  erros do servidor.
-- Reserva `observeRenderFailures`, de
-  [renderIntegrity](../src/infra/server/renderIntegrity/index.ts), a
-  `configureServerErrors`, inclusive por alias, namespace e reexport: depois
-  dessa chamada o estado do render nasce sem erros, e só o registro instala o
-  hook que o marca.
-- Reserva o objeto global `console` a `logServerFailure`, inclusive aliases e
-  desestruturação direta. Nesse arquivo, use somente `console.error`
-  diretamente; acessos por `globalThis.console`, `window.console`,
-  `self.console` e `global.console` continuam proibidos. Os testes exigem um
-  único argumento, uma string que começa pela mensagem fixa da origem e não traz
-  mensagem, `cause` nem propriedades do erro. Aliases de `console` e outros
-  loggers exigem revisão.
-
-Os testes de regressão exigem que `no-restricted-imports` também recuse
-`import("pacote")` quando o pacote inteiro está restrito. A política não depende
-de restrições por `importNames` para esse carregamento. Por isso,
-[backend/static-solid-imports](../tooling/backendPolicy/plugin.ts) exige imports
-estáticos de `@solidjs/web` e seus subcaminhos, inclusive em `publicErrors` e
-`configureServerErrors`; `backend/static-render-integrity-imports` faz o mesmo
-com `renderIntegrity`, porque a restrição por nome não alcança `import()`. A
-regra verifica strings e templates sem interpolação; as APIs públicas desse
-pacote continuam disponíveis por import estático.
-
-Imports nomeados com alias, reexports e acessos diretos por namespace também são
-verificados. Bibliotecas visuais, métodos locais chamados `fetch` e parâmetros
-locais com esse nome são permitidos. Testes e declarações de tipos ficam fora
-dessas restrições de backend. As exceções dos adapters usam caminhos exatos;
-copiar um módulo privilegiado para outra extensão não concede a mesma permissão.
-
-O lint não faz análise completa de fluxo: aliases do objeto global, como
-`const g = globalThis`, fontes de import calculadas, templates de pacotes fora
-de `@solidjs/web`, SDKs desconhecidos e marcação manual por `Symbol.for` exigem
-revisão. Ele também não restringe `allowControl` pelo nome nem verifica o
-conteúdo dos argumentos de log em `logServerFailure`. Não use essas lacunas nem
-um disable para contornar o contrato. O padrão de imports relativos é
-compartilhado com `tooling/lint/rules/javascript.ts` pela constante
-`RELATIVE_IMPORT_RESTRICTION`, em `tooling/backendPolicy/constants.ts`.
+Veja [o que o lint cobre](server-errors/backend.md#o-que-o-lint-cobre).
 
 ## Consumo em páginas
 
-Depois de proteger a server function, use `query` para o cache de dados e leia
-seu resultado no componente. Com a função `readBackend` do exemplo acima:
-
-```tsx
-const getBackend = query(readBackend, 'backend')
-
-export default function Page() {
-  const data = createMemo(() => getBackend('example'))
-  return <h1>{data().message}</h1>
-}
-```
-
-Importe `query` de `@solidjs/router` e `createMemo` de `solid-js`. O `Errored`
-global do `App` substitui a aplicação e o cabeçalho pelo fallback quando essa
-leitura falha. A recuperação por recarga está descrita abaixo.
+Veja [consumo em páginas](server-errors/backend.md#consumo-em-páginas).
 
 ## Validação e recuperação
 
-O [E2E de backend](../src/tests/pages/BackendError/BackendError.e2e.test.ts)
-roda no build de produção: cinco cenários (HTTP 500, exceção após leitura,
-`Error` dentro do resultado, erro público e sucesso) em SSR inicial, streaming e
-chamada HTTP; uma recarga por cenário de navegação, incluindo SSR sem
-JavaScript; um teste de isolamento do bundle; três sinais de controle em server
-functions chamadas no SSR (um `redirect()` lançado, um envelope devolvido e um
-envelope lançado); e a regressão de `content-type` descrita abaixo, com um
-envelope devolvido e outro lançado por `query()`. O envelope lançado chega ao
-hook como controle, mas o router lança o valor dele no render e o documento vira
-500, com ou sem o hook. No streaming, os casos de confidencialidade usam um id
-terminado em `:gated`: o backend sintético segura `/data` até o teste ver o
-fallback e liberar o gate, sem depender do atraso fixo do backend.
-
-Quando uma `query()` lida no SSR devolve ou lança um envelope de `respond()`, o
-`handleResponse` do router copia para a resposta da página só os headers que não
-descrevem o corpo; `content-type`, `content-disposition`, `etag` e similares
-ficam de fora, e o documento continua HTML
-([solidjs/solid-router#633](https://github.com/solidjs/solid-router/issues/633)).
-O E2E cobre os dois casos como regressão. Os demais headers do envelope, como
-`set-cookie` ou um header próprio, ainda são copiados; lidos depois do envio do
-início da resposta, são descartados com o aviso `[LATE_HEADER_WRITE]`. Headers
-da página pertencem ao render, não a um envelope de dados.
-
-O
-[E2E de erros fora de server functions](../src/tests/pages/OutsideError/OutsideError.e2e.test.ts)
-cobre throw no render com e sem boundary local, throw no render depois do shell
-e rejeições assíncronas no SSR, como filho direto de `<Loading>` e dentro de
-elemento, além de exceções de middleware antes e depois de `next()`. Cada caso
-lê o documento bruto fora do navegador e confere o fallback no navegador. Nos
-casos de streaming, a falha só acontece depois que o teste observa o shell e
-libera um gate no backend sintético, sem temporizador. Controles positivos
-conferem que a fixture recebeu o marcador (header `x-fixture-marker` e contagem
-do backend), que o erro lançado carregava esse marcador (header
-`x-fixture-thrown` sem streaming e registro no backend sintético nos casos com
-gate e de middleware) e que o gate foi usado. Os casos de middleware rodam em
-série e exigem, por requisição, uma nova linha com a mensagem fixa
-`[middleware]`.
-
-O `webServer` do Playwright grava a saída do preview em
-`test-results/server-<modo>.log`. O
-[teardown global](../tooling/testing/server-log-teardown.ts) confere que o
-arquivo registrou o endereço do preview e recusa qualquer marcador privado.
-
-Os marcadores sintéticos nascem no backend após o build. Os testes verificam o
-corpo completo, headers, DOM e erros do navegador. O teste de assets procura
-código e endereço exclusivos do servidor. Os testes Node cobrem HTML 500, JSON
-inválido, schema inválido, falha de rede e cancelamento do corpo, além dos
-contratos do wrapper.
-
-A captura HTTP usa `route.fetch()` e entrega a resposta ao browser com
-`route.fulfill()`, pois o decoder cancela o stream ao receber a exceção. Essa
-captura aguarda o corpo completo e não mede cancelamento ou latência. O
-streaming do documento SSR não é interceptado.
-
-Os testes toleram em `pageerror` só a mensagem pública no idioma da página e,
-nos casos que passam por uma fonte assíncrona ou por streaming, a mensagem
-genérica do runtime; cada caso declara as mensagens admitidas, que dependem da
-ordem entre a hidratação e a chegada do fragmento rejeitado. O status do
-streaming pode permanecer 200 após o envio inicial; os testes conferem
-confidencialidade independentemente dele. Fontes adiadas aninhadas e trabalho
-assíncrono fora do retorno aguardado exigem integração e testes próprios.
-
-O link global "Recarregar página" preserva a URL e faz uma navegação de
-documento, independente da hidratação. Ações iniciadas depois do carregamento
-precisam ser repetidas. Para retry local com query, invalide a chave antes de
-`reset()`: `revalidate(getData.key); reset()`. Confirme uma nova chamada ao
-backend.
-
-Após alterar essa fronteira, execute:
-
-```bash
-vp run test:tooling
-vp run test:unit
-vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError src/tests/pages/OutdatedPage
-vp run typecheck
-vp run check:ci
-```
-
-O [CI](../.github/workflows/ci.yml) executa `test:tooling` e a suíte E2E
-completa; `vp run validate` e o `pre-push` rodam `test:tooling` localmente, o
-que inclui as duas políticas. Os testes da política verificam as regras no
-parser real e seu registro no lint completo, com casos recusados e permitidos
-para cada exceção. Consulte os resultados de cada execução nos logs da validação
-local e do CI.
+Veja
+[validação e recuperação](server-errors/recovery.md#validação-e-recuperação).
 
 ### Página desatualizada após um deploy
 
-Uma aba aberta antes de um deploy continua com o JS do build anterior até
-carregar um documento. Ela pode chamar uma server function que o build novo não
-tem. O servidor responde 404 com o header `X-Server-Function-Unknown`, sem
-executar a função, e o client rejeita com `unknownFunction: true`. A recuperação
-está descrita no fim desta seção. Essa recusa sai antes do `wrapInvocation` e do
-hook de `configureServerErrors`, sem corpo em produção e sem linha
-`[server-error]`.
-
-O plugin do Solid também carimba as chamadas de produção que não usam GET com o
-header `X-Server-Function-Build`, e o `configureServerFunctionsServer` que ele
-gera recebe o mesmo id em `buildId`. Uma chamada carimbada por outro build, cuja
-função manteve o id no deploy, recebe 409 sem executar a função, com
-`X-Server-Function-Unknown`, o id do servidor em `X-Server-Function-Build` e
-`Cache-Control: no-store`. O client rejeita com `unknownFunction: true`, como no
-404, e a recuperação é a mesma; a recusa também sai antes do `wrapInvocation` e
-do hook, sem corpo em produção. O carimbo é composto com o `prepareRequest` que
-o app passar a `configureServerFunctionsClient`, importado de
-`@solidjs/web/server-functions/client`. Uma chamada sem o header continua
-aceita: o id é público no bundle, e a checagem só detecta um client de outro
-build. As chamadas de `query()` usam GET e saem sem o carimbo. A exceção é
-quando os argumentos passam do limite de URL do runtime: o client envia a
-leitura por POST, com o carimbo, e ela passa pela checagem. Em desenvolvimento
-não há id nem checagem.
-
-Com o Nitro, o client e o servidor saem do mesmo build, e o servidor recebe o id
-que o plugin guarda em memória. O plugin também grava o id e as server functions
-que o client alcança em `.vite/solid-server-functions.json`, ao lado do
-`manifest.json` do Vite, no diretório público. O
-[módulo `moveViteMetadata`](../tooling/moveViteMetadata/index.ts) move esse
-`.vite/` para `dist/.vite/` no fim do build, então nenhum dos dois é publicado;
-os testes leem os arquivos de lá.
-
-A aba também pode pedir um chunk ou uma folha CSS com o hash do build anterior,
-que o deploy novo não publica. A recuperação segue uma regra: a página só
-recarrega sozinha quando o usuário já pediu para sair dela ou quando o fallback
-do `Errored` raiz já a tirou da tela. Nos demais casos, a página fica como está
-e o `OutdatedPageNotice` oferece a recarga. O runtime não informa se uma página
-tem algo não salvo, então a recarga automática fica nos pontos em que não perde
-nada que a navegação ou a página de erro já não perderiam.
-
-| Situação                                                                               | Comportamento                                                         |
-| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Hover ou foco num link, com chunk ausente ou leitura recusada no preload               | Marca a página, sem recarga e sem aviso.                              |
-| Navegação que muda o caminho sem idioma, com a página marcada                          | Navegação de documento para o destino, preservando `replace`.         |
-| A mesma navegação, com alterações registradas em `registerUnsavedChanges`              | Segue no client; o guard da própria página decide.                    |
-| Query, hash, voltar, avançar ou navegação sem conexão                                  | Segue no client.                                                      |
-| Clique sem preload, com o JS ou o CSS do destino ausente                               | O `Errored` raiz recarrega uma vez, já no destino.                    |
-| Leitura do render ou `lazy()` recusados sem `Errored` local                            | O `Errored` raiz recarrega uma vez.                                   |
-| Leitura do render ou `lazy()` recusados dentro de um `Errored` local                   | O fallback local fica, e o aviso oferece a recarga.                   |
-| Envio recusado com 404 ou 409 rotulado                                                 | A rejeição volta a quem chamou, e o aviso de envio oferece a recarga. |
-| Leitura fora do render (polling, `GET` direto, reconexão de `live()`)                  | Marca a página, sem aviso.                                            |
-| No `Errored` raiz: recusa repetida em 30 segundos, sem `sessionStorage` ou sem conexão | A página de erro aparece, com a recarga manual.                       |
-
-A recuperação usa três peças:
-
-- Detecção: `installOutdatedPageDetection`, instalado pelo `entry-client`, marca
-  a página como desatualizada quando o helper de preload do Vite dispara
-  `vite:preloadError` e quando uma server function responde 404 ou 409 com
-  `X-Server-Function-Unknown`. Uma recusa fora de computação rastreada e sem
-  `GET` conta como envio e dispara o aviso de envio. O módulo também registra o
-  hook de `configureClientErrors`: quando um boundary mostra fallback para uma
-  falha de chunk registrada ou para um erro com `unknownFunction: true`, o hook
-  dispara o aviso de fallback. O evento de preload sai também no preload por
-  intenção do `intentPreload()`, antes do clique, e só existe no build. O
-  listener não chama `preventDefault()`: o import resolveria `undefined`, e o
-  `lazy` da rota guardaria esse módulo vazio até a recarga.
-- Próxima navegação: com a página marcada, `createOutdatedPageGuard`, chamado ao
-  lado do guard de idioma, troca por navegação de documento a próxima navegação
-  que muda o caminho sem idioma, preservando `replace`. Query e hash seguem no
-  client, e sem conexão a navegação continua no client. Voltar e avançar entre
-  entradas do mesmo documento também seguem no client: os chunks dessas páginas
-  já carregaram, e uma leitura recusada ali segue as regras da tabela. O router
-  chama os listeners de `useBeforeLeave` na ordem de inscrição, e o guard de
-  versão é inscrito no layout do `Router`, antes de qualquer rota. Como ele
-  chama `preventDefault()` e troca de documento na hora, um guard de página que
-  confere `!e.defaultPrevented`, como o exemplo do router, nunca chegaria a
-  perguntar. Por isso, uma página com alterações não salvas registra, além do
-  próprio `useBeforeLeave`, uma checagem com `registerUnsavedChanges`, importado
-  de `@/primitives/createOutdatedPageGuard/index.ts`, dentro de `onSettled` e
-  devolvendo a remoção como limpeza. Enquanto alguma checagem devolver `true`, o
-  guard de versão deixa a navegação no client. Se o usuário confirmar a saída
-  com `e.retry(true)`, a navegação também segue no client, e a página continua
-  marcada para a próxima.
-- `Errored` raiz: uma falha de chunk registrada pelo listener ou um erro com
-  `unknownFunction: true` recarrega a página uma vez em vez de mostrar o
-  `ErrorFallback`, com a tela vazia até o documento novo chegar. Quando o erro
-  chega à raiz, a árvore já saiu da tela, então a recarga não perde nada que a
-  página de erro já não perderia. É também o caminho do clique que chega antes
-  da resposta 404 do preload. A recarga roda no `onSettled`, num `setTimeout`,
-  depois de o router gravar a URL do destino. Se o documento não for trocado em
-  10 segundos, por exemplo porque um `beforeunload` da página cancelou a
-  recarga, o `ErrorFallback` aparece no lugar da tela vazia. O prazo cobre o
-  servidor ainda frio logo depois do deploy. O fallback lê o erro sem rastrear,
-  para que um segundo erro não o reconstrua e troque a recarga pendente pela
-  página de erro. A trava `outdated-page-reload` no `sessionStorage` dura 30
-  segundos: se a falha voltar dentro dela, o build servido também falhou e a
-  página de erro aparece. Sem `sessionStorage` ou sem conexão, a página de erro
-  aparece direto.
-
-Uma leitura ou um `lazy()` recusados dentro de um `Errored` local não recarregam
-a página. O limite local existe para manter o resto da tela funcionando, e uma
-recarga apagaria o que estiver digitado ao lado dele. Tentar de novo também não
-resolve, porque o id não existe no build novo. O `OutdatedPageNotice` mostra
-"Parte da página não carregou" com o botão "Recarregar página", e a próxima
-navegação já sai por documento. Um fallback local pode trocar o próprio "Tentar
-de novo" por uma ação de recarga conferindo `isVersionError(error())`.
-
-Um envio recusado não se repete sozinho: o `ctx.retry` repetiria a mesma chamada
-e receberia a mesma recusa, 409 pelo carimbo ou 404 pelo id ausente. A rejeição
-com `unknownFunction: true` volta a quem chamou, e o `OutdatedPageNotice` pede
-para recarregar e enviar de novo, avisando que o que não foi salvo pode se
-perder. Como o 404 e o 409 saem antes de ler os argumentos e de executar a
-função, reenviar depois da recarga não duplica o efeito dessa tentativa. Uma
-falha de rede, um timeout ou um 5xx sem o rótulo não marcam a página: o
-resultado é desconhecido, e o projeto confere o estado no backend ou usa uma
-chave de idempotência antes de repetir. Guardar o formulário para depois da
-recarga fica com o projeto, por exemplo com um rascunho salvo automaticamente.
-
-Limites conhecidos:
-
-- O client guarda um único `responseHandler`. Com `serverFunctions.components`,
-  o `installServerComponents` ocupa a mesma vaga e vence quem configurar por
-  último; os dois precisam ser compostos à mão.
-- O hook de `configureClientErrors` também é único e é a vaga natural de um
-  monitor de erros. Um monitor instalado depois substitui o hook em silêncio, e
-  o aviso de fallback deixa de aparecer para os erros de versão. Um `onError`
-  passado a `render` ou `hydrate` tem o mesmo efeito, porque o runtime prefere o
-  hook da raiz ao ambiente. Nos dois casos, o monitor precisa ser composto
-  dentro de `installOutdatedPageDetection`.
-- O handler separa envio de leitura pelo ponto de chamada: fora de computação
-  rastreada e sem `GET`. Uma leitura direta feita depois de um `await`, dentro
-  de `untrack` ou num preload de rota conta como envio e mostra o aviso de
-  envio. Leituras usam `query()` ou `GET()`.
-- `registerUnsavedChanges` só protege a página que se registra. Uma página que
-  tem só o `useBeforeLeave` perde o rascunho na troca por documento quando a aba
-  está marcada, a menos que também tenha um `beforeunload`.
-- A navegação de documento também descarta o estado global em memória, como
-  stores e conexões. Estado que precisa sobreviver precisa estar persistido.
-- Uma falha de rede no import também marca a aba, e a próxima navegação sai por
-  documento.
-- A falha de um `lazy()` dentro da página, sem `Errored` local, também chega ao
-  `Errored` raiz e recarrega a página atual, com o que ainda não foi salvo.
-- Uma leitura `GET` cujo id sobreviveu ao deploy executa no servidor novo sem
-  carimbo e sem detecção. Quando os argumentos ou a saída de uma leitura mudam,
-  a função precisa aceitar também o formato do deploy anterior, ou mudar de
-  nome, para que a aba antiga receba o 404.
-- A recarga entrega o build que o host servir, que pode ser um rollback ou uma
-  instância de outro build. O aviso diz que a página pode estar desatualizada,
-  sem prometer que a recarga resolve.
-- Um asset ausente em `/assets/`, como o chunk de outro build, responde 404 com
-  `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` e
-  `Cross-Origin-Resource-Policy: same-origin`, sem a página SSR. O
-  `vite.config.ts` registra `/assets` em `publicAssets` sem fallthrough. No
-  preview e no preset `node-server`, o Nitro responde o miss de GET e HEAD com o
-  404 `no-store` de diretório público exclusivo, e o h3 preserva esse cabeçalho
-  quando a route rule de `/assets/**` aplica o cache imutável ao erro. Na
-  Vercel, o preset grava a rota 404 `no-store` logo depois de `filesystem`, e o
-  miss não chega à função. A route rule leva nosniff e CORP, com os valores de
-  `SECURITY_HEADERS`, ao miss e aos acertos servidos pela Vercel ou pelo
-  `node-server`; no `vp run start`, o acerto sai do servidor estático do srvx
-  sem esses cabeçalhos e sem `Cache-Control`, como antes. O diretório
-  `public/assets` não existe de propósito: os arquivos vêm da saída do Vite. O
-  teste `BuildOutput.assets.production` confere as rotas do
-  `.vercel/output/config.json` e o 404 no preview, e falha se uma atualização do
-  Nitro mudar esse comportamento. Ele cobre a configuração gerada, não o CDN: a
-  precedência do `no-store` sobre o cache da rota de `/assets` segue a ordem das
-  rotas. O autor de
-  [nitrojs/nitro#4474](https://github.com/nitrojs/nitro/pull/4474) conferiu essa
-  ordem num deploy próprio na Vercel; o deploy deste repositório ainda não foi
-  conferido. No `vp run start`, o miss só vale para GET e HEAD em
-  `/assets/<arquivo>`, e continuam no SSR, com o cache da route rule, `/assets`,
-  `/assets/`, caminhos com segmento vazio e outros métodos. Na Vercel, só
-  `/assets` sem barra chega à função: a rota 404 `no-store` depois de
-  `filesystem` cobre o resto, com qualquer método. Nenhuma URL gerada pelo Vite
-  tem esses formatos. O 404 do miss não leva a CSP, o HSTS nem as políticas de
-  frame, que só valem nas respostas do middleware.
+Veja
+[página desatualizada após um deploy](server-errors/recovery.md#página-desatualizada-após-um-deploy).
 
 ## Atualizar o Solid
 
-Consulte as dependências e o catálogo `workspaces.catalog` do
-[package.json](../package.json) e a resolução no [bun.lock](../bun.lock).
-`vp toolchain` mostra as ferramentas da instalação ativa. Esses arquivos e o
-comando substituem uma lista de versões mantida neste guia.
-
-A proteção atual parte da avaliação da versão do Solid resolvida no lockfile
-quando o wrapper foi revisado, que já contém a
-[sanitização SSR (#3477)](https://github.com/solidjs/solid/pull/3477), o
-[hook central (#3481)](https://github.com/solidjs/solid/pull/3481) e a
-[consolidação de onError (#3484)](https://github.com/solidjs/solid/pull/3484).
-Nessa avaliação o runtime trocava erros lançados pela mensagem genérica, mas não
-recusava um `Error` devolvido como dado; por isso o `wrapInvocation` fica e o
-hook é aditivo. Uma issue fechada ou um commit integrado não comprova que o
-pacote publicado e instalado mudou esse comportamento.
-
-1. Confira releases, exports e contrato dos pacotes publicados. Atualize
-   `solid-js` e `@solidjs/web` juntos, verificando Router, plugin e lockfile.
-   Preserve as versões anteriores para reversão; não antecipe APIs internas.
-2. Confira se o contrato do hook `configureServerErrors({ onError })` que o
-   registro central usa continua igual: chamada síncrona, retorno enviado sem
-   nova sanitização, veredito por objeto e substituição do hook anterior. Um
-   `onError` por requisição (opção de `renderToStream` ou de
-   `handleServerFunctionRequest`) tem precedência sobre o hook global e o
-   substituiria sem aviso. O de `renderToStream` fica registrado no render e
-   vale também para as server functions chamadas diretamente durante ele.
-   Confira se `src/entry-server.tsx` e o plugin continuam sem repassá-lo e se o
-   módulo `serverSetup` ainda carrega antes do primeiro dispatch.
-3. Rode
-   `vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError`
-   no build de produção. Os marcadores nos corpos brutos, os controles positivos
-   e o teardown do log são a regressão da fronteira. Se o runtime mudar as
-   mensagens que chegam ao navegador, meça antes de ajustar as tolerâncias de
-   `pageerror`, inclusive com CPU limitada a 20x.
-4. Rode `vp run test:e2e:production src/tests/pages/BuildOutput`. O teste
-   confere que o id do manifesto em `dist/.vite/`, o `buildId:` da chamada
-   `configureServerFunctionsServer(` que traz `endpoint:` em
-   `.vercel/output/functions/` e o id que o client carimba em
-   `X-Server-Function-Build` são iguais, e que `/.vite/` não sai no estático. Se
-   o plugin mudar onde grava o `.vite/` ou deixar de guardar o id em memória,
-   revise o módulo `moveViteMetadata` e a recusa por build descrita em
-   [Validação e recuperação](#validação-e-recuperação).
-5. Rode `vp run test:e2e src/tests/pages/OutdatedPage` e
-   `vp run test src/__tests__/App.dom.test.tsx`. A recuperação de página
-   desatualizada depende de seis comportamentos do runtime: o
-   `vite:preloadError` entrega no `payload` o mesmo erro que chega ao `Errored`;
-   o `Errored` reporta o erro no console em desenvolvimento só com
-   `fallback.length` zero; um fallback que lê o erro sem rastrear não é
-   reconstruído por um erro posterior; o router grava a URL do destino antes da
-   recarga adiada; o router chama os listeners de `useBeforeLeave` na ordem de
-   inscrição, com `defaultPrevented` compartilhado, o que sustenta o
-   `registerUnsavedChanges`; e o hook de `configureClientErrors` é chamado uma
-   vez por objeto de erro para todo boundary que mostra fallback, sem um
-   `onError` por raiz no `hydrate`, o que sustenta o aviso de fallback. Ver
-   [Página desatualizada após um deploy](#página-desatualizada-após-um-deploy).
-6. Reavalie o wrapper só se as notas da versão ou o código publicado indicarem
-   que o runtime passou a recusar um `Error` devolvido como dado. Numa
-   reprodução isolada, troque o `wrapInvocation` por um passthrough e confira o
-   cenário `result` nos três canais pelos marcadores nos corpos brutos, sem
-   confiar em teste verde. Verifique os artefatos de produção resolvidos;
-   `NODE_ENV` sozinho não basta.
-7. Retire somente a interceptação que o runtime passou a cobrir. Preserve o
-   transporte, o contrato de dados públicos, o hook, a contenção do middleware e
-   seus testes. Registre comandos, resultados e limites na validação da
-   atualização. Na reversão, restaure dependências e proteção juntas.
-
-O acompanhamento ocorre nas atualizações de dependências; não há monitor
-automático configurado.
+Veja [atualizar o Solid](server-errors/solid-upgrades.md#atualizar-o-solid).
 
 ## Integridade do SSR para Markdown
 
-A entrada cria o estado com `createRenderIntegrity()`, de
-[renderIntegrity](../src/infra/server/renderIntegrity/index.ts), e o grava em
-`event.locals.ssrRenderState` antes de chamar `renderToStream`. O estado é
-somente leitura: o hook de `configureServerErrors` marca `hasErrors` por
-`markRenderFailure` quando recebe uma falha com `kind: "render"`, e
-`onCompleteAll` marca `hasCompleted` pela função `complete` da mesma fábrica. Um
-estado criado fora dela não é marcado. Sinais de controle também marcam: um
-`redirect()` ou `respond()` lançado no render e capturado por um `<Errored>`
-aninhado vira fallback com HTML 200. Desde o
-[solidjs/solid#4130](https://github.com/solidjs/solid/pull/4130), o hook recebe
-cada erro uma vez por tipo em cada requisição. Uma falha de server function
-contida por um boundary chega primeiro como `server-function` e depois como
-`render`, e só o segundo aviso marca o estado. O callback sozinho não comprova
-integridade: ele também pode ocorrer após falha de fragmento. O adaptador exige
-conclusão e ausência estrita de erros observados pelo render depois de aguardar
-o SSR, antes de publicar HTML convertido. Estado ausente ou inválido resulta em
-erro público 500 sem cache. Redirects e respostas que não são páginas elegíveis
-preservam seu fluxo anterior. As páginas estáticas passam por esse mesmo
-adaptador no prerender do build, e uma recusa ali interrompe o build.
-
-Como o hook é a fonte desse sinal, ele fica instalado também em desenvolvimento,
-onde marca o estado sem trocar o erro, como descrito em
-[Log de falhas](#log-de-falhas). A entrada continua sem um `onError` local: ele
-teria precedência sobre o hook global, desviaria a sanitização e o log e
-deixaria o estado sem marcação, e o Markdown publicaria com `hasErrors: false`.
-O registro do hook chama `observeRenderFailures()`; até lá a fábrica cria o
-estado com `hasErrors` indefinido, e o Markdown recusa a página. Sem o
-`serverFunctions.serverSetup` do Vite, que carrega o registro, todo `.md`
-responde 500 e o prerender interrompe o build.
-
-O hook encontra o estado pelo evento que o runtime associa à falha. As falhas do
-serializador, o `onCleanup` que lança e o fallback de `<Errored>` chegam sem o
-evento, e o runtime o lê do `AsyncLocalStorage`. Uma falha informada fora desse
-contexto não marcaria o estado, e o Markdown publicaria o HTML. Os testes de
-serialização cobrem esses três casos com o contexto presente.
-
-O serializador padrão informa falhas de parse e de emissão ao hook, inclusive
-sem um hook local. A primeira falha marca `hasErrors`, passa pela política de
-`configureServerErrors` e encerra o render sem chamar `onCompleteAll`. Falhas
-síncronas também seguem esse caminho, sem relançar a exceção para o chamador. O
-descarte libera o owner e as fontes assíncronas pendentes.
-
-Esse encerramento também vale para HTML em streaming. Uma falha ocorrida
-enquanto o shell é montado impede que ele seja enviado, e a resposta é um 500.
-Depois do shell, os bytes já enviados não podem ser recolhidos; a conexão
-termina com o conteúdo que já saiu. Markdown aguarda o render e recusa a
-publicação com erro público 500 e `cache-control: private, no-store`. Uma falha
-de serialização não depende do timeout do adaptador para encerrar a resposta.
-
-Serializadores personalizados mantêm o comportamento do runtime: as falhas que
-eles informam chegam ao hook, mas não encerram o render. Erros suprimidos
-internamente não são observáveis. Qualquer adoção exige validar a relação entre
-conteúdo, conclusão e falhas.
-
-O patch Bun de `@solidjs/web` cobre o que o runtime publicado ainda não faz, nos
-runtimes padrão e de desenvolvimento: encerrar o render na falha do serializador
-padrão, como descrito acima. O runtime de observação não recebe o patch porque o
-projeto não ativa `observe` no `@solidjs/vite-plugin`; ativar essa opção exige
-incluir de novo `dist/server.observe.js` no patch. Sem o patch, o runtime
-informa a falha ao hook e conclui o render pelo fluxo normal, inclusive chamando
-`onCompleteAll`. O Markdown recusa esse resultado pela falha registrada, mas uma
-falha durante a montagem do shell ainda envia o HTML com status 200. O patch
-bloqueia essa saída e a conclusão normal antes de descartar o render. Com um
-`onError` local, o patch também encerra o render, enquanto o runtime só
-informaria o callback e concluiria normalmente. Falhas na fase de serialização
-chegam ao log como `SerovalSerializationError`; a mensagem e a causa continuam
-descartadas. A chave do patch inclui a versão do pacote, então cada atualização
-de `@solidjs/web` exige regenerá-lo com `bun patch`. O teste
-`tooling/__tests__/patched-dependencies.test.ts` falha quando a chave de um
-patch não corresponde a uma versão resolvida no `bun.lock`.
-
-O [solidjs/solid#4193](https://github.com/solidjs/solid/issues/4193) relatou
-três lacunas. O [solidjs/solid#4206](https://github.com/solidjs/solid/pull/4206)
-levou as falhas do serializador ao hook global, passou a conter o `onCleanup`
-que lança no descarte da conclusão normal e fez o core rodar todos os cleanups
-mesmo depois de um que lança; essas partes saíram do patch. O render pendente na
-falha síncrona foi relatado no
-[solidjs/solid#4227](https://github.com/solidjs/solid/issues/4227), com a
-correção no [solidjs/solid#4229](https://github.com/solidjs/solid/pull/4229), já
-incluída no pacote instalado: ela faz o render concluir, mas não o encerra na
-falha. O serializador também passou a encerrar cada escrita no primeiro valor
-que falha, sem enviar os irmãos seguintes dessa escrita, e os valores pendentes
-antes do shell saem cada um na própria escrita
-([solidjs/solid#4246](https://github.com/solidjs/solid/pull/4246)): sem o patch,
-a falha deixa pendente só a chave que falhou. Remova o restante do patch quando
-um pacote publicado encerrar o render na falha do serializador padrão e passar
-as regressões de erro reutilizado entre requisições, falha de server function
-que escapa de Loading, recuperação local, serialização, cleanup que lança e
-cancelamento. A issue ou o PR fechado não substitui a verificação dos artefatos
-instalados. O sinal composto de timeout e desconexão chega ao `renderToStream`;
-o teste Node do adaptador verifica o descarte de uma raiz SSR pendente no
-cancelamento.
+Veja
+[integridade do SSR para Markdown](server-errors/ssr-integrity.md#integridade-do-ssr-para-markdown).

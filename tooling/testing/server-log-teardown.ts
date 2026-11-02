@@ -7,9 +7,9 @@ import { stripVTControlCharacters } from 'node:util'
 // ou cabeçalho original foi registrado.
 const PRIVATE_MARKER = /PRIVATE_[A-Z0-9_]+/u
 
-export default async function checkServerLog(): Promise<void> {
-  const file = env.SERVER_LOG_FILE
-  const baseUrl = env.BASE_URL_TEST
+type ServerLog = { file: string | undefined; baseUrl: string | undefined }
+
+async function checkLog({ file, baseUrl }: ServerLog): Promise<void> {
   if (!file || !baseUrl) throw new Error('Server log file is not configured')
   const log = stripVTControlCharacters(await readFile(file, 'utf8'))
   // Controle positivo: um arquivo vazio ou de outro processo passaria na
@@ -20,5 +20,15 @@ export default async function checkServerLog(): Promise<void> {
   }
   if (PRIVATE_MARKER.test(log)) {
     throw new Error(`Server log contains a private marker: ${file}`)
+  }
+}
+
+export default async function checkServerLog(): Promise<void> {
+  await checkLog({ file: env.SERVER_LOG_FILE, baseUrl: env.BASE_URL_TEST })
+  if (env.TEST_PUBLICATION_LOAD === 'true') {
+    await checkLog({
+      file: env.SERVER_LOG_SECONDARY,
+      baseUrl: env.PUBLICATION_SECONDARY_URL
+    })
   }
 }

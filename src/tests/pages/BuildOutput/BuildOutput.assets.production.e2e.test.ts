@@ -51,19 +51,26 @@ async function findAsset(extension: string): Promise<string> {
   return file
 }
 
-test.use({ javaScriptEnabled: false })
-
-// O Nitro RC gera essa ordem a partir de publicAssets sem fallthrough; o teste
-// falha se uma atualização devolver o miss à função com o cache imutável.
-test('routes missing assets to an uncached 404 after the filesystem', async () => {
-  const { routes } = v.parse(
+async function readRoutes(): Promise<Route[]> {
+  return v.parse(
     buildConfigSchema,
     JSON.parse(await readFile(BUILD_CONFIG, 'utf8'))
-  )
+  ).routes
+}
+
+function assertAssetRouting(routes: Route[]): void {
   const filesystem = routes.findIndex(route => route.handle === 'filesystem')
   expect(filesystem).toBeGreaterThan(0)
-  const before = routes.slice(0, filesystem)
-  const after = routes.slice(filesystem + 1)
+  // Cada handle inicia uma fase própria, mesmo quando error vem antes de filesystem.
+  const firstPhase = routes.findIndex(route => route.handle !== undefined)
+  const nextPhase = routes.findIndex(
+    (route, index) => index > filesystem && route.handle !== undefined
+  )
+  const before = routes.slice(0, firstPhase)
+  const after = routes.slice(
+    filesystem + 1,
+    nextPhase === -1 ? undefined : nextPhase
+  )
   for (const pathname of MISSING_PATHS) {
     const cache = before.find(
       route =>
@@ -86,6 +93,73 @@ test('routes missing assets to an uncached 404 after the filesystem', async () =
     })
     expect(miss?.dest, pathname).toBeUndefined()
   }
+}
+
+test.use({ javaScriptEnabled: false })
+
+// O Nitro RC gera essa ordem a partir de publicAssets sem fallthrough; o teste
+// falha se uma atualização devolver o miss à função com o cache imutável.
+test('routes missing assets to an uncached 404 after the filesystem', async () => {
+  assertAssetRouting(await readRoutes())
+})
+
+test('checks asset routing independently of Vercel error and hit phases', async () => {
+  const routes = await readRoutes()
+  const filesystem = routes.findIndex(route => route.handle === 'filesystem')
+  assertAssetRouting([
+    ...routes.slice(0, filesystem),
+    { handle: 'error' },
+    { src: '^(?!/api).*$', dest: '/404.html', status: HTTP_NOT_FOUND },
+    ...routes.slice(filesystem),
+    { handle: 'hit' },
+    { src: '/(.*)', headers: { 'x-hit': 'true' }, continue: true }
+  ])
+})
+
+test('rejects asset interception before the filesystem', async () => {
+  const routes = await readRoutes()
+  expect(() =>
+    assertAssetRouting([{ src: '/assets/(.*)', dest: '/__server' }, ...routes])
+  ).toThrow()
+})
+
+test('rejects unsafe filesystem fallbacks and fallbacks in another phase', async () => {
+  const routes = await readRoutes()
+  const filesystem = routes.findIndex(route => route.handle === 'filesystem')
+  const missIndex = routes.findIndex(
+    (route, index) =>
+      index > filesystem &&
+      matches({ route, pathname: '/assets/missing-00000000.js' })
+  )
+  expect(missIndex).toBeGreaterThan(filesystem)
+  const invalidFallbacks: Route[] = [
+    { status: HTTP_OK },
+    { headers: { 'cache-control': IMMUTABLE } },
+    { dest: '/__server' }
+  ]
+  for (const fallback of invalidFallbacks) {
+    expect(() =>
+      assertAssetRouting(
+        routes.map((route, index) =>
+          index === missIndex ? { ...route, ...fallback } : route
+        )
+      )
+    ).toThrow()
+  }
+  expect(() =>
+    assertAssetRouting([
+      ...routes.slice(0, filesystem + 1),
+      { handle: 'hit' },
+      ...routes.slice(filesystem + 1)
+    ])
+  ).toThrow()
+  expect(() =>
+    assertAssetRouting([
+      ...routes.slice(0, filesystem + 1),
+      { src: '/assets/(.*)', dest: '/__server' },
+      ...routes.slice(filesystem + 1)
+    ])
+  ).toThrow()
 })
 
 for (const pathname of MISSING_PATHS) {

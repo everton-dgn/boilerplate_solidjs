@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 const HTTP_OK = 200
+const HTTP_NOT_FOUND = 404
 // Entradas publicadas pela fonte de `blog/[slug]`.
 const BLOG_ENTRIES = 2
 const HOME_TITLE = 'SolidJS Boilerplate | Web applications with SSR'
@@ -10,6 +11,25 @@ const SITE_DESCRIPTION =
   'A foundation for web applications with SolidJS, TypeScript and Vite+, with server-side rendering and light and dark themes.'
 
 test.describe('índices gerados do manifesto de rotas', () => {
+  for (const method of ['GET', 'HEAD']) {
+    test(`recusa ${method} de partição existente sem sufixo XML`, async ({
+      request
+    }) => {
+      const canonical = await request.fetch('/sitemaps/catalog/a.xml', {
+        method,
+        maxRedirects: 0
+      })
+      expect(canonical.status()).toBe(HTTP_OK)
+      const invalid = await request.fetch('/sitemaps/catalog/a', {
+        method,
+        maxRedirects: 0
+      })
+      expect(invalid.status()).toBe(HTTP_NOT_FOUND)
+      expect(invalid.headers()['cache-control']).toBe('no-store')
+      expect(await invalid.body()).toHaveLength(0)
+    })
+  }
+
   test('gera sitemap, robots e llms.txt a partir do manifesto de rotas', async ({
     request
   }) => {
@@ -21,7 +41,32 @@ test.describe('índices gerados do manifesto de rotas', () => {
     expect(sitemap.status()).toBe(HTTP_OK)
     expect(sitemap.headers()['content-type']).toContain('application/xml')
     expect(sitemap.headers()['cache-control']).toBe(cacheControl)
-    const xml = await sitemap.text()
+    const index = await sitemap.text()
+    expect(index).toContain('<sitemapindex')
+    expect(index).toContain(`${siteUrl}/sitemaps/catalog/a.xml`)
+    const parts = [...index.matchAll(/<loc>(?<url>[^<]+)<\/loc>/gu)]
+    const bodies = await Promise.all(
+      parts.map(async match => {
+        const location = new URL(String(match.groups?.url))
+        expect(location.origin).toBe(siteUrl)
+        const response = await request.get(location.pathname)
+        expect(response.status()).toBe(HTTP_OK)
+        return response.text()
+      })
+    )
+    const xml = bodies.join('\n')
+    expect(xml).toContain(`<loc>${siteUrl}/pt/catalog/a-1</loc>`)
+    const missingPart = await request.get('/sitemaps/catalog/removed.xml')
+    expect(missingPart.status()).toBe(HTTP_NOT_FOUND)
+    expect(missingPart.headers()['cache-control']).toBe('no-store')
+    // Partes estáticas fora do manifesto seguem como 404, sem cache negativo.
+    const missingPage = await request.get('/sitemaps/pages/9999.xml')
+    expect(missingPage.status()).toBe(HTTP_NOT_FOUND)
+    expect(missingPage.headers()['cache-control']).toBe('no-store')
+    const inventory = await request.get('/sitemaps/static.json', {
+      headers: { 'x-nitro-prerender': '/sitemaps/static.json' }
+    })
+    expect(inventory.status()).toBe(HTTP_NOT_FOUND)
     expect(xml).toContain(`<loc>${siteUrl}/pt</loc>`)
     expect(xml).toContain(`<loc>${siteUrl}/pt/backend-error</loc>`)
     expect(xml).toContain(`<loc>${siteUrl}/pt/seo-public</loc>`)
@@ -49,8 +94,6 @@ test.describe('índices gerados do manifesto de rotas', () => {
 
     const llms = await request.get('/llms.txt')
     expect(llms.status()).toBe(HTTP_OK)
-    expect(llms.headers()['content-type']).toContain('text/markdown')
-    expect(llms.headers()['cache-control']).toBe(cacheControl)
     const markdown = await llms.text()
     expect(markdown.startsWith('# ')).toBe(true)
     expect(markdown).toContain(
@@ -99,16 +142,18 @@ test.describe('índices gerados do manifesto de rotas', () => {
       `${siteUrl}/en/markdown-optout`
     ])
     expect(new Set(llmsUrls)).toStrictEqual(
-      new Set(
-        sitemapUrls
+      new Set([
+        ...sitemapUrls
           .filter(
             url =>
               String(url).startsWith(`${siteUrl}/en`) &&
               !sitemapOnly.has(String(url)) &&
-              !String(url).startsWith(`${siteUrl}/en/blog/`)
+              !String(url).startsWith(`${siteUrl}/en/blog/`) &&
+              !String(url).startsWith(`${siteUrl}/en/catalog/`)
           )
-          .map(url => markdownUrls.get(String(url)) ?? url)
-      )
+          .map(url => markdownUrls.get(String(url)) ?? url),
+        `${siteUrl}/llms-full.txt`
+      ])
     )
     // Uma entrada da fonte com caminho errado só apareceria no Search Console.
     // As URLs usam a origem pública; o servidor de teste responde pelo caminho.

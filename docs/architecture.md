@@ -99,6 +99,19 @@ os contratos extensos usados nessa decisão.
 
 ## Dados e infraestrutura
 
+A publicação de conteúdo mantém a coordenação nas entradas dos módulos.
+`middleware/markdownContent/` decide a representação da requisição; seus helpers
+locais cuidam do roteamento Markdown, da renderização, das respostas HTTP e do
+inventário estático. Em `routes/(seo)/sitemap/helpers/sitemapService/`, os
+helpers reúnem o registro das fontes, a leitura e validação das entradas, o
+planejamento do índice e a publicação das respostas. O cache permanece junto do
+registro que o utiliza.
+
+`infra/server/publication/` mantém juntos os contadores e o ciclo de vida que
+retém capacidade até o término do produtor e das operações filhas. O consumo e
+cancelamento dos corpos HTTP ficam em um helper local. Os limites pequenos
+usados apenas pelo controlador permanecem no próprio arquivo.
+
 `data/formatters/` (formatação de datas, moedas e números) e `data/errorApi/`
 (normalização de erros de domínio de APIs) são convenções para os primeiros
 consumidores e ainda não contêm módulos. Erros públicos exclusivos do servidor

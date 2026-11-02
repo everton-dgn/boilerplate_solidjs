@@ -41,15 +41,25 @@ const LOCAL_MODULES = SEO_ENTRIES.flatMap(
 ).toSorted()
 
 test.describe('índices na árvore real de produção', () => {
+  for (const method of ['GET', 'HEAD']) {
+    for (const path of ['/sitemaps/pages/1', '/sitemaps/blog/1']) {
+      test(`recusa ${method} ${path} sem sufixo XML`, async ({ request }) => {
+        const response = await request.fetch(path, {
+          method,
+          maxRedirects: 0
+        })
+        expect(response.status()).toBe(HTTP_NOT_FOUND)
+        expect(response.headers()['cache-control']).toBe('no-store')
+        expect(await response.body()).toHaveLength(0)
+      })
+    }
+  }
+
   test('serve sitemap.xml sem redirecionamento', async ({ request }) => {
     const response = await request.get('/sitemap.xml', { maxRedirects: 0 })
     expect(response.status()).toBe(HTTP_OK)
+    // Sem fontes dinâmicas a raiz é um arquivo do build, entregue sem a função.
     expect(response.headers()['content-type']).toContain('application/xml')
-    expect(response.headers()['cache-control']).toBe(CACHE_CONTROL)
-    expect(response.headers()['content-security-policy']).toContain(NO_SCRIPTS)
-    expect(response.headers()['content-security-policy']).not.toContain(
-      'nonce-'
-    )
     const xml = await response.text()
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
     expect(xml).toContain(
@@ -88,12 +98,9 @@ test.describe('índices na árvore real de produção', () => {
   test('serve llms.txt sem redirecionamento', async ({ request }) => {
     const response = await request.get('/llms.txt', { maxRedirects: 0 })
     expect(response.status()).toBe(HTTP_OK)
-    expect(response.headers()['content-type']).toContain('text/markdown')
-    expect(response.headers()['cache-control']).toBe(CACHE_CONTROL)
-    expect(response.headers()['content-security-policy']).toContain(NO_SCRIPTS)
-    expect(response.headers()['content-security-policy']).not.toContain(
-      'nonce-'
-    )
+    // Arquivo do build: na Vercel o tipo vem do overrides do artefato, conferido
+    // no teste do build; o preview local usa a extensão.
+    expect(response.headers()['content-type']).toContain('text/plain')
     const markdown = await response.text()
     expect(markdown).toMatch(/^# .+\n/u)
     const useCases = markdown.split('## When to use\n\n')[1]?.split('\n## ')[0]

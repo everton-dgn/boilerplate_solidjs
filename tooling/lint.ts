@@ -56,7 +56,9 @@ export const lint: NonNullable<UserConfig['lint']> = {
       files: [
         'src/**/*.node.test.{ts,tsx}',
         'src/tests/pages/**/*.e2e.test.ts',
-        'src/tests/helpers/readSiteOrigin/index.ts'
+        'src/tests/helpers/readSiteOrigin/index.ts',
+        'src/tests/fixtures/e2e/routes/publication-probe/metrics.ts',
+        'src/infra/server/publicationScope/index.ts'
       ],
       rules: { 'import/no-nodejs-modules': 'off' }
     },

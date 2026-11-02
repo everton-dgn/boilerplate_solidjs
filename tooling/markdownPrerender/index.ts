@@ -1,10 +1,29 @@
-import { readFile, writeFile } from 'node:fs/promises'
-import nodePath from 'node:path'
+import { env } from 'node:process'
 
 import type { PrerenderRoute } from 'nitro/types'
 import * as v from 'valibot'
 
+import {
+  PUBLICATION_PHASE_ENV,
+  PUBLICATION_PRERENDER_PHASE
+} from '../../src/constants/publication.ts'
 import { MARKDOWN_PRERENDER_PATH } from '../../src/middleware/markdownContent/constants.ts'
+import { SITEMAP_INVENTORY_PATH } from '../publicationArtifacts/constants.ts'
+import { publicationArtifacts } from '../publicationArtifacts/index.ts'
+import {
+  LLMS_FULL_MAX_BYTES,
+  LLMS_FULL_PATH,
+  LLMS_MAX_BYTES,
+  LLMS_PATH
+} from './constants.ts'
+import { digestBytes, readRouteBytes } from './helpers/artifactDigest/index.ts'
+import { assertStaticOutput } from './helpers/assertStaticOutput/index.ts'
+import { inspectMarkdownArtifact } from './helpers/inspectMarkdownArtifact/index.ts'
+import { readLlmsIndex } from './helpers/readLlmsIndex/index.ts'
+import { selectLlmsFullDocuments } from './helpers/selectLlmsFullDocuments/index.ts'
+import { writeLlmsFull } from './helpers/writeLlmsFull/index.ts'
+import { writeVercelRoutes } from './helpers/writeVercelRoutes/index.ts'
+import type { ArtifactDigest } from './types.ts'
 
 type PrerenderResult = {
   prerenderedRoutes: PrerenderRoute[]
@@ -12,167 +31,247 @@ type PrerenderResult = {
 }
 type RoutesHook = (routes: Set<string>) => void
 type GenerateHook = (route: PrerenderRoute) => void
-type DoneHook = (result: PrerenderResult) => void
+type DoneHook = (result: PrerenderResult) => Promise<void>
 type CompiledHook = () => Promise<void>
+type InitHook = () => void
 type PrerenderOptions = {
   routes?: string[]
   failOnError?: boolean
 }
+type MarkdownPrerenderOptions = { buildId: string }
 type Options = {
   prerender: PrerenderOptions
-  output: { dir: string }
+  output: { dir: string; publicDir: string; serverDir: string }
 }
 type PrerenderNitro = {
   options: Options
   hooks: {
-    hook: ((name: 'prerender:routes', handler: RoutesHook) => unknown) &
+    hook: ((name: 'prerender:init', handler: InitHook) => unknown) &
+      ((name: 'prerender:routes', handler: RoutesHook) => unknown) &
       ((name: 'prerender:generate', handler: GenerateHook) => unknown) &
       ((name: 'prerender:done', handler: DoneHook) => unknown) &
       ((name: 'compiled', handler: CompiledHook) => unknown)
   }
 }
-type RoutingOptions = { outputDir: string; paths: string[] }
-type InitialRoutes = {
-  routes: v.InferOutput<typeof RouteSchema>[]
-  directories: string[]
+type Manifest = v.InferOutput<typeof ManifestSchema>
+type Inventory = {
+  manifest: Manifest
+  expected: Map<string, string>
+  baseLocalePaths: Set<string>
+}
+type LlmsFullOptions = {
+  inventory: Inventory
+  llmsText: string
+  outputDir: string
+  publicDir: string
+}
+type RegistrationOptions = {
+  prerenderedRoutes: PrerenderRoute[]
+  expected: Map<string, string>
 }
 
 const MARKDOWN_FILE = /^\/[^?#]+\.md$/u
-const INDEX_FILE = '/index.md'
-const NOT_FOUND = -1
-const VERCEL_CONFIG_VERSION = 3
-const JSON_INDENT = 2
-const RouteSchema = v.looseObject({
-  src: v.optional(v.string()),
-  handle: v.optional(v.string())
-})
-const BuildConfigSchema = v.looseObject({
-  version: v.literal(VERCEL_CONFIG_VERSION),
-  routes: v.array(RouteSchema)
+const MarkdownPathSchema = v.pipe(v.string(), v.regex(MARKDOWN_FILE))
+const ManifestSchema = v.object({
+  siteUrl: v.pipe(v.string(), v.url()),
+  baseLocale: v.pipe(v.string(), v.nonEmpty()),
+  paths: v.array(MarkdownPathSchema),
+  baseLocalePaths: v.array(MarkdownPathSchema),
+  mismatches: v.array(v.string())
 })
 
-function readPaths(contents: string | undefined): string[] | undefined {
+// O Nitro registra a rota decodificada; o mapa guarda a forma publicada.
+function readInventory(contents: string | undefined): Inventory | undefined {
   try {
-    const paths: unknown = JSON.parse(contents ?? '')
-    return Array.isArray(paths) &&
-      paths.every(path => typeof path === 'string' && MARKDOWN_FILE.test(path))
-      ? paths
-      : undefined
+    const manifest = v.parse(ManifestSchema, JSON.parse(contents ?? ''))
+    const expected = new Map(
+      manifest.paths.map(path => [decodeURI(path), path])
+    )
+    const baseLocalePaths = new Set(
+      manifest.baseLocalePaths.map(path => decodeURI(path))
+    )
+    const isValid =
+      expected.size === manifest.paths.length &&
+      [...baseLocalePaths].every(path => expected.has(path))
+    return isValid ? { manifest, expected, baseLocalePaths } : undefined
   } catch {
     return undefined
   }
 }
 
-function assertInitialRoutes({ routes, directories }: InitialRoutes): void {
-  const pages = directories.flatMap(directory =>
-    directory ? [directory, `${directory}/`] : ['/']
-  )
-  for (const route of routes) {
-    if (
-      route.src === undefined ||
-      route.continue === true ||
-      route.dest !== undefined ||
-      route.status !== undefined
-    ) {
-      continue
-    }
-    const pattern = new RegExp(
-      `^(?:${route.src})$`,
-      route.caseSensitive === true ? 'u' : 'iu'
-    )
-    if (pages.some(page => pattern.test(page))) {
-      throw new Error(
-        `Vercel route ends before Markdown page protection: ${route.src}`
-      )
-    }
+function isMarkdownArtifact(route: PrerenderRoute): boolean {
+  return route.route.endsWith('.md') || route.fileName?.endsWith('.md') === true
+}
+
+function assertRegistered({
+  prerenderedRoutes,
+  expected
+}: RegistrationOptions): void {
+  const written = new Map(prerenderedRoutes.map(route => [route.route, route]))
+  const missing = [...expected]
+    .filter(([path]) => written.get(path)?.fileName !== path)
+    .map(([, published]) => published)
+  if (missing.length > 0) {
+    throw new Error(`Static Markdown not generated: ${missing.join(', ')}`)
+  }
+  const extra = prerenderedRoutes
+    .filter(route => isMarkdownArtifact(route) && !expected.has(route.route))
+    .map(route => route.route)
+  if (extra.length > 0) {
+    throw new Error(`Static Markdown outside the list: ${extra.join(', ')}`)
   }
 }
 
-async function protectDirectoryPages({
+// O agregado só lê os `.md` aprovados que o índice editorial cita. O anúncio
+// no llms.txt precisa coincidir com a existência do arquivo.
+async function publishLlmsFull({
+  inventory,
+  llmsText,
   outputDir,
-  paths
-}: RoutingOptions): Promise<void> {
-  const directories = paths
-    .filter(path => path.endsWith(INDEX_FILE))
-    .map(path => path.slice(0, -INDEX_FILE.length))
-  if (directories.length === 0) return
-  const file = nodePath.join(outputDir, 'config.json')
-  const config = v.parse(
-    BuildConfigSchema,
-    JSON.parse(await readFile(file, 'utf8'))
-  )
-  const patterns = directories.map(directory =>
-    directory
-      ? `${directory.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`)}/?`
-      : '/'
-  )
-  const prefix = `^(?=(?:${patterns.join('|')})$)`
-  let phase: string | undefined
-  const routes = config.routes.flatMap(route => {
-    if (route.handle !== undefined) {
-      phase = route.handle
-      return []
-    }
-    if (phase !== 'filesystem' || route.src === undefined) return []
-    // Grupos sem captura preservam os parâmetros das rotas geradas pelo Nitro.
-    return [{ ...route, src: `${prefix}(?:${route.src})$` }]
+  publicDir
+}: LlmsFullOptions): Promise<boolean> {
+  const { manifest, expected, baseLocalePaths } = inventory
+  const index = readLlmsIndex(llmsText)
+  const { documents, omitted } = selectLlmsFullDocuments({
+    links: index.links,
+    siteUrl: manifest.siteUrl,
+    inventory: new Set(expected.keys()),
+    baseLocalePaths,
+    ownPaths: new Set([LLMS_PATH, LLMS_FULL_PATH])
   })
-  const boundary = config.routes.findIndex(route => 'handle' in route)
-  if (boundary === NOT_FOUND || routes.length === 0) {
-    throw new Error('Vercel output has no filesystem routes for Markdown pages')
+  const fullUrl = new URL(LLMS_FULL_PATH, manifest.siteUrl).href
+  const isAnnounced = index.links.some(({ href }) => href === fullUrl)
+  if (isAnnounced !== documents.length > 0) {
+    throw new Error(
+      isAnnounced
+        ? `llms.txt announces ${LLMS_FULL_PATH} without static Markdown pages`
+        : `llms.txt does not announce ${LLMS_FULL_PATH} for its static Markdown pages`
+    )
   }
-  assertInitialRoutes({
-    routes: config.routes.slice(0, boundary),
-    directories
+  await writeLlmsFull({
+    outputDir,
+    publicDir,
+    maxBytes: LLMS_FULL_MAX_BYTES,
+    index: {
+      title: index.title,
+      description: index.description,
+      url: new URL(LLMS_PATH, manifest.siteUrl).href
+    },
+    baseLocale: manifest.baseLocale,
+    documents,
+    omitted
   })
-  config.routes.splice(boundary, 0, ...routes)
-  await writeFile(file, `${JSON.stringify(config, null, JSON_INDENT)}\n`)
+  return documents.length > 0
 }
 
 // O build pede ao middleware a lista de páginas estáticas e prerenderiza cada
-// `.md` pela mesma conversão da requisição. Uma falha em qualquer uma delas,
-// inclusive na própria lista, interrompe o build.
-export function markdownPrerender(nitro: PrerenderNitro): void {
-  let queue: Set<string> | undefined
-  let expected: string[] | undefined
-  nitro.options.prerender.failOnError = true
-  nitro.options.prerender.routes = [
-    ...(nitro.options.prerender.routes ?? []),
-    MARKDOWN_PRERENDER_PATH
-  ]
-  nitro.hooks.hook('prerender:routes', routes => {
-    queue = routes
-  })
-  nitro.hooks.hook('prerender:generate', route => {
-    if (route.route !== MARKDOWN_PRERENDER_PATH) return
-    route.skip = true
-    if (route.error) return
-    const paths = readPaths(route.contents)
-    if (!queue || !paths) {
-      route.error = new Error('Invalid static Markdown list')
-      return
-    }
-    expected = paths
-    for (const path of paths) queue.add(path)
-  })
-  nitro.hooks.hook('compiled', () =>
-    protectDirectoryPages({
-      outputDir: nitro.options.output.dir,
-      paths: expected ?? []
+// `.md` pela mesma conversão da requisição. Cada artefato é conferido pelo tipo
+// e pelo arquivo realmente gravados, e o diretório publicado é confrontado com
+// a lista e com os bytes aprovados. A lista e o llms.txt ficam publicados como
+// arquivos, e o llms.txt monta o llms-full.txt. O inventário do sitemap segue o
+// mesmo ciclo em `publicationArtifacts`. O sinal de fase chega ao worker do
+// prerender pelo ambiente herdado na criação dele, nunca por um header público.
+// Uma falha em qualquer etapa interrompe o build.
+export function markdownPrerender({
+  buildId
+}: MarkdownPrerenderOptions): (nitro: PrerenderNitro) => void {
+  return nitro => {
+    let queue: Set<string> | undefined
+    let inventory: Inventory | undefined
+    let llmsText: string | undefined
+    let hasLlmsFull = false
+    const approved = new Map<string, ArtifactDigest>()
+    const publication = publicationArtifacts({ buildId })
+    nitro.options.prerender.failOnError = true
+    nitro.options.prerender.routes = [
+      ...new Set([
+        ...(nitro.options.prerender.routes ?? []),
+        MARKDOWN_PRERENDER_PATH,
+        SITEMAP_INVENTORY_PATH,
+        LLMS_PATH
+      ])
+    ]
+    nitro.hooks.hook('prerender:init', () => {
+      env[PUBLICATION_PHASE_ENV] = PUBLICATION_PRERENDER_PHASE
     })
-  )
-  // O Nitro só falha o build por rota com `error`. Uma exceção no fetch, na
-  // gravação ou no hook de geração, ou uma rota ignorada, termina sem arquivo e
-  // sem erro registrado.
-  nitro.hooks.hook('prerender:done', ({ prerenderedRoutes, failedRoutes }) => {
-    // Com `failOnError`, o Nitro interrompe o build em seguida e lista as rotas.
-    if (failedRoutes.length > 0 && nitro.options.prerender.failOnError) return
-    if (!expected) throw new Error('Static Markdown list was not prerendered')
-    // O Nitro registra a rota já decodificada.
-    const written = new Set(prerenderedRoutes.map(route => route.route))
-    const missing = expected.filter(path => !written.has(decodeURI(path)))
-    if (missing.length > 0) {
-      throw new Error(`Static Markdown not generated: ${missing.join(', ')}`)
-    }
-  })
+    nitro.hooks.hook('prerender:routes', initial => {
+      queue = initial
+    })
+    nitro.hooks.hook('prerender:generate', route => {
+      if (publication.inspect({ route, queue })) return
+      if (route.route === MARKDOWN_PRERENDER_PATH) {
+        if (route.error) return
+        inventory = readInventory(route.contents)
+        if (!queue || !inventory) {
+          route.error = new Error('Invalid static Markdown list')
+          return
+        }
+        const { mismatches, paths } = inventory.manifest
+        if (mismatches.length > 0) {
+          route.error = new Error(
+            `Static Markdown pages resolve to another route: ${mismatches.join(', ')}`
+          )
+          return
+        }
+        for (const path of paths) queue.add(path)
+        publication.approve({ route })
+        return
+      }
+      if (route.route === LLMS_PATH) {
+        if (route.error) return
+        llmsText = route.contents
+        publication.approve({ route, maxBytes: LLMS_MAX_BYTES })
+        return
+      }
+      if (!isMarkdownArtifact(route) || route.error) return
+      const problem = inspectMarkdownArtifact(route)
+      if (problem) {
+        route.error = new Error(
+          `Invalid static Markdown ${route.route}: ${problem}`
+        )
+        return
+      }
+      // Os bytes aprovados aqui são confrontados com o arquivo publicado.
+      approved.set(route.route, digestBytes(readRouteBytes(route)))
+    })
+    // O Nitro só falha o build por rota com `error`. Uma exceção no fetch, na
+    // gravação ou no hook de geração, ou uma rota ignorada, termina sem arquivo e
+    // sem erro registrado.
+    nitro.hooks.hook(
+      'prerender:done',
+      async ({ prerenderedRoutes, failedRoutes }) => {
+        Reflect.deleteProperty(env, PUBLICATION_PHASE_ENV)
+        // Com `failOnError`, o Nitro interrompe o build em seguida e lista as rotas.
+        if (failedRoutes.length > 0 && nitro.options.prerender.failOnError) {
+          return
+        }
+        if (!inventory) {
+          throw new Error('Static Markdown list was not prerendered')
+        }
+        const { expected } = inventory
+        assertRegistered({ prerenderedRoutes, expected })
+        const { dir: outputDir, publicDir } = nitro.options.output
+        await assertStaticOutput({ publicDir, expected, approved })
+        if (llmsText === undefined) {
+          throw new Error('llms.txt was not prerendered')
+        }
+        await publication.assertPublished({ publicDir, prerenderedRoutes })
+        hasLlmsFull = await publishLlmsFull({
+          inventory,
+          llmsText,
+          outputDir,
+          publicDir
+        })
+      }
+    )
+    nitro.hooks.hook('compiled', async () => {
+      await writeVercelRoutes({
+        outputDir: nitro.options.output.dir,
+        paths: inventory?.manifest.paths ?? [],
+        hasLlmsFull,
+        hasLlmsIndex: llmsText !== undefined
+      })
+      await publication.writeServer(nitro.options.output.serverDir)
+    })
+  }
 }

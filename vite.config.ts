@@ -85,14 +85,24 @@ const componentPlugins = () =>
 
 const appPlugins = (mode: string) =>
   lazyPlugins(async () => {
-    const [modules, { nitro }, { markdownPrerender }, { moveViteMetadata }] =
-      await Promise.all([
-        loadComponentModules(),
-        import('nitro/vite'),
-        import('./tooling/markdownPrerender/index.ts'),
-        import('./tooling/moveViteMetadata/index.ts')
-      ])
+    const [
+      modules,
+      { nitro },
+      { markdownPrerender },
+      { moveViteMetadata },
+      { createPublicationBuild }
+    ] = await Promise.all([
+      loadComponentModules(),
+      import('nitro/vite'),
+      import('./tooling/markdownPrerender/index.ts'),
+      import('./tooling/moveViteMetadata/index.ts'),
+      import('./tooling/publicationArtifacts/helpers/createPublicationBuild/index.ts')
+    ])
+    // O Nitro compartilha esta lista de plugins entre os ambientes do build, e
+    // o mesmo closure chega ao SSR e ao módulo que grava o manifesto.
+    const { buildId, plugin: publicationBuild } = createPublicationBuild()
     return [
+      publicationBuild,
       modules.i18n(),
       icons(modules),
       modules.solid({
@@ -117,7 +127,7 @@ const appPlugins = (mode: string) =>
       nitro({
         serverEntry: false,
         preset: 'vercel',
-        modules: [markdownPrerender, moveViteMetadata],
+        modules: [markdownPrerender({ buildId }), moveViteMetadata],
         // Sem fallthrough, um hash ausente em /assets/ recebe o 404 no-store do
         // Nitro em vez da página SSR com o cache imutável da route rule. O dir
         // não existe de propósito: os arquivos vêm da saída do Vite, e um dir

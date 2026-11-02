@@ -1,3 +1,4 @@
+export const MAX_MARKDOWN_BYTES = 2_097_152
 export const MARKDOWN_TIMEOUT_MS = 15_000
 export const MAX_HTML_BYTES = 2_097_152
 // Lista das páginas estáticas que o prerender do build transforma em `.md`.

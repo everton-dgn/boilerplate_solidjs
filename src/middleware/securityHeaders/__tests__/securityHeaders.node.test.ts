@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module'
+
 import { createRequestEvent, type RequestEvent } from '@solidjs/web'
 import { provideRequestEvent } from '@solidjs/web/storage'
 
@@ -134,6 +136,37 @@ describe('cabeçalhos de segurança da resposta', () => {
       ...EXPECTED_HEADERS
     })
     expect(directives(response)['script-src']).toBe("'none'")
+  })
+
+  it('preserva o status do redirect quando o adaptador Node materializa o corpo', async () => {
+    const require = createRequire(import.meta.url)
+    const adapterPath = require.resolve('srvx/node', {
+      paths: [require.resolve('nitro')]
+    })
+    const adapter: unknown = await import(adapterPath)
+    assert(typeof adapter === 'object' && adapter !== null)
+    assert(
+      'NodeResponse' in adapter && typeof adapter.NodeResponse === 'function'
+    )
+    const redirect = Response.redirect(
+      new URL('/destino', TEST_ORIGIN),
+      HTTP_FOUND
+    )
+
+    vi.stubGlobal('Response', adapter.NodeResponse)
+    try {
+      const response = applyInRequest(redirect)
+
+      expect(response.body).toBeNull()
+      expect(response.status).toBe(HTTP_FOUND)
+      expect(response.headers.get('location')).toBe(`${TEST_ORIGIN}/destino`)
+      expect(Object.fromEntries(response.headers)).toMatchObject(
+        EXPECTED_HEADERS
+      )
+      expect(directives(response)['script-src']).toBe("'none'")
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
 
