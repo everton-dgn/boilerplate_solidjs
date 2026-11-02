@@ -1,4 +1,4 @@
-import type { SitemapEntry } from '@/@types/sitemap.ts'
+import type { SitemapEntry, SitemapPartitionSource } from '@/@types/sitemap.ts'
 import { SITEMAP_URL_LIMIT } from '@/routes/(seo)/sitemap/constants.ts'
 
 import { createSitemapIndexBuilder } from '../../../createSitemapIndexBuilder/index.ts'
@@ -11,6 +11,39 @@ type IndexPlan = {
   legacy: SitemapEntry[]
   indexCount: number
   indexXml?: string
+}
+
+type SourcePartitionsOptions = {
+  builder: ReturnType<typeof createSitemapIndexBuilder>
+  source: SitemapPartitionSource
+  read: ReadOptions
+}
+
+async function addSourcePartitions({
+  builder,
+  source,
+  read
+}: SourcePartitionsOptions): Promise<void> {
+  const { options, context } = read
+  const limit = SITEMAP_URL_LIMIT - builder.count()
+  const ids = await context.readSource({
+    key: source,
+    run: signal => source.listPartitions({ limit: limit + 1, signal })
+  })
+  if (!Array.isArray(ids) || ids.length > limit) {
+    throw new Error('Índice acima do limite de URLs')
+  }
+  if (
+    new Set(ids).size !== ids.length ||
+    ids.some(id => typeof id !== 'string' || !SOURCE_ID_PATTERN.test(id))
+  ) {
+    throw new Error('Partições inválidas')
+  }
+  for (const id of ids) {
+    builder.add(
+      new URL(`/sitemaps/${source.id}/${id}.xml`, options.siteUrl).href
+    )
+  }
 }
 
 export async function planIndex(read: ReadOptions): Promise<IndexPlan> {
@@ -27,23 +60,7 @@ export async function planIndex(read: ReadOptions): Promise<IndexPlan> {
   }
   for (const source of sources) {
     context.signal.throwIfAborted()
-    const limit = SITEMAP_URL_LIMIT - builder.count()
-    const ids = await context.readSource({
-      key: source,
-      run: signal => source.listPartitions({ limit: limit + 1, signal })
-    })
-    if (!Array.isArray(ids) || ids.length > limit) {
-      throw new Error('Índice acima do limite de URLs')
-    }
-    if (
-      new Set(ids).size !== ids.length ||
-      ids.some(id => typeof id !== 'string' || !SOURCE_ID_PATTERN.test(id))
-    ) {
-      throw new Error('Partições inválidas')
-    }
-    for (const id of ids) {
-      builder.add(new URL(`/sitemaps/${source.id}/${id}.xml`, siteUrl).href)
-    }
+    await addSourcePartitions({ builder, source, read })
   }
   const indexCount = builder.count()
   const indexXml = indexCount > 0 ? builder.finish() : undefined

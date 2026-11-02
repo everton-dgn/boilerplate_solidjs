@@ -33,7 +33,7 @@ async function readLegacySources({
   const { siteUrl } = options
   const { manifest, matchRoute } = catalog.readRoutes()
   const identities = await catalog.readIdentities()
-  const collected: SitemapEntry[] = []
+  const collected: SitemapEntry[][] = []
   let count = 0
   for (const [index, source] of manifest.sources.entries()) {
     context.signal.throwIfAborted()
@@ -43,21 +43,23 @@ async function readLegacySources({
     }
     count += result.length
     const routePath = manifest.sourceRoutes?.[index]
+    // A prioridade estática do contrato legado descarta duplicatas antes
+    // da propriedade da fonte, sem publicar seus metadados nessa URL.
     const entries = normalizeSitemapEntries({
       entries: v.parse(EntriesSchema, result),
       siteUrl
-    })
-    for (const entry of entries) {
-      // A prioridade estática do contrato legado descarta duplicatas antes
-      // da propriedade da fonte, sem publicar seus metadados nessa URL.
-      if (identities.has(sitemapUrl({ path: entry.path, siteUrl }))) continue
-      if (routePath && matchRoute?.(entry.path) !== routePath) {
-        throw new Error('Fonte legada publicou outra rota')
-      }
-      collected.push(entry)
+    }).filter(
+      entry => !identities.has(sitemapUrl({ path: entry.path, siteUrl }))
+    )
+    if (
+      routePath &&
+      entries.some(entry => matchRoute?.(entry.path) !== routePath)
+    ) {
+      throw new Error('Fonte legada publicou outra rota')
     }
+    collected.push(entries)
   }
-  return collected
+  return collected.flat()
 }
 
 function normalizeUnique(
