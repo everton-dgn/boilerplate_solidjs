@@ -1,25 +1,58 @@
-import {
-  createComponent,
-  createRequestEvent,
-  renderToStream,
-  ssr,
-  type RequestEvent
-} from '@solidjs/web'
-import { createMemo, Loading, onCleanup } from 'solid-js'
+import { createRequestEvent, type RequestEvent } from '@solidjs/web'
 
-import { LLMS_DESCRIBEDBY_LINK } from '@/constants/llms.ts'
 import { SITE } from '@/constants/site/index.ts'
+import { createPublicationController } from '@/infra/server/publication/index.ts'
+import type { PublicationLimits } from '@/infra/server/publication/types.ts'
 import { Router } from '@/router.ts'
 
 import {
   MARKDOWN_PRERENDER_PATH,
   MARKDOWN_TIMEOUT_MS,
-  MAX_HTML_BYTES
+  MAX_HTML_BYTES,
+  MAX_MARKDOWN_BYTES
 } from '../constants.ts'
-import { markdownContent } from '../index.ts'
+import { collectStaticMarkdownPages } from '../helpers/collectStaticMarkdownPages/index.ts'
+import { markdownContent as productionMarkdownContent } from '../index.ts'
+
+const TEST_RESERVED_BYTES = 16_777_216
+const EXPANDING_LINK = '<a href="/">x</a> '
+
+const testLimits: PublicationLimits = {
+  total: 4,
+  sitemap: 2,
+  markdown: 2,
+  sources: 4,
+  perSource: 2,
+  outputs: 4,
+  reservedBytes: TEST_RESERVED_BYTES
+}
+let publicationController: ReturnType<typeof createPublicationController>
+let openResponses: Response[]
+
+vi.mock(import('@/infra/server/publication/index.ts'), async importOriginal => {
+  const original = await importOriginal()
+  return {
+    ...original,
+    runPublication: (options: Parameters<typeof original.runPublication>[0]) =>
+      publicationController.runPublication(options)
+  }
+})
+
+async function markdownContent(
+  request: RequestEvent,
+  render: Parameters<typeof productionMarkdownContent>[1]
+): Promise<Response> {
+  const response = await productionMarkdownContent(request, render)
+  openResponses.push(response)
+  return response
+}
 
 vi.mock(import('../helpers/collectStaticMarkdownPages/index.ts'), () => ({
-  collectStaticMarkdownPages: () => ['/pt', '/en/about', '/en/private']
+  collectStaticMarkdownPages: vi.fn<() => string[]>(() => [
+    '/pt',
+    '/en/about',
+    '/en/private'
+  ])
 }))
 
 const HTTP_OK = 200
@@ -72,23 +105,6 @@ function html(
   )
 }
 
-function pendingPage(cleanup: () => void) {
-  onCleanup(cleanup)
-  return ssr(
-    ['<main>', '</main>'],
-    createComponent(Loading, {
-      fallback: 'Waiting',
-      get children() {
-        const value = createMemo(() => Promise.withResolvers<string>().promise)
-        return ssr(
-          ['<p>', '</p>'],
-          createMemo(() => value())
-        )
-      }
-    })
-  )
-}
-
 function mockPublishedRoute() {
   vi.stubEnv('DEV', false)
   vi.spyOn(Router, 'match').mockReturnValue([
@@ -102,8 +118,40 @@ function mockPublishedRoute() {
   ])
 }
 
+function prerender(path: string): RequestEvent {
+  return createRequestEvent(
+    new Request(`https://example.com${path}`, {
+      headers: { 'x-nitro-prerender': path }
+    })
+  )
+}
+
+async function expectUnavailableHead(response: Response): Promise<void> {
+  expect(response.status).toBe(HTTP_UNAVAILABLE)
+  await expect(response.text()).resolves.toBe('')
+}
+
+function resetPublicationController(): void {
+  publicationController = createPublicationController(testLimits)
+  openResponses = []
+}
+
+async function cancelOpenResponses(): Promise<void> {
+  for (const response of openResponses) {
+    try {
+      await response.body?.cancel()
+    } catch {
+      /* Already consumed. */
+    }
+  }
+}
+
 describe('html-derived Markdown', () => {
-  beforeEach(mockPublishedRoute)
+  beforeEach(() => {
+    resetPublicationController()
+    mockPublishedRoute()
+  })
+  afterEach(cancelOpenResponses)
 
   it('converts settled HTML with a full document URL, semantic filters and contextual footer', async () => {
     const request = event({ path: '/en/docs/article.md?version=2' })
@@ -148,15 +196,10 @@ describe('html-derived Markdown', () => {
   })
 })
 
-function prerender(path: string): RequestEvent {
-  return createRequestEvent(
-    new Request(`https://example.com${path}`, {
-      headers: { 'x-nitro-prerender': path }
-    })
-  )
-}
-
 describe('build-time Markdown', () => {
+  beforeEach(resetPublicationController)
+  afterEach(cancelOpenResponses)
+
   it.each([
     HTTP_MOVED_PERMANENTLY,
     HTTP_FOUND,
@@ -253,6 +296,25 @@ describe('build-time Markdown', () => {
     expect(response).toBe(original)
   })
 
+  it('does not rebuild the listing from a public header in production', async () => {
+    vi.stubEnv('PROD', true)
+    vi.stubEnv('PUBLICATION_BUILD_PHASE', '')
+    const original = new Response('missing', { status: HTTP_NOT_FOUND })
+    const next = vi.fn<() => Promise<Response>>(() => Promise.resolve(original))
+    vi.mocked(collectStaticMarkdownPages).mockClear()
+    try {
+      const response = await markdownContent(
+        prerender(MARKDOWN_PRERENDER_PATH),
+        next
+      )
+      expect(response).toBe(original)
+      expect(next).toHaveBeenCalledOnce()
+      expect(collectStaticMarkdownPages).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
   it('converts a dynamic page on request', async () => {
     vi.spyOn(Router, 'match').mockReturnValue([
       {
@@ -275,7 +337,11 @@ describe('build-time Markdown', () => {
 })
 
 describe('markdown aliases and runtime publication', () => {
-  beforeEach(mockPublishedRoute)
+  beforeEach(() => {
+    resetPublicationController()
+    mockPublishedRoute()
+  })
+  afterEach(cancelOpenResponses)
 
   it.each([
     ['/index.md', '/'],
@@ -420,7 +486,11 @@ describe('markdown aliases and runtime publication', () => {
 })
 
 describe('markdown negotiation and redirects', () => {
-  beforeEach(mockPublishedRoute)
+  beforeEach(() => {
+    resetPublicationController()
+    mockPublishedRoute()
+  })
+  afterEach(cancelOpenResponses)
 
   it.each([
     ['text/html;q=1,text/markdown;q=0.2', HTTP_OK],
@@ -627,9 +697,45 @@ describe('markdown negotiation and redirects', () => {
 })
 
 describe('markdown resource bounds', () => {
-  beforeEach(mockPublishedRoute)
-  afterEach(() => {
+  beforeEach(() => {
+    resetPublicationController()
+    mockPublishedRoute()
+  })
+  afterEach(async () => {
+    await cancelOpenResponses()
     vi.useRealTimers()
+  })
+
+  it('refuses excess Markdown with private no-store and Retry-After', async () => {
+    const controllers = [new AbortController(), new AbortController()]
+    const render = vi.fn<() => Promise<Response>>(
+      () => Promise.withResolvers<Response>().promise
+    )
+    const pending = controllers.map(controller =>
+      markdownContent(event({ signal: controller.signal }), render)
+    )
+    const get = await markdownContent(event(), render)
+    const head = await markdownContent(event({ method: 'HEAD' }), render)
+    expect(get.status).toBe(HTTP_UNAVAILABLE)
+    await expectUnavailableHead(head)
+    expect(get.headers.get('cache-control')).toBe('private, no-store')
+    expect(get.headers.get('retry-after')).toBe('1')
+    controllers.forEach(controller => controller.abort())
+    await Promise.all(pending)
+    expect(render).toHaveBeenCalledTimes(controllers.length)
+  })
+
+  it('keeps HEAD body empty after client cancellation', async () => {
+    const controller = new AbortController()
+    const pending = markdownContent(
+      event({ method: 'HEAD', signal: controller.signal }),
+      () => Promise.withResolvers<Response>().promise
+    )
+    controller.abort()
+    const response = await pending
+    expect(response.status).toBe(HTTP_SERVER_ERROR)
+    expect(response.body).toBeNull()
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
   })
 
   it.each([
@@ -683,6 +789,19 @@ describe('markdown resource bounds', () => {
     ).rejects.toThrow('Markdown document limit exceeded')
   })
 
+  it('rejects Markdown that grows beyond the output budget from valid HTML', async () => {
+    const expectedLink = `[x](${new URL('/', SITE.url).href}) `
+    const count = Math.floor(MAX_MARKDOWN_BYTES / expectedLink.length) + 1
+    const htmlBody = `<main>${EXPANDING_LINK.repeat(count)}</main>`
+    expect(new TextEncoder().encode(htmlBody).byteLength).toBeLessThan(
+      MAX_HTML_BYTES
+    )
+    await expect(
+      markdownContent(event(), () => html(htmlBody))
+    ).rejects.toThrow('Markdown output limit exceeded')
+    expect(publicationController.getMetrics().reservedBytes).toBe(0)
+  })
+
   it('propagates client cancellation to the render request', async () => {
     const controller = new AbortController()
     const request = event({ signal: controller.signal })
@@ -693,6 +812,7 @@ describe('markdown resource bounds', () => {
     controller.abort()
     const response = await pending
     expect(response.status).toBe(HTTP_SERVER_ERROR)
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
     expect(request.request.signal.aborted).toBe(true)
   })
 
@@ -707,106 +827,5 @@ describe('markdown resource bounds', () => {
     const response = await pending
     expect(response.status).toBe(HTTP_SERVER_ERROR)
     expect(request.request.signal.aborted).toBe(true)
-  })
-
-  it('disposes a pending native SSR root when its signal aborts', async () => {
-    const controller = new AbortController()
-    const request = event({ signal: controller.signal })
-    const cleanup = vi.fn<() => void>()
-    const render = async () => {
-      const result = await renderToStream(() => pendingPage(cleanup), {
-        signal: request.request.signal
-      })
-      return new Response(result, { headers: { 'content-type': 'text/html' } })
-    }
-    const pending = markdownContent(request, render)
-    expect(cleanup).not.toHaveBeenCalled()
-    controller.abort()
-    const response = await pending
-    expect(response.status).toBe(HTTP_SERVER_ERROR)
-    expect(cleanup).toHaveBeenCalledOnce()
-  })
-})
-
-describe('HTTP Link discovery', () => {
-  beforeEach(mockPublishedRoute)
-
-  it('appends the llms.txt describedby link to converted Markdown', async () => {
-    for (const path of ['/en/about.md', '/en/about']) {
-      const response = await markdownContent(event({ path }), () => html())
-      expect(response.status).toBe(HTTP_OK)
-      expect(response.headers.get('link')).toBe(LLMS_DESCRIBEDBY_LINK)
-      expect(response.headers.get('vary')).toBe('Cookie, Accept')
-      expect(response.headers.get('cache-control')).toBe('private, no-store')
-    }
-  })
-
-  it('composes the describedby link after a Link from the render', async () => {
-    const preload = '</assets/app.css>; rel=preload; as=style'
-    const response = await markdownContent(event(), () =>
-      Promise.resolve(
-        new Response('<main><h1>Title</h1></main>', {
-          headers: { 'content-type': 'text/html', link: preload }
-        })
-      )
-    )
-    expect(response.headers.get('link')).toBe(
-      `${preload}, ${LLMS_DESCRIBEDBY_LINK}`
-    )
-  })
-
-  it('sends the same status and headers on HEAD and GET', async () => {
-    const get = await markdownContent(event({ path: '/en/about.md' }), () =>
-      html()
-    )
-    const head = await markdownContent(
-      event({ method: 'HEAD', path: '/en/about.md' }),
-      () => html()
-    )
-    expect(head.status).toBe(get.status)
-    expect(Object.fromEntries(head.headers)).toStrictEqual(
-      Object.fromEntries(get.headers)
-    )
-    expect(head.headers.get('link')).toBe(LLMS_DESCRIBEDBY_LINK)
-    await expect(head.text()).resolves.toBe('')
-  })
-
-  it('does not announce the index on Markdown errors, refusals or redirects', async () => {
-    const responses = [
-      await markdownContent(event(), () =>
-        html('<main><h1>Not found</h1></main>', HTTP_NOT_FOUND)
-      ),
-      await markdownContent(event({ accept: 'application/json' }), () =>
-        html()
-      ),
-      await markdownContent(event({ path: '/en/about.md' }), () =>
-        Promise.resolve(
-          new Response(null, {
-            status: HTTP_REDIRECT,
-            headers: { location: '/en/contact' }
-          })
-        )
-      ),
-      await markdownContent(event({ path: '/en/about.md' }), () =>
-        Promise.resolve(
-          new Response('<main>Private</main>', {
-            headers: { 'content-type': 'text/html', 'x-robots-tag': 'noindex' }
-          })
-        )
-      )
-    ]
-    const incomplete = event()
-    incomplete.locals.ssrRenderState = { hasErrors: false, hasCompleted: false }
-    responses.push(await markdownContent(incomplete, () => html()))
-    expect(responses.map(response => response.status)).toStrictEqual([
-      HTTP_NOT_FOUND,
-      HTTP_NOT_ACCEPTABLE,
-      HTTP_REDIRECT,
-      HTTP_NOT_FOUND,
-      HTTP_SERVER_ERROR
-    ])
-    for (const response of responses) {
-      expect(response.headers.has('link')).toBe(false)
-    }
   })
 })

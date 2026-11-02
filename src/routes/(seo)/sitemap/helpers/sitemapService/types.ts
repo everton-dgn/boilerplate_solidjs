@@ -1,16 +1,19 @@
 import type { SitemapEntry, SitemapPartitionSource } from '@/@types/sitemap.ts'
+import type { PublicationContext } from '@/infra/server/publication/types.ts'
 
-import type { SitemapManifest } from '../../types.ts'
+import type { SitemapContext, SitemapRouteContext } from '../../types.ts'
 
-export type ServiceOptions = {
-  manifest: SitemapManifest
+type ServiceSettings = {
   sources: readonly SitemapPartitionSource[]
   siteUrl: string
   signal: AbortSignal
   byteBudget?: number
   method?: string
-  matchRoute?: (path: string) => string | undefined
 }
+
+type PageSummary = { partCount: number; isFileRoot: boolean }
+
+export type ServiceOptions = ServiceSettings & SitemapContext
 
 export type PartOptions = ServiceOptions & {
   kind: 'pages' | 'source' | 'legacy'
@@ -18,13 +21,8 @@ export type PartOptions = ServiceOptions & {
   source?: string
 }
 
-export type Plan = {
-  pages: SitemapEntry[][]
-  legacy: SitemapEntry[]
-  indexCount: number
-  sources: readonly SitemapPartitionSource[]
-  indexXml?: string
-}
+export type InventoryOptions = Omit<ServiceSettings, 'signal' | 'method'> &
+  SitemapContext
 
 export type PagePartsOptions = {
   entries: readonly SitemapEntry[]
@@ -32,8 +30,27 @@ export type PagePartsOptions = {
   byteBudget: number
 }
 
-export type CachedPagePartsOptions = {
-  manifest: SitemapManifest
-  siteUrl: string
+// Fronteira entre a geração direta (desenvolvimento e prerender) e o manifesto
+// pronto de produção. A identidade exata fica atrás de `readIdentities` para só
+// existir em memória quando há fonte legada.
+export type PageCatalog = {
+  readSummary: () => Promise<PageSummary>
+  readHasLegacy: () => Promise<boolean>
+  readPart: (index: number) => Promise<readonly SitemapEntry[] | undefined>
+  readSinglePart: () => Promise<readonly SitemapEntry[]>
+  readIdentities: () => Promise<ReadonlySet<string>>
+  readRoutes: () => SitemapRouteContext
+}
+
+export type ReadOptions = {
+  options: ServiceOptions
+  catalog: PageCatalog
   byteBudget: number
+  context: PublicationContext
+}
+
+export type PublishOptions = {
+  options: ServiceOptions
+  byteBudget: number
+  run: (context: PublicationContext) => Promise<Response>
 }

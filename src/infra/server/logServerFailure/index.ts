@@ -6,6 +6,7 @@ type FailureSource =
   | 'middleware'
   | 'error-page'
   | 'sitemap'
+  | 'llms'
 type FailureLog = {
   source: FailureSource
   error?: unknown

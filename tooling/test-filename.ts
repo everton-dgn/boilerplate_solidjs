@@ -20,6 +20,7 @@ const subjects: Record<string, readonly string[]> = {
   'src/tests/pages/BuildOutput': ['BuildOutput'],
   'src/tests/pages/I18n': ['I18n'],
   'src/tests/pages/Markdown': ['Markdown'],
+  'src/tests/pages/PublicationLoad': ['PublicationLoad'],
   'src/tests/pages/UiKit': ['UiKit'],
   'src/tests/pages/StructuredData': ['StructuredData'],
   'tooling/css/__tests__': ['cssPolicy'],

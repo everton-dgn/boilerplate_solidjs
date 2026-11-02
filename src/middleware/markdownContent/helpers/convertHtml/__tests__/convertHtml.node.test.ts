@@ -1,3 +1,4 @@
+import { MAX_HTML_BYTES } from '../../../constants.ts'
 import { convertHtml } from '../index.ts'
 
 const INTERFACE = [
@@ -28,6 +29,8 @@ const CONTENT = [
   '<div aria-live="off">Static region</div>',
   '<details><summary>Question</summary><p>Answer</p></details>'
 ]
+
+const DEEP_NESTING = 10_000
 
 const UNSAFE_LINKS = [
   '<a href="javascript:void(0)">Script link</a>',
@@ -115,6 +118,21 @@ describe('markdown conversion filters', () => {
     expect(markdown).toContain(
       '![](https://example.com/titled.png "Quarterly sales")'
     )
+  })
+
+  it('keeps text without unsafe markup beyond the parser nesting limit', async () => {
+    const html = `<main>${'<div>'.repeat(DEEP_NESTING)}<img src="/icon.png"><a href="javascript:void(0)">Link</a>${'</div>'.repeat(DEEP_NESTING)}</main>`
+    expect(new TextEncoder().encode(html).byteLength).toBeLessThan(
+      MAX_HTML_BYTES
+    )
+    const markdown = await convertHtml({
+      response: new Response(html),
+      url: 'https://example.com/en/page',
+      signal: new AbortController().signal
+    })
+    // O mdream achata tags além do limite de profundidade e preserva o texto.
+    expect(markdown).toBe('Link')
+    expect(markdown).not.toContain('icon.png')
   })
 
   it('drops images without alt text inside emphasis', async () => {
@@ -412,5 +430,70 @@ describe('restores heading breaks after discarded content', () => {
       signal: new AbortController().signal
     })
     expect(markdown).toBe(expected)
+  })
+})
+
+describe('bounded HTML input', () => {
+  it('cancels on the first chunk beyond the byte limit', async () => {
+    let pulls = 0
+    const canceled = vi.fn<() => void>()
+    const response = new Response(
+      new ReadableStream(
+        {
+          pull(target) {
+            pulls += 1
+            target.enqueue(new Uint8Array(MAX_HTML_BYTES + 1))
+          },
+          cancel: canceled
+        },
+        { highWaterMark: 0 }
+      )
+    )
+    await expect(
+      convertHtml({
+        response,
+        url: 'https://example.com/en/page',
+        signal: new AbortController().signal
+      })
+    ).rejects.toThrow('Markdown document limit exceeded')
+    expect(canceled).toHaveBeenCalledOnce()
+    expect(pulls).toBe(1)
+  })
+
+  it('waits for asynchronous cancellation after abort', async () => {
+    const gate = Promise.withResolvers<undefined>()
+    const canceled = vi.fn<() => Promise<undefined>>(() => gate.promise)
+    const controller = new AbortController()
+    const response = new Response(
+      new ReadableStream(
+        {
+          pull() {
+            controller.abort()
+          },
+          cancel: canceled
+        },
+        { highWaterMark: 0 }
+      )
+    )
+    const conversion = convertHtml({
+      response,
+      url: 'https://example.com/en/page',
+      signal: controller.signal
+    })
+    let settled = false
+    const observed = (async () => {
+      try {
+        return await conversion
+      } catch (error) {
+        return error
+      } finally {
+        settled = true
+      }
+    })()
+    await vi.waitFor(() => expect(canceled).toHaveBeenCalledOnce())
+    expect(settled).toBe(false)
+    gate.resolve(void 0)
+    await expect(observed).resolves.toBeInstanceOf(DOMException)
+    expect(settled).toBe(true)
   })
 })

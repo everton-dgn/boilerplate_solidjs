@@ -3,22 +3,32 @@ import nodePath from 'node:path'
 
 import * as v from 'valibot'
 
-import { LLMS_DESCRIBEDBY_LINK, LLMS_FULL_PATH } from '../../constants.ts'
+import {
+  LLMS_DESCRIBEDBY_LINK,
+  LLMS_FULL_PATH,
+  LLMS_PATH
+} from '../../constants.ts'
 
 type VercelRoutesOptions = {
   outputDir: string
   paths: readonly string[]
   hasLlmsFull: boolean
+  hasLlmsIndex: boolean
 }
 type Route = v.InferOutput<typeof RouteSchema>
 type InitialRoutes = { routes: Route[]; directories: string[] }
 type GuardOptions = { routes: Route[]; directories: string[] }
+type MarkdownOptions = {
+  routes: Route[]
+  paths: readonly string[]
+  hasLlmsFull: boolean
+}
 
 const INDEX_FILE = '/index.md'
 const NOT_FOUND = -1
 const VERCEL_CONFIG_VERSION = 3
 const JSON_INDENT = 2
-const LLMS_FULL_TYPE = 'text/markdown; charset=utf-8'
+const LLMS_TYPE = 'text/markdown; charset=utf-8'
 const REGEX_SPECIALS = /[.*+?^${}()|[\]\\]/gu
 const RouteSchema = v.looseObject({
   src: v.optional(v.string()),
@@ -101,37 +111,51 @@ function describedbyRoute(hasLlmsFull: boolean): Route {
   }
 }
 
+function markdownRoutes({
+  routes,
+  paths,
+  hasLlmsFull
+}: MarkdownOptions): Route[] {
+  const directories = paths
+    .filter(path => path.endsWith(INDEX_FILE))
+    .map(path => path.slice(0, -INDEX_FILE.length))
+  const guards = guardDirectoryPages({ routes, directories })
+  if (!routes.some(route => route.handle === 'filesystem')) {
+    throw new Error('Vercel output has no filesystem phase for static Markdown')
+  }
+  return [describedbyRoute(hasLlmsFull), ...guards]
+}
+
 // Ajusta o `config.json` gerado pelo preset da Vercel numa única gravação:
 // proteção de diretórios com `index.md`, `Link` dos arquivos estáticos e tipo
-// do llms-full.txt, que o filesystem serviria como texto simples.
+// do llms.txt e do llms-full.txt, que o filesystem serviria como texto simples.
 export async function writeVercelRoutes({
   outputDir,
   paths,
-  hasLlmsFull
+  hasLlmsFull,
+  hasLlmsIndex
 }: VercelRoutesOptions): Promise<void> {
-  if (paths.length === 0 && !hasLlmsFull) return
+  const hasMarkdown = paths.length > 0 || hasLlmsFull
+  if (!hasMarkdown && !hasLlmsIndex) return
   const file = nodePath.join(outputDir, 'config.json')
   const config = v.parse(
     BuildConfigSchema,
     JSON.parse(await readFile(file, 'utf8'))
   )
-  const directories = paths
-    .filter(path => path.endsWith(INDEX_FILE))
-    .map(path => path.slice(0, -INDEX_FILE.length))
-  const guards = guardDirectoryPages({ routes: config.routes, directories })
-  const boundary = config.routes.findIndex(
-    route => route.handle === 'filesystem'
-  )
-  if (boundary === NOT_FOUND) {
-    throw new Error('Vercel output has no filesystem phase for static Markdown')
+  if (hasMarkdown) {
+    const { routes } = config
+    const initial = routes.findIndex(route => 'handle' in route)
+    routes.splice(initial, 0, ...markdownRoutes({ routes, paths, hasLlmsFull }))
   }
-  const initial = config.routes.findIndex(route => 'handle' in route)
-  config.routes.splice(initial, 0, describedbyRoute(hasLlmsFull), ...guards)
-  if (hasLlmsFull) {
-    const name = LLMS_FULL_PATH.slice(1)
+  const textFiles = [
+    ...(hasLlmsIndex ? [LLMS_PATH] : []),
+    ...(hasLlmsFull ? [LLMS_FULL_PATH] : [])
+  ]
+  for (const textFile of textFiles) {
+    const name = textFile.slice(1)
     config.overrides = {
       ...config.overrides,
-      [name]: { ...config.overrides?.[name], contentType: LLMS_FULL_TYPE }
+      [name]: { ...config.overrides?.[name], contentType: LLMS_TYPE }
     }
   }
   await writeFile(file, `${JSON.stringify(config, null, JSON_INDENT)}\n`)

@@ -9,6 +9,11 @@ import {
   isPublicError
 } from '@/infra/server/publicErrors/index.ts'
 
+import {
+  assertPublicationActive,
+  observePublicationOperation
+} from '../publicationScope/index.ts'
+
 type Operation<T> = { run: () => T; allowControl?: boolean }
 type DataCheck = { value: unknown; path?: Set<object>; done?: WeakSet<object> }
 
@@ -135,8 +140,13 @@ export function protectServerOperation({
   }
 
   try {
+    assertPublicationActive()
     const result = run()
-    if (isPromiseLike(result)) return settle(result)
+    if (isPromiseLike(result)) {
+      const operation = settle(result)
+      observePublicationOperation(operation)
+      return operation
+    }
     return publicResult(result)
   } catch (error) {
     return publicFailure(error)

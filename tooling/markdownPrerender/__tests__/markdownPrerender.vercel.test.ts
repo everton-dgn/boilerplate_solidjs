@@ -13,6 +13,7 @@ import {
   LLMS_FULL_PATH
 } from '../../../src/constants/llms.ts'
 import { MARKDOWN_PRERENDER_PATH } from '../../../src/middleware/markdownContent/constants.ts'
+import { SITEMAP_INVENTORY_PATH } from '../../publicationArtifacts/constants.ts'
 import { markdownPrerender } from '../index.ts'
 
 const ISR_ROUTE = '__isr_route'
@@ -31,6 +32,7 @@ const ConfigSchema = v.looseObject({
   routes: v.array(RouteSchema),
   overrides: v.optional(OverridesSchema)
 })
+const BUILD_ID = 'build-under-test'
 const SITE_URL = 'https://example.com/'
 const MARKDOWN_TYPE = 'text/markdown; charset=utf-8'
 
@@ -55,7 +57,7 @@ async function fixture({
     preset: 'vercel',
     compatibilityDate: '2026-10-20',
     logLevel: 0,
-    modules: [markdownPrerender],
+    modules: [markdownPrerender({ buildId: BUILD_ID })],
     ...config
   })
   context.after(async () => {
@@ -68,16 +70,31 @@ async function fixture({
   })
   const nitro = await creation
   await nitro.hooks.callHook('prerender:routes', new Set())
+  const list = JSON.stringify({
+    siteUrl: SITE_URL,
+    baseLocale: 'pt',
+    paths,
+    baseLocalePaths: paths,
+    mismatches: []
+  })
+  await nitro.hooks.callHook(
+    'prerender:generate',
+    { route: MARKDOWN_PRERENDER_PATH, contents: list },
+    nitro
+  )
   await nitro.hooks.callHook(
     'prerender:generate',
     {
-      route: MARKDOWN_PRERENDER_PATH,
+      route: SITEMAP_INVENTORY_PATH,
       contents: JSON.stringify({
+        version: 1,
+        buildId: BUILD_ID,
         siteUrl: SITE_URL,
-        baseLocale: 'pt',
-        paths,
-        baseLocalePaths: paths,
-        mismatches: []
+        byteBudget: 4_194_304,
+        pagePartCount: 0,
+        hasLegacySources: false,
+        hasPartitionSources: false,
+        identities: null
       })
     },
     nitro
@@ -86,6 +103,10 @@ async function fixture({
   // arquivos estáticos, como o prerender real.
   if (llms !== undefined) {
     const { publicDir } = nitro.options.output
+    const listFile = path.join(publicDir, MARKDOWN_PRERENDER_PATH)
+    await mkdir(path.dirname(listFile), { recursive: true })
+    await writeFile(listFile, list)
+    await writeFile(path.join(publicDir, 'llms.txt'), llms)
     for (const route of paths) {
       const file = path.join(publicDir, decodeURI(route))
       await mkdir(path.dirname(file), { recursive: true })
@@ -273,6 +294,20 @@ it('preserva a raiz e capturas de ISR para diretórios codificados e aninhados',
     )
   }
   assert.equal(destination({ routes, pathname: '/pt/v1x0/index' }), undefined)
+})
+
+it('grava o manifesto ao lado do bundle da função do preset real', async context => {
+  const { nitro } = await fixture({ context, llms: '# Site\n' })
+  const contents = await readFile(
+    path.join(
+      nitro.options.output.dir,
+      'functions/__server.func/publication/sitemap-manifest.json'
+    ),
+    'utf8'
+  )
+  assert.match(contents, /"pagePartCount":0/u)
+  assert.match(contents, new RegExp(`"buildId":"${BUILD_ID}"`, 'u'))
+  assert.equal(path.basename(nitro.options.output.serverDir), '__server.func')
 })
 
 it('anexa o Link aos .md e tipa o llms-full.txt no config.json do preset real', async context => {

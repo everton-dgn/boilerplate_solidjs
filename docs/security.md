@@ -22,9 +22,10 @@ para scripts. As demais diretivas são `default-src 'self'`, `style-src 'self'`,
 `object-src 'none'`, `base-uri 'self'`, `form-action 'self'` e
 `frame-ancestors 'none'`. O app não usa WebAssembly nem `eval`, então a política
 não inclui `'wasm-unsafe-eval'`. Só respostas `text/html` levam o nonce; texto,
-XML, JSON e redirects saem com `script-src 'none'`. Assim `/sitemap.xml`,
-`/robots.txt` e `/llms.txt`, que têm `s-maxage`, não guardam o nonce de uma
-requisição no cache compartilhado.
+XML, JSON e redirects que passam pela função saem com `script-src 'none'`. Assim
+o robots e o sitemap dinâmico não guardam o nonce de uma requisição no cache
+compartilhado. O llms.txt e o sitemap puramente estático saem como arquivos do
+build, sem a CSP do middleware.
 
 O `style-src` também fica sem `'unsafe-inline'`. No build os estilos chegam só
 por `<link>` da mesma origem, e um `<style>` ou um atributo `style` no HTML é
@@ -90,12 +91,13 @@ armazenada no cache do navegador, sem modificar o HTML da aplicação.
 
 ## Limites conhecidos
 
-- Na Vercel, arquivos estáticos (`/assets/`, `/images/`, `/favicon/` e os `.md`
-  gerados no build) saem do CDN sem passar pela função. O `vercel.json` grava
-  neles só `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`, além do
-  cache imutável em `/images/` e do `Content-Type` dos `.md`; a CSP e as
-  políticas de frame só têm efeito nas respostas que passam pelo middleware. Em
-  `/assets/`, os mesmos dois cabeçalhos também saem da route rule do Nitro no
+- Na Vercel, arquivos estáticos (`/assets/`, `/images/`, `/favicon/`, os `.md`,
+  `/llms.txt`, `/llms-full.txt`, `/_markdown/static.json` e os sitemaps gerados
+  no build) saem do CDN sem passar pela função. O `vercel.json` grava neles só
+  `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`, além do cache
+  imutável em `/images/` e do `Content-Type` dos `.md`; a CSP e as políticas de
+  frame só têm efeito nas respostas que passam pelo middleware. Em `/assets/`,
+  os mesmos dois cabeçalhos também saem da route rule do Nitro no
   `vite.config.ts`, com os valores de `SECURITY_HEADERS`, e chegam ao 404 de um
   asset ausente em qualquer host e aos acertos na Vercel e no `node-server`. O
   bloco `/assets/(.*)` do `vercel.json` fica como redundância; ao mudar um

@@ -13,11 +13,14 @@ import {
   HTTP_MULTIPLE_CHOICES,
   HTTP_NOT_ACCEPTABLE,
   HTTP_NOT_FOUND,
-  HTTP_OK
+  HTTP_OK,
+  HTTP_SERVICE_UNAVAILABLE
 } from '@/constants/http.ts'
 import { LLMS_DESCRIBEDBY_LINK } from '@/constants/llms.ts'
 import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
+import { readPublicationPhase } from '@/helpers/readPublicationPhase/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
+import { runPublication } from '@/infra/server/publication/index.ts'
 import { publicErrorMessage } from '@/infra/server/publicErrors/index.ts'
 import { Router } from '@/router.ts'
 
@@ -31,7 +34,11 @@ import {
 import { isPagePath } from '../requestClassification/index.ts'
 import { applySecurityHeaders } from '../securityHeaders/index.ts'
 import type { Next } from '../types.ts'
-import { MARKDOWN_PRERENDER_PATH, MARKDOWN_TIMEOUT_MS } from './constants.ts'
+import {
+  MARKDOWN_PRERENDER_PATH,
+  MARKDOWN_TIMEOUT_MS,
+  MAX_MARKDOWN_BYTES
+} from './constants.ts'
 import { collectStaticMarkdownPages } from './helpers/collectStaticMarkdownPages/index.ts'
 import { convertHtml } from './helpers/convertHtml/index.ts'
 
@@ -44,6 +51,9 @@ type RenderOptions = {
   isPublished: boolean
   signal: AbortSignal
 }
+type BoundedOptions = Omit<RenderOptions, 'signal'> & { signal: AbortSignal }
+type NormalizeOptions = { response: Response; request: Request }
+type DiscardOptions = { response: Response; signal: AbortSignal }
 type TextOptions = {
   status: number
   body: string | null
@@ -152,11 +162,11 @@ function isUnpublished({ request, url, isPublished }: RouteRequest): boolean {
   )
 }
 
-// O prerender do Nitro identifica suas requisições com este header; o build
-// grava cada caminho listado como arquivo `.md` estático. Qualquer cliente pode
-// enviá-lo: o header não autentica nada, e a lista precisa continuar pública.
+// O header identifica a chamada do Nitro durante o build. Em produção o arquivo
+// já existe; um cliente não pode provocar a reconstrução do inventário por header.
 function isStaticListing(request: Request): boolean {
   return (
+    readPublicationPhase() !== 'artifact' &&
     request.headers.has('x-nitro-prerender') &&
     new URL(request.url).pathname === MARKDOWN_PRERENDER_PATH
   )
@@ -166,7 +176,7 @@ function isStaticListing(request: Request): boolean {
 // fora das páginas seria omitida sem aviso; o build recusa essas divergências.
 // O noindex herdado continua excluindo a página sem erro. O idioma de cada
 // arquivo vem da URL, para o llms-full.txt não depender do formato do índice.
-function listStaticMarkdown(): Response {
+function buildStaticMarkdownListing(): Response {
   const paths: string[] = []
   const baseLocalePaths: string[] = []
   const mismatches: string[] = []
@@ -196,6 +206,16 @@ function listStaticMarkdown(): Response {
   )
 }
 
+let staticMarkdownListing: Response | undefined
+
+function listStaticMarkdown(): Response {
+  if (import.meta.env.PROD) {
+    staticMarkdownListing ??= buildStaticMarkdownListing()
+    return staticMarkdownListing.clone()
+  }
+  return buildStaticMarkdownListing()
+}
+
 async function resolveRedirect({
   response,
   url,
@@ -209,7 +229,11 @@ async function resolveRedirect({
   }
   // A resposta do render já saiu do securityHeaders; falta só o cache.
   const redirect = appendVary({
-    response: new Response(response.body, response),
+    response: new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    }),
     field: 'Accept'
   })
   redirect.headers.set('cache-control', 'private, no-store')
@@ -247,6 +271,15 @@ function markdownHeaders(response: Response): Headers {
   return headers
 }
 
+async function discardAbortedRender({
+  response,
+  signal
+}: DiscardOptions): Promise<void> {
+  if (!signal.aborted) return
+  await response.body?.cancel()
+  signal.throwIfAborted()
+}
+
 async function renderMarkdown({
   event,
   render,
@@ -257,7 +290,7 @@ async function renderMarkdown({
   signal
 }: RenderOptions): Promise<Response> {
   const response = await render()
-  signal.throwIfAborted()
+  await discardAbortedRender({ response, signal })
   if (
     response.status >= HTTP_MULTIPLE_CHOICES &&
     response.status < HTTP_BAD_REQUEST
@@ -300,6 +333,9 @@ async function renderMarkdown({
     url: resolveSiteUrl(`${url.pathname}${url.search}`),
     signal
   })
+  if (new TextEncoder().encode(markdown).byteLength > MAX_MARKDOWN_BYTES) {
+    throw new Error('Markdown output limit exceeded')
+  }
   const converted = new Response(markdown, {
     status: response.status,
     headers: markdownHeaders(response)
@@ -307,39 +343,41 @@ async function renderMarkdown({
   return uncachedResponse(appendVary({ response: converted, field: 'Accept' }))
 }
 
-async function boundedRender(
-  options: Omit<RenderOptions, 'signal'>
-): Promise<Response> {
+function boundedRender({
+  signal,
+  ...options
+}: BoundedOptions): Promise<Response> {
   const { event, original, url } = options
-  const controller = new AbortController()
-  const signal = AbortSignal.any([original.signal, controller.signal])
-  const timeout = setTimeout(() => controller.abort(), MARKDOWN_TIMEOUT_MS)
   const headers = new Headers(original.headers)
   headers.set('accept', 'text/html')
   event.renderMode = 'async'
   event.request = new Request(url, { method: 'GET', headers, signal })
-  const aborted = Promise.withResolvers<Response>()
-  const onAbort = () => {
-    aborted.reject(new Error('Markdown request aborted'))
+  return renderMarkdown({ ...options, signal })
+}
+
+async function normalizePublication({
+  response,
+  request
+}: NormalizeOptions): Promise<Response> {
+  let result = response
+  if (
+    response.status === HTTP_INTERNAL_SERVER_ERROR &&
+    !response.headers.has('content-type')
+  ) {
+    result = publicResponse({ status: HTTP_INTERNAL_SERVER_ERROR, request })
   }
-  try {
-    signal.throwIfAborted()
-    signal.addEventListener('abort', onAbort, { once: true })
-    return await Promise.race([
-      renderMarkdown({ ...options, signal }),
-      aborted.promise
-    ])
-  } catch (error) {
-    // As demais falhas seguem para a contenção, que registra o log.
-    if (!signal.aborted) throw error
-    return publicResponse({
-      status: HTTP_INTERNAL_SERVER_ERROR,
-      request: original
-    })
-  } finally {
-    clearTimeout(timeout)
-    signal.removeEventListener('abort', onAbort)
+  if (
+    response.status === HTTP_SERVICE_UNAVAILABLE &&
+    response.headers.has('retry-after')
+  ) {
+    uncachedResponse(response)
   }
+  if (request.method !== 'HEAD') return result
+  await result.body?.cancel()
+  return new Response(null, {
+    status: result.status,
+    headers: result.headers
+  })
 }
 
 export async function markdownContent(
@@ -377,18 +415,22 @@ export async function markdownContent(
     return isPublished ? appendVary({ response, field: 'Accept' }) : response
   }
   if (!isDirect && original.headers.has('authorization')) return render()
-  const response = await boundedRender({
-    event,
-    render,
-    original,
-    url,
-    isDirect,
-    isPublished
+  const response = await runPublication({
+    kind: 'markdown',
+    signal: original.signal,
+    method: original.method,
+    timeoutMs: MARKDOWN_TIMEOUT_MS,
+    maxOutputBytes: MAX_MARKDOWN_BYTES,
+    run: ({ signal }) =>
+      boundedRender({
+        event,
+        render,
+        original,
+        url,
+        isDirect,
+        isPublished,
+        signal
+      })
   })
-  if (original.method !== 'HEAD') return response
-  await response.body?.cancel()
-  return new Response(null, {
-    status: response.status,
-    headers: response.headers
-  })
+  return normalizePublication({ response, request: original })
 }

@@ -65,6 +65,8 @@ const config = {
     'src/infra/server/configureServerErrors/index.ts!',
     // API de transporte do boilerplate; o consumidor atual está na fixture E2E.
     'src/infra/server/requestJson/index.ts!',
+    // API pública de configuração e métricas; fixtures exercitam os consumidores.
+    'src/infra/server/publication/index.ts!',
     // Componentes e APIs públicas reutilizáveis, exercitados pelas fixtures.
     'src/components/atoms/Input/index.tsx!',
     'src/components/atoms/Textarea/index.tsx!',

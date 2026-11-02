@@ -31,7 +31,11 @@ function withHeaders({ response, headers }: HeaderUpdate): Response {
     return response
   } catch (error) {
     if (response.body !== null) throw error
-    const copy = new Response(null, response)
+    const copy = new Response(null, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    })
     for (const [name, value] of Object.entries(headers)) {
       copy.headers.set(name, value)
     }

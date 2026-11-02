@@ -837,3 +837,16 @@ cancelamento. A issue ou o PR fechado não substitui a verificação dos artefat
 instalados. O sinal composto de timeout e desconexão chega ao `renderToStream`;
 o teste Node do adaptador verifica o descarte de uma raiz SSR pendente no
 cancelamento.
+
+O patch também faz o thenable de `renderToStream` rejeitar no abandono por
+cancelamento. O runtime instalado descartava a raiz, mas mantinha essa espera
+pendente, inclusive após o backend terminar. A correção cobre consumidores
+registrados antes e depois do aborto, sem chamar `onCompleteAll` nem alterar os
+consumidores de streaming. A proteção de publicação não confunde essa rejeição
+com término do backend: `protectServerOperation` registra as Promises no
+contexto assíncrono da publicação, e a vaga permanece ocupada até elas
+assentarem. Operações comuns, fora desse contexto, preservam o comportamento
+anterior. As regressões ficam em `markdownContent.abort.node.test.ts`,
+`publicationScope.node.test.ts` e no cenário HTTP de desconexão de
+`PublicationLoad`. Ao atualizar o Solid, confira também esse contrato antes de
+remover o patch.

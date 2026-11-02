@@ -6,6 +6,10 @@ import { expect, test, type APIRequestContext } from '@playwright/test'
 import * as v from 'valibot'
 
 import { LLMS_DESCRIBEDBY_LINK, LLMS_FULL_PATH } from '@/constants/llms.ts'
+import {
+  PUBLICATION_ARTIFACT_DIR,
+  SITEMAP_MANIFEST_FILE
+} from '@/constants/publication.ts'
 import { readLlmsIndex } from '@/routes/(seo)/llms.txt/helpers/readLlmsIndex/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
@@ -17,6 +21,8 @@ type CheckOptions = {
 }
 
 const HTTP_OK = 200
+const HTTP_NOT_FOUND = 404
+const SITEMAP_INVENTORY_PATH = '/sitemaps/static.json'
 const FETCH_CONCURRENCY = 4
 const PRERENDER_HEADERS = { 'x-nitro-prerender': '/_markdown/static.json' }
 
@@ -32,6 +38,31 @@ const BUILD_CONFIG = new URL(
   import.meta.url
 )
 
+const SITEMAP_MANIFEST = new URL(
+  `../../../../.vercel/output/functions/__server.func/${PUBLICATION_ARTIFACT_DIR}/${SITEMAP_MANIFEST_FILE}`,
+  import.meta.url
+)
+const STATIC_INDEXES = [
+  '/llms.txt',
+  '/sitemap.xml',
+  '/sitemaps/pages/(.*)',
+  '/_markdown/static.json'
+]
+
+const SSR_BUNDLE = new URL(
+  '../../../../.vercel/output/functions/__server.func/_ssr/',
+  import.meta.url
+)
+
+const sitemapManifestSchema = v.looseObject({
+  buildId: v.pipe(v.string(), v.nonEmpty()),
+  pagePartCount: v.number(),
+  partBytes: v.array(v.number()),
+  isRootStatic: v.boolean(),
+  hasLegacySources: v.boolean(),
+  hasPartitionSources: v.boolean(),
+  identities: v.null()
+})
 const headerSchema = v.object({ key: v.string(), value: v.string() })
 const ruleSchema = v.object({
   source: v.string(),
@@ -312,6 +343,71 @@ test('publishes exactly the static Markdown files listed by the build', async ({
       path
     ).toBe(true)
   })
+})
+
+test('publishes sitemap, llms.txt and the Markdown list as build artifacts', async ({
+  request
+}) => {
+  for (const path of [
+    '/sitemap.xml',
+    '/sitemaps/pages/1.xml',
+    '/llms.txt',
+    '/_markdown/static.json'
+  ]) {
+    expect(await hasStaticFile(path), path).toBe(true)
+  }
+  expect(await hasStaticFile(SITEMAP_INVENTORY_PATH)).toBe(false)
+  expect(await hasStaticFile('/sitemaps/legacy.xml')).toBe(false)
+  const inventory = await request.get(SITEMAP_INVENTORY_PATH, {
+    headers: { 'x-nitro-prerender': SITEMAP_INVENTORY_PATH },
+    maxRedirects: 0
+  })
+  expect(inventory.status()).toBe(HTTP_NOT_FOUND)
+  const root = await request.get('/sitemap.xml')
+  const part = await request.get('/sitemaps/pages/1.xml')
+  const body = await part.body()
+  expect(await root.body()).toStrictEqual(body)
+  const manifest = v.parse(
+    sitemapManifestSchema,
+    JSON.parse(await readFile(SITEMAP_MANIFEST, 'utf8'))
+  )
+  expect(manifest).toMatchObject({
+    pagePartCount: 1,
+    partBytes: [body.byteLength],
+    isRootStatic: true,
+    hasLegacySources: false,
+    hasPartitionSources: false,
+    identities: null
+  })
+  // O manifesto só vale para o bundle que carrega o mesmo identificador.
+  const chunks = await readdir(SSR_BUNDLE)
+  const sources = await Promise.all(
+    chunks.map(chunk => readFile(new URL(chunk, SSR_BUNDLE), 'utf8'))
+  )
+  expect(sources.some(source => source.includes(manifest.buildId))).toBe(true)
+  const config = v.parse(
+    artifactSchema,
+    JSON.parse(await readFile(BUILD_CONFIG, 'utf8'))
+  )
+  expect(config.overrides?.['llms.txt']).toStrictEqual({
+    contentType: 'text/markdown; charset=utf-8'
+  })
+  const vercel = v.parse(
+    configSchema,
+    JSON.parse(await readFile(VERCEL_CONFIG, 'utf8'))
+  )
+  for (const source of STATIC_INDEXES) {
+    const rule = vercel.headers.find(entry => entry.source === source)
+    expect(
+      Object.fromEntries(
+        rule?.headers.map(({ key, value }) => [key, value]) ?? []
+      ),
+      source
+    ).toStrictEqual({
+      'X-Content-Type-Options': 'nosniff',
+      'Cross-Origin-Resource-Policy': 'same-origin'
+    })
+  }
 })
 
 test('serves every internal destination of llms.txt without redirects', async ({

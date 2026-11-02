@@ -111,11 +111,50 @@ export async function convertHtml({
   signal
 }: ConvertOptions): Promise<string> {
   signal.throwIfAborted()
-  // No modo async o SSR já montou o documento inteiro antes de responder.
-  const html = await response.arrayBuffer()
+  // Async SSR may already hold the complete HTML; this limits additional accumulation.
+  const reader = response.body?.getReader()
+  if (!reader) throw new Error('Markdown response has no body')
+  const chunks: Uint8Array[] = []
+  let bytes = 0
+  let cancellation: Promise<void> | undefined
+  const cancel = () => {
+    cancellation ??= (async () => {
+      try {
+        await reader.cancel()
+      } catch {
+        // A failed cancellation still closes ownership of this reader.
+      }
+    })()
+    return cancellation
+  }
+  const onAbort = () => {
+    void cancel()
+  }
+  signal.addEventListener('abort', onAbort, { once: true })
+  try {
+    for (;;) {
+      signal.throwIfAborted()
+      const chunk = await reader.read()
+      if (chunk.done) break
+      bytes += chunk.value.byteLength
+      if (bytes > MAX_HTML_BYTES) {
+        throw new Error('Markdown document limit exceeded')
+      }
+      chunks.push(chunk.value)
+    }
+  } catch (error) {
+    await cancel()
+    throw error
+  } finally {
+    signal.removeEventListener('abort', onAbort)
+    if (cancellation) await cancellation
+  }
   signal.throwIfAborted()
-  if (html.byteLength > MAX_HTML_BYTES) {
-    throw new Error('Markdown document limit exceeded')
+  const html = new Uint8Array(bytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    html.set(chunk, offset)
+    offset += chunk.byteLength
   }
   return htmlToMarkdown(new TextDecoder().decode(html), {
     origin: url,

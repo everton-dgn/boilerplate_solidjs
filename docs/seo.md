@@ -203,22 +203,24 @@ export const route = {
 O `llms.txt` coleta os mesmos metadados pelo manifesto, sem renderizar páginas
 nem executar preloads, e publica só as páginas que declaram `route.info.llms`. O
 arquivo é um índice curado para modelos de linguagem. O formato não define um
-teto de tamanho; os limites do runtime e da hospedagem continuam valendo. Em
-sites grandes, meça os textos reais, selecione as páginas que explicam o produto
-e agrupe-as. `llms: true` inclui a página; sem seção herdada, ela entra na seção
-padrão `Pages`. `{ section: 'Guias' }` cria ou reutiliza uma seção com esse
-nome, na ordem em que aparece no manifesto; `{ optional: true }` move a página
-para a seção `Optional`, que o formato reserva ao conteúdo que o modelo pode
-pular, e uma seção declarada com esse nome se funde a ela. A configuração é
-herdada pela cadeia de rotas: um layout com `llms: { section: 'Docs' }` inclui
-suas filhas nessa seção, uma filha pode sair com `llms: false` ou sobrescrever
-só o campo que declara, e `llms: true` numa filha reativa a inclusão preservando
-seção e marcação opcional herdadas. `noindex: true` exclui a página do sitemap e
-do llms.txt, mesmo com a flag. O filtro considera a configuração efetiva da
-página, incluindo herança e a rota de índice filha. O resolvedor fica
-colocalizado em `src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. O índice
-sai no idioma base. Rotas com parâmetro ficam fora mesmo com `llms`, e as fontes
-de `route.info.sitemap` não alimentam esse índice. A publicação de Markdown é
+teto de tamanho. Este projeto publica o índice como arquivo no build e aplica um
+orçamento operacional de 1 MiB em `tooling/markdownPrerender/constants.ts`.
+Excedê-lo interrompe o build, sem truncar o conteúdo. Em sites grandes, meça os
+textos reais, selecione as páginas que explicam o produto e agrupe-as.
+`llms: true` inclui a página; sem seção herdada, ela entra na seção padrão
+`Pages`. `{ section: 'Guias' }` cria ou reutiliza uma seção com esse nome, na
+ordem em que aparece no manifesto; `{ optional: true }` move a página para a
+seção `Optional`, que o formato reserva ao conteúdo que o modelo pode pular, e
+uma seção declarada com esse nome se funde a ela. A configuração é herdada pela
+cadeia de rotas: um layout com `llms: { section: 'Docs' }` inclui suas filhas
+nessa seção, uma filha pode sair com `llms: false` ou sobrescrever só o campo
+que declara, e `llms: true` numa filha reativa a inclusão preservando seção e
+marcação opcional herdadas. `noindex: true` exclui a página do sitemap e do
+llms.txt, mesmo com a flag. O filtro considera a configuração efetiva da página,
+incluindo herança e a rota de índice filha. O resolvedor fica colocalizado em
+`src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. O índice sai no idioma
+base. Rotas com parâmetro ficam fora mesmo com `llms`, e as fontes de
+`route.info.sitemap` não alimentam esse índice. A publicação de Markdown é
 controlada separadamente por `route.info.markdown`; quando a folha declara
 `markdown: true` ou `'dynamic'`, o link do índice aponta para o `.md`
 (`/en/about.md`), e nas demais, para o HTML.
@@ -234,25 +236,27 @@ ficam numa server function chamada pela fonte, conforme o
 `AbortSignal` que aborta no prazo das fontes, na desconexão do cliente e ao fim
 da leitura, inclusive quando outra fonte falha; repasse-o à leitura para
 cancelá-la, em vez de só deixar de esperá-la. Uma fonte que ignore o sinal
-continua rodando, mas a resposta não a espera além do prazo. A fonte roda a cada
-request do sitemap (o CDN reutiliza a resposta por uma hora) e é ignorada sob
-`noindex`, próprio ou herdado; numa página sem parâmetro ela não tem efeito.
-Como no llms.txt, o filtro considera a configuração efetiva da página, incluindo
-a rota de índice filha, que compartilha a URL do layout: o índice com
-`noindex: true` retira a fonte do layout, uma fonte declarada pelo índice
-substitui a do layout, e o índice sem fonte herda a do layout, publicada
-conforme o `noindex` efetivo do índice. A fonte fica presa à URL de quem a
-declara; uma fonte que enumere páginas de outra filha deve ficar nessa filha. As
-entradas são validadas na fronteira: caminho que não começa com `/`, com host,
-esquema, query, fragmento ou espaço falha; barras finais e repetidas são
-normalizadas; entradas que resultam na mesma URL publicada mantêm a primeira
-ocorrência (a página estática antes da fonte). A comparação usa a URL localizada
-que vai para o XML, então `/a/../b` e `/b`, `/café` e `/caf%C3%A9` ou
-`/pt/blog/x` e `/blog/x` contam como a mesma página. `lastmod` fora do W3C
-Datetime é omitido. Falha de qualquer fonte, entrada inválida, prazo estourado
-ou sitemap acima dos limites do protocolo (de URLs e de bytes, em
-`sitemap/constants.ts`) respondem 503 sem corpo e com `no-store`, e o servidor
-registra a linha fixa `[sitemap]` descrita em
+continua rodando e mantém sua vaga ocupada até a Promise assentar, mesmo depois
+de a resposta encerrar por timeout. A fonte roda a cada request que chega à
+função. A resposta permite cache compartilhado por uma hora; o uso efetivo do
+cache depende do host e precisa ser medido. A fonte é ignorada sob `noindex`,
+próprio ou herdado; numa página sem parâmetro ela não tem efeito. Como no
+llms.txt, o filtro considera a configuração efetiva da página, incluindo a rota
+de índice filha, que compartilha a URL do layout: o índice com `noindex: true`
+retira a fonte do layout, uma fonte declarada pelo índice substitui a do layout,
+e o índice sem fonte herda a do layout, publicada conforme o `noindex` efetivo
+do índice. A fonte fica presa à URL de quem a declara; uma fonte que enumere
+páginas de outra filha deve ficar nessa filha. As entradas são validadas na
+fronteira: caminho que não começa com `/`, com host, esquema, query, fragmento
+ou espaço falha; barras finais e repetidas são normalizadas; entradas que
+resultam na mesma URL publicada mantêm a primeira ocorrência (a página estática
+antes da fonte). A comparação usa a URL localizada que vai para o XML, então
+`/a/../b` e `/b`, `/café` e `/caf%C3%A9` ou `/pt/blog/x` e `/blog/x` contam como
+a mesma página. `lastmod` fora do W3C Datetime é omitido. Falha de qualquer
+fonte, entrada inválida, prazo estourado ou sitemap acima dos limites do
+protocolo (de URLs e de bytes, em `sitemap/constants.ts`) respondem 503 sem
+corpo e com `no-store`. Abort e timeout esperados do controlador são
+silenciosos; as exceções reais registram a linha fixa `[sitemap]` descrita em
 [erros no servidor](server-errors.md#log-de-falhas). O crawler tenta de novo, e
 o CDN não guarda um sitemap parcial por uma hora. A resposta de sucesso traz
 `stale-if-error=86400`: depois que a cópia em cache expira, se a função
@@ -298,6 +302,67 @@ mesmo manifesto e matcher por instância, inclusive ao consultar uma parte depoi
 do índice. Em desenvolvimento, o contexto é refeito a cada chamada. Os
 resultados das fontes dinâmicas não entram nesse cache.
 
+### Artefatos estáticos e capacidade da origem
+
+O build gera `/sitemaps/pages/N.xml`, `/llms.txt` e `/_markdown/static.json`. A
+raiz `/sitemap.xml` também vira arquivo quando há páginas e não existem fontes
+legadas nem particionadas. Uma fonte legada que retorne vazio continua dinâmica:
+o build não a consulta para decidir se a raiz pode ser estática. O inventário
+interno `/sitemaps/static.json` só responde na fase de prerender, identificada
+pelo processo do build. Um header enviado pelo cliente não libera essa fase. O
+inventário público de Markdown contém somente caminhos publicáveis.
+
+O build confere os bytes dos arquivos publicados e grava um manifesto junto do
+bundle da função. `createPublicationBuild()` gera um identificador por build;
+seu plugin o incorpora ao SSR e `markdownPrerender({ buildId })` grava o mesmo
+valor no manifesto. Ambos precisam vir da mesma chamada. O prerender verifica o
+vínculo, e a função recusa um manifesto de outro build, mesmo que site e
+orçamento sejam iguais. Isso detecta mistura de artefatos; não autentica alguém
+que tenha acesso de escrita ao diretório da função.
+
+A origem lê esse manifesto uma vez por instância; falha de leitura ou validação
+resulta em 503 `no-store`, sem reconstruir todas as páginas na requisição. Sem
+legado, não carrega um conjunto de identidades estáticas. Com legado, carrega
+uma vez as URLs exatas para preservar a prioridade das páginas estáticas. Esse
+caminho ainda tem custo O(N) e orçamento de 32 MiB para o arquivo de
+identidades. O manifesto tem teto de 1 MiB. A leitura limita a alocação antes de
+validar JSON e hash, e o nome do arquivo de identidades é fixo. Acima desses
+orçamentos, migre o catálogo para fontes particionadas. O matcher das fontes
+também é preparado uma vez na primeira consulta dinâmica.
+
+`src/infra/server/publication/` limita o trabalho dinâmico por processo: quatro
+produtores, com até dois de sitemap e dois de Markdown; quatro leituras de
+fonte, com até duas por fonte; quatro saídas e 16 MiB de reserva de saída. A
+reserva usa o orçamento máximo da operação antes de iniciá-la. Os limites são
+valores iniciais para calibrar na aplicação derivada, conforme CPU, memória e
+capacidade do backend. Aumentar o orçamento de uma resposta exige conferir a
+reserva total; um pedido cujo orçamento não cabe é recusado.
+
+Não há fila nem retry interno. Admissão recusada responde 503 pequeno,
+`no-store` e `Retry-After: 1`; Markdown preserva também `private`. As fontes
+legadas executam em sequência, e o prazo cobre o trabalho inteiro. O término do
+produtor e o consumo ou cancelamento do corpo liberam recursos separados. Uma
+fonte que nunca assenta mantém sua capacidade ocupada: corrija o timeout e o
+cancelamento no adapter e recicle a instância pelo procedimento da hospedagem
+quando necessário. Liberar a vaga só porque passou o prazo permitiria acumular
+trabalho ainda ativo.
+
+As operações de backend que passam por `protectServerOperation` herdam o
+contexto assíncrono da publicação. Suas Promises mantêm a vaga do produtor até
+assentar, mesmo quando o SSR já foi descartado. Operações iniciadas depois do
+cancelamento ou do término da publicação são recusadas antes de executar. O HTTP
+normal não entra nesse contexto. Isso preserva a fronteira de dados públicos do
+adapter; não acrescenta cancelamento automático ao driver. Passe o sinal ao
+driver e configure seu timeout para liberar trabalho de fato.
+
+A Promise de cada fonte deve representar todo o trabalho que ela iniciou. Se um
+driver rejeitar antes de encerrar a consulta no banco, o contador local não
+observa essa consulta remanescente. Configure os limites do pool e os timeouts
+na origem dos dados. Duas instâncias têm duas cotas independentes; esse
+controlador não impõe um teto global ao backend. Contadores agregados estão
+disponíveis por `getPublicationMetrics()` para integração com a observabilidade
+da aplicação, sem endpoint público em produção.
+
 O caminho legado tem custo por requisição: o índice lê o array e serializa a
 parte legada para validar seus bytes. Com uma única parte estática e sem fontes
 particionadas, também tenta serializar a união até o orçamento antes de decidir
@@ -330,16 +395,17 @@ em vez de acrescentar apenas uma tag HTML avulsa.
 Catálogos grandes usam `src/infra/server/sitemapSources/`, marcado como
 `server-only`, separado dos metadados que entram no cliente. Cada
 `SitemapPartitionSource` declara um `id`, o `routePath` da página dinâmica,
-`listPartitions(signal)` e `readPartition({ id, limit, signal })`. A aplicação
-derivada implementa as consultas ao banco ou serviço; o boilerplate entrega o
-contrato, o serviço HTTP e uma fonte de teste.
+`listPartitions({ limit, signal })` e `readPartition({ id, limit, signal })`. A
+aplicação derivada implementa as consultas ao banco ou serviço; o boilerplate
+entrega o contrato, o serviço HTTP e uma fonte de teste.
 
-`listPartitions` devolve os IDs públicos para o índice. `readPartition` lê
-somente a parte solicitada e respeita o limite e o cancelamento. O limite de
-leitura inclui uma posição adicional para detectar uma parte excessiva; se essa
-posição for preenchida, a publicação falha em vez de truncar a parte. Fazer uma
-consulta global e depois recortar o array dentro desse callback mantém o custo
-do catálogo inteiro. Use uma consulta limitada na origem dos dados.
+`listPartitions` devolve os IDs públicos para o índice e aplica o limite na
+consulta antes de materializar a lista. `readPartition` lê somente a parte
+solicitada e respeita o limite e o cancelamento. O limite de leitura inclui uma
+posição adicional para detectar uma parte excessiva; se essa posição for
+preenchida, a publicação falha em vez de truncar a parte. Fazer uma consulta
+global e depois recortar o array dentro desse callback mantém o custo do
+catálogo inteiro. Use uma consulta limitada na origem dos dados.
 
 `limit` limita a contagem de registros, não os bytes do XML. Uma parte abaixo
 dessa contagem ainda pode ultrapassar o orçamento por causa do comprimento das
@@ -428,14 +494,27 @@ escalas, porque ela tem custo proporcional ao inventário. Uma amostra isolada
 revela custo e chamadas indevidas, mas não comprova capacidade sob carga
 concorrente.
 
-O piloto da implementação particionada, em novembro de 2026 num Apple M2 Pro com
-32 GiB, executou cada cenário em um processo novo, uma vez. Com inventário
-estático sintético, preparar o índice levou 986 ms para 10 mil páginas e 9.487
-ms para 100 mil. Consultar a primeira parte depois dessa preparação levou 319 ms
-e 308 ms, respectivamente. A preparação é proporcional ao inventário e fica em
-cache somente na instância: uma instância nova paga esse custo de novo.
-Aplicações com inventários desse porte devem considerar esse custo de partida e
-preferir fontes particionadas para catálogos que vêm de dados.
+O piloto da implementação particionada, anterior à geração das partes estáticas
+no build, ocorreu em novembro de 2026 num Apple M2 Pro com 32 GiB. Executou cada
+cenário em um processo novo, uma vez. Com inventário estático sintético,
+preparar o índice levou 986 ms para 10 mil páginas e 9.487 ms para 100 mil.
+Consultar a primeira parte depois dessa preparação levou 319 ms e 308 ms,
+respectivamente. Naquela implementação, cada instância nova pagava a preparação
+proporcional ao inventário. Agora o particionamento e os XML estáticos são
+preparados no build. A aplicação ainda precisa dimensionar esse build e o custo
+residual das identidades quando usa legado. Catálogos vindos de dados devem
+preferir fontes particionadas.
+
+O piloto posterior, já com artefatos de build, preparou 100 mil páginas
+sintéticas em 10,1 s e serializou e gravou suas 29 partes em mais 8,6 s. Foram
+300 mil URLs nos três idiomas e 120,1 MB de XML. A primeira leitura do manifesto
+por um leitor novo levou 0,8 ms; carregar as 100 mil identidades do legado levou
+16,2 ms, com arquivo de 3,6 MB. Essas leituras ocorreram no mesmo processo que
+preparou os arquivos, com filesystem aquecido, e não medem cold start do
+processo ou do sistema operacional. O pico de RSS de toda a execução foi 720 MB,
+incluindo Vitest, preparação e serialização. Esse pico dimensiona o piloto de
+build, não a memória de uma função nova. Não houve compilação de 100 mil
+arquivos de rota nem carga HTTP nessa medição.
 
 Com catálogos virtuais de 100 mil e 1 milhão de registros, a consulta direta de
 um lote de mil registros levou 159 ms e 147 ms na primeira chamada, e 124 ms e
@@ -482,29 +561,31 @@ com `Disallow: /`, e o link do sitemap. Buscadores e agentes que leem páginas a
 pedido do usuário continuam liberados, porque são o público do llms.txt.
 `Disallow` é um pedido que robôs mal comportados ignoram e não remove URL do
 índice; para isso, use `noindex` em `route.info.seo`. Em produção o processo
-guarda em memória a resposta do robots e do llms.txt e o inventário estático do
-sitemap, porque o manifesto, os grupos e a URL do site são fixos no build. As
+guarda em memória a resposta do robots. O llms.txt e as partes estáticas do
+sitemap são arquivos do build, e o sitemap dinâmico reutiliza o manifesto. As
 fontes dinâmicas são consultadas conforme o endpoint: o índice lista partes e
 cada parte lê seu próprio lote. O llms.txt é montado dentro do contexto
 Paraglide do idioma base (`baseLocale` do runtime), inclusive a descrição do
-site e os metadados das páginas, para que nem a requisição que preenche a
-memória nem um contexto de outro idioma mudem o texto. A nota sobre o idioma do
-índice deriva do mesmo `baseLocale`, com o nome do idioma em inglês, o idioma
-das notas. A lista de idiomas da mesma nota é texto fixo: ao mudar os idiomas em
-`project.inlang/settings.json`, reescreva-a. Os três arquivos saem com
+site e os metadados das páginas, para que o contexto de outro idioma não mude o
+texto. A nota sobre o idioma do índice deriva do mesmo `baseLocale`, com o nome
+do idioma em inglês, o idioma das notas. A lista de idiomas da mesma nota é
+texto fixo: ao mudar os idiomas em `project.inlang/settings.json`, reescreva-a.
+Respostas de sucesso do robots e do sitemap dinâmico saem com
 `public, max-age=0, s-maxage=3600, stale-if-error=86400` em produção (o CDN
 reutiliza por uma hora; a Vercel só cacheia resposta de função com `s-maxage` e
 consome `s-maxage` e `stale-if-error` sem repassá-los ao navegador) e com
 `no-store` em desenvolvimento. Com `stale-if-error`, um erro da função depois
-que a cópia expira não derruba o arquivo por até um dia. As URLs absolutas dos
-três arquivos partem da origem de `VITE_SITE_URL`; um site servido em um
-subcaminho não é suportado por essa geração. A página 404 declara
-`robots: noindex`. A imagem social fica em `public/images/og.png`, com cache
-imutável de um ano configurado em `vercel.json` para `/images/`. Como esse cache
-não revalida, publique uma imagem nova com outro nome (por exemplo,
-`og-2026-10.png`) e atualize `SITE.image.path`: sobrescrever `og.png` deixa
-navegadores e caches intermediários com a versão antiga por até um ano. O logo
-do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
+que a cópia expira pode aproveitar uma cópia anterior, conforme o contrato da
+hospedagem. Os arquivos estáticos usam a política de cache da plataforma; não
+recebem a CSP nem o cache do middleware. As URLs absolutas dos três arquivos
+partem da origem de `VITE_SITE_URL`; um site servido em um subcaminho não é
+suportado por essa geração. A página 404 declara `robots: noindex`. A imagem
+social fica em `public/images/og.png`, com cache imutável de um ano configurado
+em `vercel.json` para `/images/`. Como esse cache não revalida, publique uma
+imagem nova com outro nome (por exemplo, `og-2026-10.png`) e atualize
+`SITE.image.path`: sobrescrever `og.png` deixa navegadores e caches
+intermediários com a versão antiga por até um ano. O logo do JSON-LD reutiliza
+`public/favicon/apple-touch-icon.png`.
 
 ## Leitura por agentes
 
@@ -703,11 +784,18 @@ configurado como override do arquivo existente, sem mudar o MIME de um 404
 quando o agregado não foi gerado. O preview Nitro não aplica essa configuração;
 os testes do artefato Vercel e os testes HTTP locais são provas distintas.
 
-Os limites ficam em `src/middleware/markdownContent/constants.ts`: espera de SSR
-cancelável e tamanho máximo do HTML antes da conversão síncrona. Timeout e
-desconexão abortam o sinal do render; o limite de bytes reduz o trabalho do
-conversor, mas não limita o HTML que o SSR já acumulou internamente. Código
-síncrono e serviços que ignoram AbortSignal não são preemptados.
+Os limites ficam em `src/middleware/markdownContent/constants.ts`: prazo total
+de 15 segundos, HTML de até 2 MiB antes da conversão síncrona e Markdown de até
+2 MiB. A leitura verifica cada chunk e cancela o leitor ao exceder o teto;
+`Content-Length` não substitui essa contagem. O chunk corrente já foi alocado
+pelo produtor. A conversão só publica depois de validar o tamanho final. Timeout
+e desconexão abortam o sinal do render, mas código síncrono e serviços que
+ignoram `AbortSignal` não são preemptados. O SSR assíncrono pode ter montado o
+HTML inteiro antes da leitura, e a conversão mantém buffers intermediários; o
+limite não equivale a um teto total de memória do processo. As reservas de saída
+cobrem os corpos possuídos pela aplicação, não buffers do socket, CDN ou
+adapter. O [piloto HTTP](testing.md#carga-da-publicação) mede esses efeitos no
+Node local. A hospedagem precisa de verificação própria.
 
 As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
 aviso de privacidade descreve as preferências e os limites observáveis na

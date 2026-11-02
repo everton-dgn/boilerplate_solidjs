@@ -111,6 +111,13 @@ declare module "virtual:file-routes" {
       $HEAD: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/pages/[part].xml/index"), Extract<"HEAD", keyof typeof import("../routes/(seo)/sitemaps/pages/[part].xml/index")>>>;
       $GET: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/pages/[part].xml/index"), Extract<"GET", keyof typeof import("../routes/(seo)/sitemaps/pages/[part].xml/index")>>>;
       $$route?: undefined;
+    },
+    {
+      path: "/(seo)/sitemaps/static.json/";
+      page: false;
+      $GET: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/static.json/index"), Extract<"GET", keyof typeof import("../routes/(seo)/sitemaps/static.json/index")>>>;
+      $HEAD: FileRouteLazyRef<Pick<typeof import("../routes/(seo)/sitemaps/static.json/index"), Extract<"GET", keyof typeof import("../routes/(seo)/sitemaps/static.json/index")>>>;
+      $$route?: undefined;
     }
   ];
   export default routes;

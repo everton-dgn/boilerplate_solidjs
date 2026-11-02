@@ -2,6 +2,7 @@ import { locales } from '@paraglide/runtime.js'
 
 import type { SitemapEntry } from '@/@types/sitemap.ts'
 import { HTTP_NOT_FOUND, HTTP_OK } from '@/constants/http.ts'
+import type { PublicationOptions } from '@/infra/server/publication/types.ts'
 
 import { SITEMAP_BYTE_LIMIT, SITEMAP_URL_LIMIT } from '../../../constants.ts'
 import { buildSitemap } from '../../buildSitemap/index.ts'
@@ -10,6 +11,24 @@ import {
   buildSitemapIndexResponse,
   buildSitemapPartResponse
 } from '../index.ts'
+
+vi.mock(import('@/infra/server/publication/index.ts'), async importOriginal => {
+  const actual = await importOriginal()
+  const limits = {
+    total: 1,
+    sitemap: 1,
+    markdown: 1,
+    sources: 4,
+    perSource: 4,
+    outputs: 1,
+    reservedBytes: 52_428_800
+  }
+  return {
+    ...actual,
+    runPublication: (options: PublicationOptions) =>
+      actual.createPublicationController(limits).runPublication(options)
+  }
+})
 
 const siteUrl = 'https://example.com'
 const { signal } = new AbortController()

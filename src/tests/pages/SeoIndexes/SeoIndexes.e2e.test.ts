@@ -40,6 +40,14 @@ test.describe('índices gerados do manifesto de rotas', () => {
     const missingPart = await request.get('/sitemaps/catalog/removed.xml')
     expect(missingPart.status()).toBe(HTTP_NOT_FOUND)
     expect(missingPart.headers()['cache-control']).toBe('no-store')
+    // Partes estáticas fora do manifesto seguem como 404, sem cache negativo.
+    const missingPage = await request.get('/sitemaps/pages/9999.xml')
+    expect(missingPage.status()).toBe(HTTP_NOT_FOUND)
+    expect(missingPage.headers()['cache-control']).toBe('no-store')
+    const inventory = await request.get('/sitemaps/static.json', {
+      headers: { 'x-nitro-prerender': '/sitemaps/static.json' }
+    })
+    expect(inventory.status()).toBe(HTTP_NOT_FOUND)
     expect(xml).toContain(`<loc>${siteUrl}/pt</loc>`)
     expect(xml).toContain(`<loc>${siteUrl}/pt/backend-error</loc>`)
     expect(xml).toContain(`<loc>${siteUrl}/pt/seo-public</loc>`)
@@ -67,8 +75,6 @@ test.describe('índices gerados do manifesto de rotas', () => {
 
     const llms = await request.get('/llms.txt')
     expect(llms.status()).toBe(HTTP_OK)
-    expect(llms.headers()['content-type']).toContain('text/markdown')
-    expect(llms.headers()['cache-control']).toBe(cacheControl)
     const markdown = await llms.text()
     expect(markdown.startsWith('# ')).toBe(true)
     expect(markdown).toContain(

@@ -4,6 +4,11 @@ import { paraglideMiddleware } from '@paraglide/server.js'
 import type { RouteInfo } from '@solidjs/router'
 
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
+import { HTTP_OK, HTTP_SERVICE_UNAVAILABLE } from '@/constants/http.ts'
+import {
+  PUBLICATION_PHASE_ENV,
+  PUBLICATION_PRERENDER_PHASE
+} from '@/constants/publication.ts'
 import { SITE } from '@/constants/site/index.ts'
 import { Router } from '@/router.ts'
 
@@ -55,6 +60,37 @@ describe('rota do llms.txt', () => {
     await expect(response.text()).resolves.toContain(
       `This index uses ${INDEX_LANGUAGE}.`
     )
+  })
+})
+
+describe('llms.txt publicado no build', () => {
+  it('falha pequeno em produção, sem reconstruir o índice na função', async () => {
+    vi.stubEnv('PROD', true)
+    const log = vi.spyOn(console, 'error').mockReturnValue()
+    const match = vi.spyOn(Router, 'match')
+    const response = await GET()
+    expect({
+      status: response.status,
+      cacheControl: response.headers.get('cache-control'),
+      body: await response.text()
+    }).toStrictEqual({
+      status: HTTP_SERVICE_UNAVAILABLE,
+      cacheControl: 'no-store',
+      body: ''
+    })
+    expect(match).not.toHaveBeenCalled()
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '[llms] Unexpected failure; private details omitted'
+      )
+    )
+  })
+
+  it('gera o índice no prerender', async () => {
+    vi.stubEnv('PROD', true)
+    vi.stubEnv(PUBLICATION_PHASE_ENV, PUBLICATION_PRERENDER_PHASE)
+    const response = await GET()
+    expect(response.status).toBe(HTTP_OK)
   })
 })
 

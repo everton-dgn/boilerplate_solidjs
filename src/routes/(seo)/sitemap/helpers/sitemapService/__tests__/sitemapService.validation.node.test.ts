@@ -4,6 +4,7 @@ import {
   HTTP_OK,
   HTTP_SERVICE_UNAVAILABLE
 } from '@/constants/http.ts'
+import type { PublicationOptions } from '@/infra/server/publication/types.ts'
 
 import {
   SITEMAP_LOC_LIMIT,
@@ -16,6 +17,24 @@ import {
   buildSitemapIndexResponse,
   buildSitemapPartResponse
 } from '../index.ts'
+
+vi.mock(import('@/infra/server/publication/index.ts'), async importOriginal => {
+  const actual = await importOriginal()
+  const limits = {
+    total: 1,
+    sitemap: 1,
+    markdown: 1,
+    sources: 4,
+    perSource: 4,
+    outputs: 1,
+    reservedBytes: 52_428_800
+  }
+  return {
+    ...actual,
+    runPublication: (options: PublicationOptions) =>
+      actual.createPublicationController(limits).runPublication(options)
+  }
+})
 
 type SitemapPartitionReadOptions = Parameters<
   SitemapPartitionSource['readPartition']

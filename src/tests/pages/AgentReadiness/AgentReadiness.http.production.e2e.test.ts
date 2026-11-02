@@ -257,7 +257,9 @@ for (const accept of [
 }
 
 for (const endpoint of [
-  { path: '/llms.txt', contentType: 'text/markdown' },
+  // Arquivo do build: o tipo na Vercel vem do overrides, conferido no teste do
+  // build; o preview local usa a extensão.
+  { path: '/llms.txt', contentType: 'text/plain' },
   { path: '/sitemap.xml', contentType: 'application/xml' },
   { path: '/robots.txt', contentType: 'text/plain' },
   { path: '/images/og.png', contentType: 'image/png' },

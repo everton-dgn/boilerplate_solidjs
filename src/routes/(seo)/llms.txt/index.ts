@@ -3,11 +3,14 @@ import { paraglideMiddleware } from '@paraglide/server.js'
 import { pageRoutes } from 'virtual:file-routes'
 
 import { SITE_CACHE_CONTROL } from '@/constants/cache.ts'
+import { HTTP_SERVICE_UNAVAILABLE } from '@/constants/http.ts'
 import { SITE } from '@/constants/site/index.ts'
 import { isMarkdownRoute, markdownPath } from '@/helpers/markdownRoute/index.ts'
 import { memoizeOnce } from '@/helpers/memoizeOnce/index.ts'
+import { readPublicationPhase } from '@/helpers/readPublicationPhase/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { localizeHref } from '@/i18n/urls/index.ts'
+import { logServerFailure } from '@/infra/server/logServerFailure/index.ts'
 import { Router } from '@/router.ts'
 
 import { LLMS_FULL_PAGE, LLMS_NOTES, LLMS_USE_CASES } from './constants.ts'
@@ -59,10 +62,26 @@ const renderLlmsText = memoizeOnce({
     })
 })
 
+// O arquivo do build atende esta URL antes da função. Chegar aqui em produção
+// indica artefato ausente, que não pode virar uma reconstrução O(N) por instância.
+function missingArtifact(): Response {
+  logServerFailure({
+    source: 'llms',
+    error: new Error('llms.txt fora da camada de arquivos')
+  })
+  return new Response(null, {
+    status: HTTP_SERVICE_UNAVAILABLE,
+    headers: { 'cache-control': 'no-store' }
+  })
+}
+
 // A descrição do site e os metadados das páginas leem o idioma do contexto
 // Paraglide. O índice sai sempre no idioma base, inclusive na primeira
 // requisição, que fica guardada em produção.
 export function GET(): Promise<Response> {
+  if (readPublicationPhase() === 'artifact') {
+    return Promise.resolve(missingArtifact())
+  }
   const url = resolveSiteUrl(localizeHref({ href: '/', locale: baseLocale }))
   return paraglideMiddleware(
     new Request(url),
