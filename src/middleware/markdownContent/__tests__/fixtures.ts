@@ -1,3 +1,4 @@
+/* v8 ignore file -- Fixture de teste fora da cobertura da aplicação. */
 import { createRequestEvent, type RequestEvent } from '@solidjs/web'
 
 import { createPublicationController } from '@/infra/server/publication/index.ts'

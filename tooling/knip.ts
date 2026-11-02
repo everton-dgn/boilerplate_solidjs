@@ -86,6 +86,7 @@ const config = {
     'src/**/*.{ts,tsx}!',
     'tooling/**/*.ts',
     '!src/tests/**!',
+    '!src/**/__tests__/**!',
     '!src/**/*.test.{ts,tsx}!'
   ],
   // A config fica fora do caminho padrão e roda por tooling/css/check.ts.

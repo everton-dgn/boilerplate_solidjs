@@ -29,6 +29,11 @@ executáveis de teste. A exceção de nomes não se aplica às pastas de página
 nem dispensa as regras de colocalização. Preserve o isolamento por arquivo e a
 limpeza dos recursos da fixture ao dividir uma suíte.
 
+O Knip mantém `src/**/__tests__/` fora do inventário de produção. A fixture
+compartilhada de Markdown usa `v8 ignore file` para que seus helpers não entrem
+nos percentuais de cobertura da aplicação; os testes continuam executando esses
+helpers normalmente.
+
 Teste regras e resultados observáveis: recuperação após erro, navegação,
 seleção, persistência e sincronização. Componentes de apresentação simples não
 precisam de suíte própria para conferir montagem, textos estáticos, classes ou o
