@@ -33,6 +33,22 @@ const PROJECT_CHECK_INPUTS = [
   'bunfig.toml',
   'patches/**'
 ]
+const STATIC_FILE_HEADERS = {
+  'x-content-type-options': SECURITY_HEADERS['x-content-type-options'],
+  'cross-origin-resource-policy':
+    SECURITY_HEADERS['cross-origin-resource-policy']
+}
+const STATIC_FILE_PATHS = [
+  '/assets/**',
+  '/images/**',
+  '/favicon/**',
+  '/**.md',
+  '/llms.txt',
+  '/llms-full.txt',
+  '/sitemap.xml',
+  '/sitemaps/pages/**',
+  '/_markdown/static.json'
+]
 const CI_TEST_WORKERS = 2
 const TOOLING_CI_TEST_WORKERS = 3
 const TOOLING_TEST_CONCURRENCY = env.CI
@@ -126,28 +142,33 @@ const appPlugins = (mode: string) =>
         serverEntry: false,
         preset: 'vercel',
         modules: [markdownPrerender({ buildId })],
-        // Sem fallthrough, um hash ausente em /assets/ recebe o 404 no-store do
-        // Nitro em vez da página SSR com o cache imutável da route rule. O dir
-        // não existe de propósito: os arquivos vêm da saída do Vite, e um dir
-        // dentro de .vercel/output faz o rebuild falhar.
+        // Sem fallthrough, um arquivo ausente em /assets/ ou /images/ recebe o
+        // 404 no-store do Nitro em vez da página SSR com o cache imutável da
+        // route rule. O dir de /assets não existe de propósito: os arquivos vêm
+        // da saída do Vite, e um dir dentro de .vercel/output faz o rebuild
+        // falhar.
         publicAssets: [
           {
             baseURL: '/assets',
             dir: 'public/assets',
             fallthrough: false,
             maxAge: 31_536_000
+          },
+          {
+            baseURL: '/images',
+            dir: 'public/images',
+            fallthrough: false,
+            maxAge: 31_536_000
           }
         ],
-        routeRules: {
-          '/assets/**': {
-            headers: {
-              'x-content-type-options':
-                SECURITY_HEADERS['x-content-type-options'],
-              'cross-origin-resource-policy':
-                SECURITY_HEADERS['cross-origin-resource-policy']
-            }
-          }
-        }
+        // Os estáticos saem do CDN sem passar pelo middleware. Os mesmos
+        // valores chegam às respostas da função, que o middleware já grava.
+        routeRules: Object.fromEntries(
+          STATIC_FILE_PATHS.map(path => [
+            path,
+            { headers: STATIC_FILE_HEADERS }
+          ])
+        )
       })
     ]
   })

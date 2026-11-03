@@ -263,7 +263,8 @@ E2E monta a cadeia pela fábrica `createMiddleware`. Os testes de Markdown
 verificam por HTTP a negociação e o `.md` de cada página.
 `AgentReadiness.build.production.e2e.test.ts` compara essas respostas com os
 arquivos gerados em `.vercel/output/static`, confere a precedência das rotas em
-`.vercel/output/config.json` e os headers dos `.md` no `vercel.json`; por isso,
+`.vercel/output/config.json`, os cabeçalhos de segurança que as `routeRules`
+gravam nos estáticos e o `Content-Type` dos `.md` no `vercel.json`; por isso,
 depende dos artefatos do build local. `BuildOutput.production.e2e.test.ts`
 também lê esses artefatos: confere que `/.vite/` não sai no estático e que o
 build ID das server functions é o mesmo no client e no servidor. O

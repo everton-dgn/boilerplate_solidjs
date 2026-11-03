@@ -473,9 +473,12 @@ release. Add a tool name to select part of the graph. For example, run
   [docs/security.md](docs/security.md). Os cabeçalhos saem do middleware, com
   os valores em `src/middleware/securityHeaders/constants.ts`; não devolva a
   CSP nem os demais cabeçalhos das respostas da função ao `vercel.json`. Os
-  blocos de estáticos do `vercel.json` repetem só `X-Content-Type-Options` e
-  `Cross-Origin-Resource-Policy`, porque esses arquivos não passam pela função;
-  ao mudar esses valores em `SECURITY_HEADERS`, atualize também o `vercel.json`
+  estáticos não passam pela função: as `routeRules` do Nitro no
+  `vite.config.ts` gravam neles `X-Content-Type-Options` e
+  `Cross-Origin-Resource-Policy`, lidos de `SECURITY_HEADERS`. Ao publicar um
+  novo tipo de estático, acrescente o caminho a `STATIC_FILE_PATHS`. O
+  `vercel.json` guarda só o `Content-Type` dos `.md`, que numa route rule
+  também sobrescreveria os erros da função
   ([limites conhecidos](docs/security.md#limites-conhecidos)).
 - Não acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts ao `script-src`,
   nem `'unsafe-inline'` ao `style-src`.

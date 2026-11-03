@@ -72,8 +72,8 @@ recebem a CSP nem o cache do middleware. As URLs absolutas dos três arquivos
 partem da origem de `VITE_SITE_URL`; um site servido em um subcaminho não é
 suportado por essa geração. A página 404 declara `robots: noindex`. A imagem
 social fica em `public/images/og.png`, com cache imutável de um ano configurado
-em `vercel.json` para `/images/`. Como esse cache não revalida, publique uma
-imagem nova com outro nome (por exemplo, `og-2026-10.png`) e atualize
-`SITE.image.path`: sobrescrever `og.png` deixa navegadores e caches
-intermediários com a versão antiga por até um ano. O logo do JSON-LD reutiliza
-`public/favicon/apple-touch-icon.png`.
+no `publicAssets` de `/images/` no `vite.config.ts`. Como esse cache não
+revalida, publique uma imagem nova com outro nome (por exemplo,
+`og-2026-10.png`) e atualize `SITE.image.path`: sobrescrever `og.png` deixa
+navegadores e caches intermediários com a versão antiga por até um ano. O logo
+do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.

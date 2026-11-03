@@ -42,10 +42,16 @@ const SITEMAP_MANIFEST = new URL(
   `../../../../.vercel/output/functions/__server.func/${PUBLICATION_ARTIFACT_DIR}/${SITEMAP_MANIFEST_FILE}`,
   import.meta.url
 )
-const STATIC_INDEXES = [
+const STATIC_FILES = [
+  '/assets/entry.js',
+  '/images/og.png',
+  '/favicon/favicon.ico',
+  '/pt/index.md',
+  '/en/about.md',
   '/llms.txt',
+  '/llms-full.txt',
   '/sitemap.xml',
-  '/sitemaps/pages/(.*)',
+  '/sitemaps/pages/1.xml',
   '/_markdown/static.json'
 ]
 
@@ -234,24 +240,12 @@ test('declares the headers of the static Markdown files', async () => {
     Object.fromEntries(
       rule?.headers.map(({ key, value }) => [key, value]) ?? []
     )
-  ).toStrictEqual({
-    'Content-Type': 'text/markdown; charset=utf-8',
-    'X-Content-Type-Options': 'nosniff',
-    'Cross-Origin-Resource-Policy': 'same-origin'
-  })
+  ).toStrictEqual({ 'Content-Type': 'text/markdown; charset=utf-8' })
   // O tipo do agregado vem do overrides do artefato, que só vale para o
   // arquivo estático; um Content-Type aqui chegaria também ao 404 da função.
-  const aggregate = config.headers.find(
-    ({ source }) => source === LLMS_FULL_PATH
-  )
   expect(
-    Object.fromEntries(
-      aggregate?.headers.map(({ key, value }) => [key, value]) ?? []
-    )
-  ).toStrictEqual({
-    'X-Content-Type-Options': 'nosniff',
-    'Cross-Origin-Resource-Policy': 'same-origin'
-  })
+    config.headers.find(({ source }) => source === LLMS_FULL_PATH)
+  ).toBeUndefined()
 })
 
 for (const locale of LOCALES) {
@@ -392,22 +386,36 @@ test('publishes sitemap, llms.txt and the Markdown list as build artifacts', asy
   expect(config.overrides?.['llms.txt']).toStrictEqual({
     contentType: 'text/markdown; charset=utf-8'
   })
-  const vercel = v.parse(
-    configSchema,
-    JSON.parse(await readFile(VERCEL_CONFIG, 'utf8'))
+})
+
+// A Vercel aplica todas as rotas com continue que casam antes do filesystem.
+test('declares the security headers of the static files in the Vercel artifact', async () => {
+  const config = v.parse(
+    artifactSchema,
+    JSON.parse(await readFile(BUILD_CONFIG, 'utf8'))
   )
-  for (const source of STATIC_INDEXES) {
-    const rule = vercel.headers.find(entry => entry.source === source)
-    expect(
-      Object.fromEntries(
-        rule?.headers.map(({ key, value }) => [key, value]) ?? []
-      ),
-      source
-    ).toStrictEqual({
-      'X-Content-Type-Options': 'nosniff',
-      'Cross-Origin-Resource-Policy': 'same-origin'
+  const filesystem = config.routes.findIndex(
+    route => route.handle === 'filesystem'
+  )
+  const routes = config.routes
+    .slice(0, filesystem)
+    .filter(route => route.continue && route.src !== undefined)
+  const headersOf = (path: string) =>
+    Object.fromEntries(
+      routes
+        .filter(route => new RegExp(route.src ?? '', 'u').test(path))
+        .flatMap(route => Object.entries(route.headers ?? {}))
+    )
+  for (const path of STATIC_FILES) {
+    expect(headersOf(path), path).toMatchObject({
+      'x-content-type-options': 'nosniff',
+      'cross-origin-resource-policy': 'same-origin'
     })
   }
+  expect(headersOf('/images/og.png')).toMatchObject({
+    'cache-control': 'public, max-age=31536000, immutable'
+  })
+  expect(headersOf('/pt/about')).not.toHaveProperty('x-content-type-options')
 })
 
 test('serves every internal destination of llms.txt without redirects', async ({
