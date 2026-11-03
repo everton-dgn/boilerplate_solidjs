@@ -101,8 +101,8 @@ do Vite+.
   classe.
 - Tokens usam nomes em kebab-case, como `--color-primary-hover`. A regra
   `custom-property-no-missing-var-function` detecta a ausência de `var()` para
-  tokens declarados no mesmo arquivo. Nas propriedades protegidas pelo plugin de
-  tokens, valores sem `var()` também são rejeitados.
+  tokens declarados no mesmo arquivo. Nas propriedades que exigem tokens,
+  valores sem `var()` também são rejeitados.
 - Seletores e media queries inválidos, seletores duplicados no mesmo contexto e
   etapas duplicadas em `@keyframes` geram erro.
 - Nomes e valores desconhecidos em media features, operadores sem os espaços
@@ -110,20 +110,23 @@ do Vite+.
 - Fora de `src/theme/`, cores literais são proibidas em qualquer propriedade:
   hexadecimais, nomes de cor e as funções `rgb()`, `rgba()`, `hsl()`, `hsla()`,
   `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()` e `color()`, além de
-  `color-mix()` e `light-dark()`. `stylelint-declaration-strict-value` exige
-  tokens nas propriedades de cor, `background`, `background-image`, `fill`,
-  `stroke`, sombras, `font`, `font-size`, `font-weight`, `z-index` e
-  `border-radius` (incluindo cantos físicos e lógicos), com análise das
-  abreviações suportadas pelo plugin. Funções locais não são liberadas;
-  gradientes compartilhados ficam nos tokens. Valores como `transparent`,
-  `currentColor`, `inherit`, `none` e `auto` são permitidos. O tema pode definir
-  os valores e manter as cores de sistema usadas no reset de alto contraste. O
-  plugin não escolhe tokens nem aplica correções automáticas. Sua análise de
-  abreviações é experimental e não cobre toda a sintaxe CSS.
+  `color-mix()` e `light-dark()`. A regra
+  `value-type-custom-property-required-list` exige token em todo valor do tipo
+  `<color>`, inclusive dentro de abreviações como `border` e `outline`, e por
+  isso também rejeita cores de sistema como `Canvas`. O Stylelint ainda trata
+  essa regra como experimental. `declaration-property-value-allowed-list` exige
+  que o valor inteiro seja um `var()` nas propriedades de cor, `background`,
+  `background-image`, `fill`, `stroke`, sombras, `font`, `font-size`,
+  `font-weight`, `z-index` e nos raios de borda, físicos e lógicos. Funções
+  locais não são liberadas; gradientes compartilhados ficam nos tokens. Valores
+  como `transparent`, `currentColor`, `inherit`, `none` e `auto` são permitidos.
+  O tema pode definir os valores e manter as cores de sistema usadas no reset de
+  alto contraste. As regras não escolhem tokens nem aplicam correções
+  automáticas.
 - Propriedades, valores, unidades, cores hexadecimais, pseudoclasses,
-  pseudoelementos, seletores de tipo e at-rules desconhecidos geram erro.
-  `:global` e `:local` não são permitidos; os estilos globais ficam em
-  `src/theme/`.
+  pseudoelementos, seletores de tipo e at-rules desconhecidos geram erro, assim
+  como valores que não podem ser interpretados, como `calc(1px + 2)`. `:global`
+  e `:local` não são permitidos; os estilos globais ficam em `src/theme/`.
 - Declarações duplicadas e abreviações que sobrescrevem propriedades anteriores
   geram erro. Fallbacks consecutivos com sintaxes diferentes são permitidos.
 - Nomes de animação devem ter `@keyframes` no próprio arquivo ou nas referências
@@ -132,8 +135,7 @@ do Vite+.
   arquivo ou em `src/theme/tokens/**/*.css`. Por exemplo, `var(--backgroud)`
   gera erro; `var(--color-background)` é reconhecido. A regra nativa aceita
   variáveis desconhecidas com fallback, como `var(--opcional, red)`. As
-  referências compartilhadas usam `referenceFiles`, recurso experimental do
-  Stylelint.
+  referências compartilhadas vêm da opção `referenceFiles` do Stylelint.
 - Fora de `src/theme/`, inclusive nas rotas, o nome obrigatório é
   `styles.module.css`. Em `src/theme/`, use nomes como `colors.css` e
   `zIndex.css`.

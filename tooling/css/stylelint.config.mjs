@@ -1,12 +1,17 @@
+const TOKEN = String.raw`/^var\(\s*--[\s\S]+\)$/`
+const TOKEN_KEYWORDS =
+  '/^(?:transparent|currentcolor|inherit|initial|unset|revert|revert-layer|none|auto)$/i'
+
 const config = {
   referenceFiles: [
     '../../src/theme/tokens/**/*.css',
     '../../src/theme/class/animation.css'
   ],
-  plugins: ['stylelint-use-nesting', 'stylelint-declaration-strict-value'],
+  plugins: ['stylelint-use-nesting'],
   rules: {
     'property-no-unknown': true,
     'declaration-property-value-no-unknown': true,
+    'value-no-invalid': true,
     'unit-no-unknown': true,
     'color-no-invalid-hex': true,
     'color-no-hex': true,
@@ -46,30 +51,16 @@ const config = {
       'color-mix',
       'light-dark'
     ],
-    'scale-unlimited/declaration-strict-value': [
-      [
-        '/color$/',
-        'background',
-        'background-image',
-        'border-radius',
-        '/^border-(?:(?:top|bottom)-(?:left|right)|(?:start|end)-(?:start|end))-radius$/',
-        'fill',
-        'stroke',
-        'box-shadow',
-        'text-shadow',
-        'font',
-        'font-size',
-        'font-weight',
-        'z-index'
-      ],
+    'value-type-custom-property-required-list': [
+      ['color'],
+      { ignoreValues: [TOKEN_KEYWORDS] }
+    ],
+    'declaration-property-value-allowed-list': [
       {
-        ignoreFunctions: false,
-        ignoreValues: [
-          '/^(?:transparent|currentcolor|inherit|initial|unset|revert|revert-layer|none|auto)$/i'
-        ],
-        expandShorthand: true,
-        disableFix: true
-      }
+        '/color$|radius$|^(?:background|background-image|fill|stroke|box-shadow|text-shadow|font|font-size|font-weight|z-index)$/':
+          [TOKEN, TOKEN_KEYWORDS]
+      },
+      { message: 'Use um token com var() nesta propriedade.' }
     ],
     'selector-class-pattern': [
       '^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$',
@@ -93,7 +84,8 @@ const config = {
           'lch',
           'color'
         ],
-        'scale-unlimited/declaration-strict-value': null
+        'value-type-custom-property-required-list': null,
+        'declaration-property-value-allowed-list': null
       }
     }
   ]

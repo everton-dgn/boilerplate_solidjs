@@ -164,12 +164,16 @@ describe('stylelint css policy', () => {
         rule: 'function-disallowed-list'
       },
       {
+        code: '.a { outline: 2px solid Canvas; }',
+        rule: 'value-type-custom-property-required-list'
+      },
+      {
         code: '.a { font: 600 14px sans-serif; }',
-        rule: 'scale-unlimited/declaration-strict-value'
+        rule: 'declaration-property-value-allowed-list'
       },
       {
         code: '.a { background-image: linear-gradient(var(--color-primary), var(--color-secondary)); }',
-        rule: 'scale-unlimited/declaration-strict-value'
+        rule: 'declaration-property-value-allowed-list'
       }
     ]) {
       const rules = await lint(code)
@@ -179,6 +183,11 @@ describe('stylelint css policy', () => {
       await lint('.a { font: inherit; background: currentcolor; }'),
       []
     )
+  })
+
+  it('rejects values that cannot be parsed', async () => {
+    const rules = await lint('.a { inset-block-start: calc(1px + 2); }')
+    assert.ok(rules.includes('value-no-invalid'))
   })
 
   it('rejects unknown pseudo-elements and type selectors', async () => {
