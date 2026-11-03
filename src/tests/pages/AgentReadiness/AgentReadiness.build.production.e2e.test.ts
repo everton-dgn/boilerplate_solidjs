@@ -388,17 +388,19 @@ test('publishes sitemap, llms.txt and the Markdown list as build artifacts', asy
   })
 })
 
-// A Vercel aplica todas as rotas com continue que casam antes do filesystem.
+// A Vercel aplica todas as rotas com continue que casam antes do primeiro
+// handle; as seguintes só valem na fase desse handle.
 test('declares the security headers of the static files in the Vercel artifact', async () => {
   const config = v.parse(
     artifactSchema,
     JSON.parse(await readFile(BUILD_CONFIG, 'utf8'))
   )
-  const filesystem = config.routes.findIndex(
-    route => route.handle === 'filesystem'
+  const firstPhase = config.routes.findIndex(
+    route => route.handle !== undefined
   )
+  expect(firstPhase).toBeGreaterThanOrEqual(0)
   const routes = config.routes
-    .slice(0, filesystem)
+    .slice(0, firstPhase)
     .filter(route => route.continue && route.src !== undefined)
   const headersOf = (path: string) =>
     Object.fromEntries(
