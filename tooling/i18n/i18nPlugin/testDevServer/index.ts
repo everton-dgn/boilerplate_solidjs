@@ -132,9 +132,9 @@ export async function startServer({
     logLevel: 'silent',
     appType: 'custom',
     // O Vite entrega ao Chokidar os .env e o public da raiz, que a fixture não
-    // tem, e o Chokidar 3 conta duas vezes o ready de cada caminho ausente. O
-    // evento então sai com subdiretórios por varrer, e a primeira escrita se
-    // perde.
+    // tem, e o Chokidar embutido no Vite+ conta duas vezes o ready de cada
+    // caminho ausente. O evento então sai com subdiretórios por varrer, e a
+    // primeira escrita se perde.
     envDir: false,
     publicDir: false,
     // fs.watch é o backend do Chokidar no Linux do CI. No macOS o padrão é
@@ -183,8 +183,8 @@ export async function startServer({
   }
   // No macOS, o libuv recria o stream do FSEvents numa thread própria a cada
   // diretório observado, e o stream novo ignora o que veio antes dele. O ready
-  // não espera essa thread; sob carga, a escrita seguinte se perde. Fechar um
-  // watch de diretório bloqueia até a thread esvaziar a fila.
+  // não espera essa thread. Fechar um watch de diretório bloqueia até a thread
+  // esvaziar a fila, e os eventos de diretório seguintes chegam ao stream.
   watch(root).close()
   const address = http.address()
   if (typeof address !== 'object' || address === null) {
