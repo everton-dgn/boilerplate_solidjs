@@ -155,7 +155,7 @@ export default function Page() {
 }
 ```
 
-No Solid 2.0.0-rc.20, renders aguardados e concorrentes que compartilham a
+No Solid instalado, renders aguardados e concorrentes que compartilham a
 primeira carga de uma rota `lazy()` leem o valor assíncrono de outro render
 ([solidjs/solid#4595](https://github.com/solidjs/solid/issues/4595)). O Markdown
 usa render aguardado, no prerender e no modo `'dynamic'`, e as rotas de arquivo
