@@ -16,7 +16,10 @@ const HOME_TITLE = 'SolidJS Boilerplate for web applications'
 
 async function readHomeModule(request: APIRequestContext): Promise<string> {
   const json = await readFile(
-    new URL('../../../../dist/.vite/manifest.json', import.meta.url),
+    new URL(
+      '../../../../.vercel/output/static/.vite/manifest.json',
+      import.meta.url
+    ),
     'utf8'
   )
   const manifest = v.parse(manifestSchema, JSON.parse(json))

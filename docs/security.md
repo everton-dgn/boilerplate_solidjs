@@ -103,10 +103,11 @@ armazenada no cache do navegador, sem modificar o HTML da aplicação.
   bloco `/assets/(.*)` do `vercel.json` fica como redundância; ao mudar um
   desses valores em `SECURITY_HEADERS`, mude também o `vercel.json`. Pelo mesmo
   motivo, um arquivo que não deve ser público precisa sair de
-  `.vercel/output/static`: o middleware não consegue bloqueá-lo. O build move
-  para `dist/.vite/` o diretório `.vite/`, com o manifesto do Vite e o das
-  server functions, que listam caminhos do código-fonte
-  ([`moveViteMetadata`](../tooling/moveViteMetadata/index.ts)).
+  `.vercel/output/static`: o middleware não consegue bloqueá-lo. O manifesto do
+  Vite e o das server functions listam caminhos do código-fonte. O plugin do
+  Solid apaga o primeiro, que ele mesmo liga, e grava o segundo na saída do SSR,
+  então nenhum `.vite/` chega ao estático; o `BuildOutput` confere a ausência.
+  Ligar `build.manifest` fora do modo `e2e` faria o manifesto ser publicado.
 - `Cross-Origin-Embedder-Policy: require-corp` bloqueia recursos de outra origem
   sem `Cross-Origin-Resource-Policy` ou CORS. Ao adicionar fontes, imagens ou
   scripts externos, confira se o provedor envia esses cabeçalhos ou revise a

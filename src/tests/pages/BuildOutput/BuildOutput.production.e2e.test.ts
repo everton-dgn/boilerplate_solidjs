@@ -3,23 +3,16 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { expect, test } from '@playwright/test'
-import * as v from 'valibot'
 
 type ScanOptions = { directory: string; extension: string; pattern: RegExp }
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url))
 const STATIC_OUTPUT = path.join(ROOT, '.vercel/output/static')
 const FUNCTIONS_OUTPUT = path.join(ROOT, '.vercel/output/functions')
-const VITE_METADATA = path.join(ROOT, 'dist/.vite')
-const METADATA_FILES = ['manifest.json', 'solid-server-functions.json']
 const SERVER_BUILD_ID =
   /configureServerFunctionsServer\(\{[^}]*?\bendpoint:[^}]*?\bbuildId:\s*[`'"](?<id>[0-9a-f]+)[`'"]/gu
 const CLIENT_BUILD_ID =
   /X-Server-Function-Build[`'"]\]\s*=\s*[`'"](?<id>[0-9a-f]+)[`'"]/gu
-
-const persistedSchema = v.object({
-  buildId: v.pipe(v.string(), v.nonEmpty())
-})
 
 async function scanBuildIds({
   directory,
@@ -49,17 +42,9 @@ test('keeps the Vite metadata out of the published static output', async () => {
   expect(
     published.filter(file => file.split(path.sep).includes('.vite'))
   ).toEqual([])
-  expect(await readdir(VITE_METADATA)).toEqual(
-    expect.arrayContaining(METADATA_FILES)
-  )
 })
 
-test('uses the same build id in the client, the server and the manifest', async () => {
-  const persisted = await readFile(
-    path.join(VITE_METADATA, 'solid-server-functions.json'),
-    'utf8'
-  )
-  const { buildId } = v.parse(persistedSchema, JSON.parse(persisted))
+test('uses the same build id in the client and the server', async () => {
   const serverIds = await scanBuildIds({
     directory: FUNCTIONS_OUTPUT,
     extension: '.mjs',
@@ -73,5 +58,5 @@ test('uses the same build id in the client, the server and the manifest', async 
 
   expect(serverIds.length).toBeGreaterThan(0)
   expect(clientIds.length).toBeGreaterThan(0)
-  expect(new Set([...serverIds, ...clientIds])).toEqual(new Set([buildId]))
+  expect(new Set([...serverIds, ...clientIds]).size).toBe(1)
 })

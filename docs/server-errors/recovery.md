@@ -117,11 +117,9 @@ não há id nem checagem.
 
 Com o Nitro, o client e o servidor saem do mesmo build, e o servidor recebe o id
 que o plugin guarda em memória. O plugin também grava o id e as server functions
-que o client alcança em `.vite/solid-server-functions.json`, ao lado do
-`manifest.json` do Vite, no diretório público. O
-[módulo `moveViteMetadata`](../../tooling/moveViteMetadata/index.ts) move esse
-`.vite/` para `dist/.vite/` no fim do build, então nenhum dos dois é publicado;
-os testes leem os arquivos de lá.
+que o client alcança em `.vite/solid-server-functions.json`, mas na saída do
+SSR, e apaga o `manifest.json` do Vite que ele mesmo liga, então nenhum dos dois
+é publicado. O `BuildOutput` compara o id do client com o do servidor.
 
 A aba também pode pedir um chunk ou uma folha CSS com o hash do build anterior,
 que o deploy novo não publica. A recuperação segue uma regra: a página só

@@ -38,12 +38,12 @@ pacote publicado e instalado mudou esse comportamento.
    mensagens que chegam ao navegador, meça antes de ajustar as tolerâncias de
    `pageerror`, inclusive com CPU limitada a 20x.
 4. Rode `vp run test:e2e:production src/tests/pages/BuildOutput`. O teste
-   confere que o id do manifesto em `dist/.vite/`, o `buildId:` da chamada
-   `configureServerFunctionsServer(` que traz `endpoint:` em
-   `.vercel/output/functions/` e o id que o client carimba em
-   `X-Server-Function-Build` são iguais, e que `/.vite/` não sai no estático. Se
-   o plugin mudar onde grava o `.vite/` ou deixar de guardar o id em memória,
-   revise o módulo `moveViteMetadata` e a recusa por build descrita em
+   confere que o `buildId:` da chamada `configureServerFunctionsServer(` que
+   traz `endpoint:` em `.vercel/output/functions/` e o id que o client carimba
+   em `X-Server-Function-Build` são iguais, e que `/.vite/` não sai no estático.
+   Se o plugin voltar a deixar o `.vite/` na saída do client ou deixar de
+   guardar o id em memória, revise a remoção dos metadados descrita em
+   [segurança](../security.md) e a recusa por build descrita em
    [Validação e recuperação](recovery.md#validação-e-recuperação).
 5. Rode `vp run test:e2e src/tests/pages/OutdatedPage` e
    `vp run test src/__tests__/App.dom.test.tsx`. A recuperação de página

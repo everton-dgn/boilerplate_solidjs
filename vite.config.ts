@@ -89,13 +89,11 @@ const appPlugins = (mode: string) =>
       modules,
       { nitro },
       { markdownPrerender },
-      { moveViteMetadata },
       { createPublicationBuild }
     ] = await Promise.all([
       loadComponentModules(),
       import('nitro/vite'),
       import('./tooling/markdownPrerender/index.ts'),
-      import('./tooling/moveViteMetadata/index.ts'),
       import('./tooling/publicationArtifacts/helpers/createPublicationBuild/index.ts')
     ])
     // O Nitro compartilha esta lista de plugins entre os ambientes do build, e
@@ -127,7 +125,7 @@ const appPlugins = (mode: string) =>
       nitro({
         serverEntry: false,
         preset: 'vercel',
-        modules: [markdownPrerender({ buildId }), moveViteMetadata],
+        modules: [markdownPrerender({ buildId })],
         // Sem fallthrough, um hash ausente em /assets/ recebe o 404 no-store do
         // Nitro em vez da página SSR com o cache imutável da route rule. O dir
         // não existe de propósito: os arquivos vêm da saída do Vite, e um dir
@@ -293,7 +291,12 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
+    // O plugin do Solid apaga o manifesto do client que ele mesmo liga, então
+    // nada de .vite/ chega ao estático publicado. Só o build E2E, que não é
+    // publicado, mantém o manifesto para o Hydration.preload achar o chunk da
+    // rota.
     build: {
+      manifest: mode === 'e2e',
       rolldownOptions: {
         output: {
           comments: false

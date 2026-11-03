@@ -72,8 +72,8 @@ vp run build
 ```
 
 Esse comando gera `.vercel/output/`, incluindo estáticos e a função SSR com
-runtime Node, e guarda em `dist/.vite/` os manifestos do Vite e das server
-functions, que ficam fora do artefato publicado. O build executa em Bun; o Nitro
+runtime Node. Os manifestos do Vite e das server functions ficam fora do
+artefato publicado ([segurança](security.md)). O build executa em Bun; o Nitro
 tira o Node da função do `engines.node` do `package.json`. Gerar o artefato
 localmente não publica a aplicação.
 
