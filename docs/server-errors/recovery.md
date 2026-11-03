@@ -239,18 +239,17 @@ Limites conhecidos:
   sem prometer que a recarga resolve.
 - Um asset ausente em `/assets/`, como o chunk de outro build, responde 404 com
   `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` e
-  `Cross-Origin-Resource-Policy: same-origin`, sem a página SSR. O
-  `vite.config.ts` registra `/assets` em `publicAssets` sem fallthrough. No
-  preview e no preset `node-server`, o Nitro responde o miss de GET e HEAD com o
-  404 `no-store` de diretório público exclusivo, e o h3 preserva esse cabeçalho
-  quando a route rule de `/assets/**` aplica o cache imutável ao erro. Na
-  Vercel, o preset grava a rota 404 `no-store` logo depois de `filesystem`, e o
-  miss não chega à função. A route rule leva nosniff e CORP, com os valores de
+  `Cross-Origin-Resource-Policy: same-origin`, sem a página SSR. O Nitro
+  registra o `assetsDir` do Vite, `/assets`, em `publicAssets` sem fallthrough.
+  No preview e no preset `node-server`, o Nitro responde o miss de GET e HEAD
+  com o 404 `no-store` de diretório público exclusivo, e o h3 preserva esse
+  cabeçalho quando a route rule de `/assets/**` aplica o cache imutável ao erro.
+  Na Vercel, o preset grava a rota 404 `no-store` logo depois de `filesystem`, e
+  o miss não chega à função. A route rule leva nosniff e CORP, com os valores de
   `SECURITY_HEADERS`, ao miss e aos acertos servidos pela Vercel ou pelo
   `node-server`; no `vp run start`, o acerto sai do servidor estático do srvx
-  sem esses cabeçalhos e sem `Cache-Control`, como antes. O diretório
-  `public/assets` não existe de propósito: os arquivos vêm da saída do Vite. O
-  teste `BuildOutput.assets.production` confere as rotas do
+  sem esses cabeçalhos e sem `Cache-Control`, como antes. O teste
+  `BuildOutput.assets.production` confere as rotas do
   `.vercel/output/config.json` e o 404 no preview, e falha se uma atualização do
   Nitro mudar esse comportamento. Ele cobre a configuração gerada, não o CDN: a
   precedência do `no-store` sobre o cache da rota de `/assets` segue a ordem das

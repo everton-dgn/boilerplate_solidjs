@@ -142,18 +142,10 @@ const appPlugins = (mode: string) =>
         serverEntry: false,
         preset: 'vercel',
         modules: [markdownPrerender({ buildId })],
-        // Sem fallthrough, um arquivo ausente em /assets/ ou /images/ recebe o
-        // 404 no-store do Nitro em vez da página SSR com o cache imutável da
-        // route rule. O dir de /assets não existe de propósito: os arquivos vêm
-        // da saída do Vite, e um dir dentro de .vercel/output faz o rebuild
-        // falhar.
+        // Sem fallthrough, um arquivo ausente em /images/ recebe o 404 no-store
+        // do Nitro em vez da página SSR com o cache imutável. O Nitro já
+        // registra assim o assetsDir do Vite, que serve /assets/.
         publicAssets: [
-          {
-            baseURL: '/assets',
-            dir: 'public/assets',
-            fallthrough: false,
-            maxAge: 31_536_000
-          },
           {
             baseURL: '/images',
             dir: 'public/images',
