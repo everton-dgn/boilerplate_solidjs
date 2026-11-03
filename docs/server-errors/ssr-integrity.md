@@ -88,27 +88,30 @@ falha. O serializador também passou a encerrar cada escrita no primeiro valor
 que falha, sem enviar os irmãos seguintes dessa escrita, e os valores pendentes
 antes do shell saem cada um na própria escrita
 ([solidjs/solid#4246](https://github.com/solidjs/solid/pull/4246)): sem o patch,
-a falha deixa pendente só a chave que falhou. Remova o restante do patch quando
-um pacote publicado encerrar o render na falha do serializador padrão e passar
-as regressões de erro reutilizado entre requisições, falha de server function
-que escapa de Loading, recuperação local, serialização, cleanup que lança e
-cancelamento. A issue ou o PR fechado não substitui a verificação dos artefatos
-instalados. O sinal composto de timeout e desconexão chega ao `renderToStream`;
-o teste Node do adaptador verifica o descarte de uma raiz SSR pendente no
-cancelamento.
+a falha deixa pendente só a chave que falhou. Essa chave que nunca assenta no
+cliente, com o render concluído, está em
+[solidjs/solid#4647](https://github.com/solidjs/solid/issues/4647). Remova o
+restante do patch quando um pacote publicado encerrar o render na falha do
+serializador padrão e passar as regressões de erro reutilizado entre
+requisições, falha de server function que escapa de Loading, recuperação local,
+serialização, cleanup que lança e cancelamento. A issue ou o PR fechado não
+substitui a verificação dos artefatos instalados. O sinal composto de timeout e
+desconexão chega ao `renderToStream`; o teste Node do adaptador verifica o
+descarte de uma raiz SSR pendente no cancelamento.
 
 O patch também faz o thenable de `renderToStream` rejeitar no abandono por
 cancelamento. O runtime instalado descartava a raiz, mas mantinha essa espera
-pendente, inclusive após o backend terminar. A correção cobre consumidores
-registrados antes e depois do aborto, sem chamar `onCompleteAll` nem alterar os
-consumidores de streaming. A proteção de publicação não confunde essa rejeição
-com término do backend: `protectServerOperation` registra as Promises no
-contexto assíncrono da publicação, e a vaga permanece ocupada até elas
-assentarem. Operações comuns, fora desse contexto, preservam o comportamento
-anterior. `containFailures` reconhece essa rejeição pela identidade com
-`signal.reason`, então o motivo precisa chegar sem embrulho; caso contrário, o
-cancelamento volta ao log `[middleware]`. As regressões ficam em
-`markdownContent.abort.node.test.ts`, `containFailures.abort.node.test.ts`,
-`publicationScope.node.test.ts` e no cenário HTTP de desconexão de
-`PublicationLoad`. Ao atualizar o Solid, confira também esse contrato antes de
-remover o patch.
+pendente, inclusive após o backend terminar
+([solidjs/solid#4646](https://github.com/solidjs/solid/issues/4646)). A correção
+cobre consumidores registrados antes e depois do aborto, sem chamar
+`onCompleteAll` nem alterar os consumidores de streaming. A proteção de
+publicação não confunde essa rejeição com término do backend:
+`protectServerOperation` registra as Promises no contexto assíncrono da
+publicação, e a vaga permanece ocupada até elas assentarem. Operações comuns,
+fora desse contexto, preservam o comportamento anterior. `containFailures`
+reconhece essa rejeição pela identidade com `signal.reason`, então o motivo
+precisa chegar sem embrulho; caso contrário, o cancelamento volta ao log
+`[middleware]`. As regressões ficam em `markdownContent.abort.node.test.ts`,
+`containFailures.abort.node.test.ts`, `publicationScope.node.test.ts` e no
+cenário HTTP de desconexão de `PublicationLoad`. Ao atualizar o Solid, confira
+também esse contrato antes de remover o patch.

@@ -155,6 +155,17 @@ export default function Page() {
 }
 ```
 
+No Solid 2.0.0-rc.20, renders aguardados e concorrentes que compartilham a
+primeira carga de uma rota `lazy()` leem o valor assíncrono de outro render
+([solidjs/solid#4595](https://github.com/solidjs/solid/issues/4595)). O Markdown
+usa render aguardado, no prerender e no modo `'dynamic'`, e as rotas de arquivo
+são `lazy()`; o HTML em streaming não é afetado. Enquanto o pacote publicado não
+trouxer a correção
+([solidjs/solid#4601](https://github.com/solidjs/solid/pull/4601)), não publique
+em Markdown páginas cujas leituras assíncronas dependam da requisição, como
+parâmetros, idioma, usuário ou sessão. A issue mostra que um `<Loading>` acima
+da leitura também evita o problema, mas ele muda o HTML inicial do streaming.
+
 Importe `query` de `@solidjs/router` e `createMemo` de `solid-js`. O `Errored`
 global do `App` substitui a aplicação e o cabeçalho pelo fallback quando essa
 leitura falha. A recuperação por recarga está descrita em
