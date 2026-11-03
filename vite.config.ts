@@ -234,33 +234,14 @@ export default defineConfig(({ mode }) => {
           dependsOn: ['lint-css'],
           cache: { env: ['NODE_ENV'], input: PROJECT_CHECK_INPUTS }
         },
-        // O rastreamento automático não vê as leituras do tsc nativo, então as
+        // Os tipos da aplicação saem do vp check, com typeCheck no lint. O
+        // rastreamento automático não vê as leituras do tsc nativo, então as
         // entradas ficam explícitas. De src entram só as extensões que o tsc lê;
         // CSS, imagens e fontes chegam por declarações de módulo. O bun.lock
         // representa os tipos instalados, mas guarda só o caminho dos patches,
         // então o conteúdo deles entra à parte. Com noEmit, o tsc só grava o
         // .tsbuildinfo em .tsbuild/, que é cache próprio dele, então nada precisa
         // ser restaurado.
-        'typecheck-app': {
-          command: 'tsc --project tsconfig.json',
-          cache: {
-            input: [
-              'src/**/*.ts',
-              'src/**/*.tsx',
-              'src/**/*.json',
-              'paraglide/**',
-              'env.ts',
-              'solid-env.d.ts',
-              'tsconfig.json',
-              'vite.config.ts',
-              'tooling/**/*.ts',
-              'package.json',
-              'bun.lock',
-              'patches/**'
-            ],
-            output: []
-          }
-        },
         'typecheck-node': {
           command: 'tsc --project tsconfig.node.json',
           cache: {
@@ -382,7 +363,6 @@ export default defineConfig(({ mode }) => {
           },
           test: {
             name: { label: 'node', color: 'cyan' },
-            environment: 'node',
             include: ['src/**/*.node.test.{ts,tsx}']
           }
         },

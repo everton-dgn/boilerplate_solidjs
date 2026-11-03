@@ -17,8 +17,7 @@ export const fmt: NonNullable<UserConfig['fmt']> = {
       ['parent', 'sibling', 'index'],
       'style',
       'unknown'
-    ],
-    sortSideEffects: false
+    ]
   },
   ignorePatterns: [
     'public/**',

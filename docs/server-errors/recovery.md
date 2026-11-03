@@ -78,7 +78,6 @@ Após alterar essa fronteira, execute:
 vp run test:tooling
 vp run test:unit
 vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError src/tests/pages/OutdatedPage
-vp run typecheck
 vp run check:ci
 ```
 

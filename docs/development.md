@@ -134,7 +134,6 @@ no HTML da requisição seguinte.
 | `vp run build`                | Build Nitro para Vercel em `.vercel/output/`                                      |
 | `vp run start`                | Pré-visualizar o build pelo Vite                                                  |
 | `vp run i18n:generate`        | Validar catálogos e gerar mensagens e tipos                                       |
-| `vp run typecheck`            | Tipos da aplicação e das ferramentas Node                                         |
 | `vp run typecheck:node`       | Tipos das ferramentas no ambiente Node                                            |
 | `vp run lint`                 | CSS, lint e tipos com cache do Vite+                                              |
 | `vp run lint:css`             | Verificar as regras de CSS                                                        |
@@ -198,9 +197,8 @@ tarefas com cache `lint-project`, `lint-css`, `check-project` e
 declaram `dependsOn: ['lint-css']`: o lint de CSS roda antes, com cache e
 entradas próprias, e uma mudança só em TypeScript não o executa de novo. As duas
 tarefas compartilham as entradas da constante `PROJECT_CHECK_INPUTS`.
-`vp run typecheck` usa `typecheck-app` e `typecheck-node`, e
-`vp run typecheck:node` executa somente a segunda tarefa; `vp run test:tooling`
-usa a tarefa `test-tooling`, sem cache, porque os testes dependem de diretórios
+`vp run typecheck:node` usa a tarefa `typecheck-node`; `vp run test:tooling` usa
+a tarefa `test-tooling`, sem cache, porque os testes dependem de diretórios
 temporários que o cache não rastreia. O Vite+ reaproveita resultados
 bem-sucedidos quando os arquivos lidos, as listagens de diretórios, os
 argumentos e as variáveis de ambiente selecionadas continuam iguais. As tarefas
@@ -211,11 +209,11 @@ carrega. A configuração do servidor limita `loadEnv` aos prefixos `HOST` e
 
 O rastreamento automático registra os arquivos que o lint type-aware lê,
 inclusive os tipos em `node_modules`, mas não vê as leituras do `tsc` nativo.
-Por isso `typecheck-app` e `typecheck-node` declaram as entradas explicitamente,
-incluindo fontes, declarações, configurações do TypeScript, `package.json`,
-`bun.lock` e `patches/**`. De `src/` entram só os arquivos `.ts`, `.tsx` e
-`.json`, que o `tsc` lê; CSS, imagens e fontes chegam por declarações de módulo
-e não invalidam a checagem. O lockfile representa as dependências que
+Por isso `typecheck-node` declara as entradas explicitamente, incluindo fontes,
+declarações, configurações do TypeScript, `package.json`, `bun.lock` e
+`patches/**`. De `src/` entram só os arquivos `.ts`, `.tsx` e `.json`, que o
+`tsc` lê; CSS, imagens e fontes chegam por declarações de módulo e não invalidam
+a checagem. O lockfile representa as dependências que
 `vp install --frozen-lockfile` instala, mas guarda só o caminho de cada patch;
 por isso o conteúdo de `patches/` entra à parte, também nas entradas de
 `lint-project` e `check-project`. Ao criar uma tarefa que leia tipos instalados,
@@ -227,7 +225,7 @@ mudança num arquivo lido invalida o resultado.
 O cache mantém `typeAware` e `typeCheck` ativos e identifica na saída quando
 reproduz um resultado anterior. Para executar tudo novamente, use
 `vp run --no-cache lint` ou `vp run --no-cache check:ci`. Para ignorar o cache
-das outras tarefas, use `vp run --no-cache typecheck`,
+das outras tarefas, use `vp run --no-cache typecheck:node`,
 `vp run --no-cache lint:css` ou `vp run --no-cache dead-code`. `check:fix`,
 build e as suítes do Vitest mantêm seus comandos próprios.
 
@@ -437,11 +435,11 @@ seguintes depois de uma falha.
   Atualize as versões nesse catálogo e mantenha os `@vitest/*` na versão exata
   do Vitest embutido no Vite+. O CI lê a versão do Vite+ desse catálogo.
 - Commits devem seguir Conventional Commits.
-- O lint é type-aware e roda com `typeCheck: true`; erros de tipo aparecem no
-  `vp run lint` além do `vp run typecheck`.
-- O CI, o pre-push e `vp run validate` combinam `check:ci` com `typecheck:node`
-  para verificar a aplicação uma vez e preservar a checagem das ferramentas sem
-  os tipos do DOM. `vp run typecheck` continua verificando os dois projetos.
+- O lint é type-aware e roda com `typeCheck: true`: os tipos da aplicação,
+  inclusive os testes `test-d.ts`, são verificados pelo `vp run lint` e pelo
+  `vp run check:ci`, sem um `tsc` separado.
+- O CI, o pre-push e `vp run validate` combinam `check:ci` com `typecheck:node`,
+  que verifica as ferramentas sem os tipos do DOM.
 - Use as versões de Node e Bun definidas em `package.json`. O `bun.lock` é o
   único lockfile do projeto.
 

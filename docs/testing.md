@@ -63,7 +63,7 @@ arquivo:
 | `*.browser.test.{ts,tsx}` | Chromium real | Interação, layout e APIs de browser         |
 
 Testes só de tipos (`expectTypeOf`) usam `Nome[.qualificador].test-d.ts`. Nenhum
-projeto do Vitest inclui esse sufixo, e o `vp run typecheck` verifica esses
+projeto do Vitest inclui esse sufixo, e o `vp run check:ci` verifica esses
 arquivos. Rodar um deles no Vitest falharia no `expect.requireAssertions`,
 porque `expectTypeOf` não conta como asserção em runtime.
 

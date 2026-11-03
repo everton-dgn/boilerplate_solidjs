@@ -33,9 +33,7 @@
       "@testing-library/jest-dom/vitest",
       "@solidjs/vite-plugin/boundary-modules",
       "@solidjs/vite-plugin/virtual-modules"
-    ],
-    "tsBuildInfoFile": ".tsbuild/app.tsbuildinfo",
-    "incremental": true
+    ]
   },
   "include": [
     "src",
