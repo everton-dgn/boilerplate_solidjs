@@ -151,7 +151,9 @@ describe('stylelint css policy', () => {
     const rules = await lint('&:hover { color: var(--color-primary); }')
     assert.ok(rules.includes('nesting-selector-no-missing-scoping-root'))
   })
+})
 
+describe('stylelint token policy', () => {
   it('rejects literal colors in any property and raw font shorthands', async () => {
     for (const { code, rule } of [
       { code: '.a { border-block-end: 1px solid red; }', rule: 'color-named' },
@@ -161,6 +163,10 @@ describe('stylelint css policy', () => {
       },
       {
         code: '.a { text-decoration: underline oklch(0.6 0.2 25); }',
+        rule: 'function-disallowed-list'
+      },
+      {
+        code: '.a { outline: 1px solid contrast-color(var(--color-primary)); }',
         rule: 'function-disallowed-list'
       },
       {
@@ -235,6 +241,79 @@ describe('stylelint css policy', () => {
     )
   })
 
+  it('rejects system colors the type check cannot resolve', async () => {
+    for (const code of [
+      '.a { outline: var(--width, 2px) solid Canvas; }',
+      '.a { outline: 1px solid var(--color-focus, Canvas); }',
+      '.a { --x: Canvas; outline: 1px solid var(--x); }'
+    ]) {
+      const rules = await lint(code)
+      assert.ok(
+        rules.includes('declaration-property-value-disallowed-list'),
+        code
+      )
+    }
+    assert.deepEqual(
+      await lint(
+        '@keyframes highlight { to { opacity: 0; } } .a { animation: highlight 1s; grid-area: menu; container-name: canvas; transition: background 0.2s; mask-image: url(./icons/menu.svg); content: "Menu"; }'
+      ),
+      []
+    )
+  })
+
+  it('matches property names in any case and with a vendor prefix', async () => {
+    for (const { code, rule } of [
+      {
+        code: '.a { FONT-SIZE: 14px; }',
+        rule: 'declaration-property-value-allowed-list'
+      },
+      {
+        code: '.a { -webkit-box-shadow: 0 0 4px 2px; }',
+        rule: 'declaration-property-value-allowed-list'
+      },
+      {
+        code: '.a { FONT-SIZE: var(--radius-8); }',
+        rule: 'declaration-property-custom-property-allowed-list'
+      }
+    ]) {
+      const rules = await lint(code)
+      assert.ok(rules.includes(rule), code)
+    }
+  })
+
+  it('limits local custom properties named after a token family', async () => {
+    assert.deepEqual(await lint('.a { --button-radius: 0; }'), [])
+    assert.deepEqual(
+      await lint(
+        '.a { --radius-button: var(--radius-8); border-radius: var(--radius-button); }'
+      ),
+      []
+    )
+    for (const { code, rule } of [
+      {
+        code: '.a { --radius-button: 0; }',
+        rule: 'declaration-property-value-allowed-list'
+      },
+      {
+        code: '.a { --font-size-14: 13px; font-size: var(--font-size-14); }',
+        rule: 'declaration-property-value-allowed-list'
+      },
+      {
+        code: '.a { --button-radius: 0; border-radius: var(--button-radius); }',
+        rule: 'declaration-property-custom-property-allowed-list'
+      },
+      {
+        code: '.a { --x: 0 0 2px; text-shadow: var(--x); }',
+        rule: 'declaration-property-custom-property-allowed-list'
+      }
+    ]) {
+      const rules = await lint(code)
+      assert.ok(rules.includes(rule), code)
+    }
+  })
+})
+
+describe('stylelint value and selector checks', () => {
   it('rejects values that cannot be parsed', async () => {
     const rules = await lint('.a { inset-block-start: calc(1px + 2); }')
     assert.ok(rules.includes('value-no-invalid'))

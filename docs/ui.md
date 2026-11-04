@@ -110,18 +110,37 @@ do Vite+.
   erro.
 - Nomes e valores desconhecidos em media features, operadores sem os espaços
   obrigatórios em `calc()` e `@import` em posição inválida geram erro.
-- Fora de `src/theme/`, cores literais são proibidas em qualquer propriedade:
-  hexadecimais, nomes de cor e as funções `rgb()`, `rgba()`, `hsl()`, `hsla()`,
-  `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()` e `color()`, além de
-  `color-mix()` e `light-dark()`. A regra
-  `value-type-custom-property-required-list` exige token em todo valor do tipo
-  `<color>`, inclusive dentro de abreviações como `border` e `outline`, e por
-  isso também rejeita cores de sistema como `Canvas`. O Stylelint ainda trata
-  essa regra como experimental. `declaration-property-value-allowed-list` exige
-  que o valor seja formado só por tokens com `var()` nas propriedades de cor,
-  `background`, `background-image`, `fill`, `stroke`, sombras, `font`,
-  `font-size`, `font-weight`, `z-index` e nos raios de borda, físicos e lógicos.
-  Os tokens podem vir combinados por espaço, vírgula ou barra, como
+- Fora de `src/theme/`, cores literais são proibidas em qualquer propriedade,
+  inclusive em custom properties: hexadecimais, nomes de cor e as funções
+  `rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb()`, `lab()`, `lch()`, `oklab()`,
+  `oklch()`, `color()` e `device-cmyk()`, além de `color-mix()`, `light-dark()`
+  e `contrast-color()`. A regra `value-type-custom-property-required-list` exige
+  token em todo valor do tipo `<color>`, inclusive dentro de abreviações como
+  `border` e `outline`, e por isso também rejeita cores de sistema como
+  `Canvas`. O Stylelint ainda trata essa regra como experimental, e ela pula os
+  valores com `var()` que não consegue resolver, como uma variável desconhecida
+  com fallback.
+- Por isso, `declaration-property-value-disallowed-list` também procura as cores
+  de sistema pelo nome no texto do valor: as atuais, como `Canvas` e
+  `Highlight`, as obsoletas, como `Window`, e as do WebKit, como
+  `-webkit-focus-ring-color`. A busca alcança fallbacks e custom properties,
+  como `outline: var(--largura, 2px) solid Canvas` e `--x: Canvas`. Ficam de
+  fora as propriedades sem cor que recebem nomes livres ou textos (`animation`,
+  `transition`, `will-change`, `grid-*`, `container`, `counter-*`,
+  `view-transition-*`, `font-family`, `content`, `quotes`, `list-style` e
+  `page`) e os caminhos de `url()`. Assim, `grid-area: menu` continua válido, e
+  uma custom property que guarde um nome livre igual a uma cor de sistema, como
+  `--area: menu`, precisa de outro nome ou de exceção com motivo. As regras
+  pegam enganos, não contornos deliberados: um nome escapado, como `C\61 nvas`,
+  num valor com variável desconhecida, as cores `-moz-*` e o `attr()` tipado
+  passam.
+- `declaration-property-value-allowed-list` exige que o valor seja formado só
+  por tokens com `var()` nas propriedades de cor, `background`,
+  `background-image`, `fill`, `stroke`, sombras, `font`, `font-size`,
+  `font-weight`, `z-index` e nos raios de borda, físicos e lógicos. Os nomes de
+  propriedade são comparados sem diferenciar maiúsculas e também com prefixo de
+  fornecedor, então `FONT-SIZE: 14px` e `-webkit-box-shadow: 0 0 4px 2px` geram
+  erro. Os tokens podem vir combinados por espaço, vírgula ou barra, como
   `var(--ring-focus), var(--shadow-sm)`. Em `font`, a altura de linha depois da
   barra pode ser crua, como `var(--font-size-14)/1.5`, porque `line-height` não
   tem token. Valores crus entre tokens e `var()` com fallback são rejeitados.
@@ -141,9 +160,19 @@ do Vite+.
   em `box-shadow` e `--font-*` em `font`. `font-size`, `font-weight` e `z-index`
   aceitam só `--font-size-*`, `--font-weight-*` e `--z-index-*`. Assim,
   `font-size: var(--radius-8)` gera erro, embora `8px` seja um tamanho de fonte
-  válido. `border`, `outline` e `text-shadow` ficam sem essa restrição: as
-  abreviações podem combinar tokens de famílias diferentes, e os tokens não têm
-  sombra de texto. A regra confere a família, não qual token dela foi escolhido.
+  válido. Como os tokens não têm sombra de texto, `text-shadow` não aceita
+  nenhum token: fora palavras-chave como `none`, o valor exige exceção com
+  motivo. `border` e `outline` ficam sem essa restrição, porque as abreviações
+  podem combinar tokens de famílias diferentes. A regra confere a família, não
+  qual token dela foi escolhido.
+- Uma custom property declarada fora do tema segue o próprio nome. Com o prefixo
+  de uma família de token (`--color-`, `--gradient-`, `--radius-`, `--shadow-`,
+  `--ring-`, `--font-`, `--font-size-`, `--font-weight-` ou `--z-index-`), ela
+  só aceita tokens daquela família, combinados como na propriedade
+  correspondente: `--radius-button: var(--radius-8)` é válido, e
+  `--radius-button: 0` ou `--font-size-14: 13px` geram erro. Com outro nome,
+  como `--button-radius: 0`, a declaração é livre, mas não entra numa
+  propriedade que exige token, porque a família não confere.
 - Propriedades, valores, unidades, cores hexadecimais, pseudoclasses,
   pseudoelementos, seletores de tipo e at-rules desconhecidos geram erro, assim
   como valores que não podem ser interpretados, como `calc(1px + 2)`. `:global`
@@ -155,8 +184,10 @@ do Vite+.
 - `no-unknown-custom-properties` rejeita `var(--token)` sem definição no próprio
   arquivo ou em `src/theme/tokens/**/*.css`. Por exemplo, `var(--backgroud)`
   gera erro; `var(--color-background)` é reconhecido. A regra nativa aceita
-  variáveis desconhecidas com fallback, como `var(--opcional, red)`. As
-  referências compartilhadas vêm da opção `referenceFiles` do Stylelint.
+  variáveis desconhecidas com fallback, como `var(--opcional, 0)`; nesses
+  valores a checagem por tipo não resolve a variável, e as cores continuam
+  barradas pela busca pelo nome. As referências compartilhadas vêm da opção
+  `referenceFiles` do Stylelint.
 - Fora de `src/theme/`, inclusive nas rotas, o nome obrigatório é
   `styles.module.css`. Em `src/theme/`, use nomes como `colors.css` e
   `zIndex.css`.

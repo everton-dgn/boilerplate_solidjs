@@ -5,17 +5,52 @@ const LINE_HEIGHT = String.raw`(?:\d*\.?\d+(?:%|[a-z]+)?|normal)`
 const FONT_TOKEN = String.raw`/^${VAR}(?:\s+${VAR})*(?:\s*\/\s*(?:${LINE_HEIGHT}|${VAR})(?:\s+${VAR})*)?$/`
 const TOKEN_KEYWORDS =
   '/^(?:transparent|currentcolor|inherit|initial|unset|revert|revert-layer|none|auto)$/i'
-const TOKEN_FAMILIES = {
-  '/color$|^(?:fill|stroke)$/': ['/^--color-/'],
-  '/radius$/': ['/^--radius-/'],
-  background: ['/^--(?:color|gradient)-/'],
-  'background-image': ['/^--gradient-/'],
-  'box-shadow': ['/^--(?:shadow|ring)-/'],
-  font: ['/^--font-/'],
-  'font-size': ['/^--font-size-/'],
-  'font-weight': ['/^--font-weight-/'],
-  'z-index': ['/^--z-index-/']
-}
+// O CSS aceita nomes de propriedade em maiúsculas e com prefixo de fornecedor.
+const property = names => String.raw`/^(?!--)(?:-[a-z]+-)?(?:${names})$/i`
+// [propriedade, famílias de token aceitas, formato do valor]
+const TOKEN_PROPERTIES = [
+  [property('(?:[a-z]+-)*color|fill|stroke'), ['/^--color-/']],
+  [property('(?:[a-z]+-)*radius'), ['/^--radius-/']],
+  [property('background'), ['/^--(?:color|gradient)-/']],
+  [property('background-image'), ['/^--gradient-/']],
+  [property('box-shadow'), ['/^--(?:shadow|ring)-/']],
+  // Não há token de sombra de texto: só as palavras-chave passam.
+  [property('text-shadow'), []],
+  [property('font'), ['/^--font-/'], FONT_TOKEN],
+  [property('font-size'), ['/^--font-size-/']],
+  [property('font-weight'), ['/^--font-weight-/']],
+  [property('z-index'), ['/^--z-index-/']],
+  // Uma custom property local com nome de família só repassa tokens dela.
+  ...[
+    'color',
+    'gradient',
+    'radius',
+    'shadow',
+    'ring',
+    'font-size',
+    'font-weight',
+    'z-index'
+  ].map(family => [`/^--${family}-/`, [`/^--${family}-/`]]),
+  ['/^--font-(?!size-|weight-)/', ['/^--font-/'], FONT_TOKEN]
+]
+// A checagem por tipo pula valores com var() que ela não resolve; a busca pelo
+// nome alcança fallbacks e custom properties. Inclui as obsoletas e as do WebKit.
+const SYSTEM_COLORS = `
+  AccentColor AccentColorText ActiveText ButtonBorder ButtonFace ButtonText
+  Canvas CanvasText Field FieldText GrayText Highlight HighlightText LinkText
+  Mark MarkText SelectedItem SelectedItemText VisitedText
+  ActiveBorder ActiveCaption AppWorkspace Background ButtonHighlight
+  ButtonShadow CaptionText InactiveBorder InactiveCaption InactiveCaptionText
+  InfoBackground InfoText Menu MenuText Scrollbar ThreeDDarkShadow ThreeDFace
+  ThreeDHighlight ThreeDLightShadow ThreeDShadow Window WindowFrame WindowText
+  -webkit-activelink -webkit-focus-ring-color -webkit-link -webkit-text
+`
+  .trim()
+  .split(/\s+/u)
+// Ponto, barra e # nas bordas afastam caminhos de url() e nomes de tokens.
+const SYSTEM_COLOR = String.raw`/(?<![\w#./-])(?:${SYSTEM_COLORS.join('|')})(?![\w.-])/i`
+// Propriedades sem cor que recebem nomes livres ou textos.
+const NAME_PROPERTIES = String.raw`animation(?:-name)?|transition(?:-property)?|will-change|grid(?:-[a-z]+)*|container(?:-name)?|counter-(?:increment|reset|set)|view-transition-(?:class|name)|font-family|content|quotes|list-style(?:-type)?|page`
 
 const config = {
   referenceFiles: [
@@ -68,26 +103,39 @@ const config = {
       'oklch',
       'color',
       'color-mix',
-      'light-dark'
+      'light-dark',
+      'contrast-color',
+      'device-cmyk'
     ],
     'value-type-custom-property-required-list': [
       ['color'],
       { ignoreValues: [TOKEN_KEYWORDS] }
     ],
     'declaration-property-value-allowed-list': [
-      {
-        '/color$|radius$|^(?:background|background-image|fill|stroke|box-shadow|text-shadow|font-size|font-weight|z-index)$/':
-          [TOKEN, TOKEN_KEYWORDS],
-        font: [FONT_TOKEN, TOKEN_KEYWORDS]
-      },
+      Object.fromEntries(
+        TOKEN_PROPERTIES.map(([name, , value = TOKEN]) => [
+          name,
+          [value, TOKEN_KEYWORDS]
+        ])
+      ),
       {
         message:
           'Use só tokens com var() nesta propriedade; exceções pedem stylelint-disable com o motivo.'
       }
     ],
     'declaration-property-custom-property-allowed-list': [
-      TOKEN_FAMILIES,
+      Object.fromEntries(
+        TOKEN_PROPERTIES.map(([name, families]) => [name, families])
+      ),
       { message: 'A propriedade "%s" não aceita o token "%s".' }
+    ],
+    'declaration-property-value-disallowed-list': [
+      {
+        [String.raw`/^(?!(?:-[a-z]+-)?(?:${NAME_PROPERTIES})$)/i`]: [
+          SYSTEM_COLOR
+        ]
+      },
+      { message: 'Cores de sistema ficam em src/theme/.' }
     ],
     'selector-class-pattern': [
       '^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$',
@@ -113,7 +161,8 @@ const config = {
         ],
         'value-type-custom-property-required-list': null,
         'declaration-property-value-allowed-list': null,
-        'declaration-property-custom-property-allowed-list': null
+        'declaration-property-custom-property-allowed-list': null,
+        'declaration-property-value-disallowed-list': null
       }
     }
   ]
