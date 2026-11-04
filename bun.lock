@@ -5,7 +5,7 @@
     "": {
       "name": "boilerplate_solidjs",
       "dependencies": {
-        "@inlang/paraglide-js": "3.0.0",
+        "@inlang/paraglide-js": "3.1.0",
         "@mdream/js": "2.0.3",
         "@solidjs/router": "2.0.0-next.44",
         "@solidjs/web": "2.0.0-rc.21",
@@ -17,8 +17,8 @@
         "@commitlint/cli": "21.2.4",
         "@commitlint/config-conventional": "21.2.4",
         "@iconify-json/hugeicons": "1.2.35",
-        "@inlang/plugin-message-format": "4.5.8",
-        "@inlang/sdk": "4.1.2",
+        "@inlang/plugin-message-format": "4.6.0",
+        "@inlang/sdk": "4.2.0",
         "@playwright/test": "1.64.1",
         "@solidjs/vite-plugin": "3.0.0-next.56",
         "@testing-library/jest-dom": "7.0.1",
@@ -234,13 +234,13 @@
 
     "@iconify/utils": ["@iconify/utils@3.1.7", "", { "dependencies": { "@antfu/install-pkg": "2.0.1", "@iconify/types": "2.0.0", "import-meta-resolve": "4.2.0" } }, "sha512-JZHlwdID+dy+lTgbYC8NEC4zeugqeYsc6jewvzb4c58kHauJn+X7rNwQjxz5p2qSjqaEeQoLkCIQ9v/H4PK0/w=="],
 
-    "@inlang/paraglide-js": ["@inlang/paraglide-js@3.0.0", "", { "dependencies": { "@inlang/recommend-sherlock": "^0.2.1", "@inlang/sdk": "^4.1.0", "commander": "11.1.0", "consola": "3.4.0", "jiti": "^2.7.0", "json5": "2.2.3", "magic-string": "^0.30.21", "unplugin": "^2.1.2", "urlpattern-polyfill": "^10.0.0", "valibot": "^1.4.2" }, "peerDependencies": { "eslint": "^9.0.0 || ^10.0.0", "vite": ">=5.0.0" }, "optionalPeers": ["eslint", "vite"], "bin": { "paraglide-js": "bin/run.js" } }, "sha512-wEs1S9pQMB6cHN4a6svK7nUnSiVuyHP08HRrFIItUw9p5HHJ7KSLRVc2MoCQzUmTVd5aSaOADIkLawOAMQ5m6A=="],
+    "@inlang/paraglide-js": ["@inlang/paraglide-js@3.1.0", "", { "dependencies": { "@inlang/recommend-sherlock": "^0.2.1", "@inlang/sdk": "^4.2.0", "commander": "11.1.0", "consola": "3.4.0", "jiti": "^2.7.0", "json5": "2.2.3", "magic-string": "^0.30.21", "unplugin": "^2.1.2", "urlpattern-polyfill": "^10.0.0", "valibot": "^1.4.2" }, "peerDependencies": { "eslint": "^9.0.0 || ^10.0.0", "vite": ">=5.0.0" }, "optionalPeers": ["eslint", "vite"], "bin": { "paraglide-js": "bin/run.js" } }, "sha512-V8pBa2ZdaPDq6SO7P7MRXs+FZRF7MMIS8sQamc1pjjzuYFF7aD39BAyZclZvf9DzjiLuKCDXMOLOoCPebjBzqw=="],
 
-    "@inlang/plugin-message-format": ["@inlang/plugin-message-format@4.5.8", "", { "dependencies": { "@inlang/sdk": "4.1.2", "@sinclair/typebox": "^0.31.17" } }, "sha512-MA0H/AkhHNbgYAfBulfTBoc5itxD8SYS7xhonpwZs/WoWo5L9P2VpoeUdQBjXE7Um7HTax5PpQm0jdwbUpPDDA=="],
+    "@inlang/plugin-message-format": ["@inlang/plugin-message-format@4.6.0", "", { "dependencies": { "@inlang/sdk": "4.2.0", "@sinclair/typebox": "^0.31.17" } }, "sha512-DK2GZvypDygLchnUaFK/RdCIm2baiRlQftOiesGNKDtjNqioqWHnnu0zg6NKNlo3kD42h5xlRCke7zEjBFzZrg=="],
 
     "@inlang/recommend-sherlock": ["@inlang/recommend-sherlock@0.2.1", "", { "dependencies": { "comment-json": "^4.2.3" } }, "sha512-ckv8HvHy/iTqaVAEKrr+gnl+p3XFNwe5D2+6w6wJk2ORV2XkcRkKOJ/XsTUJbPSiyi4PI+p+T3bqbmNx/rDUlg=="],
 
-    "@inlang/sdk": ["@inlang/sdk@4.1.2", "", { "dependencies": { "@lix-js/sdk": "0.20.1", "@sinclair/typebox": "^0.31.17", "kysely": "^0.28.12", "uuid": "^14.0.0" } }, "sha512-Cy1z1JdlJibu0UDW3jBfc3YzJnFuEHkhouyNaAAi0VCM9xreQ5vgBZP2/JkuNpN2mN2taLN035TAgRl3xwROwA=="],
+    "@inlang/sdk": ["@inlang/sdk@4.2.0", "", { "dependencies": { "@lix-js/sdk": "0.20.1", "@sinclair/typebox": "^0.31.17", "kysely": "^0.28.12", "uuid": "^14.0.0" } }, "sha512-Cmaqvn34wsxiF27318Zw2rg+017HHNJWV5MH8rfyVKVANZNpzlztxzRbFienE/gASMLD8oluYHHolIb/p6Egrw=="],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "1.6.0", "@jridgewell/trace-mapping": "0.3.31" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
 
