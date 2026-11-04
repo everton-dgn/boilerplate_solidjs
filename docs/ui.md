@@ -118,13 +118,22 @@ do Vite+.
   `<color>`, inclusive dentro de abreviações como `border` e `outline`, e por
   isso também rejeita cores de sistema como `Canvas`. O Stylelint ainda trata
   essa regra como experimental. `declaration-property-value-allowed-list` exige
-  que o valor inteiro seja um `var()` nas propriedades de cor, `background`,
-  `background-image`, `fill`, `stroke`, sombras, `font`, `font-size`,
-  `font-weight`, `z-index` e nos raios de borda, físicos e lógicos. Funções
-  locais não são liberadas; gradientes compartilhados ficam nos tokens. Valores
-  como `transparent`, `currentColor`, `inherit`, `none` e `auto` são permitidos.
-  O tema pode definir os valores e manter as cores de sistema usadas no reset de
-  alto contraste. As regras não aplicam correções automáticas.
+  que o valor seja formado só por tokens com `var()` nas propriedades de cor,
+  `background`, `background-image`, `fill`, `stroke`, sombras, `font`,
+  `font-size`, `font-weight`, `z-index` e nos raios de borda, físicos e lógicos.
+  Os tokens podem vir combinados por espaço, vírgula ou barra, como
+  `var(--ring-focus), var(--shadow-sm)`. Em `font`, a altura de linha depois da
+  barra pode ser crua, como `var(--font-size-14)/1.5`, porque `line-height` não
+  tem token. Valores crus entre tokens e `var()` com fallback são rejeitados.
+  Funções locais não são liberadas; gradientes compartilhados ficam nos tokens.
+  Valores como `transparent`, `currentColor`, `inherit`, `none` e `auto` são
+  permitidos. O tema pode definir os valores e manter as cores de sistema usadas
+  no reset de alto contraste. As regras não aplicam correções automáticas.
+- Um valor que não cabe nos tokens entra como exceção explícita, com o motivo
+  depois de `--`:
+  `/* stylelint-disable-next-line declaration-property-value-allowed-list -- ícone externo exige 13px */`.
+  A opção `reportDescriptionlessDisables` faz um comentário sem motivo gerar
+  erro.
 - Fora de `src/theme/`, `declaration-property-custom-property-allowed-list`
   exige a família de token de cada propriedade: `--color-*` nas cores, em `fill`
   e `stroke`, `--radius-*` nos raios, `--color-*` ou `--gradient-*` em

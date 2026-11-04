@@ -1,4 +1,8 @@
-const TOKEN = String.raw`/^var\(\s*--[\s\S]+\)$/`
+const VAR = String.raw`var\(\s*--[a-z0-9-]+\s*\)`
+const TOKEN = String.raw`/^${VAR}(?:\s*[,/]\s*${VAR}|\s+${VAR})*$/`
+// line-height não tem token, então o font abreviado aceita a altura crua.
+const LINE_HEIGHT = String.raw`(?:\d*\.?\d+(?:%|[a-z]+)?|normal)`
+const FONT_TOKEN = String.raw`/^${VAR}(?:\s+${VAR})*(?:\s*\/\s*(?:${LINE_HEIGHT}|${VAR})(?:\s+${VAR})*)?$/`
 const TOKEN_KEYWORDS =
   '/^(?:transparent|currentcolor|inherit|initial|unset|revert|revert-layer|none|auto)$/i'
 const TOKEN_FAMILIES = {
@@ -18,6 +22,7 @@ const config = {
     '../../src/theme/tokens/**/*.css',
     '../../src/theme/class/animation.css'
   ],
+  reportDescriptionlessDisables: true,
   plugins: ['stylelint-use-nesting'],
   rules: {
     'property-no-unknown': true,
@@ -71,10 +76,14 @@ const config = {
     ],
     'declaration-property-value-allowed-list': [
       {
-        '/color$|radius$|^(?:background|background-image|fill|stroke|box-shadow|text-shadow|font|font-size|font-weight|z-index)$/':
-          [TOKEN, TOKEN_KEYWORDS]
+        '/color$|radius$|^(?:background|background-image|fill|stroke|box-shadow|text-shadow|font-size|font-weight|z-index)$/':
+          [TOKEN, TOKEN_KEYWORDS],
+        font: [FONT_TOKEN, TOKEN_KEYWORDS]
       },
-      { message: 'Use um token com var() nesta propriedade.' }
+      {
+        message:
+          'Use só tokens com var() nesta propriedade; exceções pedem stylelint-disable com o motivo.'
+      }
     ],
     'declaration-property-custom-property-allowed-list': [
       TOKEN_FAMILIES,

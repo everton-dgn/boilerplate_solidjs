@@ -185,6 +185,36 @@ describe('stylelint css policy', () => {
     )
   })
 
+  it('accepts token combinations and rejects raw values between tokens', async () => {
+    assert.deepEqual(
+      await lint(
+        '.a { box-shadow: var(--ring-focus), var(--shadow-sm); font: var(--font-weight-600) var(--font-size-14)/1.5 var(--font-family); }'
+      ),
+      []
+    )
+    for (const code of [
+      '.a { font: var(--font-weight-600) 14px/1 var(--font-family); }',
+      '.a { border-radius: var(--radius-8) 0 0 var(--radius-8); }',
+      '.a { font-size: var(--font-size-14, 14px); }'
+    ]) {
+      const rules = await lint(code)
+      assert.ok(rules.includes('declaration-property-value-allowed-list'), code)
+    }
+  })
+
+  it('accepts an exception only through a disable comment with a reason', async () => {
+    const disable =
+      '/* stylelint-disable-next-line declaration-property-value-allowed-list'
+    assert.deepEqual(
+      await lint(
+        `.a {\n  ${disable} -- ícone externo exige 13px */\n  font-size: 13px;\n}`
+      ),
+      []
+    )
+    const rules = await lint(`.a {\n  ${disable} */\n  font-size: 13px;\n}`)
+    assert.ok(rules.includes('--report-descriptionless-disables'))
+  })
+
   it('rejects a token from another family with a valid type', async () => {
     for (const code of [
       '.a { font-size: var(--radius-8); }',
