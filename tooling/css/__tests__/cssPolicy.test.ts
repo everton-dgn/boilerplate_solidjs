@@ -190,6 +190,26 @@ describe('stylelint css policy', () => {
     assert.ok(rules.includes('value-no-invalid'))
   })
 
+  it('rejects deprecated and unmatchable selectors and a late @charset', async () => {
+    for (const { code, rule } of [
+      {
+        code: '.a:focus-ring { color: var(--color-primary); }',
+        rule: 'selector-no-deprecated'
+      },
+      {
+        code: ':is(::before) { color: var(--color-primary); }',
+        rule: 'selector-no-unmatchable'
+      },
+      {
+        code: '.a { color: var(--color-primary); } @charset "utf-8";',
+        rule: 'at-charset-rule-no-invalid'
+      }
+    ]) {
+      const rules = await lint(code)
+      assert.ok(rules.includes(rule), code)
+    }
+  })
+
   it('rejects unknown pseudo-elements and type selectors', async () => {
     const pseudoElement = await lint(
       '.a { &::placholder { color: var(--color-primary); } }'
