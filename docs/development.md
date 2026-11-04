@@ -99,12 +99,14 @@ testou, sem recompilar. O fluxo completo, as credenciais cadastradas no GitHub e
 a configuração do projeto remoto estão na
 [integração com a Vercel](../tooling/release/README.md#integração-com-a-vercel).
 O `vercel.json` desativa os deploys pela integração Git
-(`git.deploymentEnabled: false`) e guarda o cache imutável de `/images/` (uma
-imagem trocada precisa de nome novo, como explica o [guia de SEO](seo.md)), o
-`Content-Type` dos `.md` gerados no build e os cabeçalhos `nosniff` e
-`Cross-Origin-Resource-Policy` dos estáticos; os demais cabeçalhos de segurança
-saem do middleware. A configuração da Vercel e o fluxo de releases automáticas
-estão no [guia de releases](../tooling/release/README.md).
+(`git.deploymentEnabled: false`) e guarda só o `Content-Type` dos `.md` gerados
+no build. O cache imutável de `/images/` (uma imagem trocada precisa de nome
+novo, como explica o [guia de SEO](seo.md)) e os cabeçalhos `nosniff` e
+`Cross-Origin-Resource-Policy` dos estáticos vêm dos `publicAssets` e das
+`routeRules` do Nitro no `vite.config.ts`, como descreve o guia de
+[segurança](security.md); os demais cabeçalhos de segurança saem do middleware.
+A configuração da Vercel e o fluxo de releases automáticas estão no
+[guia de releases](../tooling/release/README.md).
 
 O Nitro é definido no [package.json](../package.json). Ao atualizá-lo, valide o
 build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
