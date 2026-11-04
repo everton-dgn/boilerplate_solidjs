@@ -124,8 +124,17 @@ do Vite+.
   locais não são liberadas; gradientes compartilhados ficam nos tokens. Valores
   como `transparent`, `currentColor`, `inherit`, `none` e `auto` são permitidos.
   O tema pode definir os valores e manter as cores de sistema usadas no reset de
-  alto contraste. As regras não escolhem tokens nem aplicam correções
-  automáticas.
+  alto contraste. As regras não aplicam correções automáticas.
+- Fora de `src/theme/`, `declaration-property-custom-property-allowed-list`
+  exige a família de token de cada propriedade: `--color-*` nas cores, em `fill`
+  e `stroke`, `--radius-*` nos raios, `--color-*` ou `--gradient-*` em
+  `background`, `--gradient-*` em `background-image`, `--shadow-*` ou `--ring-*`
+  em `box-shadow` e `--font-*` em `font`. `font-size`, `font-weight` e `z-index`
+  aceitam só `--font-size-*`, `--font-weight-*` e `--z-index-*`. Assim,
+  `font-size: var(--radius-8)` gera erro, embora `8px` seja um tamanho de fonte
+  válido. `border`, `outline` e `text-shadow` ficam sem essa restrição: as
+  abreviações podem combinar tokens de famílias diferentes, e os tokens não têm
+  sombra de texto. A regra confere a família, não qual token dela foi escolhido.
 - Propriedades, valores, unidades, cores hexadecimais, pseudoclasses,
   pseudoelementos, seletores de tipo e at-rules desconhecidos geram erro, assim
   como valores que não podem ser interpretados, como `calc(1px + 2)`. `:global`

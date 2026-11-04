@@ -1,6 +1,17 @@
 const TOKEN = String.raw`/^var\(\s*--[\s\S]+\)$/`
 const TOKEN_KEYWORDS =
   '/^(?:transparent|currentcolor|inherit|initial|unset|revert|revert-layer|none|auto)$/i'
+const TOKEN_FAMILIES = {
+  '/color$|^(?:fill|stroke)$/': ['/^--color-/'],
+  '/radius$/': ['/^--radius-/'],
+  background: ['/^--(?:color|gradient)-/'],
+  'background-image': ['/^--gradient-/'],
+  'box-shadow': ['/^--(?:shadow|ring)-/'],
+  font: ['/^--font-/'],
+  'font-size': ['/^--font-size-/'],
+  'font-weight': ['/^--font-weight-/'],
+  'z-index': ['/^--z-index-/']
+}
 
 const config = {
   referenceFiles: [
@@ -65,6 +76,10 @@ const config = {
       },
       { message: 'Use um token com var() nesta propriedade.' }
     ],
+    'declaration-property-custom-property-allowed-list': [
+      TOKEN_FAMILIES,
+      { message: 'A propriedade "%s" não aceita o token "%s".' }
+    ],
     'selector-class-pattern': [
       '^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$',
       { message: 'Use snake_case nas classes CSS, como variant_default.' }
@@ -88,7 +103,8 @@ const config = {
           'color'
         ],
         'value-type-custom-property-required-list': null,
-        'declaration-property-value-allowed-list': null
+        'declaration-property-value-allowed-list': null,
+        'declaration-property-custom-property-allowed-list': null
       }
     }
   ]

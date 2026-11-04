@@ -185,6 +185,26 @@ describe('stylelint css policy', () => {
     )
   })
 
+  it('rejects a token from another family with a valid type', async () => {
+    for (const code of [
+      '.a { font-size: var(--radius-8); }',
+      '.a { border-radius: var(--font-size-14); }',
+      '.a { z-index: var(--font-weight-600); }'
+    ]) {
+      const rules = await lint(code)
+      assert.ok(
+        rules.includes('declaration-property-custom-property-allowed-list'),
+        code
+      )
+    }
+    assert.deepEqual(
+      await lint(
+        '.a { box-shadow: var(--ring-focus); background: var(--gradient-page); }'
+      ),
+      []
+    )
+  })
+
   it('rejects values that cannot be parsed', async () => {
     const rules = await lint('.a { inset-block-start: calc(1px + 2); }')
     assert.ok(rules.includes('value-no-invalid'))
