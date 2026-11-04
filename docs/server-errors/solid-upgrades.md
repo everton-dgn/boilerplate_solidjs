@@ -22,9 +22,6 @@ pacote publicado e instalado mudou esse comportamento.
 1. Confira releases, exports e contrato dos pacotes publicados. Atualize
    `solid-js` e `@solidjs/web` juntos, verificando Router, plugin e lockfile.
    Preserve as versões anteriores para reversão; não antecipe APIs internas.
-   Quando a versão trouxer o
-   [solidjs/solid#4601](https://github.com/solidjs/solid/pull/4601), retire a
-   restrição de Markdown descrita em [chamadas de backend](backend.md).
 2. Confira se o contrato do hook `configureServerErrors({ onError })` que o
    registro central usa continua igual: chamada síncrona, retorno enviado sem
    nova sanitização, veredito por objeto e substituição do hook anterior. Um
