@@ -43,20 +43,22 @@ critério para remover o patch estão em
 
 O prerender do build passa pelo mesmo adaptador. O módulo
 `tooling/markdownPrerender/` pede ao middleware a lista das páginas estáticas
-(`/_markdown/static.json`, respondida só com o header `x-nitro-prerender`),
-prerenderiza cada `.md` e não grava a lista. Qualquer cliente pode enviar esse
-header: ele não autentica nada. Por isso a lista só pode conter páginas
-públicas, as mesmas que o build publica em `.md`; num redirect, o header só
-troca a resposta por 500 público. Uma página que falhe ou não seja gravada, ou
-uma lista inválida ou que não passe pelo prerender, interrompe o build. O Nitro
-só falha por rota com erro registrado; uma rejeição no fetch ou na gravação
-deixaria o arquivo de fora sem falhar, e por isso o módulo confere no fim que
-cada `.md` da lista foi gravado. A validação confere também status, MIME,
-`fileName` real, UTF-8 e conteúdo. Um redirect ou um documento HTML gravado como
-`.md.html` não satisfaz a publicação esperada. Uma página curta ou um exemplo
-legítimo de HTML dentro do Markdown continuam válidos; não há mínimo universal
-de caracteres nem proibição de tags isoladas. O resultado fica em
-`.vercel/output/static`.
+(`/_markdown/static.json`), prerenderiza cada `.md` e publica a lista como
+arquivo estático, junto com o `llms.txt`. O middleware só monta a lista no
+worker do prerender, que recebe a fase pelo ambiente do processo e pelo header
+`x-nitro-prerender`. Em produção, qualquer cliente lê o arquivo publicado, e o
+header sozinho não reconstrói o inventário: ele não autentica nada. Por isso a
+lista só pode conter páginas públicas, as mesmas que o build publica em `.md`;
+num redirect, o header só troca a resposta por 500 público. Uma página que falhe
+ou não seja gravada, ou uma lista inválida ou que não passe pelo prerender,
+interrompe o build. O Nitro só falha por rota com erro registrado; uma rejeição
+no fetch ou na gravação deixaria o arquivo de fora sem falhar, e por isso o
+módulo confere no fim que cada `.md` da lista foi gravado. A validação confere
+também status, MIME, `fileName` real, UTF-8 e conteúdo. Um redirect ou um
+documento HTML gravado como `.md.html` não satisfaz a publicação esperada. Uma
+página curta ou um exemplo legítimo de HTML dentro do Markdown continuam
+válidos; não há mínimo universal de caracteres nem proibição de tags isoladas. O
+resultado fica em `.vercel/output/static`.
 
 ### Agregado llms-full.txt
 
