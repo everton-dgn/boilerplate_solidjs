@@ -376,6 +376,7 @@ export default defineConfig(({ mode }) => {
           },
           test: {
             name: { label: 'node', color: 'cyan' },
+            environment: 'node',
             include: ['src/**/*.node.test.{ts,tsx}']
           }
         },
