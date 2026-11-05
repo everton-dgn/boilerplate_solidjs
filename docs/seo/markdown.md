@@ -53,12 +53,14 @@ num redirect, o header só troca a resposta por 500 público. Uma página que fa
 ou não seja gravada, ou uma lista inválida ou que não passe pelo prerender,
 interrompe o build. O Nitro só falha por rota com erro registrado; uma rejeição
 no fetch ou na gravação deixaria o arquivo de fora sem falhar, e por isso o
-módulo confere no fim que cada `.md` da lista foi gravado. A validação confere
-também status, MIME, `fileName` real, UTF-8 e conteúdo. Um redirect ou um
-documento HTML gravado como `.md.html` não satisfaz a publicação esperada. Uma
-página curta ou um exemplo legítimo de HTML dentro do Markdown continuam
-válidos; não há mínimo universal de caracteres nem proibição de tags isoladas. O
-resultado fica em `.vercel/output/static`.
+módulo confere no fim que cada `.md` da lista foi gravado. O status fica com o
+adaptador: só uma resposta 200 vira Markdown, e um redirect no prerender vira
+500, o que interrompe o build. A validação do artefato gravado confere MIME,
+`fileName` real, UTF-8 e conteúdo. Um redirect ou um documento HTML gravado como
+`.md.html` não satisfaz a publicação esperada. Uma página curta ou um exemplo
+legítimo de HTML dentro do Markdown continuam válidos; não há mínimo universal
+de caracteres nem proibição de tags isoladas. O resultado fica em
+`.vercel/output/static`.
 
 ### Agregado llms-full.txt
 
