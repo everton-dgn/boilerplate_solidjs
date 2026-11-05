@@ -42,10 +42,6 @@ O plugin gera `src/@types/routes.d.ts` com os caminhos tipados durante o build
 ou desenvolvimento. Mantenha essa declaração versionada e atualizada ao mudar as
 rotas, para permitir typecheck antes de iniciar o Vite.
 
-O `filesystem-routing` mantém a ordem da varredura quando o watcher atualiza ou
-recria uma rota, e o teste de `PageFileSystemRouter` cobre esse caso
-([solidjs/filesystem-routing#27](https://github.com/solidjs/filesystem-routing/issues/27)).
-
 O [tsconfig.json](../tsconfig.json) mantém TypeScript em modo estrito, com
 `erasableSyntaxOnly` para restringir a sintaxe TypeScript que exige
 transformação além da remoção de tipos.
