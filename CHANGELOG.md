@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 1.14.1 - 2026-11-04
+
+### Fixed
+
+- update paraglide to 3.1.0 and the inlang sdk and plugin (db83aa1)
+- update vite-plus to 1.5.0 and vitest to 5.1.0 (00b3fc6)
+- update solid to rc.21 and trim the web patch (bd30d8e)
+- replace the tokens plugin with native stylelint rules (c9e2337)
+- let nitro register the vite assets dir (2efe906)
+- update inlang sdk and message format plugin (ae7830f)
+- update paraglide to 3.0.0 (888bb84)
+- update nitro and inlang packages (87b7407)
+
 ## 1.14.0 - 2026-11-02
 
 ### Added
