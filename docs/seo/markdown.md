@@ -187,8 +187,9 @@ As respostas convertidas na requisição recebem `text/markdown; charset=utf-8`,
 `Link: </llms.txt>; rel="describedby"`, preservando os valores de `Link`
 recebidos do render. GET e HEAD mantêm os mesmos metadados. Os arquivos do build
 são servidos pela camada estática, sem passar pela função: o `vercel.json`
-define `Content-Type`, `nosniff` e `Cross-Origin-Resource-Policy`, e o cache
-segue o padrão da Vercel para estáticos. Eles não gravam cookie de idioma nem
+define o `Content-Type`, as `routeRules` do Nitro definem `nosniff` e
+`Cross-Origin-Resource-Policy` ([segurança](../security.md)), e o cache segue o
+padrão da Vercel para estáticos. Eles não gravam cookie de idioma nem
 `Content-Language`; o idioma vem da URL. O preview local (`vp run start`) não
 aplica o `vercel.json` e serve `.md` como `application/octet-stream`.
 

@@ -3,7 +3,8 @@
   "compilerOptions": {
     "lib": ["ES2024"],
     "types": ["node"],
-    "tsBuildInfoFile": ".tsbuild/node.tsbuildinfo"
+    "tsBuildInfoFile": ".tsbuild/node.tsbuildinfo",
+    "incremental": true
   },
   "include": [
     "vite.config.ts",

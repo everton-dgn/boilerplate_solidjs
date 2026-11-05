@@ -254,7 +254,7 @@ manual.
 ```sh
 vp run test
 vp run test:release
-vp run typecheck
+vp run typecheck:node
 ```
 
 `vp run test:release` executa apenas `tooling/release` em Bun, com isolamento

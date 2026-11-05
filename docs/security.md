@@ -5,8 +5,8 @@
 ## Política de conteúdo
 
 Os cabeçalhos de segurança das respostas da função saem do middleware. Para
-arquivos estáticos, o `vercel.json` configura `X-Content-Type-Options` e
-`Cross-Origin-Resource-Policy`, conforme os
+arquivos estáticos, as `routeRules` do Nitro configuram `X-Content-Type-Options`
+e `Cross-Origin-Resource-Policy`, conforme os
 [limites conhecidos](#limites-conhecidos). O `securityHeaders` grava em toda
 resposta da cadeia `Strict-Transport-Security`, `X-Frame-Options`,
 `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`,
@@ -93,20 +93,23 @@ armazenada no cache do navegador, sem modificar o HTML da aplicação.
 
 - Na Vercel, arquivos estáticos (`/assets/`, `/images/`, `/favicon/`, os `.md`,
   `/llms.txt`, `/llms-full.txt`, `/_markdown/static.json` e os sitemaps gerados
-  no build) saem do CDN sem passar pela função. O `vercel.json` grava neles só
-  `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`, além do cache
-  imutável em `/images/` e do `Content-Type` dos `.md`; a CSP e as políticas de
-  frame só têm efeito nas respostas que passam pelo middleware. Em `/assets/`,
-  os mesmos dois cabeçalhos também saem da route rule do Nitro no
-  `vite.config.ts`, com os valores de `SECURITY_HEADERS`, e chegam ao 404 de um
-  asset ausente em qualquer host e aos acertos na Vercel e no `node-server`. O
-  bloco `/assets/(.*)` do `vercel.json` fica como redundância; ao mudar um
-  desses valores em `SECURITY_HEADERS`, mude também o `vercel.json`. Pelo mesmo
-  motivo, um arquivo que não deve ser público precisa sair de
-  `.vercel/output/static`: o middleware não consegue bloqueá-lo. O build move
-  para `dist/.vite/` o diretório `.vite/`, com o manifesto do Vite e o das
-  server functions, que listam caminhos do código-fonte
-  ([`moveViteMetadata`](../tooling/moveViteMetadata/index.ts)).
+  no build) saem do CDN sem passar pela função. As `routeRules` do Nitro no
+  `vite.config.ts` gravam neles só `X-Content-Type-Options` e
+  `Cross-Origin-Resource-Policy`, com os valores de `SECURITY_HEADERS`; a lista
+  `STATIC_FILE_PATHS` define os caminhos. O preset da Vercel transforma essas
+  regras em rotas do `.vercel/output/config.json`, e o runtime do Nitro aplica
+  os mesmos valores às respostas da função nesses caminhos. `/assets/` e
+  `/images/` são `publicAssets` sem fallthrough: recebem cache imutável, e um
+  arquivo ausente recebe o 404 `no-store` do Nitro. O `vercel.json` guarda só o
+  `Content-Type` dos `.md`: numa route rule, o h3 sobrescreveria com ele também
+  as respostas de erro da função. A CSP e as políticas de frame só têm efeito
+  nas respostas que passam pelo middleware. Pelo mesmo motivo, um arquivo que
+  não deve ser público precisa sair de `.vercel/output/static`: o middleware não
+  consegue bloqueá-lo. O manifesto do Vite e o das server functions listam
+  caminhos do código-fonte. O plugin do Solid apaga o primeiro, que ele mesmo
+  liga, e grava o segundo na saída do SSR, então nenhum `.vite/` chega ao
+  estático; o `BuildOutput` confere a ausência. Ligar `build.manifest` fora do
+  modo `e2e` faria o manifesto ser publicado.
 - `Cross-Origin-Embedder-Policy: require-corp` bloqueia recursos de outra origem
   sem `Cross-Origin-Resource-Policy` ou CORS. Ao adicionar fontes, imagens ou
   scripts externos, confira se o provedor envia esses cabeçalhos ou revise a

@@ -151,7 +151,9 @@ describe('stylelint css policy', () => {
     const rules = await lint('&:hover { color: var(--color-primary); }')
     assert.ok(rules.includes('nesting-selector-no-missing-scoping-root'))
   })
+})
 
+describe('stylelint token policy', () => {
   it('rejects literal colors in any property and raw font shorthands', async () => {
     for (const { code, rule } of [
       { code: '.a { border-block-end: 1px solid red; }', rule: 'color-named' },
@@ -164,12 +166,20 @@ describe('stylelint css policy', () => {
         rule: 'function-disallowed-list'
       },
       {
+        code: '.a { outline: 1px solid contrast-color(var(--color-primary)); }',
+        rule: 'function-disallowed-list'
+      },
+      {
+        code: '.a { outline: 2px solid Canvas; }',
+        rule: 'value-type-custom-property-required-list'
+      },
+      {
         code: '.a { font: 600 14px sans-serif; }',
-        rule: 'scale-unlimited/declaration-strict-value'
+        rule: 'declaration-property-value-allowed-list'
       },
       {
         code: '.a { background-image: linear-gradient(var(--color-primary), var(--color-secondary)); }',
-        rule: 'scale-unlimited/declaration-strict-value'
+        rule: 'declaration-property-value-allowed-list'
       }
     ]) {
       const rules = await lint(code)
@@ -179,6 +189,154 @@ describe('stylelint css policy', () => {
       await lint('.a { font: inherit; background: currentcolor; }'),
       []
     )
+  })
+
+  it('accepts token combinations and rejects raw values between tokens', async () => {
+    assert.deepEqual(
+      await lint(
+        '.a { box-shadow: var(--ring-focus), var(--shadow-sm); font: var(--font-weight-600) var(--font-size-14)/1.5 var(--font-family); }'
+      ),
+      []
+    )
+    for (const code of [
+      '.a { font: var(--font-weight-600) 14px/1 var(--font-family); }',
+      '.a { border-radius: var(--radius-8) 0 0 var(--radius-8); }',
+      '.a { font-size: var(--font-size-14, 14px); }'
+    ]) {
+      const rules = await lint(code)
+      assert.ok(rules.includes('declaration-property-value-allowed-list'), code)
+    }
+  })
+
+  it('accepts an exception only through a disable comment with a reason', async () => {
+    const disable =
+      '/* stylelint-disable-next-line declaration-property-value-allowed-list'
+    assert.deepEqual(
+      await lint(
+        `.a {\n  ${disable} -- ícone externo exige 13px */\n  font-size: 13px;\n}`
+      ),
+      []
+    )
+    const rules = await lint(`.a {\n  ${disable} */\n  font-size: 13px;\n}`)
+    assert.ok(rules.includes('--report-descriptionless-disables'))
+  })
+
+  it('rejects a token from another family with a valid type', async () => {
+    for (const code of [
+      '.a { font-size: var(--radius-8); }',
+      '.a { border-radius: var(--font-size-14); }',
+      '.a { z-index: var(--font-weight-600); }'
+    ]) {
+      const rules = await lint(code)
+      assert.ok(
+        rules.includes('declaration-property-custom-property-allowed-list'),
+        code
+      )
+    }
+    assert.deepEqual(
+      await lint(
+        '.a { box-shadow: var(--ring-focus); background: var(--gradient-page); }'
+      ),
+      []
+    )
+  })
+
+  it('rejects system colors the type check cannot resolve', async () => {
+    for (const code of [
+      '.a { outline: var(--width, 2px) solid Canvas; }',
+      '.a { outline: 1px solid var(--color-focus, Canvas); }',
+      '.a { --x: Canvas; outline: 1px solid var(--x); }'
+    ]) {
+      const rules = await lint(code)
+      assert.ok(
+        rules.includes('declaration-property-value-disallowed-list'),
+        code
+      )
+    }
+    assert.deepEqual(
+      await lint(
+        '@keyframes highlight { to { opacity: 0; } } .a { animation: highlight 1s; grid-area: menu; container-name: canvas; transition: background 0.2s; mask-image: url(./icons/menu.svg); content: "Menu"; }'
+      ),
+      []
+    )
+  })
+
+  it('matches property names in any case and with a vendor prefix', async () => {
+    for (const { code, rule } of [
+      {
+        code: '.a { FONT-SIZE: 14px; }',
+        rule: 'declaration-property-value-allowed-list'
+      },
+      {
+        code: '.a { -webkit-box-shadow: 0 0 4px 2px; }',
+        rule: 'declaration-property-value-allowed-list'
+      },
+      {
+        code: '.a { FONT-SIZE: var(--radius-8); }',
+        rule: 'declaration-property-custom-property-allowed-list'
+      }
+    ]) {
+      const rules = await lint(code)
+      assert.ok(rules.includes(rule), code)
+    }
+  })
+
+  it('limits local custom properties named after a token family', async () => {
+    assert.deepEqual(await lint('.a { --button-radius: 0; }'), [])
+    assert.deepEqual(
+      await lint(
+        '.a { --radius-button: var(--radius-8); border-radius: var(--radius-button); }'
+      ),
+      []
+    )
+    for (const { code, rule } of [
+      {
+        code: '.a { --radius-button: 0; }',
+        rule: 'declaration-property-value-allowed-list'
+      },
+      {
+        code: '.a { --font-size-14: 13px; font-size: var(--font-size-14); }',
+        rule: 'declaration-property-value-allowed-list'
+      },
+      {
+        code: '.a { --button-radius: 0; border-radius: var(--button-radius); }',
+        rule: 'declaration-property-custom-property-allowed-list'
+      },
+      {
+        code: '.a { --x: 0 0 2px; text-shadow: var(--x); }',
+        rule: 'declaration-property-custom-property-allowed-list'
+      }
+    ]) {
+      const rules = await lint(code)
+      assert.ok(rules.includes(rule), code)
+    }
+  })
+})
+
+describe('stylelint value and selector checks', () => {
+  it('rejects values that cannot be parsed', async () => {
+    const rules = await lint('.a { inset-block-start: calc(1px + 2); }')
+    assert.ok(rules.includes('value-no-invalid'))
+  })
+
+  it('rejects deprecated and unmatchable selectors and a late @charset', async () => {
+    for (const { code, rule } of [
+      {
+        code: '.a:focus-ring { color: var(--color-primary); }',
+        rule: 'selector-no-deprecated'
+      },
+      {
+        code: ':is(::before) { color: var(--color-primary); }',
+        rule: 'selector-no-unmatchable'
+      },
+      {
+        code: '.a { color: var(--color-primary); } @charset "utf-8";',
+        rule: 'at-charset-rule-no-invalid'
+      }
+    ]) {
+      const rules = await lint(code)
+      assert.ok(rules.includes(rule), code)
+    }
   })
 
   it('rejects unknown pseudo-elements and type selectors', async () => {

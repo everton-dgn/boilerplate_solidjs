@@ -1,0 +1,26 @@
+diff --git a/dist/server.dev.js b/dist/server.dev.js
+index 31fec1d89799cb577a016fb9af0779a9e6fcfdd4..37793e8cd96f17e03764eaf154e94a58f59bf1d4 100644
+--- a/dist/server.dev.js
++++ b/dist/server.dev.js
+@@ -2265,7 +2265,7 @@ function renderToStream(code, options = {}) {
+     onDone,
+     onError: err => {
+       reportFailure(err, "serialize");
+-      if (!writing && !options.serializer && !firstFlushed) stranded = true;
++      if (!options.serializer && !firstFlushed) stranded = true;
+     },
+     late: rejectUnserializedKey
+   });
+diff --git a/dist/server.js b/dist/server.js
+index 44b24d084f4265d3d64feae9d7daa011c9443bad..d60f7d5f1e6969f64def1ff0aaab974ce87a8ae8 100644
+--- a/dist/server.js
++++ b/dist/server.js
+@@ -1979,7 +1979,7 @@ function renderToStream(code, options = {}) {
+     onDone,
+     onError: err => {
+       reportFailure(err, "serialize");
+-      if (!writing && !options.serializer && !firstFlushed) stranded = true;
++      if (!options.serializer && !firstFlushed) stranded = true;
+     },
+     late: rejectUnserializedKey
+   });

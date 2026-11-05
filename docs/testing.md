@@ -63,7 +63,7 @@ arquivo:
 | `*.browser.test.{ts,tsx}` | Chromium real | Interação, layout e APIs de browser         |
 
 Testes só de tipos (`expectTypeOf`) usam `Nome[.qualificador].test-d.ts`. Nenhum
-projeto do Vitest inclui esse sufixo, e o `vp run typecheck` verifica esses
+projeto do Vitest inclui esse sufixo, e o `vp run check:ci` verifica esses
 arquivos. Rodar um deles no Vitest falharia no `expect.requireAssertions`,
 porque `expectTypeOf` não conta como asserção em runtime.
 
@@ -263,20 +263,21 @@ E2E monta a cadeia pela fábrica `createMiddleware`. Os testes de Markdown
 verificam por HTTP a negociação e o `.md` de cada página.
 `AgentReadiness.build.production.e2e.test.ts` compara essas respostas com os
 arquivos gerados em `.vercel/output/static`, confere a precedência das rotas em
-`.vercel/output/config.json` e os headers dos `.md` no `vercel.json`; por isso,
+`.vercel/output/config.json`, os cabeçalhos de segurança que as `routeRules`
+gravam nos estáticos e o `Content-Type` dos `.md` no `vercel.json`; por isso,
 depende dos artefatos do build local. `BuildOutput.production.e2e.test.ts`
 também lê esses artefatos: confere que `/.vite/` não sai no estático e que o
-build ID das server functions é o mesmo no client, no servidor e no manifesto
-movido para `dist/.vite/`, onde o `Hydration.preload` lê o manifesto do Vite. Os
-testes Node do middleware cobrem filtros semânticos, links relativos, links com
-esquema de script ou de dados, imagens sem `alt`, negociação, HEAD, erros,
-limites de tamanho e cancelamento. A elegibilidade compartilhada tem regressão
-para herança de noindex com override explícito do filho. As fixtures E2E
-exercitam páginas parametrizadas, resolução assíncrona e isolamento de idiomas.
-O teste de serialização do Markdown roda o render real com o hook instalado e
-cobre falhas de serialização, `onCleanup` que lança e fallback de `<Errored>`
-com HTML 200, inclusive por um `redirect()`; os E2E de streaming do Markdown
-cobrem renders com falha no servidor.
+build ID das server functions é o mesmo no client e no servidor. O
+`Hydration.preload` lê o manifesto do Vite em `.vercel/output/static/.vite/`,
+que só o build do modo `e2e` mantém. Os testes Node do middleware cobrem filtros
+semânticos, links relativos, links com esquema de script ou de dados, imagens
+sem `alt`, negociação, HEAD, erros, limites de tamanho e cancelamento. A
+elegibilidade compartilhada tem regressão para herança de noindex com override
+explícito do filho. As fixtures E2E exercitam páginas parametrizadas, resolução
+assíncrona e isolamento de idiomas. O teste de serialização do Markdown roda o
+render real com o hook instalado e cobre falhas de serialização, `onCleanup` que
+lança e fallback de `<Errored>` com HTML 200, inclusive por um `redirect()`; os
+E2E de streaming do Markdown cobrem renders com falha no servidor.
 
 A publicação também é conferida pelo inventário completo dos Markdown estáticos
 e pelos destinos internos do `llms.txt`. A verificação deduplica requisições e
@@ -337,11 +338,9 @@ credenciais de backend desse arquivo não são repassadas ao preview. Com
 PRs, inclusive de forks, mantêm os builds locais sem credenciais da Vercel. Os
 comandos locais também continuam compilando por padrão. Para conferir um build
 de produção já gerado, use `TEST_PREBUILT=true vp run test:e2e:production`. O
-modo exige rotas de produção; usá-lo com a suíte de fixtures causa erro. Ele
-também exige o `dist/.vite/` gerado pelo mesmo build do `.vercel/output/`, que o
-`BuildOutput` compara com o artefato. Os testes de
-`tooling/__tests__/playwright.test.ts` executam os comandos de startup com um
-CLI simulado e verificam a quantidade de builds em cada modo.
+modo exige rotas de produção; usá-lo com a suíte de fixtures causa erro. Os
+testes de `tooling/__tests__/playwright.test.ts` executam os comandos de startup
+com um CLI simulado e verificam a quantidade de builds em cada modo.
 
 Use `bun run test:e2e:ui` para abrir a interface interativa do Playwright. Com
 `CI=true`, os E2E usam dois workers; localmente, mantêm o paralelismo padrão.

@@ -78,7 +78,6 @@ Após alterar essa fronteira, execute:
 vp run test:tooling
 vp run test:unit
 vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError src/tests/pages/OutdatedPage
-vp run typecheck
 vp run check:ci
 ```
 
@@ -117,11 +116,10 @@ não há id nem checagem.
 
 Com o Nitro, o client e o servidor saem do mesmo build, e o servidor recebe o id
 que o plugin guarda em memória. O plugin também grava o id e as server functions
-que o client alcança em `.vite/solid-server-functions.json`, ao lado do
-`manifest.json` do Vite, no diretório público. O
-[módulo `moveViteMetadata`](../../tooling/moveViteMetadata/index.ts) move esse
-`.vite/` para `dist/.vite/` no fim do build, então nenhum dos dois é publicado;
-os testes leem os arquivos de lá.
+que o client alcança em `.vite/solid-server-functions.json`, mas na saída do
+SSR, e apaga o `manifest.json` do Vite que ele mesmo liga, então nenhum dos dois
+fica no diretório estático publicado. O `BuildOutput` compara o id do client com
+o do servidor.
 
 A aba também pode pedir um chunk ou uma folha CSS com o hash do build anterior,
 que o deploy novo não publica. A recuperação segue uma regra: a página só
@@ -242,22 +240,21 @@ Limites conhecidos:
   sem prometer que a recarga resolve.
 - Um asset ausente em `/assets/`, como o chunk de outro build, responde 404 com
   `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` e
-  `Cross-Origin-Resource-Policy: same-origin`, sem a página SSR. O
-  `vite.config.ts` registra `/assets` em `publicAssets` sem fallthrough. No
-  preview e no preset `node-server`, o Nitro responde o miss de GET e HEAD com o
-  404 `no-store` de diretório público exclusivo, e o h3 preserva esse cabeçalho
-  quando a route rule de `/assets/**` aplica o cache imutável ao erro. Na
-  Vercel, o preset grava a rota 404 `no-store` logo depois de `filesystem`, e o
-  miss não chega à função. A route rule leva nosniff e CORP, com os valores de
-  `SECURITY_HEADERS`, ao miss e aos acertos servidos pela Vercel ou pelo
-  `node-server`; no `vp run start`, o acerto sai do servidor estático do srvx
-  sem esses cabeçalhos e sem `Cache-Control`, como antes. O diretório
-  `public/assets` não existe de propósito: os arquivos vêm da saída do Vite. O
-  teste `BuildOutput.assets.production` confere as rotas do
-  `.vercel/output/config.json` e o 404 no preview, e falha se uma atualização do
-  Nitro mudar esse comportamento. Ele cobre a configuração gerada, não o CDN: a
-  precedência do `no-store` sobre o cache da rota de `/assets` segue a ordem das
-  rotas. O autor de
+  `Cross-Origin-Resource-Policy: same-origin`, sem a página SSR. O Nitro
+  registra em `publicAssets` o caminho `/assets`, que é o `assetsDir` do Vite,
+  com `fallthrough: false`. No preview e no preset `node-server`, o Nitro
+  responde ao miss de GET e HEAD com o 404 `no-store` de diretório público
+  exclusivo, e o h3 preserva esse cabeçalho quando a route rule de `/assets/**`
+  aplica o cache imutável ao erro. Na Vercel, o preset grava a rota 404
+  `no-store` logo depois de `filesystem`, e o miss não chega à função. A route
+  rule leva nosniff e CORP, com os valores de `SECURITY_HEADERS`, ao miss e aos
+  acertos servidos pela Vercel ou pelo `node-server`; no `vp run start`, o
+  acerto sai do servidor estático do srvx sem esses cabeçalhos e sem
+  `Cache-Control`, como antes. O teste `BuildOutput.assets.production` confere
+  as rotas do `.vercel/output/config.json` e o 404 no preview, e falha se uma
+  atualização do Nitro mudar esse comportamento. Ele cobre a configuração
+  gerada, não o CDN: a precedência do `no-store` sobre o cache da rota de
+  `/assets` segue a ordem das rotas. O autor de
   [nitrojs/nitro#4474](https://github.com/nitrojs/nitro/pull/4474) conferiu essa
   ordem num deploy próprio na Vercel; o deploy deste repositório ainda não foi
   conferido. No `vp run start`, o miss só vale para GET e HEAD em

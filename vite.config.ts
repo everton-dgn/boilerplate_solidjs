@@ -33,6 +33,22 @@ const PROJECT_CHECK_INPUTS = [
   'bunfig.toml',
   'patches/**'
 ]
+const STATIC_FILE_HEADERS = {
+  'x-content-type-options': SECURITY_HEADERS['x-content-type-options'],
+  'cross-origin-resource-policy':
+    SECURITY_HEADERS['cross-origin-resource-policy']
+}
+const STATIC_FILE_PATHS = [
+  '/assets/**',
+  '/images/**',
+  '/favicon/**',
+  '/**.md',
+  '/llms.txt',
+  '/llms-full.txt',
+  '/sitemap.xml',
+  '/sitemaps/pages/**',
+  '/_markdown/static.json'
+]
 const CI_TEST_WORKERS = 2
 const TOOLING_CI_TEST_WORKERS = 3
 const TOOLING_TEST_CONCURRENCY = env.CI
@@ -89,13 +105,11 @@ const appPlugins = (mode: string) =>
       modules,
       { nitro },
       { markdownPrerender },
-      { moveViteMetadata },
       { createPublicationBuild }
     ] = await Promise.all([
       loadComponentModules(),
       import('nitro/vite'),
       import('./tooling/markdownPrerender/index.ts'),
-      import('./tooling/moveViteMetadata/index.ts'),
       import('./tooling/publicationArtifacts/helpers/createPublicationBuild/index.ts')
     ])
     // O Nitro compartilha esta lista de plugins entre os ambientes do build, e
@@ -127,29 +141,26 @@ const appPlugins = (mode: string) =>
       nitro({
         serverEntry: false,
         preset: 'vercel',
-        modules: [markdownPrerender({ buildId }), moveViteMetadata],
-        // Sem fallthrough, um hash ausente em /assets/ recebe o 404 no-store do
-        // Nitro em vez da página SSR com o cache imutável da route rule. O dir
-        // não existe de propósito: os arquivos vêm da saída do Vite, e um dir
-        // dentro de .vercel/output faz o rebuild falhar.
+        modules: [markdownPrerender({ buildId })],
+        // Sem fallthrough, um arquivo ausente em /images/ recebe o 404 no-store
+        // do Nitro em vez da página SSR com o cache imutável. O Nitro já
+        // registra assim o assetsDir do Vite, que serve /assets/.
         publicAssets: [
           {
-            baseURL: '/assets',
-            dir: 'public/assets',
+            baseURL: '/images',
+            dir: 'public/images',
             fallthrough: false,
             maxAge: 31_536_000
           }
         ],
-        routeRules: {
-          '/assets/**': {
-            headers: {
-              'x-content-type-options':
-                SECURITY_HEADERS['x-content-type-options'],
-              'cross-origin-resource-policy':
-                SECURITY_HEADERS['cross-origin-resource-policy']
-            }
-          }
-        }
+        // Os estáticos saem do CDN sem passar pelo middleware. Os mesmos
+        // valores chegam às respostas da função, que o middleware já grava.
+        routeRules: Object.fromEntries(
+          STATIC_FILE_PATHS.map(path => [
+            path,
+            { headers: STATIC_FILE_HEADERS }
+          ])
+        )
       })
     ]
   })
@@ -236,33 +247,14 @@ export default defineConfig(({ mode }) => {
           dependsOn: ['lint-css'],
           cache: { env: ['NODE_ENV'], input: PROJECT_CHECK_INPUTS }
         },
-        // O rastreamento automático não vê as leituras do tsc nativo, então as
+        // Os tipos da aplicação saem do vp check, com typeCheck no lint. O
+        // rastreamento automático não vê as leituras do tsc nativo, então as
         // entradas ficam explícitas. De src entram só as extensões que o tsc lê;
         // CSS, imagens e fontes chegam por declarações de módulo. O bun.lock
         // representa os tipos instalados, mas guarda só o caminho dos patches,
         // então o conteúdo deles entra à parte. Com noEmit, o tsc só grava o
         // .tsbuildinfo em .tsbuild/, que é cache próprio dele, então nada precisa
         // ser restaurado.
-        'typecheck-app': {
-          command: 'tsc --project tsconfig.json',
-          cache: {
-            input: [
-              'src/**/*.ts',
-              'src/**/*.tsx',
-              'src/**/*.json',
-              'paraglide/**',
-              'env.ts',
-              'solid-env.d.ts',
-              'tsconfig.json',
-              'vite.config.ts',
-              'tooling/**/*.ts',
-              'package.json',
-              'bun.lock',
-              'patches/**'
-            ],
-            output: []
-          }
-        },
         'typecheck-node': {
           command: 'tsc --project tsconfig.node.json',
           cache: {
@@ -293,7 +285,12 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
+    // O plugin do Solid apaga o manifesto do client que ele mesmo liga, então
+    // nada de .vite/ chega ao estático publicado. Só o build E2E, que não é
+    // publicado, mantém o manifesto para o Hydration.preload achar o chunk da
+    // rota.
     build: {
+      manifest: mode === 'e2e',
       rolldownOptions: {
         output: {
           comments: false
