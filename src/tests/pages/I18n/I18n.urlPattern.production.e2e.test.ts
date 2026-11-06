@@ -2,11 +2,21 @@ import type { Page } from '@playwright/test'
 
 import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
+import { watchCspViolations } from '@/tests/helpers/watchCspViolations/index.ts'
 
-type LoadedPage = { scripts: Set<string>; isNative: boolean }
+type UrlPatternKind = 'native' | 'polyfill' | 'missing'
 
-const isNativeUrlPattern = (page: Page) =>
-  page.evaluate(() => URLPattern.toString().includes('[native code]'))
+type LoadedPage = { scripts: Set<string>; urlPattern: UrlPatternKind }
+
+const POLYFILL_CHUNK = /\/assets\/urlpattern-polyfill-[\w-]+\.js$/u
+
+const readUrlPatternKind = (page: Page) =>
+  page.evaluate<UrlPatternKind>(() => {
+    if (typeof URLPattern !== 'function') return 'missing'
+    return URLPattern.toString().includes('[native code]')
+      ? 'native'
+      : 'polyfill'
+  })
 
 async function loadHome(page: Page): Promise<LoadedPage> {
   const scripts = new Set<string>()
@@ -17,34 +27,46 @@ async function loadHome(page: Page): Promise<LoadedPage> {
   })
   await page.goto('/pt')
   await expect.poll(() => hydrationFinished(page)).toBe(true)
-  return { scripts, isNative: await isNativeUrlPattern(page) }
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'SolidJS Boilerplate para aplicações web'
+  )
+  // A cópia encerra a coleta no mesmo ponto nas duas páginas.
+  return {
+    scripts: new Set(scripts),
+    urlPattern: await readUrlPatternKind(page)
+  }
 }
 
-// Firefox 114 a 141 e Safari 16.4 a 18 estão no target do build sem a API
-// nativa; o Chromium dos testes simula esse caminho removendo o global.
+// O target do build inclui navegadores sem a API (docs/i18n.md); o Chromium
+// simula esse caminho removendo o global.
 test('loads the URLPattern polyfill only without the native API and keeps the localized navigation', async ({
   browser,
-  baseURL,
   page,
   pageErrors,
   cspViolations
 }) => {
-  const nativeContext = await browser.newContext({ baseURL })
+  const nativeContext = await browser.newContext()
   try {
-    const native = await loadHome(await nativeContext.newPage())
-    expect(native.isNative).toBe(true)
+    const nativePage = await nativeContext.newPage()
+    const nativeErrors: string[] = []
+    nativePage.on('pageerror', error => nativeErrors.push(error.message))
+    const nativeViolations = await watchCspViolations(nativePage)
+    const native = await loadHome(nativePage)
+    expect(native.urlPattern).toBe('native')
+    expect(nativeErrors).toEqual([])
+    expect(nativeViolations).toEqual([])
 
     await page.addInitScript(() => {
       Reflect.deleteProperty(globalThis, 'URLPattern')
     })
     const fallback = await loadHome(page)
-    expect(fallback.isNative).toBe(false)
+    expect(fallback.urlPattern).toBe('polyfill')
     expect(
       [...native.scripts].filter(path => !fallback.scripts.has(path))
     ).toEqual([])
     expect(
       [...fallback.scripts].filter(path => !native.scripts.has(path))
-    ).toHaveLength(1)
+    ).toEqual([expect.stringMatching(POLYFILL_CHUNK)])
   } finally {
     await nativeContext.close()
   }
@@ -63,7 +85,7 @@ test('loads the URLPattern polyfill only without the native API and keeps the lo
     'SolidJS Boilerplate for web applications'
   )
   await expect.poll(() => hydrationFinished(page)).toBe(true)
-  expect(await isNativeUrlPattern(page)).toBe(false)
+  expect(await readUrlPatternKind(page)).toBe('polyfill')
   expect(pageErrors).toEqual([])
   expect(cspViolations).toEqual([])
 })
