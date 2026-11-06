@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.14.2 - 2026-11-06
+
+### Fixed
+
+- load the urlpattern polyfill only without native support (663797e)
+- update playwright to 1.65.0 and paraglide to 3.2.0 (2f3e5ac)
+
 ## 1.14.1 - 2026-11-04
 
 ### Fixed
