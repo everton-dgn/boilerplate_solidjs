@@ -352,14 +352,15 @@ concorrência, use `CI=true vp run test:e2e --workers=1` e
 `CI=true vp run test:e2e --workers=2`.
 
 Os relatórios HTML ficam em `playwright-report/e2e/` e
-`playwright-report/production/`. No CI, eles guardam só os testes que falharam,
-ficaram instáveis ou foram interrompidos; localmente, incluem todos. Os traces
-de falhas ficam em `test-results/e2e/` e `test-results/e2e-production/`,
-respectivamente. Os testes do Vitest Browser Mode guardam traces de falhas em
-`test-results/browser-traces/` e os screenshots de falha em
-`.vitest/attachments/`. Quando o job `Quality` falha, o CI envia os dois
-diretórios como artefato. Esses artefatos são ignorados pelo Git. Os E2E têm
-comando separado e não fazem parte de `vp run test` ou `vp run validate`.
+`playwright-report/production/`. Com `CI` definido, eles guardam só os testes
+que falharam, ficaram instáveis ou foram interrompidos; sem a variável, incluem
+todos. Nas execuções locais com `CI=true`, `PLAYWRIGHT_HTML_ONLY_FAILURES=false`
+devolve o relatório completo. Os traces de falhas ficam em `test-results/e2e/` e
+`test-results/e2e-production/`, respectivamente. Os testes do Vitest Browser
+Mode guardam traces de falhas em `test-results/browser-traces/` e os screenshots
+de falha em `.vitest/attachments/`. Quando o job `Quality` falha, o CI envia os
+dois diretórios como artefato. Esses artefatos são ignorados pelo Git. Os E2E
+têm comando separado e não fazem parte de `vp run test` ou `vp run validate`.
 
 ## Conferência em dispositivo físico
 

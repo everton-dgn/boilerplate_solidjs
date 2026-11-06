@@ -34,8 +34,8 @@ local; ajuste `VITE_SITE_URL` para a URL pública do projeto antes de publicar.
 Veja [ambiente, runtimes e deploy](docs/development.md) para os detalhes.
 
 Para executar os testes de navegador e E2E, instale o Chromium. Repita o comando
-depois de atualizar o Playwright, porque cada versão usa outra revisão do
-navegador:
+depois de atualizar o Playwright, porque cada versão fixa uma revisão do
+navegador, que pode mudar na atualização:
 
 ```bash
 vp run test:browser:install
