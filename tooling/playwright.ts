@@ -113,7 +113,9 @@ const config = defineConfig({
         outputFolder: PRODUCTION_ROUTES
           ? '../playwright-report/production'
           : '../playwright-report/e2e',
-        open: 'never'
+        open: 'never',
+        // O CI só envia o relatório quando o job falha.
+        onlyFailures: Boolean(env.CI)
       }
     ]
   ],

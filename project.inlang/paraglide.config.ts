@@ -24,6 +24,7 @@ export default {
       ])
     }
   ],
+  lazyUrlPatternPolyfill: true,
   emitReadme: false,
   emitPrettierIgnore: false
 } satisfies ParaglideConfig

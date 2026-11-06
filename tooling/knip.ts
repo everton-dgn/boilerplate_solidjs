@@ -59,7 +59,8 @@ const config = {
     // serverSetup ficam aqui (webpro-nl/knip#2147).
     'src/entry-server.tsx!',
     'src/entry-client.tsx!',
-    // O runtime gerado importa o polyfill de URLPattern do pacote Paraglide.
+    // O runtime gerado carrega o polyfill de URLPattern do pacote Paraglide
+    // quando a API nativa falta.
     'paraglide/runtime.js!',
     'src/middleware/index.ts!',
     'src/infra/server/configureServerErrors/index.ts!',

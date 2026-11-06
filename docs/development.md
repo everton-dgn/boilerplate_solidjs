@@ -16,7 +16,9 @@ As versões exatas vivem no `package.json`:
   automação de release, fixado em `packageManager`. O Vite+ seleciona essa
   versão para a instalação e para o comando `bun`.
 - Chromium do Playwright: usado pelos testes de navegador e E2E. Não é baixado
-  no `vp install`; instale uma vez com `vp run test:browser:install`.
+  no `vp install`; instale com `vp run test:browser:install` e repita o comando
+  depois de atualizar o Playwright, que fixa uma revisão do navegador por
+  versão.
 
 No CI, os testes usam o Chrome já instalado no runner.
 
