@@ -91,25 +91,44 @@ armazenada no cache do navegador, sem modificar o HTML da aplicação.
 
 ## Limites conhecidos
 
-- Na Vercel, arquivos estáticos (`/assets/`, `/images/`, `/favicon/`, os `.md`,
-  `/llms.txt`, `/llms-full.txt`, `/_markdown/static.json` e os sitemaps gerados
-  no build) saem do CDN sem passar pela função. As `routeRules` do Nitro no
-  `vite.config.ts` gravam neles só `X-Content-Type-Options` e
-  `Cross-Origin-Resource-Policy`, com os valores de `SECURITY_HEADERS`; a lista
-  `STATIC_FILE_PATHS` define os caminhos. O preset da Vercel transforma essas
-  regras em rotas do `.vercel/output/config.json`, e o runtime do Nitro aplica
-  os mesmos valores às respostas da função nesses caminhos. `/assets/` e
-  `/images/` são `publicAssets` sem fallthrough: recebem cache imutável, e um
-  arquivo ausente recebe o 404 `no-store` do Nitro. O `vercel.json` guarda só o
-  `Content-Type` dos `.md`: numa route rule, o h3 sobrescreveria com ele também
-  as respostas de erro da função. A CSP e as políticas de frame só têm efeito
-  nas respostas que passam pelo middleware. Pelo mesmo motivo, um arquivo que
-  não deve ser público precisa sair de `.vercel/output/static`: o middleware não
-  consegue bloqueá-lo. O manifesto do Vite e o das server functions listam
-  caminhos do código-fonte. O plugin do Solid apaga o primeiro, que ele mesmo
-  liga, e grava o segundo na saída do SSR, então nenhum `.vite/` chega ao
-  estático; o `BuildOutput` confere a ausência. Ligar `build.manifest` fora do
-  modo `e2e` faria o manifesto ser publicado.
+- Na Vercel, arquivos estáticos (`/assets/`, `/images/`, `/favicon/`, os `.md`
+  sob o prefixo de cada idioma, `/llms.txt`, `/llms-full.txt`,
+  `/_markdown/static.json` e os sitemaps gerados no build) saem do CDN sem
+  passar pela função. As `routeRules` do Nitro no `vite.config.ts` gravam neles
+  só `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`, com os valores
+  de `SECURITY_HEADERS`; a lista `STATIC_FILE_PATHS` define os caminhos. O
+  preset da Vercel transforma essas regras em rotas do
+  `.vercel/output/config.json`, e o runtime do Nitro aplica os mesmos valores às
+  respostas da função nesses caminhos. `/assets/` e `/images/` são
+  `publicAssets` sem fallthrough: recebem cache imutável, e um arquivo ausente
+  recebe o 404 `no-store` do Nitro. O `vercel.json` guarda só o `Content-Type`
+  dos `.md`: numa route rule, o h3 sobrescreveria com ele também as respostas de
+  erro da função. A CSP e as políticas de frame só têm efeito nas respostas que
+  passam pelo middleware. Pelo mesmo motivo, um arquivo que não deve ser público
+  precisa sair de `.vercel/output/static`: o middleware não consegue bloqueá-lo.
+  O manifesto do Vite e o das server functions listam caminhos do código-fonte.
+  O plugin do Solid apaga o primeiro, que ele mesmo liga, e grava o segundo na
+  saída do SSR, então nenhum `.vite/` chega ao estático; o `BuildOutput` confere
+  a ausência. Ligar `build.manifest` fora do modo `e2e` faria o manifesto ser
+  publicado.
+- O Nitro compila todas as `routeRules`, inclusive as que a aplicação
+  acrescentar, com o preMerge do h3, sem opção para desligá-lo
+  ([nitrojs/nitro#5048](https://github.com/nitrojs/nitro/issues/5048)). Padrões
+  com sobreposição parcial, como `/**.md` ao lado de `/assets/**` ou
+  `/pt/blog/**` ao lado de `/pt/**.md`, fazem a compilação voltar ao modo
+  simples, com o mesmo resultado e um aviso no desenvolvimento e em cada build.
+  Por isso os `.md` entram em `STATIC_FILE_PATHS` como `/<idioma>/**.md`, com os
+  idiomas de `project.inlang/settings.json`. Isso depende de o `urlPatterns` de
+  `project.inlang/paraglide.config.ts` prefixar todos os idiomas: uma aplicação
+  que sirva um idioma sem prefixo precisa de um padrão próprio para os `.md`
+  dele, ou eles saem do CDN sem os dois cabeçalhos. O `AgentReadiness` confere
+  os cabeçalhos de cada `.md` publicado.
+- No CDN da Vercel, as rotas do `config.json` comparam o caminho ainda
+  codificado, e o arquivo estático é encontrado pelo caminho decodificado. Uma
+  grafia com percent-encoding de um caminho estático, como `/%70t/index.md` ou
+  `/%66avicon/apple-touch-icon.png`, recebe o arquivo sem
+  `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`. Esses arquivos são
+  públicos, e as URLs que a aplicação publica usam a grafia canônica.
 - `Cross-Origin-Embedder-Policy: require-corp` bloqueia recursos de outra origem
   sem `Cross-Origin-Resource-Policy` ou CORS. Ao adicionar fontes, imagens ou
   scripts externos, confira se o provedor envia esses cabeçalhos ou revise a
