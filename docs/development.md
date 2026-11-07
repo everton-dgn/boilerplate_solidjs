@@ -430,11 +430,14 @@ seguintes depois de uma falha.
 - As versões de dependências são fixadas sem `^` (`install.exact` no
   `bunfig.toml`) para evitar quebras silenciosas. Consulte os arquivos de
   dependências para saber quais estão instaladas.
-- Os overrides de `@solidjs/compiler` e `@solidjs/babel-plugin` mantêm o
-  compilador alinhado ao runtime do Solid, e o de `@solidjs/signals` prende o
-  núcleo reativo à mesma versão do `solid-js`, que o declara com `^`. Atualize
-  os três junto com `solid-js` e `@solidjs/web`, respeitando a compatibilidade
-  do plugin do Vite.
+- O override de `@solidjs/compiler` mantém o compilador nativo alinhado ao
+  runtime do Solid, e o de `@solidjs/signals` prende o núcleo reativo à mesma
+  versão do `solid-js`, que o declara com `^`. Atualize os dois junto com
+  `solid-js` e `@solidjs/web`, respeitando a compatibilidade do plugin do Vite.
+- O plugin do Solid compila com o compilador nativo e não instala Babel. Para
+  usar `compiler: 'babel'`, declare `@babel/core` e `@solidjs/babel-plugin` como
+  devDependencies, com o plugin Babel na versão do runtime do Solid; a opção
+  `babel` do plugin, com o compilador nativo, exige só `@babel/core`.
 - `vite-plus`, `vite`, `vitest` e os pacotes `@vitest/*` vêm do catálogo em
   `workspaces.catalog` do `package.json`; `vite` resolve para o core do Vite+.
   Atualize as versões nesse catálogo e mantenha os `@vitest/*` na versão exata

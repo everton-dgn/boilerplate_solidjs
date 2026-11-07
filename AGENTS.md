@@ -476,7 +476,10 @@ release. Add a tool name to select part of the graph. For example, run
   estáticos não passam pela função: as `routeRules` do Nitro no
   `vite.config.ts` gravam neles `X-Content-Type-Options` e
   `Cross-Origin-Resource-Policy`, lidos de `SECURITY_HEADERS`. Ao publicar um
-  novo tipo de estático, acrescente o caminho a `STATIC_FILE_PATHS`. O
+  novo tipo de estático, acrescente o caminho a `STATIC_FILE_PATHS`, sem
+  sobreposição parcial com os outros padrões nem com as demais `routeRules`.
+  Os `.md` entram por idioma; ao mudar o `urlPatterns` do Paraglide, revise
+  esses padrões. O
   `vercel.json` guarda só o `Content-Type` dos `.md`, que numa route rule
   também sobrescreveria os erros da função
   ([limites conhecidos](docs/security.md#limites-conhecidos)).

@@ -91,13 +91,15 @@ concluir na falha síncrona, e o
 [solidjs/solid#4246](https://github.com/solidjs/solid/pull/4246) encerra cada
 escrita no primeiro valor que falha. O #4647 encerra o render na falha
 assíncrona antes do envio e rejeita no cliente a chave que falha depois dele.
-Essas partes saíram do patch. Remova o restante quando um pacote publicado
-encerrar o render também na falha síncrona e passar as regressões de erro
-reutilizado entre requisições, falha de server function que escapa de Loading,
-recuperação local, serialização, cleanup que lança e cancelamento. A issue ou o
-PR fechado não substitui a verificação dos artefatos instalados. O sinal
-composto de timeout e desconexão chega ao `renderToStream`; o teste Node do
-adaptador verifica o descarte de uma raiz SSR pendente no cancelamento.
+Essas partes saíram do patch. O restante é acompanhado no
+[solidjs/solid#4709](https://github.com/solidjs/solid/issues/4709). Remova-o
+quando um pacote publicado encerrar o render também na falha síncrona e passar
+as regressões de erro reutilizado entre requisições, falha de server function
+que escapa de Loading, recuperação local, serialização, cleanup que lança e
+cancelamento. A issue ou o PR fechado não substitui a verificação dos artefatos
+instalados. O sinal composto de timeout e desconexão chega ao `renderToStream`;
+o teste Node do adaptador verifica o descarte de uma raiz SSR pendente no
+cancelamento.
 
 No abandono por cancelamento, o thenable de `renderToStream` rejeita com
 `signal.reason`, inclusive para consumidores registrados depois do aborto, sem
