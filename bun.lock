@@ -1,5 +1,5 @@
 {
-  "lockfileVersion": 3,
+  "lockfileVersion": 2,
   "configVersion": 1,
   "workspaces": {
     "": {
@@ -53,12 +53,8 @@
   "overrides": {
     "@solidjs/compiler": "2.0.0-rc.21",
     "@solidjs/signals": "2.0.0-rc.21",
-    "vite@*": {
-      ".": "catalog:",
-    },
-    "vitest@*": {
-      ".": "catalog:",
-    },
+    "vite": "catalog:",
+    "vitest": "catalog:",
   },
   "catalog": {
     "@vitest/browser-playwright": "5.1.0",

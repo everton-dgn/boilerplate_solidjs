@@ -108,8 +108,8 @@
   "overrides": {
     "@solidjs/compiler": "2.0.0-rc.21",
     "@solidjs/signals": "2.0.0-rc.21",
-    "vite@*": "catalog:",
-    "vitest@*": "catalog:"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "patchedDependencies": {
     "@mdream/js@2.0.3": "patches/@mdream%2Fjs@2.0.3.patch",
