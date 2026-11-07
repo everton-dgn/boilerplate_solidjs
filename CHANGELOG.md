@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.14.3 - 2026-11-07
+
+### Fixed
+
+- scope the static markdown route rules per locale (7e07d0d)
+- use bare override keys for vite and vitest (263e31d)
+- drop the &#64;solidjs/babel-plugin override (46ccf0c)
+- update filesystem-routing, the solid vite plugin and paraglide (d9f53b0)
+
 ## 1.14.2 - 2026-11-06
 
 ### Fixed
