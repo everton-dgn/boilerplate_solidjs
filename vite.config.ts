@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
+import inlangSettings from './project.inlang/settings.json' with { type: 'json' }
 import { SECURITY_HEADERS } from './src/middleware/securityHeaders/constants.ts'
 import { fmt } from './tooling/fmt.ts'
 import { lint } from './tooling/lint.ts'
@@ -38,11 +39,15 @@ const STATIC_FILE_HEADERS = {
   'cross-origin-resource-policy':
     SECURITY_HEADERS['cross-origin-resource-policy']
 }
+// O Nitro compila as routeRules com o preMerge do h3, que recusa sobreposição
+// parcial: um /**.md cruzaria os diretórios abaixo e a compilação voltaria ao
+// modo simples com aviso. Os .md publicados ficam sob o prefixo de idioma do
+// urlPatterns em project.inlang/paraglide.config.ts.
 const STATIC_FILE_PATHS = [
   '/assets/**',
   '/images/**',
   '/favicon/**',
-  '/**.md',
+  ...inlangSettings.locales.map(locale => `/${locale}/**.md`),
   '/llms.txt',
   '/llms-full.txt',
   '/sitemap.xml',

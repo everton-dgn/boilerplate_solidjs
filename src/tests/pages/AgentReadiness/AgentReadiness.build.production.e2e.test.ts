@@ -408,7 +408,13 @@ test('declares the security headers of the static files in the Vercel artifact',
         .filter(route => new RegExp(route.src ?? '', 'u').test(path))
         .flatMap(route => Object.entries(route.headers ?? {}))
     )
-  for (const path of STATIC_FILES) {
+  // As regras dos .md são por idioma: um .md publicado fora desse prefixo
+  // sairia do CDN sem os cabeçalhos.
+  const markdownFiles = [...(await readStaticFiles('.md'))].map(path =>
+    encodeURI(path)
+  )
+  expect(markdownFiles.length).toBeGreaterThan(0)
+  for (const path of [...STATIC_FILES, ...markdownFiles]) {
     expect(headersOf(path), path).toMatchObject({
       'x-content-type-options': 'nosniff',
       'cross-origin-resource-policy': 'same-origin'
