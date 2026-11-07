@@ -114,7 +114,17 @@ falhas no PR. A configuração também exclui arquivos E2E, `node_modules` e
 pelo `extends` padrão do Vitest, declarando só o que muda.
 
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
-`vite-plus/prefer-vite-plus-imports` bloqueia o import direto). O contexto de
+`vite-plus/prefer-vite-plus-imports` bloqueia o import direto). O linker isolado
+do Bun cria mais de uma cópia de `vitest` e dos pacotes `@vitest/*` no store,
+por causa do ciclo de peers entre eles
+([oven-sh/bun#46208](https://github.com/oven-sh/bun/issues/46208)): as cópias de
+`@vitest/browser-playwright` e `@vitest/coverage-v8` ligadas na raiz apontam
+para um `vitest` diferente do que roda. Pelo `vite-plus`, cada processo carrega
+uma só cópia de `vitest`; por isso o provider vem de
+`vite-plus/test/browser-playwright`, e um import direto de
+`@vitest/browser-playwright` traria a segunda. Várias entradas `vitest@` em
+`node_modules/.bun` são esperadas até o Bun publicar a correção
+([oven-sh/bun#46454](https://github.com/oven-sh/bun/pull/46454)). O contexto de
 requisição dos middlewares é testado com `provideRequestEvent` de
 `@solidjs/web/storage`. Cada middleware de `src/middleware/` tem a própria suíte
 em `__tests__/`, e `src/middleware/__tests__/middleware.node.test.ts` cobre o
