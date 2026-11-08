@@ -78,10 +78,7 @@ const config = {
     'src/primitives/createOutdatedPageGuard/index.ts!',
     'env.ts!',
     // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.
-    'src/tests/fixtures/e2e/middleware/index.ts',
-    // A CI roda a prova com `vp exec node`, que o plugin de GitHub Actions do
-    // Knip não reconhece como execução de arquivo.
-    'tooling/ciReuse/prove-reuse.ts'
+    'src/tests/fixtures/e2e/middleware/index.ts'
   ],
   project: [
     'src/**/*.{ts,tsx}!',
