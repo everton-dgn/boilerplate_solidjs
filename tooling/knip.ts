@@ -94,7 +94,9 @@ const config = {
   // O plugin trata todo arquivo de src/routes como entrada e esconderia
   // helpers colocalizados sem uso; discoverRouteModules seleciona só as rotas.
   'filesystem-routing': false,
-  // O Kingfisher é externo; o vp do script start vem de uma devDependency.
+  // O Kingfisher é externo. O vp do script start vem de uma devDependency, que
+  // o modo production (ativado pelo --strict) não considera; o '!' restringe o
+  // ignore a esse modo, porque na execução padrão ele viraria hint de redundância.
   ignoreBinaries: ['kingfisher', 'vp!'],
   // A regressão resolve srvx pela árvore do Nitro para testar o adapter real,
   // sem fixar uma segunda cópia como dependência direta do projeto.
