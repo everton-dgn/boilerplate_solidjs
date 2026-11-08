@@ -259,6 +259,16 @@ pelo Playwright. O build normal (`vp run build`) usa apenas `src/routes/` e não
 inclui as fixtures nem o backend simulado. As portas 4317 e 4318 precisam estar
 livres.
 
+O reexport de páginas tem um custo nesse build. O manifesto pede só o `route` ao
+wrapper, mas o `?pick=` do filesystem-routing vale apenas para o módulo em que é
+aplicado, e o reexport aponta para a página sem esse filtro
+([solidjs/filesystem-routing#26](https://github.com/solidjs/filesystem-routing/issues/26#issuecomment-6719362377)).
+Por isso home, about, contact e privacy entram no carregamento inicial do build
+E2E com o componente e o CSS, enquanto no build normal continuam sob demanda. Os
+E2E dessas páginas não verificam a divisão de chunks. Um app que precise
+reexportar páginas sem esse custo deve declarar o `route` num módulo próprio,
+sem o componente, e reexportá-lo tanto da página quanto do wrapper.
+
 `vp run test:e2e:production` executa os arquivos `*.production.e2e.test.ts`
 contra um build normal, com a árvore real de `src/routes/`. Essa suíte verifica
 por HTTP que `/robots.txt`, `/llms.txt` e `/sitemap.xml` respondem sem

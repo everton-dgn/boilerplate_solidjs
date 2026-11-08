@@ -78,10 +78,7 @@ const config = {
     'src/primitives/createOutdatedPageGuard/index.ts!',
     'env.ts!',
     // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.
-    'src/tests/fixtures/e2e/middleware/index.ts',
-    // A CI roda a prova com `vp exec node`, que o plugin de GitHub Actions do
-    // Knip não reconhece como execução de arquivo.
-    'tooling/ciReuse/prove-reuse.ts'
+    'src/tests/fixtures/e2e/middleware/index.ts'
   ],
   project: [
     'src/**/*.{ts,tsx}!',
@@ -97,7 +94,9 @@ const config = {
   // O plugin trata todo arquivo de src/routes como entrada e esconderia
   // helpers colocalizados sem uso; discoverRouteModules seleciona só as rotas.
   'filesystem-routing': false,
-  // O Kingfisher é externo; o vp do script start vem de uma devDependency.
+  // O Kingfisher é externo. O vp do script start vem de uma devDependency, que
+  // o modo production (ativado pelo --strict) não considera; o '!' restringe o
+  // ignore a esse modo, porque na execução padrão ele viraria hint de redundância.
   ignoreBinaries: ['kingfisher', 'vp!'],
   // A regressão resolve srvx pela árvore do Nitro para testar o adapter real,
   // sem fixar uma segunda cópia como dependência direta do projeto.
