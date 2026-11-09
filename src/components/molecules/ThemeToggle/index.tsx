@@ -7,10 +7,10 @@ import IconMoon from '~icons/hugeicons/moon-02'
 import IconSun from '~icons/hugeicons/sun-01'
 
 import type { Theme } from '@/@types/theme.ts'
+import { Button } from '@/components/atoms/Button/index.tsx'
+import { DropdownMenu } from '@/components/atoms/DropdownMenu/index.tsx'
 import { THEMES } from '@/constants/theme.ts'
 
-import { Button } from '../Button/index.tsx'
-import { DropdownMenu } from '../DropdownMenu/index.tsx'
 import { ThemeContext } from '../Provider/context.ts'
 
 const THEME_OPTIONS = {

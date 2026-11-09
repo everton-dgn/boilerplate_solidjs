@@ -2,7 +2,7 @@
 import { flush, useContext } from 'solid-js'
 
 import type { ResolvedTheme, Theme } from '@/@types/theme.ts'
-import { ThemeContext } from '@/components/atoms/Provider/context.ts'
+import { ThemeContext } from '@/components/molecules/Provider/context.ts'
 import { THEME_COOKIE_NAME } from '@/constants/theme.ts'
 import { readTheme, saveTheme } from '@/infra/adapters/themeStorage/index.ts'
 import { blockCookie } from '@/tests/helpers/blockCookie/index.ts'

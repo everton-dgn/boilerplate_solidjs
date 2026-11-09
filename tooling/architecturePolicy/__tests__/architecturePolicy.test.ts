@@ -19,7 +19,7 @@ test('a política distingue dependências permitidas e inversões de camada', ()
         code: 'import { createPublicError } from "@/infra/server/publicErrors/index.ts"'
       },
       {
-        filename: 'src/components/atoms/Provider/index.tsx',
+        filename: 'src/components/molecules/Provider/index.tsx',
         code: 'import { createTheme } from "@/primitives/createTheme/index.ts"'
       },
       {
@@ -27,8 +27,8 @@ test('a política distingue dependências permitidas e inversões de camada', ()
         code: 'import { paths } from "@/router.ts"'
       },
       {
-        filename: 'src/components/molecules/Topbar/index.tsx',
-        code: 'export { ThemeToggle } from "@/components/atoms/ThemeToggle/index.tsx"'
+        filename: 'src/components/molecules/ThemeToggle/index.tsx',
+        code: 'export { Button } from "@/components/atoms/Button/index.tsx"'
       },
       {
         filename: 'src/primitives/createTheme/index.ts',
@@ -45,7 +45,7 @@ test('a política distingue dependências permitidas e inversões de camada', ()
       },
       {
         filename: 'src/primitives/theme/__tests__/theme.dom.test.tsx',
-        code: 'import { Provider } from "@/components/atoms/Provider/index.tsx"'
+        code: 'import { Provider } from "@/components/molecules/Provider/index.tsx"'
       },
       {
         filename: 'src/tests/fixtures/e2e/routes/index.tsx',
@@ -147,14 +147,14 @@ test('a política distingue dependências permitidas e inversões de camada', ()
       },
       {
         filename: 'src/components/atoms/Button/index.tsx',
-        code: 'import { Topbar } from "../../molecules/Topbar/index.tsx"'
+        code: 'import { Dialog } from "../../molecules/Dialog/index.tsx"'
       },
       {
         filename: 'src/components/atoms/Button/index.tsx',
         code: 'export * from "@/components/organisms"'
       },
       {
-        filename: 'src/components/molecules/Topbar/index.tsx',
+        filename: 'src/components/molecules/Dialog/index.tsx',
         code: 'import(`@/components/organisms/ErrorFallback/index.tsx`)'
       },
       {
@@ -179,7 +179,7 @@ test('a política distingue dependências permitidas e inversões de camada', ()
       },
       {
         filename: 'src/components/atoms.ts',
-        code: 'export { Topbar } from "@/components/molecules/Topbar/index.tsx"'
+        code: 'export { Dialog } from "@/components/molecules/Dialog/index.tsx"'
       },
       {
         filename: 'src/helpers/example.ts',

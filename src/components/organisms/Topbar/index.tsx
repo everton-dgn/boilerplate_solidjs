@@ -3,9 +3,9 @@ import type { JSX } from '@solidjs/web'
 import { For } from 'solid-js'
 import IconGithub from '~icons/hugeicons/github'
 
-import { LocaleSwitcher } from '@/components/atoms/LocaleSwitcher/index.tsx'
 import { LocalizedLink } from '@/components/atoms/LocalizedLink/index.tsx'
-import { ThemeToggle } from '@/components/atoms/ThemeToggle/index.tsx'
+import { LocaleSwitcher } from '@/components/molecules/LocaleSwitcher/index.tsx'
+import { ThemeToggle } from '@/components/molecules/ThemeToggle/index.tsx'
 import { SITE } from '@/constants/site/index.ts'
 import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 

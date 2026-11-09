@@ -467,6 +467,13 @@ release. Add a tool name to select part of the graph. For example, run
   `Document`, `entry-server`, `entry-client`, `router`, `middleware`).
   Primitives globais não dependem de UI, rotas ou entradas; atoms não dependem
   de molecules/organisms, e molecules não dependem de organisms.
+- A camada de cada componente sai do que ele junta: atom não renderiza outro
+  componente; molecule junta atoms numa unidade, inclusive quando exporta as
+  próprias peças, como o `PageHero`; organism junta molecules numa seção da
+  interface, como o `Topbar`. O lint confere só a direção dos imports. Escolha
+  a camada ao criar o componente e, quando ele passar a renderizar outro da
+  mesma camada, mova a pasta uma camada acima. Critério e exemplos em
+  [arquitetura](docs/architecture.md#camadas-dos-componentes).
 - Produção em `src` não importa testes, fixtures de `src/tests` ou `tooling`.
   A exceção de testes vale como origem, inclusive para fixtures E2E.
   Primitives colocalizadas pertencem à camada do componente que as contém.

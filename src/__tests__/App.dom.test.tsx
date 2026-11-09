@@ -13,7 +13,7 @@ const { renderHome, checkProvider, checkTopbar } = vi.hoisted(() => ({
 }))
 
 vi.mock(
-  import('../components/atoms/Provider/index.tsx'),
+  import('../components/molecules/Provider/index.tsx'),
   async importOriginal => {
     const { Provider } = await importOriginal()
     return {
@@ -26,7 +26,7 @@ vi.mock(
 )
 
 vi.mock(
-  import('../components/molecules/Topbar/index.tsx'),
+  import('../components/organisms/Topbar/index.tsx'),
   async importOriginal => {
     const { Topbar } = await importOriginal()
     return {

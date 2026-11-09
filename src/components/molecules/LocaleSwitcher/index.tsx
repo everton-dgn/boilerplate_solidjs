@@ -6,8 +6,9 @@ import {
   setLocale
 } from '@paraglide/runtime.js'
 
-import { Button } from '../Button/index.tsx'
-import { DropdownMenu } from '../DropdownMenu/index.tsx'
+import { Button } from '@/components/atoms/Button/index.tsx'
+import { DropdownMenu } from '@/components/atoms/DropdownMenu/index.tsx'
+
 import { LOCALE_NAMES } from './constants.ts'
 
 import S from './styles.module.css'

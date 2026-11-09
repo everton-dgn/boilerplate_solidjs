@@ -118,6 +118,33 @@ ficam em
 da proteção das operações de backend; requisições e persistência ficam em
 `infra/`.
 
+## Camadas dos componentes
+
+`src/components/` usa as três primeiras camadas do
+[Atomic Design](https://atomicdesign.bradfrost.com/chapter-2/). A camada sai dos
+componentes que cada um junta, conferidos pelos imports e pelos exports. O
+tamanho do arquivo e a quantidade de marcação interna não mudam a camada.
+
+- `atoms/` não renderizam outro componente. Podem importar estilos, contexto,
+  primitives e helpers: o `Textarea` reaproveita o CSS do `Input` e continua
+  atom. A marcação própria também não conta, então o `DropdownMenu`, que recebe
+  o gatilho pronto, e o `ToastProvider` ficam aqui, com `Button`, `Input`,
+  `LocalizedLink` e `PageBadge`.
+- `molecules/` juntam atoms numa unidade com uma função. O `ThemeToggle` e o
+  `LocaleSwitcher` montam `Button` e `DropdownMenu`, o `OutdatedPageNotice` e o
+  `Dialog` montam `Button`, o `SiteContent` monta `LocalizedLink` e o `Provider`
+  monta o `ToastProvider`. Um componente que exporta as próprias peças para o
+  consumidor montar também entra aqui: o `PageHero` junta o `PageHeroTitle` e o
+  `PageHeroDescription`, que só funcionam dentro dele.
+- `organisms/` juntam molecules, com ou sem atoms, numa seção distinta da
+  interface. O `Topbar` é o cabeçalho, o `SiteArticle` monta o corpo das páginas
+  de conteúdo e o `ErrorFallback` monta a tela de erro sobre o `PageHero`.
+
+A regra `architecture/layer-imports` confere só a direção dos imports, descrita
+na próxima seção. A camada de cada componente é conferida na revisão: escolha a
+camada ao criar o componente e, quando ele passar a renderizar outro da mesma
+camada, mova a pasta uma camada acima e atualize os imports.
+
 ## Dependências entre camadas
 
 `architecture/layer-imports`, em `tooling/architecturePolicy/index.ts`, verifica

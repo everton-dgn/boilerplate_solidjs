@@ -8,8 +8,8 @@ import {
   type ParentProps
 } from 'solid-js'
 
-import { OutdatedPageNotice } from '@/components/atoms/OutdatedPageNotice/index.tsx'
-import { Provider } from '@/components/atoms/Provider/index.tsx'
+import { OutdatedPageNotice } from '@/components/molecules/OutdatedPageNotice/index.tsx'
+import { Provider } from '@/components/molecules/Provider/index.tsx'
 import { ErrorFallback } from '@/components/organisms/ErrorFallback/index.tsx'
 import { createSeo } from '@/primitives/createSeo/index.ts'
 

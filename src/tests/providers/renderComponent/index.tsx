@@ -1,6 +1,6 @@
 import { render, type JSX } from '@solidjs/web'
 
-import { Provider } from '@/components/atoms/Provider/index.tsx'
+import { Provider } from '@/components/molecules/Provider/index.tsx'
 
 type RenderComponentOptions = {
   providers?: boolean
