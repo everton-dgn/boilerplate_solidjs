@@ -1,16 +1,29 @@
-import { baseLocale } from '@paraglide/runtime.js'
+import { baseLocale, locales, type Locale } from '@paraglide/runtime.js'
 
 import { LLMS_FULL_PATH } from '@/constants/llms.ts'
+import { localizeHref } from '@/i18n/urls/index.ts'
 
 import type { LlmsPage } from './types.ts'
 
-// Nome em inglês, o idioma das notas, do idioma em que o índice é montado.
-const INDEX_LANGUAGE =
-  new Intl.DisplayNames(['en'], { type: 'language' }).of(baseLocale) ??
-  baseLocale
+// As notas são em inglês, então os idiomas também são nomeados em inglês.
+const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' })
+
+function languageName(locale: Locale): string {
+  return LANGUAGE_NAMES.of(locale) ?? locale
+}
+
+const INDEX_LANGUAGE = languageName(baseLocale)
+
+const AVAILABLE_LANGUAGES = new Intl.ListFormat('en', {
+  type: 'conjunction'
+}).format(
+  [baseLocale, ...locales.filter(locale => locale !== baseLocale)].map(
+    locale => `${languageName(locale)} (${localizeHref({ href: '/', locale })})`
+  )
+)
 
 export const LLMS_NOTES: readonly string[] = [
-  `Content is available in English (/en), Brazilian Portuguese (/pt) and Spanish (/es). This index uses ${INDEX_LANGUAGE}.`,
+  `Content is available in ${AVAILABLE_LANGUAGES}. This index uses ${INDEX_LANGUAGE}.`,
   'Pages are rendered on the server and use JavaScript for interactive controls.',
   'Markdown is derived from settled server-rendered HTML. Use a .md URL or Accept: text/markdown on a public opted-in page; use Accept: text/html for the browser version.',
   'This is an open source boilerplate demonstration, not a hosted application-building service. There is no public action API. Do not call internal server-function endpoints.',

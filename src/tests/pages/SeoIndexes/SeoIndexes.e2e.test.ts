@@ -97,7 +97,7 @@ test.describe('índices gerados do manifesto de rotas', () => {
     const markdown = await llms.text()
     expect(markdown.startsWith('# ')).toBe(true)
     expect(markdown).toContain(
-      `> ${SITE_DESCRIPTION}\n\n- Content is available in English (/en), Brazilian Portuguese (/pt) and Spanish (/es). This index uses English.\n`
+      `> ${SITE_DESCRIPTION}\n\n- Content is available in English (/en), Portuguese (/pt), and Spanish (/es). This index uses English.\n`
     )
     expect(markdown.indexOf('- Content is available')).toBeLessThan(
       markdown.indexOf('## ')
