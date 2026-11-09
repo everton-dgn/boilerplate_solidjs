@@ -85,7 +85,7 @@ uma vez e seguir o tema do documento.
 
 ## Fontes
 
-A Inter vem do pacote `@fontsource-variable/inter`, copiada para
+A Inter vem do pacote `@fontsource-variable/inter`, gravada em
 `src/assets/fonts/` e declarada em `src/theme/tokens/fonts.css`. São arquivos
 variáveis: cada um traz todos os pesos de 100 a 900, então um projeto derivado
 pode usar qualquer `font-weight` sem baixar outro arquivo.
@@ -97,11 +97,25 @@ acentos, aspas, travessões e `€`. Ele é o único arquivo com preload, no
 `unicode-range`, sem preload: o navegador só o baixa quando a página tem algum
 caractere desse intervalo. Os dois `unicode-range` são os do CSS do pacote.
 
-Para atender outro alfabeto, como cirílico ou grego, copie do pacote o arquivo
-do subset e o `unicode-range` correspondente e acrescente um `@font-face` com a
-mesma família. Não troque o `latin` por outro subset nem junte subsets num
-arquivo único: o visitante passaria a baixar caracteres que a página não usa, ou
-o texto comum sairia na fonte do sistema. Confira a cobertura de um arquivo com
+Os arquivos do pacote saem sem os nomes de glifo da tabela `post`, que o
+navegador não usa: são 1,5 KB a menos no `latin` e 3,2 KB no `latin-ext`, com a
+renderização idêntica. Os recursos OpenType ficam todos, inclusive frações,
+números tabulares e posicionamento de acentos combinados, porque um projeto
+derivado pode usá-los. Para atualizar a Inter, rode em cada arquivo do pacote,
+gravando com o mesmo nome em `src/assets/fonts/`:
+
+```sh
+uvx --from fonttools --with brotli pyftsubset <arquivo-do-pacote>.woff2 \
+  --unicodes='*' --layout-features='*' --name-IDs='*' --notdef-outline \
+  --flavor=woff2 --output-file=src/assets/fonts/<arquivo-do-pacote>.woff2
+```
+
+Para atender outro alfabeto, como cirílico ou grego, processe do mesmo jeito o
+arquivo do subset, copie o `unicode-range` correspondente do CSS do pacote e
+acrescente um `@font-face` com a mesma família. Não troque o `latin` por outro
+subset nem junte subsets num arquivo único: o visitante passaria a baixar
+caracteres que a página não usa, ou o texto comum sairia na fonte do sistema.
+Confira a cobertura de um arquivo com
 `fc-query --format='%{charset}\n' <arquivo>`.
 
 ## Regras de CSS
