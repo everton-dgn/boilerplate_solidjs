@@ -9,20 +9,16 @@ import {
   normalizeSitemapEntries,
   sitemapUrl
 } from '../../../normalizeSitemapEntries/index.ts'
-import { validateLocations } from '../../../sitemapCatalog/index.ts'
+import { sitemapEntrySchema } from '../../../sitemapEntrySchema/index.ts'
+import { validateLocations } from '../../../validateLocations/index.ts'
 import type { ReadOptions } from '../../types.ts'
-
-const EntrySchema = v.object({
-  path: v.string(),
-  lastmod: v.optional(v.string())
-})
 
 type PartitionReadOptions = ReadOptions & {
   source: SitemapPartitionSource
   part: string
 }
 
-const EntriesSchema = v.array(EntrySchema)
+const EntriesSchema = v.array(sitemapEntrySchema)
 const ENTRY_LIMIT = Math.floor(SITEMAP_URL_LIMIT / locales.length)
 
 async function readArraySources({
@@ -62,21 +58,6 @@ async function readArraySources({
   return collected.flat()
 }
 
-function normalizeUnique(
-  entries: readonly SitemapEntry[],
-  siteUrl: string
-): SitemapEntry[] {
-  const seen = new Set<string>()
-  for (const item of entries) {
-    const [normalized] = normalizeSitemapEntries({ entries: [item], siteUrl })
-    if (!normalized) throw new Error('Entrada inválida')
-    const key = sitemapUrl({ path: normalized.path, siteUrl })
-    if (seen.has(key)) throw new Error('Entrada duplicada')
-    seen.add(key)
-  }
-  return normalizeSitemapEntries({ entries, siteUrl })
-}
-
 export async function readArrayPart(
   read: ReadOptions
 ): Promise<SitemapEntry[] | undefined> {
@@ -112,7 +93,10 @@ export async function readPartitionEntries({
   if (!Array.isArray(raw) || raw.length > ENTRY_LIMIT) {
     throw new Error('Partição excede limite')
   }
-  const entries = normalizeUnique(v.parse(EntriesSchema, raw), siteUrl)
+  const parsed = v.parse(EntriesSchema, raw)
+  // A normalização descarta URLs repetidas; numa partição, repetir é erro.
+  const entries = normalizeSitemapEntries({ entries: parsed, siteUrl })
+  if (entries.length !== parsed.length) throw new Error('Entrada duplicada')
   if (entries.length === 0) return entries
   const { matchRoute } = catalog.readRoutes()
   for (const entry of entries) {

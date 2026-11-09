@@ -22,6 +22,7 @@ import type {
   SitemapArtifacts,
   SitemapIdentities
 } from '../../types.ts'
+import { sitemapEntrySchema } from '../sitemapEntrySchema/index.ts'
 
 type BoundedReadOptions = { file: string; maxBytes: number }
 
@@ -50,13 +51,9 @@ const ManifestSchema = v.object({
   hasPartitionSources: v.boolean(),
   identities: v.nullable(IdentityFileSchema)
 })
-const EntrySchema = v.object({
-  path: v.string(),
-  lastmod: v.optional(v.string())
-})
 const IdentitiesSchema = v.object({
   urls: v.array(v.string()),
-  entries: v.array(EntrySchema)
+  entries: v.array(sitemapEntrySchema)
 })
 
 // Sem cache de falha: um artefato ausente continua pequeno e explícito a cada

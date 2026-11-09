@@ -1,21 +1,9 @@
 import type { APIEvent } from 'filesystem-routing/api'
 
-import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
 import { sitemapSources } from '@/infra/server/sitemapSources/index.ts'
-import { readSitemapContext } from '@/routes/(seo)/sitemap/helpers/readSitemapContext/index.ts'
-import { buildSitemapPartResponse } from '@/routes/(seo)/sitemap/helpers/sitemapService/index.ts'
+import { createArrayPartRoute } from '@/routes/(seo)/sitemap/helpers/sitemapRoutes/index.ts'
 
-function respond({ request }: APIEvent): Promise<Response> {
-  return buildSitemapPartResponse({
-    ...readSitemapContext(),
-    sources: sitemapSources,
-    siteUrl: resolveSiteUrl('/'),
-    signal: request.signal,
-    kind: 'array',
-    part: 'array',
-    method: request.method
-  })
-}
+const respond = createArrayPartRoute(sitemapSources)
 
 export function GET(event: APIEvent): Promise<Response> {
   return respond(event)

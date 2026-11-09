@@ -10,7 +10,7 @@ import {
   buildSitemap,
   SitemapByteLimitError
 } from '../../../buildSitemap/index.ts'
-import { validateLocations } from '../../../sitemapCatalog/index.ts'
+import { validateLocations } from '../../../validateLocations/index.ts'
 import type {
   PagePartsOptions,
   ReadOptions,
