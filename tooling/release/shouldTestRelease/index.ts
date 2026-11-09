@@ -24,7 +24,7 @@ const relevantDirectories = ['tooling/release/', '.github/actions/']
 const commitPattern = /^[a-f\d]{40}$/u
 
 function git(args: string[]): Promise<string> {
-  return command('git', args)
+  return command({ file: 'git', args })
 }
 
 export async function shouldTestRelease({

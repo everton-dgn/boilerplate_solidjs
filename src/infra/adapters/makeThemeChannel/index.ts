@@ -45,7 +45,7 @@ function isThemeMessage(message: unknown): message is ThemeMessage {
 export function makeThemeChannel(
   receive: (theme: Theme) => void
 ): ThemeConnection {
-  let temporary = false
+  let isTemporary = false
   let observed: Theme | null | undefined
   const origin = crypto.getRandomValues(new Uint32Array(ORIGIN_WORDS)).join('-')
   let changedAt = 0
@@ -54,8 +54,8 @@ export function makeThemeChannel(
   const restore = (): void => {
     const saved = readTheme()
     if (saved === undefined) return
-    if (!temporary || saved !== observed) {
-      temporary = false
+    if (!isTemporary || saved !== observed) {
+      isTemporary = false
       receive(saved ?? DEFAULT_THEME)
     }
     observed = saved
@@ -76,7 +76,7 @@ export function makeThemeChannel(
     }
     ;({ changedAt } = message)
     lastOrigin = message.origin
-    temporary = !message.isPersisted
+    isTemporary = !message.isPersisted
     observed = readTheme()
     receive(
       message.isPersisted && observed !== undefined
@@ -98,7 +98,7 @@ export function makeThemeChannel(
     publish({ theme, isPersisted }) {
       changedAt = Math.max(Date.now(), changedAt + 1)
       lastOrigin = origin
-      temporary = !isPersisted
+      isTemporary = !isPersisted
       observed = readTheme()
       channel.post({ theme, isPersisted, changedAt, origin })
     },

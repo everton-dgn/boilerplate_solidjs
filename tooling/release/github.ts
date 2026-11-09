@@ -40,6 +40,7 @@ type ReleasePullRequestCheck = OpenPullRequestCheck & {
   branch: string
   head: string
 }
+type CommandOptions = { file: string; args: string[] }
 
 const execute = promisify(execFile)
 const MAX_OUTPUT_BYTES = 16_777_216
@@ -97,7 +98,7 @@ async function request<T>({
   return (output ? JSON.parse(output.slice(separator)) : undefined) as T
 }
 
-export async function command(file: string, args: string[]): Promise<string> {
+export async function command({ file, args }: CommandOptions): Promise<string> {
   const result = await execute(file, args, { maxBuffer: MAX_OUTPUT_BYTES })
   return result.stdout.trim()
 }
@@ -106,13 +107,16 @@ export async function command(file: string, args: string[]): Promise<string> {
 // autenticam pelo helper do gh com o GH_TOKEN do passo, o que vale também para
 // repositório privado.
 export function git(...args: string[]): Promise<string> {
-  return command('git', [
-    '-c',
-    'credential.helper=',
-    '-c',
-    'credential.helper=!gh auth git-credential',
-    ...args
-  ])
+  return command({
+    file: 'git',
+    args: [
+      '-c',
+      'credential.helper=',
+      '-c',
+      'credential.helper=!gh auth git-credential',
+      ...args
+    ]
+  })
 }
 
 export function api<T>(path: string): Promise<T> {

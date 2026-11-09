@@ -57,7 +57,7 @@ export function createToastState({
   let announcementTimer: ReturnType<typeof setTimeout> | undefined
   let sequence = 0
   let isDisposed = false
-  let hidden = false
+  let isHidden = false
 
   function publish() {
     setToasts(Array.from(entries.values(), entry => entry.toast))
@@ -89,7 +89,7 @@ export function createToastState({
   function start(entry: TimerEntry) {
     if (
       isDisposed ||
-      hidden ||
+      isHidden ||
       entry.isHovered ||
       entry.isFocused ||
       entry.remaining === 0
@@ -204,7 +204,7 @@ export function createToastState({
   }
 
   function visibilityChanged() {
-    ;({ hidden } = document)
+    isHidden = document.hidden
     for (const entry of entries.values()) {
       stop(entry)
       start(entry)

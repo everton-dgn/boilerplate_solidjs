@@ -1,6 +1,6 @@
 import { DROPDOWN_FIRST_INDEX, DROPDOWN_NAVIGATION } from '../../constants.ts'
+import { queryMenuItems } from '../../primitives/createMenuState/index.ts'
 import type { DropdownMenuState } from '../../types.ts'
-import { queryMenuItems } from '../createMenuState/index.ts'
 
 function activeIndex(items: readonly HTMLElement[]): number {
   const { activeElement } = document
