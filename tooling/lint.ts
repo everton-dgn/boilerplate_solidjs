@@ -122,11 +122,22 @@ export const lint: NonNullable<UserConfig['lint']> = {
       rules: { 'vitest/no-import-node-test': 'off' }
     },
     {
-      // O node:test não tem each, e describe e it devolvem Promise.
+      // O node:test não tem each, e o runner acompanha a Promise que describe
+      // e it devolvem.
       files: ['tooling/**/__tests__/**/*.ts'],
       rules: {
-        'typescript/no-floating-promises': 'off',
-        'typescript/no-misused-promises': 'off',
+        'typescript/no-floating-promises': [
+          'error',
+          {
+            allowForKnownSafeCalls: [
+              {
+                from: 'package',
+                package: 'node:test',
+                name: ['describe', 'it', 'test', 'suite']
+              }
+            ]
+          }
+        ],
         'vitest/prefer-each': 'off'
       }
     },
