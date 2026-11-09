@@ -41,8 +41,7 @@ test.describe('middleware na entrada de produção', () => {
 
     expect(response.status()).toBe(HTTP_OK)
     expect(response.headers()).toMatchObject({
-      'strict-transport-security':
-        'max-age=63072000; includeSubDomains; preload',
+      'strict-transport-security': 'max-age=63072000; includeSubDomains',
       'x-frame-options': 'DENY',
       'x-content-type-options': 'nosniff',
       'referrer-policy': 'strict-origin-when-cross-origin',

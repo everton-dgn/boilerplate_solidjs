@@ -428,8 +428,7 @@ describe('CSP nas respostas da contenção', () => {
     expect(response.status).toBe(HTTP_FOUND)
     expect(Object.fromEntries(response.headers)).toMatchObject({
       'x-frame-options': 'DENY',
-      'strict-transport-security':
-        'max-age=63072000; includeSubDomains; preload'
+      'strict-transport-security': 'max-age=63072000; includeSubDomains'
     })
     // O redirect não tem documento: a CSP bloqueia scripts sem gravar o nonce.
     expect(response.headers.get('content-security-policy')).toContain(

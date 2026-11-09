@@ -36,6 +36,28 @@ renderizado no servidor: o SSR grava o atributo para qualquer valor não nulo, e
 a CSP o bloqueia. O `applyTheme` grava o `color-scheme` direto em
 `element.style`, pelo CSSOM, que a CSP não bloqueia.
 
+## HSTS
+
+O `Strict-Transport-Security` sai com `max-age=63072000; includeSubDomains`, sem
+`preload`. Essa diretiva não muda o comportamento do navegador: ela autoriza
+qualquer pessoa a submeter o domínio à
+[lista de preload](https://hstspreload.org/), embutida nos navegadores. Depois
+da inclusão, todos os subdomínios, inclusive os internos, passam a exigir HTTPS
+válido, e a remoção leva meses. Por isso o hstspreload.org pede que projetos que
+entregam configuração pronta não a incluam por padrão
+([Preloading Should Be Opt-In](https://hstspreload.org/#opt-in)).
+
+A lista só evita o redirect de HTTP para HTTPS na primeira visita por um link
+`http://`. O Chrome já tenta HTTPS primeiro em sites públicos, e domínios sob
+TLDs que estão inteiros na lista, como `.dev` e `.app`, já recebem esse
+tratamento. Para entrar na lista, confirme que todos os subdomínios atendem
+HTTPS, acrescente `preload` ao valor em
+[`securityHeaders/constants.ts`](../src/middleware/securityHeaders/constants.ts)
+e submeta o domínio no hstspreload.org.
+
+Os arquivos estáticos não passam pelo middleware. Na Vercel eles saem com o HSTS
+da própria plataforma, `max-age=63072000`, sem `includeSubDomains`.
+
 ## Nonce e entradas de renderização
 
 O nonce tem 16 bytes de `crypto.getRandomValues` em base64 e é criado a cada
