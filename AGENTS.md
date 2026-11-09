@@ -451,6 +451,14 @@ release. Add a tool name to select part of the graph. For example, run
   aplicações derivadas. Não aponte nem remova um token por não ter consumidor na
   demonstração; revise apenas valor, nome ou uso incorretos.
 
+## Prop `label` do `Button`
+
+- A prop `label` de `src/components/atoms/Button/index.tsx` é um atalho
+  intencional para botão só com texto: `<Button label={m.save()} />`. Ela já
+  foi removida e restaurada mais de uma vez. Não a remova, não a aponte como
+  duplicação de `children` e não a trate como prop sem consumidor; detalhes em
+  [UI](docs/ui.md#botões).
+
 ## Dependências entre camadas
 
 - Preserve `architecture/layer-imports` em `tooling/architecturePolicy/index.ts`.

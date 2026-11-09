@@ -2,6 +2,19 @@
 
 [Voltar ao README](../README.md)
 
+## Botões
+
+`Button`, em `components/atoms/`, aceita as props nativas de `button`, com
+`type="button"` como padrão, além de `variant`, `size` e `class`. Para um botão
+só com texto, use `label`: `<Button label={m.save()} />` se lê melhor que abrir
+a tag em volta do texto. Use `children` quando o conteúdo tiver ícone ou outra
+marcação. Com os dois, `label` prevalece. A prop vira o texto visível e o nome
+acessível do botão; para um botão só com ícone, use `aria-label`.
+
+A prop `label` é uma decisão do projeto e faz parte do kit oferecido às
+aplicações derivadas. Não a remova por duplicar `children` nem por não ter
+consumidor de produção na demonstração.
+
 ## Campos, diálogos e notificações
 
 `Input` e `Textarea`, em `components/atoms/`, aceitam as props nativas,
