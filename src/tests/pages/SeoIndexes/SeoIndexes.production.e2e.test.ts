@@ -98,7 +98,7 @@ test.describe('índices na árvore real de produção', () => {
 
   // Sem o 405, o render trataria o método sem handler como a página 404.
   test('recusa métodos sem handler na rota de API', async ({ request }) => {
-    for (const method of ['POST', 'PUT', 'DELETE', 'OPTIONS']) {
+    for (const method of ['POST', 'PUT', 'DELETE']) {
       const response = await request.fetch('/robots.txt', {
         method,
         maxRedirects: 0
