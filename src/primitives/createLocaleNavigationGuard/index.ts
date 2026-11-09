@@ -2,11 +2,6 @@ import { extractLocaleFromUrl, getLocale } from '@paraglide/runtime.js'
 import { useBeforeLeave } from '@solidjs/router'
 import { isServer } from '@solidjs/web'
 
-import {
-  navigateDocument,
-  readLeaveTarget
-} from '@/infra/adapters/documentNavigation/index.ts'
-
 export function createLocaleNavigationGuard(): void {
   if (isServer) return
   const documentLocale = getLocale()
@@ -21,12 +16,11 @@ export function createLocaleNavigationGuard(): void {
   }
 
   useBeforeLeave(event => {
-    const target = readLeaveTarget(event)
-    if (!target || !changesLocale(target)) return
+    if (event.defaultPrevented || typeof event.to === 'number') return
+    const target = new URL(event.to, globalThis.location.href)
+    if (!changesLocale(target)) return
     event.preventDefault()
-    navigateDocument({
-      href: target.href,
-      shouldReplace: event.options?.replace
-    })
+    if (event.options?.replace) globalThis.location.replace(target.href)
+    else globalThis.location.assign(target.href)
   })
 }

@@ -2,10 +2,6 @@ import { useBeforeLeave } from '@solidjs/router'
 import { isServer } from '@solidjs/web'
 
 import { delocalizePathname } from '@/i18n/urls/index.ts'
-import {
-  navigateDocument,
-  readLeaveTarget
-} from '@/infra/adapters/documentNavigation/index.ts'
 
 const RELOAD_STORAGE_KEY = 'outdated-page-reload'
 // Uma falha que volta logo depois da recarga indica um build novo também
@@ -89,11 +85,11 @@ export function registerUnsavedChanges(
 export function createOutdatedPageGuard(): void {
   if (isServer) return
   useBeforeLeave(event => {
-    const target = readLeaveTarget(event)
-    if (!target) return
+    if (event.defaultPrevented || typeof event.to === 'number') return
     // Este guard é inscrito antes das rotas e o preventDefault é compartilhado:
     // sem a checagem, o guard de rascunho da página nunca chegaria a perguntar.
     if (!isOutdated || isOffline() || hasUnsavedChanges()) return
+    const target = new URL(event.to, globalThis.location.href)
     // Query e hash seguem no client: um campo ligado à URL recarregaria a
     // página a cada tecla.
     if (
@@ -104,9 +100,7 @@ export function createOutdatedPageGuard(): void {
       return
     }
     event.preventDefault()
-    navigateDocument({
-      href: target.href,
-      shouldReplace: event.options?.replace
-    })
+    if (event.options?.replace) globalThis.location.replace(target.href)
+    else globalThis.location.assign(target.href)
   })
 }

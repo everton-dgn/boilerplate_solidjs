@@ -8,7 +8,6 @@ import {
 import { isServer } from '@solidjs/web'
 
 import { isAbsoluteHref, resolveLocalizedHref } from '@/i18n/urls/index.ts'
-import { navigateDocument } from '@/infra/adapters/documentNavigation/index.ts'
 
 type LocalizedNavigateOptions = Omit<Partial<NavigateOptions>, 'resolve'> & {
   href: string | TypedPath
@@ -45,7 +44,8 @@ export function createLocalizedNavigate() {
       (locale !== undefined && locale !== getLocale()) ||
       isAbsoluteHref(target)
     if (shouldUseDocumentNavigation && !isServer) {
-      navigateDocument({ href: target, shouldReplace: options.replace })
+      if (options.replace) globalThis.location.replace(target)
+      else globalThis.location.assign(target)
       return
     }
     navigate(target, { ...options, resolve: false })
