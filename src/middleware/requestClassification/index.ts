@@ -7,7 +7,7 @@ import { negotiatePageFormat } from '../negotiatePageFormat/index.ts'
 type PagePathOptions = { pathname: string; method: string }
 
 const matchAPI = createAPIMatcher(routes)
-const API_METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE']
+const API_METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
 
 export function isServerFunctionPath(pathname: string): boolean {
   return pathname === endpoint || pathname.startsWith(`${endpoint}/`)

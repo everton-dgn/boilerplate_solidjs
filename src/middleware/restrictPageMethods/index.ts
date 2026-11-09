@@ -23,11 +23,13 @@ export function restrictPageMethods(
   request: Request,
   next: Next
 ): Promise<Response> {
-  if (PAGE_METHODS.includes(request.method)) return next()
   const { pathname } = new URL(request.url)
-  if (isPagePath({ pathname, method: request.method })) {
-    return methodNotAllowed(PAGE_METHODS)
-  }
-  const allowed = apiRouteMethods(pathname)
-  return allowed.length > 0 ? methodNotAllowed(allowed) : next()
+  // O handler de API já atendeu os métodos que a rota exporta, então um caminho
+  // de API que chega aqui, mesmo em GET ou HEAD, não tem handler para o método.
+  const apiMethods = apiRouteMethods(pathname)
+  if (apiMethods.length > 0) return methodNotAllowed(apiMethods)
+  if (PAGE_METHODS.includes(request.method)) return next()
+  return isPagePath({ pathname, method: request.method })
+    ? methodNotAllowed(PAGE_METHODS)
+    : next()
 }

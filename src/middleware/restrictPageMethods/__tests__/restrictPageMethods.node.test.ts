@@ -2,6 +2,28 @@ import { endpoint } from 'virtual:solid-server-function-handler'
 
 import { restrictPageMethods } from '../index.ts'
 
+vi.mock(import('filesystem-routing/api'), async importOriginal => {
+  const api = await importOriginal()
+  return {
+    ...api,
+    createAPIMatcher: routes =>
+      api.createAPIMatcher([
+        ...routes,
+        {
+          path: '/api/write',
+          $POST: { require: () => ({ POST: () => new Response('written') }) }
+        },
+        {
+          path: '/api/preflight',
+          $GET: { require: () => ({ GET: () => new Response('read') }) },
+          $OPTIONS: {
+            require: () => ({ OPTIONS: () => new Response(null) })
+          }
+        }
+      ])
+  }
+})
+
 const ORIGIN = 'https://example.com'
 const HTTP_METHOD_NOT_ALLOWED = 405
 
@@ -45,6 +67,35 @@ describe('métodos aceitos nas páginas', () => {
       expect(response.body).toBeNull()
     }
   )
+
+  it.each(['GET', 'HEAD'])(
+    'responde 405 a %s numa rota de API que só atende POST',
+    async method => {
+      const next = vi.fn<() => Promise<Response>>()
+
+      const response = await restrictPageMethods(
+        request({ path: '/api/write', method }),
+        next
+      )
+
+      expect(next).not.toHaveBeenCalled()
+      expect(response.status).toBe(HTTP_METHOD_NOT_ALLOWED)
+      expect(response.headers.get('allow')).toBe('POST')
+    }
+  )
+
+  it('lista OPTIONS no Allow quando a rota de API o exporta', async () => {
+    const next = vi.fn<() => Promise<Response>>()
+
+    const response = await restrictPageMethods(
+      request({ path: '/api/preflight', method: 'POST' }),
+      next
+    )
+
+    expect(next).not.toHaveBeenCalled()
+    expect(response.status).toBe(HTTP_METHOD_NOT_ALLOWED)
+    expect(response.headers.get('allow')).toBe('GET, HEAD, OPTIONS')
+  })
 
   it.each([
     { path: '/pt/about', method: 'GET' },
