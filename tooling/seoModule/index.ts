@@ -26,7 +26,9 @@ export const seoModule = defineRule({
       onlySeo:
         'O seo.ts exporta só o objeto seo. O corpo da página fica no index.tsx, porque o seo.ts entra no bundle inicial pelo route (AGENTS.md, Módulos de página).',
       localImport:
-        'O seo.ts não importa módulos locais como valor: o que ele importa entra no bundle inicial junto com o route. Mantenha o corpo da página no index.tsx (AGENTS.md, Módulos de página).'
+        'O seo.ts não importa módulos locais como valor: o que ele importa entra no bundle inicial junto com o route. Mantenha o corpo da página no index.tsx (AGENTS.md, Módulos de página).',
+      computedImport:
+        'O seo.ts não usa import() com caminho calculado: a regra não consegue conferir se o destino é local. Mantenha o corpo da página no index.tsx (AGENTS.md, Módulos de página).'
     }
   },
   create(context) {
@@ -40,7 +42,10 @@ export const seoModule = defineRule({
     // que o caminho relativo.
     const reportLocalImport = (node: ValueImport) => {
       const specifier = readStaticSpecifier(node)
-      if (specifier === undefined) return
+      if (specifier === undefined) {
+        context.report({ node, messageId: 'computedImport' })
+        return
+      }
       const target = resolveProjectPath({
         specifier,
         filename: context.filename,

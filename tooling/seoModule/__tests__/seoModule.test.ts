@@ -114,6 +114,16 @@ test('a regra deixa o seo.ts só com seo e sem import local como valor', () => {
         filename: SEO_FILE,
         code: `void import('@/routes/(base)/about/content.ts')\n${SEO}`,
         errors: [{ messageId: 'localImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `const lang = 'pt'\nvoid import(\`./content/\${lang}.ts\`)\n${SEO}`,
+        errors: [{ messageId: 'computedImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `const target = './content.ts'\nvoid import(target)\n${SEO}`,
+        errors: [{ messageId: 'computedImport' }]
       }
     ]
   })
