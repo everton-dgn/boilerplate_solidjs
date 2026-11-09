@@ -18,7 +18,7 @@ describe('seletor de tema', () => {
     await expect
       .element(trigger)
       .toHaveAccessibleName('Select theme, current: System')
-    await expect.element(trigger).not.toHaveAttribute('aria-busy')
+    await expect.element(trigger).toBeEnabled()
     await userEvent.click(trigger)
     for (const [label, value] of [
       ['Dark', 'dark'],
