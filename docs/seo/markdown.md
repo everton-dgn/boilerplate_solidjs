@@ -211,14 +211,17 @@ Os limites ficam em `src/middleware/markdownContent/constants.ts`: prazo total
 de 15 segundos, HTML de até 2 MiB antes da conversão síncrona e Markdown de até
 2 MiB. A leitura verifica cada chunk e cancela o leitor ao exceder o teto;
 `Content-Length` não substitui essa contagem. O chunk corrente já foi alocado
-pelo produtor. A conversão só publica depois de validar o tamanho final. Timeout
-e desconexão abortam o sinal do render, mas código síncrono e serviços que
-ignoram `AbortSignal` não são preemptados. O SSR assíncrono pode ter montado o
-HTML inteiro antes da leitura, e a conversão mantém buffers intermediários; o
-limite não equivale a um teto total de memória do processo. As reservas de saída
-cobrem os corpos possuídos pela aplicação, não buffers do socket, CDN ou
-adapter. O [piloto HTTP](../testing.md#carga-da-publicação) mede esses efeitos
-no Node local. A hospedagem precisa de verificação própria.
+pelo produtor. A conversão só publica depois de validar o tamanho final. Exceder
+um dos tetos ou uma falha do conversor encerra a publicação com o 500 público no
+idioma da requisição, `private, no-store` e um registro `[middleware]`; o
+cancelamento continua seguindo o caminho da publicação. Timeout e desconexão
+abortam o sinal do render, mas código síncrono e serviços que ignoram
+`AbortSignal` não são preemptados. O SSR assíncrono pode ter montado o HTML
+inteiro antes da leitura, e a conversão mantém buffers intermediários; o limite
+não equivale a um teto total de memória do processo. As reservas de saída cobrem
+os corpos possuídos pela aplicação, não buffers do socket, CDN ou adapter. O
+[piloto HTTP](../testing.md#carga-da-publicação) mede esses efeitos no Node
+local. A hospedagem precisa de verificação própria.
 
 As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
 aviso de privacidade descreve as preferências e os limites observáveis na

@@ -9,6 +9,7 @@ import {
 } from '@/constants/http.ts'
 import { markdownPath } from '@/helpers/markdownRoute/index.ts'
 import { resolveSiteUrl } from '@/helpers/resolveSiteUrl/index.ts'
+import { logServerFailure } from '@/infra/server/logServerFailure/index.ts'
 
 import { appendVary } from '../../../helpers/appendVary/index.ts'
 import { isHtmlResponse } from '../../../helpers/isHtmlResponse/index.ts'
@@ -28,7 +29,7 @@ type RenderOptions = {
   isPublished: boolean
   signal: AbortSignal
 }
-type BoundedOptions = Omit<RenderOptions, 'signal'> & { signal: AbortSignal }
+type ConvertOptions = { response: Response; url: URL; signal: AbortSignal }
 type DiscardOptions = { response: Response; signal: AbortSignal }
 type Publication = { response: Response; isPublished: boolean }
 type RedirectOptions = { response: Response; url: URL; request: Request }
@@ -99,6 +100,23 @@ async function discardAbortedRender({
   signal.throwIfAborted()
 }
 
+async function convertPage({
+  response,
+  url,
+  signal
+}: ConvertOptions): Promise<string> {
+  // A origem pública resolve os links: no prerender a requisição é local.
+  const markdown = await convertHtml({
+    response,
+    url: resolveSiteUrl(`${url.pathname}${url.search}`),
+    signal
+  })
+  if (new TextEncoder().encode(markdown).byteLength > MAX_MARKDOWN_BYTES) {
+    throw new Error('Markdown output limit exceeded')
+  }
+  return markdown
+}
+
 async function renderMarkdown({
   event,
   render,
@@ -146,14 +164,18 @@ async function renderMarkdown({
       request: original
     })
   }
-  // A origem pública resolve os links: no prerender a requisição é local.
-  const markdown = await convertHtml({
-    response,
-    url: resolveSiteUrl(`${url.pathname}${url.search}`),
-    signal
-  })
-  if (new TextEncoder().encode(markdown).byteLength > MAX_MARKDOWN_BYTES) {
-    throw new Error('Markdown output limit exceeded')
+  let markdown: string
+  try {
+    markdown = await convertPage({ response, url, signal })
+  } catch (error) {
+    // O cancelamento segue para a publicação; os tetos e as falhas do
+    // conversor viram o 500 público no idioma da requisição original.
+    signal.throwIfAborted()
+    logServerFailure({ source: 'middleware', error })
+    return publicResponse({
+      status: HTTP_INTERNAL_SERVER_ERROR,
+      request: original
+    })
   }
   const converted = new Response(markdown, {
     status: response.status,
@@ -165,7 +187,7 @@ async function renderMarkdown({
 export function boundedRender({
   signal,
   ...options
-}: BoundedOptions): Promise<Response> {
+}: RenderOptions): Promise<Response> {
   const { event, original, url } = options
   const headers = new Headers(original.headers)
   headers.set('accept', 'text/html')
