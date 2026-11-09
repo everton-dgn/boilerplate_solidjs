@@ -1,10 +1,18 @@
 import path from 'node:path'
 
-import { defineRule } from 'vite-plus/lint/plugins'
+import { defineRule, type ESTree } from 'vite-plus/lint/plugins'
+
+import {
+  readStaticSpecifier,
+  resolveProjectPath
+} from '../lint/import-specifier.ts'
 
 const SEO_MODULE = /^src\/routes\/(?:.+\/)?seo\.ts$/u
 const LOCAL_SPECIFIER = /^\.{1,2}(?:\/|$)/u
 const SEO_EXPORT = 'seo'
+const ROUTES_DIR = 'src/routes/'
+
+type ValueImport = ESTree.ImportDeclaration | ESTree.ImportExpression
 
 // O manifesto de rotas importa o `route` de cada página no bundle inicial, e
 // tudo o que o `seo.ts` importa ou exporta vai junto. Por isso ele só exporta
@@ -28,6 +36,21 @@ export const seoModule = defineRule({
       .join('/')
     if (!SEO_MODULE.test(relative)) return {}
 
+    // Um alias para a árvore de rotas puxa o módulo da página do mesmo jeito
+    // que o caminho relativo.
+    const reportLocalImport = (node: ValueImport) => {
+      const specifier = readStaticSpecifier(node)
+      if (specifier === undefined) return
+      const target = resolveProjectPath({
+        specifier,
+        filename: context.filename,
+        root: context.cwd
+      })
+      if (LOCAL_SPECIFIER.test(specifier) || target.startsWith(ROUTES_DIR)) {
+        context.report({ node, messageId: 'localImport' })
+      }
+    }
+
     return {
       ExportNamedDeclaration(node) {
         const { declaration } = node
@@ -46,10 +69,10 @@ export const seoModule = defineRule({
         context.report({ node, messageId: 'onlySeo' })
       },
       ImportDeclaration(node) {
-        if (node.importKind === 'type') return
-        if (LOCAL_SPECIFIER.test(node.source.value)) {
-          context.report({ node, messageId: 'localImport' })
-        }
+        if (node.importKind !== 'type') reportLocalImport(node)
+      },
+      ImportExpression(node) {
+        reportLocalImport(node)
       }
     }
   }
