@@ -230,10 +230,10 @@ demonstração. O `contactPoint` usa `contato@example.com` e `0000000000` como
 placeholders, com `contactType: demo` e uma descrição que informa que esses
 valores não são canais de contato do mantenedor. O `address` é um
 `PostalAddress` com rua, cidade, estado, CEP e país de exemplo, identificado
-como fictício pela descrição. Os dois objetos ficam em
-`src/primitives/createSeo/buildStructuredData/index.ts`. Substitua esses dados
-ao adaptar o boilerplate para outro produto. Revise o aviso quando adicionar
-serviços ou coleta de dados.
+como fictício pela descrição. Os dois objetos ficam em `SITE.organization`, em
+`src/constants/site/index.ts`. Substitua esses dados ao adaptar o boilerplate
+para outro produto, ou remova o campo para tirá-lo do JSON-LD. Revise o aviso
+quando adicionar serviços ou coleta de dados.
 
 Valide com `vp run check:ci`, `vp run typecheck:node`, `vp run test:tooling` e
 os testes Node de `src/middleware/` e de SEO. Execute

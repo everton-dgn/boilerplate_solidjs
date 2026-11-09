@@ -70,23 +70,8 @@ export function buildStructuredData({
         '@id': organizationId,
         name: SITE.title,
         description: SITE.description,
-        contactPoint: {
-          '@type': 'ContactPoint',
-          contactType: 'demo',
-          email: 'contato@example.com',
-          telephone: '0000000000',
-          description:
-            'Placeholder values for this boilerplate demonstration. Do not use them to contact the maintainer.'
-        },
-        address: {
-          '@type': 'PostalAddress',
-          streetAddress: 'Rua de exemplo, 123',
-          addressLocality: 'Cidade de exemplo',
-          addressRegion: 'Estado de exemplo',
-          postalCode: '00000-000',
-          addressCountry: 'BR',
-          description: 'Placeholder address for this boilerplate demonstration.'
-        },
+        contactPoint: SITE.organization.contactPoint,
+        address: SITE.organization.address,
         url: resolveSiteUrl('/'),
         logo: { '@type': 'ImageObject', url: resolveSiteUrl(SITE.logo) },
         sameAs: SITE.socialLinks
