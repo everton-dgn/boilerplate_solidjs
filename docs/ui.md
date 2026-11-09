@@ -124,6 +124,9 @@ do Vite+.
   `custom-property-no-missing-var-function` detecta a ausência de `var()` para
   tokens declarados no mesmo arquivo. Nas propriedades que exigem tokens,
   valores sem `var()` também são rejeitados.
+- Os tokens de `src/theme/tokens/` formam a paleta oferecida às aplicações
+  derivadas. Um token sem consumidor na demonstração continua no tema: falta de
+  uso aqui não indica código morto nem motivo para removê-lo.
 - Seletores e media queries inválidos geram erro, assim como seletores
   obsoletos, como `:focus-ring`, e seletores que nunca correspondem a um
   elemento, como `:is(::before)`. Seletores duplicados no mesmo contexto, etapas

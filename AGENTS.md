@@ -447,6 +447,9 @@ release. Add a tool name to select part of the graph. For example, run
   variantes e tamanhos ficam no nível superior, fora da classe base.
 - Importe CSS Modules como `S`. O Stylelint exige snake_case em `src/**/*.css`;
   valide mudanças com `vp run lint:css` e `vp run test:tooling`.
+- Os tokens de `src/theme/tokens/` são a paleta do boilerplate para as
+  aplicações derivadas. Não aponte nem remova um token por não ter consumidor na
+  demonstração; revise apenas valor, nome ou uso incorretos.
 
 ## Dependências entre camadas
 
