@@ -173,9 +173,10 @@ no SSR. HEAD renderiza a mesma representação e remove o corpo. APIs, assets, R
 e métodos de escrita ficam fora da negociação. Num caminho de página sem handler
 de API para o método, POST, PUT, PATCH, DELETE e OPTIONS recebem 405 com
 `Allow: GET, HEAD`: sem essa resposta, o handler do plugin renderizaria a página
-com status 200 no idioma base, fora do contexto de idioma. Os formulários do
-router enviam ao endpoint das server functions, que não passa por essa
-restrição.
+com status 200 no idioma base, fora do contexto de idioma. Rotas de API sem
+handler para o método também recebem 405, com os métodos atendidos no `Allow`.
+Os formulários do router enviam ao endpoint das server functions, que não passa
+por essa restrição.
 
 A localização preserva URL > cookie > Accept-Language. Redirects seguros para
 uma página elegível da mesma origem preservam a intenção `.md`; o middleware não

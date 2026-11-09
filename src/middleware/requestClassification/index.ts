@@ -13,6 +13,12 @@ export function isServerFunctionPath(pathname: string): boolean {
   return pathname === endpoint || pathname.startsWith(`${endpoint}/`)
 }
 
+export function apiRouteMethods(pathname: string): string[] {
+  return API_METHODS.filter(
+    candidate => matchAPI(pathname, candidate)?.isPage === false
+  )
+}
+
 export function isPagePath({ pathname, method }: PagePathOptions): boolean {
   if (
     isServerFunctionPath(pathname) ||
@@ -23,9 +29,7 @@ export function isPagePath({ pathname, method }: PagePathOptions): boolean {
   }
   const matched = matchAPI(pathname, method)
   if (matched) return matched.isPage
-  return !API_METHODS.some(
-    candidate => matchAPI(pathname, candidate)?.isPage === false
-  )
+  return apiRouteMethods(pathname).length === 0
 }
 
 // O endpoint de server functions nunca pode receber um segundo dispatch para renderizar erro.

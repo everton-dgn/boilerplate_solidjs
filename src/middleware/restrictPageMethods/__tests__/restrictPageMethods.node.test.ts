@@ -29,6 +29,23 @@ describe('métodos aceitos nas páginas', () => {
     }
   )
 
+  it.each(['POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])(
+    'responde 405 a %s numa rota de API sem handler para o método',
+    async method => {
+      const next = vi.fn<() => Promise<Response>>()
+
+      const response = await restrictPageMethods(
+        request({ path: '/sitemap.xml', method }),
+        next
+      )
+
+      expect(next).not.toHaveBeenCalled()
+      expect(response.status).toBe(HTTP_METHOD_NOT_ALLOWED)
+      expect(response.headers.get('allow')).toBe('GET, HEAD')
+      expect(response.body).toBeNull()
+    }
+  )
+
   it.each([
     { path: '/pt/about', method: 'GET' },
     { path: '/pt/about', method: 'HEAD' },
