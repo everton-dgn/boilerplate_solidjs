@@ -87,4 +87,32 @@ describe('publication backend ownership', () => {
     )
     expect(backend).not.toHaveBeenCalled()
   })
+
+  it.each([
+    { name: 'o motivo do cancelamento', isCancellation: true },
+    { name: 'outro erro', isCancellation: false }
+  ])(
+    'registra a falha da leitura abortada só quando ela não é cancelamento: $name',
+    async ({ isCancellation }) => {
+      vi.stubEnv('DEV', false)
+      const log = vi.spyOn(console, 'error').mockReturnValue()
+      const controller = new AbortController()
+      await withPublicationScope({
+        signal: controller.signal,
+        isActive: () => true,
+        observe: vi.fn<(operation: Promise<unknown>) => void>(),
+        run: async () => {
+          const backend = Promise.withResolvers<never>()
+          const pending = protectServerOperation({ run: () => backend.promise })
+          const reason = new Error('publication cancelled')
+          controller.abort(reason)
+          backend.reject(isCancellation ? reason : new Error('backend failed'))
+          await expect(pending).rejects.toThrow(
+            'The request could not be completed.'
+          )
+        }
+      })
+      expect(log).toHaveBeenCalledTimes(isCancellation ? 0 : 1)
+    }
+  )
 })

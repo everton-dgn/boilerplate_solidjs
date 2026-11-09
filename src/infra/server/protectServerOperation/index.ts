@@ -11,6 +11,7 @@ import {
 
 import {
   assertPublicationActive,
+  isPublicationCancellation,
   observePublicationOperation
 } from '../publicationScope/index.ts'
 
@@ -110,7 +111,7 @@ export function protectServerOperation({
     }
     // oxlint-disable-next-line typescript/only-throw-error -- O Solid usa Response/ResponseEnvelope como sinais de controle.
     if (control) throw control
-    if (!isPublicError(error)) {
+    if (!isPublicError(error) && !isPublicationCancellation(error)) {
       // O erro público lançado abaixo é o único que chega ao hook; em
       // desenvolvimento o log devolve o original ao terminal.
       logServerFailure({
