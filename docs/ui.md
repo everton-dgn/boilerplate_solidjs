@@ -83,6 +83,27 @@ sistema e `@types/theme.ts` define os tipos compartilhados, mantendo `theme/` s�
 com CSS. As cores usam `light-dark()` com `color-scheme` para definir cada par
 uma vez e seguir o tema do documento.
 
+## Fontes
+
+A Inter vem do pacote `@fontsource-variable/inter`, copiada para
+`src/assets/fonts/` e declarada em `src/theme/tokens/fonts.css`. São arquivos
+variáveis: cada um traz todos os pesos de 100 a 900, então um projeto derivado
+pode usar qualquer `font-weight` sem baixar outro arquivo.
+
+O subset `latin` cobre o texto de pt, en e es: letras, números, pontuação,
+acentos, aspas, travessões e `€`. Ele é o único arquivo com preload, no
+`Document.tsx`. O `latin-ext` traz as letras extras do latim, como `Ł`, `ő` e
+`ş`, e não substitui o `latin`. Ele fica num arquivo separado, ligado pelo
+`unicode-range`, sem preload: o navegador só o baixa quando a página tem algum
+caractere desse intervalo. Os dois `unicode-range` são os do CSS do pacote.
+
+Para atender outro alfabeto, como cirílico ou grego, copie do pacote o arquivo
+do subset e o `unicode-range` correspondente e acrescente um `@font-face` com a
+mesma família. Não troque o `latin` por outro subset nem junte subsets num
+arquivo único: o visitante passaria a baixar caracteres que a página não usa, ou
+o texto comum sairia na fonte do sistema. Confira a cobertura de um arquivo com
+`fc-query --format='%{charset}\n' <arquivo>`.
+
 ## Regras de CSS
 
 Execute `vp run lint:css` para verificar todos os arquivos CSS de `src/`. O

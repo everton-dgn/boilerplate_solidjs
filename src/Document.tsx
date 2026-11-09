@@ -10,9 +10,7 @@ import {
 import { applyTheme } from '@/infra/adapters/applyTheme/index.ts'
 import { readTheme } from '@/infra/adapters/themeStorage/index.ts'
 
-import interMedium from './assets/fonts/inter-latin-ext-500-normal.woff2?url&no-inline'
-import interSemiBold from './assets/fonts/inter-latin-ext-600-normal.woff2?url&no-inline'
-import interBold from './assets/fonts/inter-latin-ext-700-normal.woff2?url&no-inline'
+import interLatin from './assets/fonts/inter-latin-wght-normal.woff2?url&no-inline'
 
 export default function Document(props: ParentProps) {
   const event = isServer ? getRequestEvent() : undefined
@@ -54,21 +52,7 @@ export default function Document(props: ParentProps) {
         </script>
         <link
           rel="preload"
-          href={interMedium}
-          as="font"
-          type="font/woff2"
-          crossorigin="anonymous"
-        />
-        <link
-          rel="preload"
-          href={interSemiBold}
-          as="font"
-          type="font/woff2"
-          crossorigin="anonymous"
-        />
-        <link
-          rel="preload"
-          href={interBold}
+          href={interLatin}
           as="font"
           type="font/woff2"
           crossorigin="anonymous"
