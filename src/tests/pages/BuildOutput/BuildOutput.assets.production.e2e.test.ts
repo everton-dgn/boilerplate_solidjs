@@ -79,6 +79,7 @@ function assertAssetRouting(routes: Route[]): void {
         matches({ route, pathname })
     )
     expect(cache?.headers, pathname).toMatchObject({
+      'strict-transport-security': 'max-age=63072000; includeSubDomains',
       'x-content-type-options': 'nosniff',
       'cross-origin-resource-policy': 'same-origin'
     })
@@ -174,6 +175,7 @@ for (const pathname of MISSING_PATHS) {
       expect(response.status()).toBe(HTTP_NOT_FOUND)
       expect(response.headers()).toMatchObject({
         'cache-control': 'no-store',
+        'strict-transport-security': 'max-age=63072000; includeSubDomains',
         'x-content-type-options': 'nosniff',
         'cross-origin-resource-policy': 'same-origin'
       })

@@ -35,6 +35,7 @@ const PROJECT_CHECK_INPUTS = [
   'patches/**'
 ]
 const STATIC_FILE_HEADERS = {
+  'strict-transport-security': SECURITY_HEADERS['strict-transport-security'],
   'x-content-type-options': SECURITY_HEADERS['x-content-type-options'],
   'cross-origin-resource-policy':
     SECURITY_HEADERS['cross-origin-resource-policy']
