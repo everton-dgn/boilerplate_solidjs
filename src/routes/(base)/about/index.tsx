@@ -11,9 +11,6 @@ const content = {
   get title() {
     return m.about_title()
   },
-  get description() {
-    return m.about_description()
-  },
   get intro() {
     return m.about_intro()
   },

@@ -12,9 +12,6 @@ const content = {
   get title() {
     return m.contact_title()
   },
-  get description() {
-    return m.contact_description()
-  },
   get intro() {
     return m.contact_intro()
   },
