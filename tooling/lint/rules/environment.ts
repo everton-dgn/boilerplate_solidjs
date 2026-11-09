@@ -102,6 +102,7 @@ export const environmentRules: LintRules = {
   'promise/prefer-catch': 'error',
   'promise/spec-only': 'error',
   'promise/valid-params': 'error',
+  'solid/action-yield-after-await': 'error',
   'solid/components-return-once': 'warn',
   'solid/event-handlers': 'error',
   'solid/imports': 'warn',
@@ -120,21 +121,19 @@ export const environmentRules: LintRules = {
   'solid/no-restated-default-options': 'error',
   'solid/no-single-arg-create-effect': 'error',
   'solid/no-store-mutation-outside-setter': 'error',
+  'solid/no-unassigned-vars': 'error',
   'solid/no-unknown-namespaces': 'error',
   'solid/no-unused-signal': 'error',
   'solid/no-write-in-pure-computation': 'error',
   'solid/prefer-for': 'error',
   'solid/prefer-onSettled-for-side-effects': 'warn',
   'solid/prefer-structured-class': 'error',
-  // O plugin ainda não reconhece o callback reativo desta API do renderer.
-  'solid/reactivity': [
-    'warn',
-    { customReactiveFunctions: ['dynamicComponent'] }
-  ],
+  'solid/reactivity': 'warn',
   'solid/removed-api': 'error',
   'solid/require-async-server-function': 'error',
   'solid/self-closing-comp': 'warn',
   'solid/style-prop': 'warn',
   'solid/valid-use-server': 'error',
+  'solid/validate-jsx-nesting': 'error',
   'vite-plus/prefer-vite-plus-imports': 'error'
 }
