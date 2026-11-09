@@ -29,10 +29,9 @@ executáveis de teste. A exceção de nomes não se aplica às pastas de página
 nem dispensa as regras de colocalização. Preserve o isolamento por arquivo e a
 limpeza dos recursos da fixture ao dividir uma suíte.
 
-O Knip mantém `src/**/__tests__/` fora do inventário de produção. A fixture
-compartilhada de Markdown usa `v8 ignore file` para que seus helpers não entrem
-nos percentuais de cobertura da aplicação; os testes continuam executando esses
-helpers normalmente.
+O Knip mantém `src/**/__tests__/` fora do inventário de produção, e a cobertura
+exclui a mesma pasta: fixtures e módulos de apoio não entram nos percentuais da
+aplicação, embora os testes continuem executando seus helpers.
 
 Teste regras e resultados observáveis: recuperação após erro, navegação,
 seleção, persistência e sincronização. Componentes de apresentação simples não
@@ -109,9 +108,10 @@ arquivos. O setup `src/tests/setup/browser/index.ts` restaura o idioma base
 antes de cada teste com `setLocale(baseLocale, { reload: false })`; cada teste
 pode escolher outro idioma durante sua execução. Os projetos DOM e browser
 começam em inglês. No GitHub Actions, o reporter `github-actions` anota as
-falhas no PR. A configuração também exclui arquivos E2E, `node_modules` e
-`playwright`. Essas opções ficam na configuração raiz, e os projetos as herdam
-pelo `extends` padrão do Vitest, declarando só o que muda.
+falhas no PR. Os `include` dos projetos exigem os sufixos `node`, `dom` e
+`browser`, então os arquivos E2E ficam de fora sem exclusão própria. Essas
+opções ficam na configuração raiz, e os projetos as herdam pelo `extends` padrão
+do Vitest, declarando só o que muda.
 
 Nos testes, importe de `vite-plus/test` em vez de `vitest` (a regra
 `vite-plus/prefer-vite-plus-imports` bloqueia o import direto). O linker isolado

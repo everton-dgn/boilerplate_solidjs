@@ -164,7 +164,7 @@ no HTML da requisição seguinte.
 | `vp run bun:update`           | Atualizar o Bun fixado e reinstalar dependências                                  |
 | `vp run detect:duplicates`    | Procurar código duplicado em `src`                                                |
 | `vp run dead-code`            | Verificar código sem uso com Knip                                                 |
-| `vp run dead-code:fix`        | Aplicar as correções do Knip                                                      |
+| `vp run dead-code:fix`        | Aplicar as correções do Knip e formatar com `vp fmt`                              |
 | `vp run scan:secrets`         | Procurar segredos com Kingfisher (requer instalação)                              |
 | `vp run validate`             | check:ci + typecheck:node + dead-code + test:coverage + tooling + release + build |
 | `vp run commitlint`           | Validar mensagem de commit                                                        |

@@ -9,7 +9,6 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-// oxlint-disable-next-line vitest/no-import-node-test -- Os testes de tooling usam o runner nativo do Node.js.
 import type { TestContext } from 'node:test'
 
 type LintFixture = {
