@@ -3,6 +3,11 @@ import { createUniqueId, untrack } from 'solid-js'
 
 import { LocalizedLink } from '@/components/atoms/LocalizedLink/index.tsx'
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
+import {
+  PageHero,
+  PageHeroDescription,
+  PageHeroTitle
+} from '@/components/molecules/PageHero/index.tsx'
 import { HTTP_INTERNAL_SERVER_ERROR } from '@/constants/http.ts'
 import { paths } from '@/router.ts'
 
@@ -40,23 +45,15 @@ export function ErrorFallback(props: ErrorFallbackProps) {
   )
 
   return (
-    <main class={S.page} data-error-variant={props.kind}>
-      <div class={S.glow} aria-hidden="true" />
-
-      <section
-        class={S.hero}
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-      >
+    <main data-error-variant={props.kind}>
+      <PageHero aria-labelledby={titleId} aria-describedby={descriptionId}>
         <PageBadge>{content().badge}</PageBadge>
 
-        <h1 id={titleId} class={S.title}>
-          {content().title}
-        </h1>
+        <PageHeroTitle id={titleId}>{content().title}</PageHeroTitle>
 
-        <p id={descriptionId} class={S.description}>
+        <PageHeroDescription id={descriptionId}>
           {content().description}
-        </p>
+        </PageHeroDescription>
 
         <LocalizedLink
           href={props.kind === 'runtime' ? '' : paths}
@@ -66,7 +63,7 @@ export function ErrorFallback(props: ErrorFallbackProps) {
           <Icon />
           <span>{content().actionLabel}</span>
         </LocalizedLink>
-      </section>
+      </PageHero>
     </main>
   )
 }

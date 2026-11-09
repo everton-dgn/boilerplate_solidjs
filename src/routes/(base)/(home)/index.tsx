@@ -3,6 +3,11 @@ import type { RouteDefinition } from '@solidjs/router'
 import SolidLogo from '~icons/my-images/solid'
 
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'
+import {
+  PageHero,
+  PageHeroDescription,
+  PageHeroTitle
+} from '@/components/molecules/PageHero/index.tsx'
 import { SITE } from '@/constants/site/index.ts'
 
 import { seo } from './seo.ts'
@@ -20,29 +25,25 @@ export const route = {
 export default function Home() {
   return (
     <main>
-      <div class={S.page}>
-        <span class={S.glow} aria-hidden="true" />
+      <PageHero>
+        <PageBadge>{SITE.title}</PageBadge>
 
-        <section class={S.hero}>
-          <PageBadge>{SITE.title}</PageBadge>
+        <PageHeroTitle>{m.home_title()}</PageHeroTitle>
 
-          <h1 class={S.title}>{m.home_title()}</h1>
+        <PageHeroDescription>
+          {m.home_description({
+            framework: 'SolidJS 2',
+            toolchain: 'Vite+',
+            language: 'TypeScript'
+          })}
+        </PageHeroDescription>
 
-          <p class={S.description}>
-            {m.home_description({
-              framework: 'SolidJS 2',
-              toolchain: 'Vite+',
-              language: 'TypeScript'
-            })}
-          </p>
+        <PageHeroDescription>{m.home_features()}</PageHeroDescription>
 
-          <p class={S.description}>{m.home_features()}</p>
+        <SolidLogo class={S.logo} />
 
-          <SolidLogo class={S.logo} />
-
-          <p class={S.subtitle}>SolidJS 2 · Vite+ · TypeScript 7</p>
-        </section>
-      </div>
+        <p class={S.subtitle}>SolidJS 2 · Vite+ · TypeScript 7</p>
+      </PageHero>
     </main>
   )
 }
