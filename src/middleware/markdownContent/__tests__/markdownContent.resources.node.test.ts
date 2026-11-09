@@ -1,4 +1,5 @@
 import { SITE } from '@/constants/site/index.ts'
+import { Router } from '@/router.ts'
 import { readLog } from '@/tests/helpers/readLog/index.ts'
 
 import {
@@ -63,6 +64,27 @@ describe('markdown resource bounds', () => {
   afterEach(async () => {
     await cancelOpenResponses()
     vi.useRealTimers()
+  })
+
+  it('renders a negotiated page without opt-in outside the publication', async () => {
+    vi.spyOn(Router, 'match').mockReturnValue([
+      {
+        path: '/account',
+        pattern: '/account',
+        match: '/account',
+        params: {},
+        info: {}
+      }
+    ])
+    const request = event()
+    let activePublications: number | undefined
+    const response = await markdownContent(request, () => {
+      activePublications = getPublicationMetrics().active
+      return html('private')
+    })
+    expect(activePublications).toBe(0)
+    expect(request.request.headers.get('accept')).toBe('text/markdown')
+    expect(response.headers.get('content-type')).toContain('text/html')
   })
 
   it('refuses excess Markdown with private no-store and Retry-After', async () => {

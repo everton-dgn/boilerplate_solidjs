@@ -5,6 +5,11 @@ import { isPagePath } from '../../../requestClassification/index.ts'
 
 type RouteRequest = { request: Request; url: URL; isPublished: boolean }
 
+// Sem opt-in, só o 404 da rota catch-all vira Markdown.
+function isCatchAllRoute(url: URL): boolean {
+  return Router.match(url.href).at(-1)?.pattern.includes('*') === true
+}
+
 export function documentUrl(request: Request): URL {
   const url = new URL(request.url)
   if (!url.pathname.endsWith('.md')) return url
@@ -22,16 +27,24 @@ export function isEligible(url: URL): boolean {
   )
 }
 
-// Só a forma canônica publica: /pt.md ou /pt/about/.md duplicariam páginas
-// fora dos arquivos estáticos.
-export function isUnpublished({
+// Pedido autenticado e página sem opt-in, fora o 404 da catch-all, só têm a
+// representação HTML.
+export function isHtmlOnly({
   request,
   url,
   isPublished
 }: RouteRequest): boolean {
   return (
-    markdownPath(url.pathname) !== new URL(request.url).pathname ||
     request.headers.has('authorization') ||
-    (!isPublished && !Router.match(url.href).at(-1)?.pattern.includes('*'))
+    (!isPublished && !isCatchAllRoute(url))
+  )
+}
+
+// Só a forma canônica publica: /pt.md ou /pt/about/.md duplicariam páginas
+// fora dos arquivos estáticos.
+export function isUnpublished(route: RouteRequest): boolean {
+  return (
+    markdownPath(route.url.pathname) !== new URL(route.request.url).pathname ||
+    isHtmlOnly(route)
   )
 }

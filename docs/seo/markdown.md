@@ -182,7 +182,10 @@ A localização preserva URL > cookie > Accept-Language. Redirects seguros para
 uma página elegível da mesma origem preservam a intenção `.md`; o middleware não
 segue redirects. Erros não viram documentos de sucesso. Um 404 HTML negociado
 mantém status 404, idioma e `noindex`; páginas sem opt-in não publicam seu
-conteúdo de sucesso pelo alias Markdown. Um `X-Robots-Tag` com `noindex` ou
+conteúdo de sucesso pelo alias Markdown. Sem opt-in, `Accept: text/markdown`
+recebe o HTML do render comum, em streaming e fora das vagas e do prazo da
+publicação; só o 404 da rota catch-all passa pela conversão. O 404 de uma rota
+com parâmetro sem opt-in também sai em HTML. Um `X-Robots-Tag` com `noindex` ou
 `none` na resposta da página também recusa a publicação;
 `max-image-preview: none` só limita a prévia de imagens e não conta.
 
