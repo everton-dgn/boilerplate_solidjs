@@ -359,7 +359,7 @@ testes de `tooling/__tests__/playwright.test.ts` executam os comandos de startup
 com um CLI simulado e verificam a quantidade de builds em cada modo.
 
 Use `bun run test:e2e:ui` para abrir a interface interativa do Playwright. Com
-`CI=true`, os E2E usam dois workers; localmente, mantêm o paralelismo padrão.
+`CI=true`, os E2E usam três workers; localmente, mantêm o paralelismo padrão.
 `OutsideError.e2e.test.ts`, que confere a contagem exata de linhas no log do
 servidor, roda no projeto `server-logs`, declarado como `teardown` do `chromium`
 em `tooling/playwright.ts`: começa depois que os demais testes terminam, mesmo
@@ -369,7 +369,7 @@ o dispensa; para rodar só ele, passe o caminho do arquivo ou da pasta
 `OutsideError`. Uma linha gravada com atraso por uma requisição anterior ainda
 alteraria a contagem. Para comparar tempos ou investigar uma falha de
 concorrência, use `CI=true vp run test:e2e --workers=1` e
-`CI=true vp run test:e2e --workers=2`.
+`CI=true vp run test:e2e --workers=3`.
 
 Os relatórios HTML ficam em `playwright-report/e2e/` e
 `playwright-report/production/`. Com `CI` definido, eles guardam só os testes

@@ -45,7 +45,7 @@ if (PUBLICATION_LOAD && SECONDARY_PORT > MAX_PORT) {
 }
 const SECONDARY_URL = new URL(BASE_URL)
 SECONDARY_URL.port = String(SECONDARY_PORT)
-const CI_WORKERS = 2
+const CI_WORKERS = 3
 const DEFAULT_WORKERS = env.CI ? CI_WORKERS : undefined
 // Só a saída do preview vai para o arquivo, sem o ruído do build. O teardown
 // global lê o arquivo depois da suíte e recusa marcadores privados.
