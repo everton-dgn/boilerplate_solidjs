@@ -16,6 +16,7 @@ import type { ServiceOptions } from '../sitemapService/types.ts'
 
 type Sources = readonly SitemapPartitionSource[]
 type SitemapRoute = (event: APIEvent) => Promise<Response>
+type InventoryRoute = () => Promise<Response>
 type SettingsOptions = { sources: Sources; request: Request }
 type XmlSegments = { part: string; source: string }
 
@@ -87,9 +88,7 @@ export function createArrayPartRoute(sources: Sources): SitemapRoute {
 }
 
 // Só existe no prerender: fora dele, nenhuma requisição recompõe o inventário.
-export function createInventoryRoute(
-  sources: Sources
-): () => Promise<Response> {
+export function createInventoryRoute(sources: Sources): InventoryRoute {
   return () => {
     if (readPublicationPhase() !== 'prerender') return notFound()
     return buildSitemapInventoryResponse({
