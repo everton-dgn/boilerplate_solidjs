@@ -78,10 +78,10 @@ página, e o corpo fica só no módulo da rota, baixado na navegação. Uma pág
 que ainda exporte `content` de `seo.ts` deve movê-lo para `index.tsx` e trocar
 as leituras de `seo` pelas mensagens. A regra de lint `project/seo-module` acusa
 um `seo.ts` que exporte outra coisa além de `seo` ou que importe como valor um
-módulo local, por caminho relativo, por alias da árvore `src/routes` ou por
-`import()`, e o teste de i18n em produção confere que cada corpo fica só no
-módulo da rota. É dado de UI: o Markdown não o lê, porque sai do HTML
-renderizado.
+módulo local, por caminho relativo, por alias da árvore `src/routes`, por
+`import()` ou por `import.meta.glob`, e o teste de i18n em produção confere que
+cada corpo fica só no módulo da rota. É dado de UI: o Markdown não o lê, porque
+sai do HTML renderizado.
 
 `type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
 JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (nó

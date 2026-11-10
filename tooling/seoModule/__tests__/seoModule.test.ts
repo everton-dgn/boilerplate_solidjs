@@ -42,6 +42,10 @@ test('a regra deixa o seo.ts só com seo e sem import local como valor', () => {
       {
         filename: 'src/helpers/seo.ts',
         code: "import { content } from './content.ts'\nexport const content2 = content"
+      },
+      {
+        filename: SEO_FILE,
+        code: `const siteUrl = import.meta.env.VITE_SITE_URL\n${SEO}`
       }
     ],
     invalid: [
@@ -124,6 +128,16 @@ test('a regra deixa o seo.ts só com seo e sem import local como valor', () => {
         filename: SEO_FILE,
         code: `const target = './content.ts'\nvoid import(target)\n${SEO}`,
         errors: [{ messageId: 'computedImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `const pages = import.meta.glob('./content/*.ts', { eager: true })\n${SEO}`,
+        errors: [{ messageId: 'globImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `const pages = import.meta.glob('@/routes/**/content.ts')\n${SEO}`,
+        errors: [{ messageId: 'globImport' }]
       }
     ]
   })
