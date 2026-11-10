@@ -19,7 +19,6 @@ const decision = await decideReuse({
   sha: env.GITHUB_SHA ?? '',
   runner: {
     os: env.RUNNER_OS ?? '',
-    arch: env.RUNNER_ARCH ?? '',
     nodeArch: arch
   },
   ports: createPorts({ repository, signal })

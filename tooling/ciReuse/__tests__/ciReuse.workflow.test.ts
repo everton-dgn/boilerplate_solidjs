@@ -224,11 +224,6 @@ test('o workflow publica a evidência e as chaves lidas pelo proof', () => {
   assert.ok(
     quality.includes(`name: ci-reuse-evidence-\${{ github.run_attempt }}`)
   )
-  assert.ok(
-    WORKFLOW.includes(
-      `ci-validation-v2-\${{ runner.os }}-\${{ runner.arch }}-node-\${{\n            steps.toolchain.outputs.node }}-bun-\${{ steps.toolchain.outputs.bun\n            }}-\${{ hashFiles('bun.lock') }}-`
-    )
-  )
 })
 
 test(EVIDENCE_TEST, async context => {

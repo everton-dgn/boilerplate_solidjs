@@ -245,18 +245,7 @@ filhos de `vp run` podem selecionar Node novamente. Use `vp run dev` e
 (`vp run test:release`) rodam em Bun. Node continua nos testes da aplicação, nos
 demais testes de tooling e no SSR de produção: o `RuleTester` do Oxlint recusa
 Bun, e a suíte Vitest apresentou incompatibilidades no carregamento de módulos
-do Solid. O job `Quality` restaura `node_modules/.vite/task-cache`,
-`node_modules/.vitest-cache` e `.tsbuild`, com uma chave por execução e um
-prefixo de restauração restrito ao sistema operacional, arquitetura, Node, Bun e
-lockfile. Vite Task, Vitest e TypeScript conferem suas entradas antes de
-reaproveitar os dados. Depois dos testes com cobertura, o cache é enviado ao
-GitHub, inclusive quando uma verificação anterior falha. Vite Task só guarda
-resultados bem-sucedidos e Vitest guarda transformações, então uma falha não
-vira um resultado de teste reaproveitado. O workflow aguarda o upload antes de
-encerrar; falhas de cache não dispensam nem reprovam as verificações. Uma
-execução sem cache faz as mesmas verificações. A reutilização do Vite Task entre
-runners é experimental: confira os hits nos logs e compare o tempo economizado
-com o custo de transferir o cache.
+do Solid.
 
 No CI, só `Quality` envia o cache de pacotes, e apenas quando a chave do
 lockfile não existe e o job termina com sucesso. A ação `setup-project` só
@@ -365,15 +354,11 @@ somente com a prova aprovada no mesmo run. Checks sintetizados pela release não
 contam como prova.
 
 `Quality` também roda quando o merge altera `bun.lock`, `package.json` ou
-`bunfig.toml`, ou quando a `main` não tem as entradas de cache de pacotes e de
-validação para o lockfile e a toolchain atuais. Ele é o único job que grava
-esses caches. A prova monta a chave de pacotes no formato documentado no README
-do `setup-vp`; se esse formato mudar, a consulta deixa de encontrá-la e o
-`Quality` passa a rodar na `main` em todo merge, sem perder validação. A chave
-de pacotes e o prefixo de restauração da validação só mudam nesses casos; com o
-`Quality` dispensado, os PRs continuam restaurando a última entrada de validação
-da `main` com o mesmo prefixo, que envelhece conforme a árvore muda e pode
-reduzir os acertos do Vite Task e do Vitest até a próxima mudança de lockfile.
+`bunfig.toml`, ou quando a `main` não tem a entrada de cache de pacotes do
+lockfile atual. Ele é o único job que grava esse cache. A prova monta a chave de
+pacotes no formato documentado no README do `setup-vp`; se esse formato mudar, a
+consulta deixa de encontrá-la e o `Quality` passa a rodar na `main` em todo
+merge, sem perder validação.
 
 O verificador e o workflow continuam sendo código revisado da `main`: um merge
 que altere `.github/` ou `tooling/ciReuse/` sempre executa o CI completo. A

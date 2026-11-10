@@ -31,7 +31,6 @@ type Job = {
 
 export type Runner = {
   os: string
-  arch: string
   nodeArch: string
 }
 
