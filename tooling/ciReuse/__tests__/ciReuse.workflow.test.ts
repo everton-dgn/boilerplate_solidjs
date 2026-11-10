@@ -321,14 +321,22 @@ test('só proof e deploy preparam as ferramentas sem instalar dependências', ()
   )
   const toolchainOnly = ['proof', 'deploy'].map(id => jobBlock(id))
   for (const block of toolchainOnly) {
-    assert.ok(
-      block.includes('install-dependencies: false\n          cache-save: false')
-    )
+    assert.ok(block.includes('install-dependencies: false'))
+    assert.doesNotMatch(block, /cache-save/u)
   }
   assert.equal(
     WORKFLOW.split('install-dependencies: false').length - 1,
     toolchainOnly.length
   )
+})
+
+test('só o Quality grava os caches da ação setup-project', () => {
+  assert.match(
+    SETUP_ACTION,
+    /cache-save:\n {4}description: .+\n {4}required: false\n {4}default: 'false'/u
+  )
+  assert.ok(jobBlock('quality').includes("cache-save: 'true'"))
+  assert.equal(WORKFLOW.split('cache-save:').length - 1, 1)
 })
 
 test('o deploy confere o head da main sob o lock antes de publicar', () => {

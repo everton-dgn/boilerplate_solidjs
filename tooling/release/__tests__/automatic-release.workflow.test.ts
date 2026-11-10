@@ -82,16 +82,18 @@ describe('release jobs with write permissions', () => {
     )
     assert.ok(plan.includes('uses: ./.github/actions/setup-project'))
     assert.doesNotMatch(plan, /install-dependencies: false/u)
+    assert.doesNotMatch(plan, /cache-save/u)
     assert.ok(plan.includes('run: bun tooling/release/plan-release.ts'))
     assert.ok(plan.includes('name: release-plan'))
     for (const id of ['prepare', 'publish']) {
       const job = jobBlock(id)
       assert.ok(
         job.includes(
-          'uses: ./.github/actions/setup-project\n        with:\n          install-dependencies: false\n          cache-save: false'
+          'uses: ./.github/actions/setup-project\n        with:\n          install-dependencies: false'
         ),
         id
       )
+      assert.doesNotMatch(job, /cache-save/u, id)
       assert.ok(job.includes('digest-mismatch: error'), id)
       assert.ok(
         job.includes(
