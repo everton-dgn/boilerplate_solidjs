@@ -115,8 +115,9 @@ Os arquivos do pacote saem sem os nomes de glifo da tabela `post`, que o
 navegador não usa: são 1,5 KB a menos no `latin` e 3,2 KB no `latin-ext`, com a
 renderização idêntica. Os recursos OpenType ficam todos, inclusive frações,
 números tabulares e posicionamento de acentos combinados, porque um projeto
-derivado pode usá-los. Para atualizar a Inter, rode em cada arquivo do pacote,
-gravando com o mesmo nome em `src/assets/fonts/`:
+derivado pode usá-los. O pacote não é dependência do projeto: para atualizar a
+Inter, baixe-o e rode em cada arquivo da pasta `files/` dele, gravando com o
+mesmo nome em `src/assets/fonts/`:
 
 ```sh
 uvx --from fonttools --with brotli pyftsubset <arquivo-do-pacote>.woff2 \
