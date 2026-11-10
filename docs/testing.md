@@ -358,7 +358,7 @@ modo exige rotas de produção; usá-lo com a suíte de fixtures causa erro. Os
 testes de `tooling/__tests__/playwright.test.ts` executam os comandos de startup
 com um CLI simulado e verificam a quantidade de builds em cada modo.
 
-Use `bun run test:e2e:ui` para abrir a interface interativa do Playwright. Com
+Use `vp run test:e2e:ui` para abrir a interface interativa do Playwright. Com
 `CI=true`, os E2E usam dois workers; localmente, mantêm o paralelismo padrão.
 `OutsideError.e2e.test.ts`, que confere a contagem exata de linhas no log do
 servidor, roda no projeto `server-logs`, declarado como `teardown` do `chromium`

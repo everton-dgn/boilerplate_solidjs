@@ -148,19 +148,19 @@ no HTML da requisição seguinte.
 | `vp run test`                 | Todos os projetos de teste da aplicação                                           |
 | `vp run test:tooling`         | Testes de tooling em Node, exceto release                                         |
 | `vp run test:release`         | Testar a automação de release com Bun                                             |
-| `bun run test:ui`             | Vitest UI com cobertura; use a URL impressa (traz o token)                        |
+| `vp run test:ui`              | Vitest UI com cobertura; use a URL impressa (traz o token)                        |
 | `vp run test:ci`              | Rodar Vitest com cobertura e parar na primeira falha                              |
 | `vp run test:coverage`        | Rodar Vitest com cobertura                                                        |
 | `vp run test:unit`            | Só os projetos `node` e `dom` (happy-dom)                                         |
-| `bun run test:watch`          | Testes em modo de observação                                                      |
+| `vp run test:watch`           | Testes em modo de observação                                                      |
 | `vp run test:shuffle`         | Testes em ordem aleatória, para achar dependência de ordem                        |
 | `vp run test:browser`         | Só o projeto `browser` (Chromium headless)                                        |
 | `vp run test:browser:install` | Baixar o Chromium do Playwright                                                   |
 | `vp run test:e2e`             | Testar a aplicação com fixtures E2E                                               |
 | `vp run test:e2e:production`  | Testar as rotas reais de produção                                                 |
-| `bun run test:e2e:ui`         | Abrir a interface interativa dos E2E                                              |
-| `bun run test:e2e:codegen`    | Abrir o gerador de testes do Playwright                                           |
-| `bun run deps:update`         | Selecionar atualizações de dependências                                           |
+| `vp run test:e2e:ui`          | Abrir a interface interativa dos E2E                                              |
+| `vp run test:e2e:codegen`     | Abrir o gerador de testes do Playwright                                           |
+| `vp run deps:update`          | Selecionar atualizações de dependências                                           |
 | `vp run bun:update`           | Atualizar o Bun fixado e reinstalar dependências                                  |
 | `vp run detect:duplicates`    | Procurar código duplicado em `src`                                                |
 | `vp run dead-code`            | Verificar código sem uso com Knip                                                 |
@@ -180,21 +180,13 @@ comando embutido; `vp run <script>` executa um script do `package.json` ou uma
 tarefa do `vite.config.ts`. Os dois podem divergir, então confira o
 `package.json` antes de rodar direto.
 
-Para selecionar atualizações, use `bun run deps:update`, que executa
+Para selecionar atualizações, use `vp run deps:update`, que executa
 `vp update --interactive --latest`; `vp outdated` apenas lista as versões
 disponíveis. Os dois comandos comparam cada pacote só com a dist-tag `latest` e
 omitem versões publicadas apenas em outra tag, como as RCs do Solid na `next`.
 Para esses pacotes, consulte as tags com `bun info <pacote> dist-tags`, por
 exemplo `bun info solid-js dist-tags`, e atualize a versão fixada no
 `package.json` à mão.
-
-Rode os scripts interativos da tabela (`deps:update`, `test:ui`, `test:watch`,
-`test:e2e:ui` e `test:e2e:codegen`) com `bun run <script>`, nunca com `vp run`:
-enquanto o bloco `run` deste `vite.config.ts` usar constantes, como
-`CSS_CACHE_INPUTS`, o Vite+ entrega o stdin em modo não bloqueante (observado no
-macOS), e o prompt fecha antes de receber entrada
-([vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155)).
-Retire esta orientação quando `vp run deps:update` voltar a esperar a seleção.
 
 `vp run lint`, `vp run lint:css`, `vp run check:ci` e `vp run dead-code` usam as
 tarefas com cache `lint-project`, `lint-css`, `check-project` e
