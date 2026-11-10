@@ -57,10 +57,12 @@ handler HTTP, e por isso não vira rota. `infra/adapters/` isola as APIs do
 navegador, e `infra/server/` concentra o transporte de backend, a proteção das
 operações, a criação de erros públicos e o estado de integridade do render. Os
 módulos de servidor usam `server-only`; consulte o
-[contrato de erros no servidor](server-errors.md). O prefixo `make` identifica
-utilitários sem estado reativo próprio, como `makeThemeChannel`, que devolve seu
-descarte. O prefixo `create` identifica primitives com estado ou efeitos
-reativos, como `createTheme`.
+[contrato de erros no servidor](server-errors.md). Nas primitives e nos helpers
+do cliente, o prefixo `make` identifica utilitários sem estado reativo próprio,
+como `makeThemeChannel`, que devolve seu descarte, e o prefixo `create`
+identifica primitives com estado ou efeitos reativos, como `createTheme`. No
+servidor, nas rotas e em `infra/`, `create` continua nomeando fábricas sem
+reatividade, como `createIndexRoute` e `createPublicationController`.
 
 `entry-client/` reúne os módulos que só o `entry-client.tsx` consome e que rodam
 uma vez, no boot do navegador, antes de `hydrate()`. O prefixo `install`
