@@ -12,6 +12,13 @@ import {
   buildSitemapPartResponse
 } from '../index.ts'
 
+vi.mock(import('../../buildSitemap/index.ts'), async importOriginal => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    buildSitemap: vi.fn<typeof actual.buildSitemap>(actual.buildSitemap)
+  }
+})
 vi.mock(import('@/infra/server/publication/index.ts'), async importOriginal => {
   const actual = await importOriginal()
   const limits = {
@@ -127,6 +134,18 @@ describe('fontes em array com partes estáticas', () => {
       status: part.status,
       cacheControl: part.headers.get('cache-control')
     }).toStrictEqual({ status: HTTP_NOT_FOUND, cacheControl: 'no-store' })
+  })
+
+  it('serializa a resposta de array.xml uma única vez', async () => {
+    vi.mocked(buildSitemap).mockClear()
+    const part = await buildSitemapPartResponse({
+      ...options,
+      kind: 'array',
+      part: 'array'
+    })
+    expect(part.status).toBe(HTTP_OK)
+    await expect(part.text()).resolves.toContain(`${siteUrl}/en/blog/array`)
+    expect(buildSitemap).toHaveBeenCalledOnce()
   })
 
   it('publica índice quando estáticos e fonte em array cabem separados, mas a união excede bytes', async () => {

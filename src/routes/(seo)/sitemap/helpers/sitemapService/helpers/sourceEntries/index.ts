@@ -4,13 +4,11 @@ import * as v from 'valibot'
 import type { SitemapEntry, SitemapPartitionSource } from '@/@types/sitemap.ts'
 import { SITEMAP_URL_LIMIT } from '@/routes/(seo)/sitemap/constants.ts'
 
-import { buildSitemap } from '../../../buildSitemap/index.ts'
 import {
   normalizeSitemapEntries,
   sitemapUrl
 } from '../../../normalizeSitemapEntries/index.ts'
 import { sitemapEntrySchema } from '../../../sitemapEntrySchema/index.ts'
-import { validateLocations } from '../../../validateLocations/index.ts'
 import type { ReadOptions } from '../../types.ts'
 
 type PartitionReadOptions = ReadOptions & {
@@ -61,15 +59,13 @@ async function readArraySources({
 export async function readArrayPart(
   read: ReadOptions
 ): Promise<SitemapEntry[] | undefined> {
-  const { options, catalog, byteBudget } = read
+  const { options, catalog } = read
   const { siteUrl } = options
   if (catalog.readRoutes().manifest.sources.length === 0) return undefined
   const entries = normalizeSitemapEntries({
     entries: await readArraySources(read),
     siteUrl
   })
-  validateLocations({ entries, siteUrl })
-  buildSitemap({ entries, siteUrl, byteBudget })
   return entries.length === 0 ? undefined : entries
 }
 

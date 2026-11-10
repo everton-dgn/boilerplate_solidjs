@@ -68,10 +68,11 @@ parte `array.xml` para validar seus bytes. Com uma única parte estática e sem
 fontes particionadas, também tenta serializar a união até o orçamento antes de
 decidir entre `urlset` e índice. Essa tentativa percorre até uma parte estática
 mais as fontes em array; não usa o cache de preparo para eliminar a serialização
-da resposta. A rota `array.xml` também valida e depois serializa sua resposta.
-Esses custos são limitados pelo orçamento de cada parte, mas se repetem quando a
-requisição chega à origem. Para catálogos grandes, use o registro particionado,
-cuja consulta de uma parte não percorre o catálogo inteiro.
+da resposta. A rota `array.xml` valida e serializa a parte uma única vez, ao
+montar a resposta. Esses custos são limitados pelo orçamento de cada parte, mas
+se repetem quando a requisição chega à origem. Para catálogos grandes, use o
+registro particionado, cuja consulta de uma parte não percorre o catálogo
+inteiro.
 
 ```tsx
 import type { RouteDefinition } from '@solidjs/router'
