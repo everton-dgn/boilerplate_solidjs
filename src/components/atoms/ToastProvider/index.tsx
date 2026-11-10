@@ -8,7 +8,7 @@ import IconSuccess from '~icons/hugeicons/checkmark-circle-02'
 import IconInfo from '~icons/hugeicons/information-circle'
 import IconLoading from '~icons/hugeicons/loader-circle'
 
-import { createFocusOriginHandler } from '@/helpers/createFocusOriginHandler/index.ts'
+import { makeFocusOriginHandler } from '@/helpers/makeFocusOriginHandler/index.ts'
 
 import { ToastContext } from './context.ts'
 import { createToastState } from './createToastState/index.ts'
@@ -60,7 +60,7 @@ export function ToastProvider(props: ParentProps) {
 
   const state = createToastState({ beforeRemove: releaseFocus })
 
-  const rememberFocusOrigin = createFocusOriginHandler(origin => {
+  const rememberFocusOrigin = makeFocusOriginHandler(origin => {
     focusOrigin = origin
   })
 

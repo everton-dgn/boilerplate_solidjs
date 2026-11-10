@@ -9,7 +9,7 @@ import {
   OUTDATED_FALLBACK_EVENT,
   REFUSED_SUBMIT_EVENT
 } from '@/constants/outdated-page.ts'
-import { createFocusOriginHandler } from '@/helpers/createFocusOriginHandler/index.ts'
+import { makeFocusOriginHandler } from '@/helpers/makeFocusOriginHandler/index.ts'
 
 import S from './styles.module.css'
 
@@ -51,7 +51,7 @@ export function OutdatedPageNotice() {
     }
   })
 
-  const rememberFocusOrigin = createFocusOriginHandler(origin => {
+  const rememberFocusOrigin = makeFocusOriginHandler(origin => {
     focusOrigin = origin
   })
 

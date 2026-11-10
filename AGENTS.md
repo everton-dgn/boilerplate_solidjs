@@ -335,7 +335,7 @@ release. Add a tool name to select part of the graph. For example, run
   e o JSX para entender o elemento.
 - No `ToastProvider`, mantenha junto ao JSX os callbacks curtos de pausa e
   fechamento que usam o `id` de cada item do `For`. O handler da seção que lê a
-  origem do foco usa `createFocusOriginHandler`, compartilhado com
+  origem do foco usa `makeFocusOriginHandler`, compartilhado com
   `OutdatedPageNotice`, e atualiza `focusOrigin` no callback local. Preserve
   funções próprias para encontrar o vizinho e devolver o foco.
 - Callbacks de `ref` com uma chamada simples podem permanecer inline. Quando

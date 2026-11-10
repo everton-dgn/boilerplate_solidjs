@@ -1,6 +1,6 @@
 import { render } from '@solidjs/web'
 
-import { createFocusOriginHandler } from '../index.ts'
+import { makeFocusOriginHandler } from '../index.ts'
 
 type RememberOrigin = (origin: HTMLElement | undefined) => void
 type MountedRegion = { region: HTMLElement; inner: HTMLButtonElement }
@@ -11,7 +11,7 @@ function mountRegion(remember: RememberOrigin): MountedRegion {
   document.body.append(host)
   const dispose = render(
     () => (
-      <section onFocusIn={createFocusOriginHandler(remember)}>
+      <section onFocusIn={makeFocusOriginHandler(remember)}>
         <button type="button">Dentro</button>
       </section>
     ),

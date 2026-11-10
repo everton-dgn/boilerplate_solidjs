@@ -2,7 +2,7 @@ import type { JSX } from '@solidjs/web'
 
 type RememberOrigin = (origin: HTMLElement | undefined) => void
 
-export function createFocusOriginHandler(
+export function makeFocusOriginHandler(
   remember: RememberOrigin
 ): JSX.FocusEventHandler<HTMLElement, FocusEvent> {
   return event => {
