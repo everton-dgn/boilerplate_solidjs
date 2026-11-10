@@ -81,6 +81,19 @@ exige regenerá-lo com `bun patch`. O teste
 `tooling/__tests__/patched-dependencies.test.ts` falha quando a chave de um
 patch não corresponde a uma versão resolvida no `bun.lock`.
 
+O patch cobre também uma queda do processo. O `pipe` grava o shell e chama
+`buffer.flush()` na linha seguinte. Com um shell de 16.384 caracteres ou mais,
+essa primeira escrita já chega ao destino, que pode abandonar o render ali
+mesmo: o `createSSRResponse` faz isso quando a página declarou `Location`, e o
+mesmo acontece quando a escrita lança ou quando o sinal do render é abortado
+dentro dela. O `abandon` troca o buffer por um objeto sem `flush`, a chamada
+seguinte lança `TypeError` numa microtask que ninguém aguarda, e a rejeição sem
+tratamento encerra o processo do Node. O patch dá um `flush` vazio a esse
+buffer, e o render abandonado termina como já terminava com um shell menor. A
+regressão fica em `renderIntegrity.redirect.node.test.ts`, e o acompanhamento em
+[solidjs/solid#4745](https://github.com/solidjs/solid/issues/4745). Remova esse
+trecho quando um pacote publicado passar nesse teste sem ele.
+
 O [solidjs/solid#4193](https://github.com/solidjs/solid/issues/4193) relatou
 três lacunas. O [solidjs/solid#4206](https://github.com/solidjs/solid/pull/4206)
 levou as falhas do serializador ao hook global, passou a conter o `onCleanup`
