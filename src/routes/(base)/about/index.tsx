@@ -3,6 +3,7 @@ import type { RouteDefinition } from '@solidjs/router'
 
 import type { SitePage } from '@/@types/site-page.ts'
 import { SiteArticle } from '@/components/organisms/SiteArticle/index.tsx'
+import { SITE } from '@/constants/site/index.ts'
 import { SITE_LINKS } from '@/constants/siteLinks/index.ts'
 
 import { seo } from './seo.ts'
@@ -27,7 +28,14 @@ const content = {
     ]
   },
   get links() {
-    return [...SITE_LINKS.pages, ...SITE_LINKS.sources]
+    return [
+      ...SITE_LINKS.pages,
+      { label: m.siteLinks_repositoryLabel(), href: SITE.repositoryUrl },
+      {
+        label: m.about_documentationLabel(),
+        href: `${SITE.repositoryUrl}#readme`
+      }
+    ]
   }
 } satisfies SitePage
 

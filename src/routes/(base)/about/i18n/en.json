@@ -5,5 +5,6 @@
   "about_purposeTitle": "Purpose and features",
   "about_purpose": "The project brings together the initial integrations for an application: server-side rendering, route organization, translated content, themes and automated tests. This website demonstrates the foundation in use. Its examples and documentation help explain the project choices before you adapt it for another product.",
   "about_sourceTitle": "Source code and documentation",
-  "about_source": "The repository is the reference for installation, development commands and implementation details. Its guides cover architecture, testing, SEO and server error handling. You can freely use, modify, distribute and sell the code, including in commercial and closed-source projects."
+  "about_source": "The repository is the reference for installation, development commands and implementation details. Its guides cover architecture, testing, SEO and server error handling. You can freely use, modify, distribute and sell the code, including in commercial and closed-source projects.",
+  "about_documentationLabel": "Documentation"
 }

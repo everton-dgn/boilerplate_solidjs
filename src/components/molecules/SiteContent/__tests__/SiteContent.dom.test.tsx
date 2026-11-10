@@ -11,7 +11,11 @@ describe('conteúdo das páginas institucionais', () => {
       title: 'Título',
       intro: 'Introdução',
       sections: [],
-      links: [...SITE_LINKS.pages, ...SITE_LINKS.sources]
+      links: [
+        ...SITE_LINKS.pages,
+        { label: 'Repositório', href: SITE.repositoryUrl },
+        { label: 'Documentação', href: `${SITE.repositoryUrl}#readme` }
+      ]
     }
     const host = renderComponent(() => <SiteContent page={page} />, {
       providers: false
