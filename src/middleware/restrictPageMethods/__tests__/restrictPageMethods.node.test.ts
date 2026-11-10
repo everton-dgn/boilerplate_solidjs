@@ -14,6 +14,11 @@ vi.mock(import('filesystem-routing/api'), async importOriginal => {
           $POST: { require: () => ({ POST: () => new Response('written') }) }
         },
         {
+          path: '/sitemap.xml',
+          $GET: { require: () => ({ GET: () => new Response('sitemap') }) },
+          $HEAD: { require: () => ({ GET: () => new Response('sitemap') }) }
+        },
+        {
           path: '/api/preflight',
           $GET: { require: () => ({ GET: () => new Response('read') }) },
           $OPTIONS: {
