@@ -29,9 +29,14 @@ const LOCK = new TextEncoder().encode('lockfile')
 const HASH = createHash('sha256')
   .update(createHash('sha256').update(LOCK).digest())
   .digest('hex')
-const RUNNER = { os: 'Linux', nodeArch: 'x64' }
+const RUNNER = { os: 'Linux', arch: 'X64', nodeArch: 'x64' }
+const MANIFEST = JSON.stringify({
+  devEngines: { runtime: { version: '24.22.0' } },
+  packageManager: 'bun@1.4.3'
+})
 const ROOT = `repos/${REPOSITORY}`
 const DEPENDENCY_KEY = `vite-plus-Linux-x64-bun-${HASH}`
+const VALIDATION_PREFIX = `ci-validation-v2-Linux-X64-node-24.22.0-bun-1.4.3-${HASH}-`
 const MAIN_REF = 'refs/heads/main'
 const exec = promisify(execFile)
 // Hooks do Git exportam GIT_DIR e afins, e a configuração do usuário pode mudar
@@ -103,6 +108,7 @@ type World = {
   artifacts: ArtifactFixture[]
   tested: CommitFixture
   dependencyCaches: CacheFixture[]
+  validationCaches: CacheFixture[]
   evidence: Record<string, unknown>
   calls: string[]
 }
@@ -180,6 +186,7 @@ function createWorld(): World {
       parents: [{ sha: BASE }, { sha: HEAD }]
     },
     dependencyCaches: [{ key: DEPENDENCY_KEY, ref: MAIN_REF }],
+    validationCaches: [{ key: `${VALIDATION_PREFIX}1-1`, ref: MAIN_REF }],
     evidence: { version: 2, tested_sha: TESTED },
     calls: []
   }
@@ -208,6 +215,10 @@ function routes(world: World): Map<string, () => unknown> {
     [
       `${caches}${encodeURIComponent(DEPENDENCY_KEY)}&per_page=${PAGE_SIZE}`,
       () => ({ actions_caches: world.dependencyCaches })
+    ],
+    [
+      `${caches}${encodeURIComponent(VALIDATION_PREFIX)}&per_page=${PAGE_SIZE}`,
+      () => ({ actions_caches: world.validationCaches })
     ]
   ])
 }
@@ -216,6 +227,7 @@ function gitOutput(world: World, args: string[]): string {
   const command = args.join(' ')
   if (command === `rev-list --parents -n 1 ${MERGE}`) return world.parents
   if (command === `rev-parse ${MERGE}^{tree}`) return TREE
+  if (command === `show ${MERGE}:package.json`) return MANIFEST
   // O comando exato prende a base do merge e a lista sem detecção de renames.
   if (command === `diff --no-renames --name-only -z ${BASE} ${MERGE} --`) {
     return world.files.join('\0')
@@ -291,6 +303,12 @@ test('mantém o Quality quando lockfile, manifest ou bunfig mudam', async () => 
 })
 
 test('mantém o Quality sem cache aplicável da main', async () => {
+  const foreign = createWorld()
+  foreign.validationCaches = [
+    { key: `${VALIDATION_PREFIX}1-1`, ref: 'refs/pull/1/merge' }
+  ]
+  const missing = createWorld()
+  missing.validationCaches = []
   const foreignDependency = createWorld()
   foreignDependency.dependencyCaches = [
     { key: DEPENDENCY_KEY, ref: 'refs/pull/1/merge' }
@@ -303,6 +321,8 @@ test('mantém o Quality sem cache aplicável da main', async () => {
     { key: `${DEPENDENCY_KEY}-1`, ref: MAIN_REF }
   ]
   for (const world of [
+    foreign,
+    missing,
     foreignDependency,
     missingDependency,
     longerDependency
@@ -312,8 +332,8 @@ test('mantém o Quality sem cache aplicável da main', async () => {
     assert.equal(decision.shouldRunQuality, true)
   }
   const stale = createWorld()
-  stale.dependencyCaches = [
-    { key: DEPENDENCY_KEY.replace(HASH, OTHER), ref: MAIN_REF }
+  stale.validationCaches = [
+    { key: VALIDATION_PREFIX.replace(HASH, OTHER), ref: MAIN_REF }
   ]
   const decision = await decide(stale)
   assert.equal(decision.shouldRunQuality, true)

@@ -93,6 +93,7 @@ jobs:
           retention-days: 30
 
       - name: Set up project
+        id: toolchain
         uses: ./.github/actions/setup-project
         with:
           cache-save: 'true'
@@ -105,8 +106,25 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: vp exec commitlint --from "$BASE_SHA" --to "$HEAD_SHA"
 
-      # Cria .tsbuild antes do lint, para estabilizar a listagem da raiz que o
-      # Vite Task rastreia.
+      - name: Restore validation cache
+        id: validation-cache
+        continue-on-error: true
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            node_modules/.vite/task-cache
+            node_modules/.vitest-cache
+            .tsbuild
+          key:
+            ci-validation-v2-${{ runner.os }}-${{ runner.arch }}-node-${{
+            steps.toolchain.outputs.node }}-bun-${{ steps.toolchain.outputs.bun
+            }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}-${{
+            github.run_attempt }}
+          restore-keys: |
+            ci-validation-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.toolchain.outputs.node }}-bun-${{ steps.toolchain.outputs.bun }}-${{ hashFiles('bun.lock') }}-
+
+      # Cria .tsbuild antes do lint também quando o cache está vazio, para
+      # estabilizar a listagem da raiz que o Vite Task rastreia.
       - name: Check Node tooling types
         run: vp run typecheck:node
 
@@ -129,6 +147,19 @@ jobs:
 
       - name: Run tests with coverage
         run: vp run test:ci
+
+      - name: Save validation cache
+        if:
+          ${{ !cancelled() && steps.validation-cache.outputs.cache-primary-key
+          != '' }}
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            node_modules/.vite/task-cache
+            node_modules/.vitest-cache
+            .tsbuild
+          key: ${{ steps.validation-cache.outputs.cache-primary-key }}
 
       - name: Upload test artifacts
         if: failure()
