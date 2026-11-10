@@ -30,7 +30,7 @@ const content = {
   get links() {
     return [
       ...SITE_LINKS.pages,
-      { label: m.siteLinks_repositoryLabel(), href: SITE.repositoryUrl },
+      SITE_LINKS.repository,
       {
         label: m.about_documentationLabel(),
         href: `${SITE.repositoryUrl}#readme`

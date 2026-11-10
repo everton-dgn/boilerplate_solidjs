@@ -36,9 +36,9 @@ export function Topbar(props: TopbarProps) {
         {props.children}
         <a
           class={S.github_link}
-          href={SITE.repositoryUrl}
-          aria-label={m.siteLinks_repositoryLabel()}
-          title={m.siteLinks_repositoryLabel()}
+          href={SITE_LINKS.repository.href}
+          aria-label={SITE_LINKS.repository.label}
+          title={SITE_LINKS.repository.label}
         >
           <IconGithub />
         </a>
