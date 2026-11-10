@@ -21,11 +21,13 @@ consumidor de produção na demonstração.
 incluindo `ref`, `name`, `required`, eventos, `value` e `defaultValue`. O valor
 inicial também aparece no HTML do servidor. Use `value` com um signal para
 controlar o campo, ou `defaultValue` para deixá-lo sob controle do navegador e
-permitir o reset nativo do formulário. `Textarea` permite redimensionamento
-vertical. Ambos aceitam `variant="destructive"`, que também define
-`aria-invalid` quando o consumidor não fornece esse atributo. Associe um `label`
-ao `id` e use `aria-describedby` para ligar a mensagem de ajuda ou de erro ao
-campo. Os textos do formulário pertencem ao catálogo da página.
+permitir o reset nativo do formulário. Se os dois vierem juntos, o HTML do
+servidor mostra o `defaultValue` (ou o `defaultChecked`) e a hidratação aplica o
+valor controlado. `Textarea` permite redimensionamento vertical. Ambos aceitam
+`variant="destructive"`, que também define `aria-invalid` quando o consumidor
+não fornece esse atributo. Associe um `label` ao `id` e use `aria-describedby`
+para ligar a mensagem de ajuda ou de erro ao campo. Os textos do formulário
+pertencem ao catálogo da página.
 
 `Dialog`, em `components/molecules/`, usa o elemento nativo `dialog` com
 `showModal()`. Recebe `open`, `onOpenChange`, `title`, `description` opcional e

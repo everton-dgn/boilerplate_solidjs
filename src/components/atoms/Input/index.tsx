@@ -1,4 +1,4 @@
-import { isServer, type ComponentProps } from '@solidjs/web'
+import type { ComponentProps } from '@solidjs/web'
 import { omit, untrack } from 'solid-js'
 
 import S from './styles.module.css'
@@ -26,23 +26,16 @@ export function Input(props: InputProps) {
   const initialValue = untrack(() => props.defaultValue)
   const initialChecked = untrack(() => props.defaultChecked)
   // Preserva a ausência das propriedades nativas (um checkbox sem value envia "on").
-  // O renderizador SSR precisa de value/checked em vez de defaultValue/defaultChecked.
   // No cliente, value/checked sem controle seriam regravados por cima da edição
   // sempre que outra prop do campo mudasse.
   const fieldState = (): InputFieldState => {
-    const value = isServer ? (props.value ?? initialValue) : props.value
-    const checked = isServer ? (props.checked ?? initialChecked) : props.checked
     const fields: InputFieldState = {}
 
-    if (initialValue !== undefined && !isServer) {
-      fields.defaultValue = initialValue
-    }
-    if (value !== undefined) fields.value = value
+    if (initialValue !== undefined) fields.defaultValue = initialValue
+    if (props.value !== undefined) fields.value = props.value
 
-    if (initialChecked !== undefined && !isServer) {
-      fields.defaultChecked = initialChecked
-    }
-    if (checked !== undefined) fields.checked = checked
+    if (initialChecked !== undefined) fields.defaultChecked = initialChecked
+    if (props.checked !== undefined) fields.checked = props.checked
 
     return fields
   }
