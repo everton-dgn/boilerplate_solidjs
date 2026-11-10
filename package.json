@@ -12,7 +12,7 @@
     "build": "bun --bun node_modules/vite-plus/bin/vp build",
     "start": "vp preview",
     "i18n:generate": "vp run i18n-generate",
-    "typecheck:node": "vp run i18n:generate && vp run typecheck-node",
+    "typecheck:node": "vp run typecheck-node",
     "lint": "vp run i18n:generate && vp run lint-project",
     "lint:css": "vp run lint-css",
     "format": "vp fmt",

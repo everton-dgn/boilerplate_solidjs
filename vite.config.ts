@@ -351,7 +351,6 @@ export default defineConfig(({ mode }) => {
           'src/**/*.d.ts',
           'src/**/{constants,types,@types}/**',
           'src/**/{constants,types}.{ts,tsx}',
-          'src/**/*.test-d.{ts,tsx}',
           'src/**/__tests__/**',
           'src/tests/**',
           'src/App.tsx',
