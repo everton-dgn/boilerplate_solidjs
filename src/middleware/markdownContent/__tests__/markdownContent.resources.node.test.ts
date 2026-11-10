@@ -45,6 +45,18 @@ const BOUNDED_FAILURE: BoundedFailure = {
   reservedBytes: 0
 }
 
+function mockRouteWithoutOptIn(): void {
+  vi.spyOn(Router, 'match').mockReturnValue([
+    {
+      path: '/account',
+      pattern: '/account',
+      match: '/account',
+      params: {},
+      info: {}
+    }
+  ])
+}
+
 async function readBoundedFailure(response: Response): Promise<BoundedFailure> {
   return {
     status: response.status,
@@ -67,15 +79,7 @@ describe('markdown resource bounds', () => {
   })
 
   it('renders a negotiated page without opt-in outside the publication', async () => {
-    vi.spyOn(Router, 'match').mockReturnValue([
-      {
-        path: '/account',
-        pattern: '/account',
-        match: '/account',
-        params: {},
-        info: {}
-      }
-    ])
+    mockRouteWithoutOptIn()
     const request = event()
     let activePublications: number | undefined
     const response = await markdownContent(request, () => {
@@ -85,6 +89,21 @@ describe('markdown resource bounds', () => {
     expect(activePublications).toBe(0)
     expect(request.request.headers.get('accept')).toBe('text/markdown')
     expect(response.headers.get('content-type')).toContain('text/html')
+  })
+
+  it('returns the failed render of a page without opt-in unchanged', async () => {
+    mockRouteWithoutOptIn()
+    const request = event()
+    request.locals.ssrRenderState = { hasErrors: true, hasCompleted: true }
+    const failure = await html(
+      '<main>Something went wrong!</main>',
+      HTTP_SERVER_ERROR
+    )
+    const response = await markdownContent(request, () =>
+      Promise.resolve(failure)
+    )
+    expect(response).toBe(failure)
+    expect(response.headers.get('vary')).toBe('Cookie')
   })
 
   it('refuses excess Markdown with private no-store and Retry-After', async () => {

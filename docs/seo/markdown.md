@@ -185,9 +185,11 @@ mantém status 404, idioma e `noindex`; páginas sem opt-in não publicam seu
 conteúdo de sucesso pelo alias Markdown. Sem opt-in, `Accept: text/markdown`
 recebe o HTML do render comum, em streaming e fora das vagas e do prazo da
 publicação; só o 404 da rota catch-all passa pela conversão. O 404 de uma rota
-com parâmetro sem opt-in também sai em HTML. Um `X-Robots-Tag` com `noindex` ou
-`none` na resposta da página também recusa a publicação;
-`max-image-preview: none` só limita a prévia de imagens e não conta.
+com parâmetro sem opt-in também sai em HTML, e uma falha do render devolve a
+página de erro em HTML, igual à de `Accept: text/html`, no lugar do 500 público
+em texto. Um `X-Robots-Tag` com `noindex` ou `none` na resposta da página também
+recusa a publicação; `max-image-preview: none` só limita a prévia de imagens e
+não conta.
 
 As respostas convertidas na requisição recebem `text/markdown; charset=utf-8`,
 `private, no-store`, `Vary: Accept` adicional ao Vary existente e CSP com
