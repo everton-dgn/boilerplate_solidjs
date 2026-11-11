@@ -130,7 +130,6 @@ export const javascriptRules: LintRules = {
   'eslint/no-template-curly-in-string': 'error',
   'eslint/no-this-before-super': 'error',
   'eslint/no-throw-literal': 'error',
-  'eslint/no-unassigned-vars': 'error',
   'eslint/no-undef': 'error',
   'eslint/no-underscore-dangle': 'error',
   'eslint/no-unexpected-multiline': 'error',

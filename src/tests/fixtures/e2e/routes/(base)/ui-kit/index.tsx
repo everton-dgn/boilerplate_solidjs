@@ -17,8 +17,8 @@ export const route = {
 
 export default function UiKit() {
   const [params] = useSearchParams()
-  const [open, setOpen] = createSignal(params.open === '1')
-  const [submitted, setSubmitted] = createSignal(false)
+  const [isOpen, setIsOpen] = createSignal(params.open === '1')
+  const [isSubmitted, setIsSubmitted] = createSignal(false)
   const toast = useToast()
   const navigate = createLocalizedNavigate()
   let notification: ReturnType<typeof toast.show> | undefined
@@ -48,7 +48,7 @@ export default function UiKit() {
         class={S.form}
         onSubmit={event => {
           event.preventDefault()
-          setSubmitted(true)
+          setIsSubmitted(true)
         }}
       >
         <label for="fixture-name">Name</label>
@@ -68,10 +68,10 @@ export default function UiKit() {
         />
         <Button type="submit">Submit form</Button>
         <Button type="reset">Reset form</Button>
-        <output>{submitted() ? 'Submitted' : 'Pending'}</output>
+        <output>{isSubmitted() ? 'Submitted' : 'Pending'}</output>
       </form>
       <div class={S.actions}>
-        <Button onClick={() => setOpen(true)}>Open dialog</Button>
+        <Button onClick={() => setIsOpen(true)}>Open dialog</Button>
         <Button
           onClick={() => {
             notification = toast.show({
@@ -109,14 +109,14 @@ export default function UiKit() {
         </Button>
       </div>
       <Dialog
-        open={open()}
-        onOpenChange={setOpen}
+        open={isOpen()}
+        onOpenChange={setIsOpen}
         title="Fixture dialog"
         description="Dialog description"
       >
         <label for="dialog-name">Dialog name</label>
         <Input id="dialog-name" />
-        <Button onClick={() => setOpen(false)}>Close from content</Button>
+        <Button onClick={() => setIsOpen(false)}>Close from content</Button>
       </Dialog>
       <p id="target">Navigation target</p>
     </main>

@@ -6,8 +6,9 @@ import { it } from 'node:test'
 import * as v from 'valibot'
 
 const ROOT = path.resolve(import.meta.dirname, '../..')
+const patchesSchema = v.record(v.string(), v.string())
 const manifestSchema = v.object({
-  patchedDependencies: v.record(v.string(), v.string())
+  patchedDependencies: v.optional(patchesSchema, {})
 })
 
 // O Bun só avisa, sem falhar o install, quando a chave de um patch não
@@ -19,7 +20,6 @@ it('keeps every patch keyed to a version resolved in bun.lock', async () => {
   const lock = await readFile(path.join(ROOT, 'bun.lock'), 'utf8')
   const patches = Object.entries(manifest.patchedDependencies)
 
-  assert.notEqual(patches.length, 0)
   for (const [key] of patches) {
     assert.ok(
       lock.includes(`: ["${key}",`),

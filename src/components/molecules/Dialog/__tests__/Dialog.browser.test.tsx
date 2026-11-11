@@ -9,8 +9,8 @@ import '@/theme/globalStyles.css'
 import { Dialog } from '../index.tsx'
 
 type MountOptions = {
-  initialOpen?: boolean
-  acceptClose?: boolean
+  isInitiallyOpen?: boolean
+  shouldAcceptClose?: boolean
 }
 
 function mountDialog(options: MountOptions = {}) {
@@ -19,26 +19,26 @@ function mountDialog(options: MountOptions = {}) {
   let remove!: () => void
   const host = renderComponent(
     () => {
-      const [open, setOpen] = createSignal(options.initialOpen ?? false)
-      const [mounted, setMounted] = createSignal(true)
+      const [isOpen, setIsOpen] = createSignal(options.isInitiallyOpen ?? false)
+      const [isMounted, setIsMounted] = createSignal(true)
       changeOpen = value => {
-        setOpen(value)
+        setIsOpen(value)
       }
       remove = () => {
-        setMounted(false)
+        setIsMounted(false)
       }
       return (
         <>
-          <button type="button" onClick={() => setOpen(true)}>
+          <button type="button" onClick={() => setIsOpen(true)}>
             Abrir
           </button>
           <button type="button">Fora</button>
-          <Show when={mounted()}>
+          <Show when={isMounted()}>
             <Dialog
-              open={open()}
+              open={isOpen()}
               onOpenChange={value => {
                 onChange(value)
-                if (options.acceptClose !== false) setOpen(value)
+                if (options.shouldAcceptClose !== false) setIsOpen(value)
               }}
               title="Preferências"
               description="Escolha suas preferências."
@@ -52,7 +52,7 @@ function mountDialog(options: MountOptions = {}) {
         </>
       )
     },
-    { providers: false }
+    { hasProviders: false }
   )
   const dialog = host.querySelector('dialog')
   if (!dialog) throw new Error('Dialog não montado')
@@ -129,8 +129,8 @@ describe('dialog no navegador', () => {
 
   it('mantém o estado controlado quando o consumidor recusa fechar', async () => {
     const { dialog, onChange } = mountDialog({
-      initialOpen: true,
-      acceptClose: false
+      isInitiallyOpen: true,
+      shouldAcceptClose: false
     })
     await expect.poll(() => dialog.matches(':modal')).toBe(true)
     await userEvent.keyboard('{Escape}')
@@ -145,7 +145,7 @@ describe('dialog no navegador', () => {
   })
 
   it('abre com open inicial e remove a modalidade ao descartar', async () => {
-    const { dialog, onChange, remove } = mountDialog({ initialOpen: true })
+    const { dialog, onChange, remove } = mountDialog({ isInitiallyOpen: true })
     await expect.poll(() => dialog.matches(':modal')).toBe(true)
     remove()
     await expect.poll(() => dialog.isConnected).toBe(false)
@@ -176,7 +176,7 @@ describe('dialog no navegador', () => {
           <p>Conteúdo</p>
         </Dialog>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     const dialog = host.querySelector('dialog')
     await expect.poll(() => dialog?.matches(':modal')).toBe(true)

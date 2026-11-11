@@ -416,6 +416,7 @@ test('declares the security headers of the static files in the Vercel artifact',
   expect(markdownFiles.length).toBeGreaterThan(0)
   for (const path of [...STATIC_FILES, ...markdownFiles]) {
     expect(headersOf(path), path).toMatchObject({
+      'strict-transport-security': 'max-age=63072000; includeSubDomains',
       'x-content-type-options': 'nosniff',
       'cross-origin-resource-policy': 'same-origin'
     })

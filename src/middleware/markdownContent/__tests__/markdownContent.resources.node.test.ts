@@ -1,4 +1,6 @@
 import { SITE } from '@/constants/site/index.ts'
+import { Router } from '@/router.ts'
+import { readLog } from '@/tests/helpers/readLog/index.ts'
 
 import {
   MARKDOWN_TIMEOUT_MS,
@@ -18,10 +20,52 @@ import {
 const EXPANDING_LINK = '<a href="/">x</a> '
 const HTTP_SERVER_ERROR = 500
 const HTTP_UNAVAILABLE = 503
+const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
 
 async function expectUnavailableHead(response: Response): Promise<void> {
   expect(response.status).toBe(HTTP_UNAVAILABLE)
   await expect(response.text()).resolves.toBe('')
+}
+
+type BoundedFailure = {
+  status: number
+  cacheControl: string | null
+  vary: string | null
+  body: string
+  log: ReturnType<typeof readLog>
+  reservedBytes: number
+}
+
+const BOUNDED_FAILURE: BoundedFailure = {
+  status: HTTP_SERVER_ERROR,
+  cacheControl: 'private, no-store',
+  vary: 'Accept, Cookie, Accept-Language',
+  body: 'Não foi possível concluir a solicitação.',
+  log: { heads: [[LOG_MESSAGE, 'Error']], leaks: [] },
+  reservedBytes: 0
+}
+
+function mockRouteWithoutOptIn(): void {
+  vi.spyOn(Router, 'match').mockReturnValue([
+    {
+      path: '/account',
+      pattern: '/account',
+      match: '/account',
+      params: {},
+      info: {}
+    }
+  ])
+}
+
+async function readBoundedFailure(response: Response): Promise<BoundedFailure> {
+  return {
+    status: response.status,
+    cacheControl: response.headers.get('cache-control'),
+    vary: response.headers.get('vary'),
+    body: await response.text(),
+    log: readLog(console.error),
+    reservedBytes: getPublicationMetrics().reservedBytes
+  }
 }
 
 describe('markdown resource bounds', () => {
@@ -32,6 +76,34 @@ describe('markdown resource bounds', () => {
   afterEach(async () => {
     await cancelOpenResponses()
     vi.useRealTimers()
+  })
+
+  it('renders a negotiated page without opt-in outside the publication', async () => {
+    mockRouteWithoutOptIn()
+    const request = event()
+    let activePublications: number | undefined
+    const response = await markdownContent(request, () => {
+      activePublications = getPublicationMetrics().active
+      return html('private')
+    })
+    expect(activePublications).toBe(0)
+    expect(request.request.headers.get('accept')).toBe('text/markdown')
+    expect(response.headers.get('content-type')).toContain('text/html')
+  })
+
+  it('returns the failed render of a page without opt-in unchanged', async () => {
+    mockRouteWithoutOptIn()
+    const request = event()
+    request.locals.ssrRenderState = { hasErrors: true, hasCompleted: true }
+    const failure = await html(
+      '<main>Something went wrong!</main>',
+      HTTP_SERVER_ERROR
+    )
+    const response = await markdownContent(request, () =>
+      Promise.resolve(failure)
+    )
+    expect(response).toBe(failure)
+    expect(response.headers.get('vary')).toBe('Cookie')
   })
 
   it('refuses excess Markdown with private no-store and Retry-After', async () => {
@@ -110,11 +182,17 @@ describe('markdown resource bounds', () => {
     }
   )
 
-  // A contenção do middleware registra o log e responde 500 público.
+  // O teto encerra a publicação no 500 público do próprio adaptador, no idioma
+  // da requisição, em vez de subir até a contenção externa.
   it('bounds conversion input', async () => {
-    await expect(
-      markdownContent(event(), () => html('x'.repeat(MAX_HTML_BYTES + 1)))
-    ).rejects.toThrow('Markdown document limit exceeded')
+    vi.spyOn(console, 'error').mockReturnValue()
+    const response = await markdownContent(
+      event({ path: '/pt/about.md' }),
+      () => html('x'.repeat(MAX_HTML_BYTES + 1))
+    )
+    await expect(readBoundedFailure(response)).resolves.toStrictEqual(
+      BOUNDED_FAILURE
+    )
   })
 
   it('rejects Markdown that grows beyond the output budget from valid HTML', async () => {
@@ -124,10 +202,14 @@ describe('markdown resource bounds', () => {
     expect(new TextEncoder().encode(htmlBody).byteLength).toBeLessThan(
       MAX_HTML_BYTES
     )
-    await expect(
-      markdownContent(event(), () => html(htmlBody))
-    ).rejects.toThrow('Markdown output limit exceeded')
-    expect(getPublicationMetrics().reservedBytes).toBe(0)
+    vi.spyOn(console, 'error').mockReturnValue()
+    const response = await markdownContent(
+      event({ path: '/pt/about.md' }),
+      () => html(htmlBody)
+    )
+    await expect(readBoundedFailure(response)).resolves.toStrictEqual(
+      BOUNDED_FAILURE
+    )
   })
 
   it('propagates client cancellation to the render request', async () => {

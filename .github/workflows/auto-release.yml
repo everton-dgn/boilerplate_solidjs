@@ -60,8 +60,6 @@ jobs:
 
       - name: Set up project
         uses: ./.github/actions/setup-project
-        with:
-          cache-save: false
 
       - name: Plan and format release files
         id: plan
@@ -105,7 +103,6 @@ jobs:
         uses: ./.github/actions/setup-project
         with:
           install-dependencies: false
-          cache-save: false
 
       - name: Download release plan
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -148,7 +145,6 @@ jobs:
         uses: ./.github/actions/setup-project
         with:
           install-dependencies: false
-          cache-save: false
 
       - name: Download release plan
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

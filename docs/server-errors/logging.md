@@ -65,6 +65,13 @@ segunda chamada de `console.error`, depois da linha filtrada:
   registrar log.
 - O sitemap, que responde 503 sem passar pelo runtime.
 
+Dentro de uma publicação (Markdown, sitemap, índices), o
+`protectServerOperation` não registra a rejeição que é o próprio motivo do sinal
+abortado da publicação, como a leitura de uma fonte cancelada pelo prazo ou pela
+desconexão do cliente. A operação continua terminando no erro público. Qualquer
+outro erro, mesmo com o sinal já abortado, é falha real e gera a linha
+`[server-operation]`.
+
 As origens `[middleware]` e `[error-page]` não fazem o pedido, porque em
 desenvolvimento a contenção relança a exceção antes de registrar. Os
 diagnósticos de desenvolvimento do Solid também imprimem a mensagem, como o de

@@ -1,9 +1,9 @@
 import { render, type JSX } from '@solidjs/web'
 
-import { Provider } from '@/components/atoms/Provider/index.tsx'
+import { Provider } from '@/components/molecules/Provider/index.tsx'
 
 type RenderComponentOptions = {
-  providers?: boolean
+  hasProviders?: boolean
 }
 
 export function renderComponent(
@@ -21,7 +21,7 @@ export function renderComponent(
   })
 
   dispose = render(
-    options.providers === false
+    options.hasProviders === false
       ? component
       : () => <Provider>{component()}</Provider>,
     host

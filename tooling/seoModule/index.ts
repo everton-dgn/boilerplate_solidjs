@@ -1,10 +1,33 @@
 import path from 'node:path'
 
-import { defineRule } from 'vite-plus/lint/plugins'
+import { defineRule, type ESTree } from 'vite-plus/lint/plugins'
+
+import {
+  readStaticSpecifier,
+  resolveProjectPath
+} from '../lint/import-specifier.ts'
 
 const SEO_MODULE = /^src\/routes\/(?:.+\/)?seo\.ts$/u
 const LOCAL_SPECIFIER = /^\.{1,2}(?:\/|$)/u
 const SEO_EXPORT = 'seo'
+const ROUTES_DIR = 'src/routes/'
+
+type ValueImport = ESTree.ImportDeclaration | ESTree.ImportExpression
+
+function isImportMetaGlob({
+  computed,
+  object,
+  property
+}: ESTree.MemberExpression): boolean {
+  return (
+    !computed &&
+    object.type === 'MetaProperty' &&
+    object.meta.name === 'import' &&
+    object.property.name === 'meta' &&
+    property.type === 'Identifier' &&
+    property.name === 'glob'
+  )
+}
 
 // O manifesto de rotas importa o `route` de cada página no bundle inicial, e
 // tudo o que o `seo.ts` importa ou exporta vai junto. Por isso ele só exporta
@@ -18,7 +41,11 @@ export const seoModule = defineRule({
       onlySeo:
         'O seo.ts exporta só o objeto seo. O corpo da página fica no index.tsx, porque o seo.ts entra no bundle inicial pelo route (AGENTS.md, Módulos de página).',
       localImport:
-        'O seo.ts não importa módulos locais como valor: o que ele importa entra no bundle inicial junto com o route. Mantenha o corpo da página no index.tsx (AGENTS.md, Módulos de página).'
+        'O seo.ts não importa módulos locais como valor: o que ele importa entra no bundle inicial junto com o route. Mantenha o corpo da página no index.tsx (AGENTS.md, Módulos de página).',
+      computedImport:
+        'O seo.ts não usa import() com caminho calculado: a regra não consegue conferir se o destino é local. Mantenha o corpo da página no index.tsx (AGENTS.md, Módulos de página).',
+      globImport:
+        'O seo.ts não usa import.meta.glob: o Vite o converte em imports dos módulos que o padrão casa. Mantenha o corpo da página no index.tsx (AGENTS.md, Módulos de página).'
     }
   },
   create(context) {
@@ -27,6 +54,24 @@ export const seoModule = defineRule({
       .split(path.sep)
       .join('/')
     if (!SEO_MODULE.test(relative)) return {}
+
+    // Um alias para a árvore de rotas puxa o módulo da página do mesmo jeito
+    // que o caminho relativo.
+    const reportLocalImport = (node: ValueImport) => {
+      const specifier = readStaticSpecifier(node)
+      if (specifier === undefined) {
+        context.report({ node, messageId: 'computedImport' })
+        return
+      }
+      const target = resolveProjectPath({
+        specifier,
+        filename: context.filename,
+        root: context.cwd
+      })
+      if (LOCAL_SPECIFIER.test(specifier) || target.startsWith(ROUTES_DIR)) {
+        context.report({ node, messageId: 'localImport' })
+      }
+    }
 
     return {
       ExportNamedDeclaration(node) {
@@ -46,9 +91,14 @@ export const seoModule = defineRule({
         context.report({ node, messageId: 'onlySeo' })
       },
       ImportDeclaration(node) {
-        if (node.importKind === 'type') return
-        if (LOCAL_SPECIFIER.test(node.source.value)) {
-          context.report({ node, messageId: 'localImport' })
+        if (node.importKind !== 'type') reportLocalImport(node)
+      },
+      ImportExpression(node) {
+        reportLocalImport(node)
+      },
+      MemberExpression(node) {
+        if (isImportMetaGlob(node)) {
+          context.report({ node, messageId: 'globImport' })
         }
       }
     }

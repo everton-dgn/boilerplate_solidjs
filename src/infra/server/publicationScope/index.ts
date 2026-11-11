@@ -23,6 +23,14 @@ export function assertPublicationActive(): void {
   if (!scope.isActive()) throw new Error('Publication already completed')
 }
 
+// O cancelamento da publicação rejeita a leitura com o próprio motivo do sinal.
+// Só esse valor é cancelamento: outro erro é falha real, mesmo com o sinal
+// abortado.
+export function isPublicationCancellation(error: unknown): boolean {
+  const signal = storage.getStore()?.signal
+  return signal?.aborted === true && Object.is(error, signal.reason)
+}
+
 export function observePublicationOperation(operation: Promise<unknown>): void {
   storage.getStore()?.observe(operation)
 }

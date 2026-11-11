@@ -22,7 +22,7 @@ env:
   # Única versão do Vercel CLI usada no pull, no build e no deploy. Para
   # atualizar, escolha uma versão estável publicada no npm (vercel), troque o
   # valor aqui e valide o E2E de produção e o deploy no push da main.
-  VERCEL_CLI_VERSION: '64.7.0'
+  VERCEL_CLI_VERSION: '65.14.0'
 
 jobs:
   proof:
@@ -49,7 +49,6 @@ jobs:
         uses: ./.github/actions/setup-project
         with:
           install-dependencies: false
-          cache-save: false
 
       - name: Verify the pull request validation of this tree
         id: proof
@@ -97,6 +96,7 @@ jobs:
         id: toolchain
         uses: ./.github/actions/setup-project
         with:
+          cache-save: 'true'
           cache-toolchain: 'true'
 
       - name: Check commit messages
@@ -191,7 +191,6 @@ jobs:
       - name: Set up project
         uses: ./.github/actions/setup-project
         with:
-          cache-save: false
           cache-toolchain: 'true'
 
       - name: Run tooling tests
@@ -215,7 +214,6 @@ jobs:
       - name: Set up project
         uses: ./.github/actions/setup-project
         with:
-          cache-save: false
           cache-toolchain: 'true'
 
       - name: Run end-to-end tests
@@ -251,7 +249,6 @@ jobs:
       - name: Set up project
         uses: ./.github/actions/setup-project
         with:
-          cache-save: false
           cache-toolchain: 'true'
 
       # O token chega só aos comandos do Vercel CLI. A documentação da Vercel
@@ -425,7 +422,6 @@ jobs:
         uses: ./.github/actions/setup-project
         with:
           install-dependencies: false
-          cache-save: false
 
       - name: Download tested deployment artifact
         if: steps.freshness.outputs.should-deploy == 'true'

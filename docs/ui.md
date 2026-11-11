@@ -2,17 +2,31 @@
 
 [Voltar ao README](../README.md)
 
+## Botões
+
+`Button`, em `components/atoms/`, aceita as props nativas de `button`, com
+`type="button"` como padrão, além de `variant`, `size` e `class`. Para um botão
+só com texto, use `label`: `<Button label={m.save()} />` se lê melhor que abrir
+a tag em volta do texto. Use `children` quando o conteúdo tiver ícone ou outra
+marcação. Com os dois, `label` prevalece. A prop vira o texto visível e o nome
+acessível do botão; para um botão só com ícone, use `aria-label`.
+
+A prop `label` é uma decisão do projeto e faz parte do kit oferecido às
+aplicações derivadas. Não a remova por duplicar `children` nem por não ter
+consumidor de produção na demonstração.
+
 ## Campos, diálogos e notificações
 
 `Input` e `Textarea`, em `components/atoms/`, aceitam as props nativas,
 incluindo `ref`, `name`, `required`, eventos, `value` e `defaultValue`. O valor
 inicial também aparece no HTML do servidor. Use `value` com um signal para
 controlar o campo, ou `defaultValue` para deixá-lo sob controle do navegador e
-permitir o reset nativo do formulário. `Textarea` permite redimensionamento
-vertical. Ambos aceitam `variant="destructive"`, que também define
-`aria-invalid` quando o consumidor não fornece esse atributo. Associe um `label`
-ao `id` e use `aria-describedby` para ligar a mensagem de ajuda ou de erro ao
-campo. Os textos do formulário pertencem ao catálogo da página.
+permitir o reset nativo do formulário. Se os dois vierem juntos, o valor
+controlado prevalece, também no HTML do servidor. `Textarea` permite
+redimensionamento vertical. Ambos aceitam `variant="destructive"`, que também
+define `aria-invalid` quando o consumidor não fornece esse atributo. Associe um
+`label` ao `id` e use `aria-describedby` para ligar a mensagem de ajuda ou de
+erro ao campo. Os textos do formulário pertencem ao catálogo da página.
 
 `Dialog`, em `components/molecules/`, usa o elemento nativo `dialog` com
 `showModal()`. Recebe `open`, `onOpenChange`, `title`, `description` opcional e
@@ -83,6 +97,42 @@ sistema e `@types/theme.ts` define os tipos compartilhados, mantendo `theme/` s�
 com CSS. As cores usam `light-dark()` com `color-scheme` para definir cada par
 uma vez e seguir o tema do documento.
 
+## Fontes
+
+A Inter vem do pacote `@fontsource-variable/inter`, gravada em
+`src/assets/fonts/` e declarada em `src/theme/tokens/fonts.css`. São arquivos
+variáveis: cada um traz todos os pesos de 100 a 900, então um projeto derivado
+pode usar qualquer `font-weight` sem baixar outro arquivo.
+
+O subset `latin` cobre o texto de pt, en e es: letras, números, pontuação,
+acentos, aspas, travessões e `€`. Ele é o único arquivo com preload, no
+`Document.tsx`. O `latin-ext` traz as letras extras do latim, como `Ł`, `ő` e
+`ş`, e não substitui o `latin`. Ele fica num arquivo separado, ligado pelo
+`unicode-range`, sem preload: o navegador só o baixa quando a página tem algum
+caractere desse intervalo. Os dois `unicode-range` são os do CSS do pacote.
+
+Os arquivos do pacote saem sem os nomes de glifo da tabela `post`, que o
+navegador não usa: são 1,5 KB a menos no `latin` e 3,2 KB no `latin-ext`, com a
+renderização idêntica. Os recursos OpenType ficam todos, inclusive frações,
+números tabulares e posicionamento de acentos combinados, porque um projeto
+derivado pode usá-los. O pacote não é dependência do projeto: para atualizar a
+Inter, baixe-o e rode em cada arquivo da pasta `files/` dele, gravando com o
+mesmo nome em `src/assets/fonts/`:
+
+```sh
+uvx --from fonttools --with brotli pyftsubset <arquivo-do-pacote>.woff2 \
+  --unicodes='*' --layout-features='*' --name-IDs='*' --notdef-outline \
+  --flavor=woff2 --output-file=src/assets/fonts/<arquivo-do-pacote>.woff2
+```
+
+Para atender outro alfabeto, como cirílico ou grego, processe do mesmo jeito o
+arquivo do subset, copie o `unicode-range` correspondente do CSS do pacote e
+acrescente um `@font-face` com a mesma família. Não troque o `latin` por outro
+subset nem junte subsets num arquivo único: o visitante passaria a baixar
+caracteres que a página não usa, ou o texto comum sairia na fonte do sistema.
+Confira a cobertura de um arquivo com
+`fc-query --format='%{charset}\n' <arquivo>`.
+
 ## Regras de CSS
 
 Execute `vp run lint:css` para verificar todos os arquivos CSS de `src/`. O
@@ -103,6 +153,9 @@ do Vite+.
   `custom-property-no-missing-var-function` detecta a ausência de `var()` para
   tokens declarados no mesmo arquivo. Nas propriedades que exigem tokens,
   valores sem `var()` também são rejeitados.
+- Os tokens de `src/theme/tokens/` formam a paleta oferecida às aplicações
+  derivadas. Um token sem consumidor na demonstração continua no tema: falta de
+  uso aqui não indica código morto nem motivo para removê-lo.
 - Seletores e media queries inválidos geram erro, assim como seletores
   obsoletos, como `:focus-ring`, e seletores que nunca correspondem a um
   elemento, como `:is(::before)`. Seletores duplicados no mesmo contexto, etapas

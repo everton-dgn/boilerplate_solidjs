@@ -15,6 +15,8 @@ import type {
   GitCommit
 } from './types.ts'
 
+type TestedCommitOptions = RunContext & { tested: string }
+
 const SHA_PATTERN = /^[a-f\d]{40}$/u
 const REPOSITORY_PATTERN = /^[\w.-]+\/[\w.-]+$/u
 const MAIN_BRANCH = 'main'
@@ -193,14 +195,19 @@ function assertEvidence(evidence: unknown): string {
   return tested
 }
 
-async function assertTestedCommit(context: RunContext, tested: string) {
-  const commit = await context.ports.api<GitCommit>(
-    `repos/${context.repository}/git/commits/${tested}`
+async function assertTestedCommit({
+  tested,
+  repository,
+  merge,
+  ports
+}: TestedCommitOptions) {
+  const commit = await ports.api<GitCommit>(
+    `repos/${repository}/git/commits/${tested}`
   )
   const parents = commit.parents.map(parent => parent.sha).join(' ')
   if (
-    commit.tree.sha !== context.merge.tree ||
-    parents !== `${context.merge.base} ${context.merge.head}`
+    commit.tree.sha !== merge.tree ||
+    parents !== `${merge.base} ${merge.head}`
   ) {
     reject('O commit testado no PR difere do merge da main.')
   }
@@ -224,7 +231,7 @@ async function verify(options: DecideReuseOptions): Promise<Decision> {
   await assertJobs(runContext)
   const artifact = await findEvidence(runContext)
   const tested = assertEvidence(await ports.readEvidence(artifact))
-  await assertTestedCommit(runContext, tested)
+  await assertTestedCommit({ ...runContext, tested })
   const hasQualityChanges = files.some(file => QUALITY_FILES.has(file))
   const shouldRunQuality =
     hasQualityChanges || !(await hasMainCaches({ ...context, runner }))

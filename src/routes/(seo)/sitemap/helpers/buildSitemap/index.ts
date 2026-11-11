@@ -1,6 +1,8 @@
 import type { SitemapEntry } from '@/@types/sitemap.ts'
 import { buildLocaleAlternates } from '@/i18n/buildLocaleAlternates/index.ts'
 
+import { escapeXml } from '../escapeXml/index.ts'
+
 type BuildSitemapOptions = {
   entries: readonly SitemapEntry[]
   siteUrl: string
@@ -10,17 +12,6 @@ const START =
   '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
 const END = '</urlset>\n'
 const encoder = new TextEncoder()
-
-// Caminhos hierárquicos saem de URL.href percent-encodados, mas caminhos
-// opacos (data:, mailto:) preservam <, > e ", então o XML escapa os cinco.
-function escapeXml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;')
-}
 
 export class SitemapByteLimitError extends Error {
   public constructor() {

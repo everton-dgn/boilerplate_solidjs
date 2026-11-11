@@ -1,4 +1,5 @@
 import { SITEMAP_LOC_LIMIT, SITEMAP_URL_LIMIT } from '../../constants.ts'
+import { escapeXml } from '../escapeXml/index.ts'
 
 type IndexBuilder = {
   add: (location: string) => void
@@ -20,7 +21,7 @@ export function createSitemapIndexBuilder(byteBudget: number): IndexBuilder {
       if (count >= SITEMAP_URL_LIMIT || location.length > SITEMAP_LOC_LIMIT) {
         throw new Error('Índice excede limite')
       }
-      const chunk = `  <sitemap><loc>${location.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')}</loc></sitemap>\n`
+      const chunk = `  <sitemap><loc>${escapeXml(location)}</loc></sitemap>\n`
       const nextBytes = bytes + encoder.encode(chunk).byteLength
       if (nextBytes > byteBudget) {
         throw new Error('Índice excede limite de bytes')

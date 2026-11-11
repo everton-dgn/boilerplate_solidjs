@@ -1,0 +1,8 @@
+# Sem a herança, este arquivo substitui os ajustes feitos na interface do
+# CodeRabbit, inclusive o idioma das revisões.
+inheritance: true
+reviews:
+  pre_merge_checks:
+    # A cobertura de docstrings cobra o que o AGENTS.md pede para não escrever.
+    docstrings:
+      mode: 'off'

@@ -11,7 +11,7 @@ const NONCE = 'bm9uY2UtZGUtdGVzdGU='
 const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8' }
 
 const EXPECTED_HEADERS = {
-  'strict-transport-security': 'max-age=63072000; includeSubDomains; preload',
+  'strict-transport-security': 'max-age=63072000; includeSubDomains',
   'x-frame-options': 'DENY',
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',

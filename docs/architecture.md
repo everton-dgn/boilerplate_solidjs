@@ -8,10 +8,10 @@ As páginas em `src/routes` usam `export default` e são descobertas pelo
 `filesystem-routing`. `index.tsx` define `/`, `[id].tsx` define um parâmetro
 dinâmico e `[...404]/index.tsx` captura caminhos desconhecidos. O
 `export const route` define opções como `preload`, usado pelo fallback para
-responder com HTTP 404. Componentes colocalizados podem ficar em pastas
-`components` dentro de `routes`: use exportações nomeadas para que eles não
-sejam registrados como páginas. Não é necessário editar `src/router.ts` ao
-adicionar uma página.
+responder com HTTP 404. Componentes e outros módulos usados por uma única rota
+ficam na pasta dela, com dois ou mais auxiliares agrupados em `helpers/`: sem
+`export default` nem handler HTTP, eles não são registrados como páginas. Não é
+necessário editar `src/router.ts` ao adicionar uma página.
 
 O arquivo `src/routes/(base).tsx` define o layout compartilhado com `Topbar` e
 renderiza `props.children` com `RouteSectionProps`. Sua pasta `(base)/` contém
@@ -27,12 +27,14 @@ método HTTP em vez de `export default`. O `createAPIHandler` em
 `src/middleware/index.ts` responde a essas requisições antes do SSR e deixa
 passar as demais. Depois dele, `restrictPageMethods` responde 405, com
 `Allow: GET, HEAD`, a qualquer outro método, como POST ou OPTIONS, em caminhos
-de página sem handler: o render trataria o pedido como um GET no idioma base. O
-caminho relativo a `src/routes` vira a URL sem a extensão, o segmento `index` e
-os grupos entre parênteses. Assim, `(seo)/sitemap.xml/index.ts` atende
-`/sitemap.xml`; colchetes continuam indicando parâmetros dinâmicos. Uma rota
-pode devolver `Response.redirect()`: como os headers dessa resposta são
-imutáveis, o middleware grava os cabeçalhos de segurança numa cópia.
+de página sem handler: o render trataria o pedido como um GET no idioma base.
+Numa rota de API sem handler para o método, como `POST /robots.txt`, o 405 traz
+no `Allow` os métodos que a rota atende. O caminho relativo a `src/routes` vira
+a URL sem a extensão, o segmento `index` e os grupos entre parênteses. Assim,
+`(seo)/sitemap.xml/index.ts` atende `/sitemap.xml`; colchetes continuam
+indicando parâmetros dinâmicos. Uma rota pode devolver `Response.redirect()`:
+como os headers dessa resposta são imutáveis, o middleware grava os cabeçalhos
+de segurança numa cópia.
 
 Para correlacionar os eventos de uma requisição, use `getTraceContext()` de
 `@solidjs/web`: ele continua o `traceparent` W3C recebido ou cria um trace para
@@ -55,10 +57,12 @@ handler HTTP, e por isso não vira rota. `infra/adapters/` isola as APIs do
 navegador, e `infra/server/` concentra o transporte de backend, a proteção das
 operações, a criação de erros públicos e o estado de integridade do render. Os
 módulos de servidor usam `server-only`; consulte o
-[contrato de erros no servidor](server-errors.md). O prefixo `make` identifica
-utilitários sem estado reativo próprio, como `makeThemeChannel`, que devolve seu
-descarte. O prefixo `create` identifica primitives com estado ou efeitos
-reativos, como `createTheme`.
+[contrato de erros no servidor](server-errors.md). Nas primitives e nos helpers
+do cliente, o prefixo `make` identifica utilitários sem estado reativo próprio,
+como `makeThemeChannel`, que devolve seu descarte, e o prefixo `create`
+identifica primitives com estado ou efeitos reativos, como `createTheme`. No
+servidor, nas rotas e em `infra/`, `create` continua nomeando fábricas sem
+reatividade, como `createIndexRoute` e `createPublicationController`.
 
 `entry-client/` reúne os módulos que só o `entry-client.tsx` consome e que rodam
 uma vez, no boot do navegador, antes de `hydrate()`. O prefixo `install`
@@ -115,6 +119,33 @@ ficam em
 [`infra/server/publicErrors/`](../src/infra/server/publicErrors/index.ts), junto
 da proteção das operações de backend; requisições e persistência ficam em
 `infra/`.
+
+## Camadas dos componentes
+
+`src/components/` usa as três primeiras camadas do
+[Atomic Design](https://atomicdesign.bradfrost.com/chapter-2/). A camada sai dos
+componentes que cada um junta, conferidos pelos imports e pelos exports. O
+tamanho do arquivo e a quantidade de marcação interna não mudam a camada.
+
+- `atoms/` não renderizam outro componente. Podem importar estilos, contexto,
+  primitives e helpers: o `Textarea` reaproveita o CSS do `Input` e continua
+  atom. A marcação própria também não conta, então o `DropdownMenu`, que recebe
+  o gatilho pronto, e o `ToastProvider` ficam aqui, com `Button`, `Input`,
+  `LocalizedLink` e `PageBadge`.
+- `molecules/` juntam atoms numa unidade com uma função. O `ThemeToggle` e o
+  `LocaleSwitcher` montam `Button` e `DropdownMenu`, o `OutdatedPageNotice` e o
+  `Dialog` montam `Button`, o `SiteContent` monta `LocalizedLink` e o `Provider`
+  monta o `ToastProvider`. Um componente que exporta as próprias peças para o
+  consumidor montar também entra aqui: o `PageHero` junta o `PageHeroTitle` e o
+  `PageHeroDescription`, que só funcionam dentro dele.
+- `organisms/` juntam molecules, com ou sem atoms, numa seção distinta da
+  interface. O `Topbar` é o cabeçalho, o `SiteArticle` monta o corpo das páginas
+  de conteúdo e o `ErrorFallback` monta a tela de erro sobre o `PageHero`.
+
+A regra `architecture/layer-imports` confere só a direção dos imports, descrita
+na próxima seção. A camada de cada componente é conferida na revisão: escolha a
+camada ao criar o componente e, quando ele passar a renderizar outro da mesma
+camada, mova a pasta uma camada acima e atualize os imports.
 
 ## Dependências entre camadas
 

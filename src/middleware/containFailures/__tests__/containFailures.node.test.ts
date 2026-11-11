@@ -343,7 +343,7 @@ describe('accept de uma navegação', () => {
     ['com accept de JSON', { accept: 'application/json' }, false]
   ])(
     'decide a página de erro de um GET %s',
-    async (_label, headers, errorPage) => {
+    async (_label, headers, hasErrorPage) => {
       const event = pageEvent()
       const request = new Request(TEST_ORIGIN, { headers })
       const render = renderPage()
@@ -352,9 +352,9 @@ describe('accept de uma navegação', () => {
         failingWith(new Error('PRIVATE'))(request, render)
       )
 
-      expect(render).toHaveBeenCalledTimes(errorPage ? 1 : 0)
+      expect(render).toHaveBeenCalledTimes(hasErrorPage ? 1 : 0)
       await expect(response.text()).resolves.toBe(
-        errorPage ? '<main>Algo deu errado!</main>' : PUBLIC_MESSAGE
+        hasErrorPage ? '<main>Algo deu errado!</main>' : PUBLIC_MESSAGE
       )
     }
   )
@@ -428,8 +428,7 @@ describe('CSP nas respostas da contenção', () => {
     expect(response.status).toBe(HTTP_FOUND)
     expect(Object.fromEntries(response.headers)).toMatchObject({
       'x-frame-options': 'DENY',
-      'strict-transport-security':
-        'max-age=63072000; includeSubDomains; preload'
+      'strict-transport-security': 'max-age=63072000; includeSubDomains'
     })
     // O redirect não tem documento: a CSP bloqueia scripts sem gravar o nonce.
     expect(response.headers.get('content-security-policy')).toContain(

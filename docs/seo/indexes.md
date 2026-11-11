@@ -59,8 +59,9 @@ cada parte lê seu próprio lote. O llms.txt é montado dentro do contexto
 Paraglide do idioma base (`baseLocale` do runtime), inclusive a descrição do
 site e os metadados das páginas, para que o contexto de outro idioma não mude o
 texto. A nota sobre o idioma do índice deriva do mesmo `baseLocale`, com o nome
-do idioma em inglês, o idioma das notas. A lista de idiomas da mesma nota é
-texto fixo: ao mudar os idiomas em `project.inlang/settings.json`, reescreva-a.
+do idioma em inglês, o idioma das notas. A lista de idiomas da mesma nota sai de
+`locales`, com o idioma base primeiro, o nome em inglês e o caminho de cada
+idioma: ela acompanha `project.inlang/settings.json` sem edição manual.
 Respostas de sucesso do robots e do sitemap dinâmico saem com
 `public, max-age=0, s-maxage=3600, stale-if-error=86400` em produção (o CDN
 reutiliza por uma hora; a Vercel só cacheia resposta de função com `s-maxage` e

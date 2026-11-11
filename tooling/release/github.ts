@@ -14,7 +14,7 @@ type ApiRequest = {
   path: string
   method: string
   payload?: Json
-  allowMissing?: boolean
+  canBeMissing?: boolean
 }
 type SourceRun = {
   conclusion: string
@@ -40,6 +40,7 @@ type ReleasePullRequestCheck = OpenPullRequestCheck & {
   branch: string
   head: string
 }
+type CommandOptions = { file: string; args: string[] }
 
 const execute = promisify(execFile)
 const MAX_OUTPUT_BYTES = 16_777_216
@@ -56,7 +57,7 @@ async function request<T>({
   path,
   method,
   payload,
-  allowMissing = false
+  canBeMissing = false
 }: ApiRequest): Promise<T> {
   const args = ['api', path, '--method', method, '--include']
   if (payload !== undefined) args.push('--input', '-')
@@ -73,7 +74,7 @@ async function request<T>({
         }
         // O status HTTP vem no stdout mesmo quando o gh falha; só o 404 esperado
         // vira ausência, nunca uma falha de autenticação ou de rede.
-        if (allowMissing && /^HTTP\/\S+ 404\b/mu.test(stdout)) {
+        if (canBeMissing && /^HTTP\/\S+ 404\b/mu.test(stdout)) {
           resolve('')
           return
         }
@@ -97,7 +98,7 @@ async function request<T>({
   return (output ? JSON.parse(output.slice(separator)) : undefined) as T
 }
 
-export async function command(file: string, args: string[]): Promise<string> {
+export async function command({ file, args }: CommandOptions): Promise<string> {
   const result = await execute(file, args, { maxBuffer: MAX_OUTPUT_BYTES })
   return result.stdout.trim()
 }
@@ -106,13 +107,16 @@ export async function command(file: string, args: string[]): Promise<string> {
 // autenticam pelo helper do gh com o GH_TOKEN do passo, o que vale também para
 // repositório privado.
 export function git(...args: string[]): Promise<string> {
-  return command('git', [
-    '-c',
-    'credential.helper=',
-    '-c',
-    'credential.helper=!gh auth git-credential',
-    ...args
-  ])
+  return command({
+    file: 'git',
+    args: [
+      '-c',
+      'credential.helper=',
+      '-c',
+      'credential.helper=!gh auth git-credential',
+      ...args
+    ]
+  })
 }
 
 export function api<T>(path: string): Promise<T> {
@@ -124,7 +128,7 @@ export function mutate<T>(mutation: Mutation): Promise<T> {
 }
 
 export function optionalApi<T>(path: string): Promise<T | undefined> {
-  return request<T | undefined>({ path, method: 'GET', allowMissing: true })
+  return request<T | undefined>({ path, method: 'GET', canBeMissing: true })
 }
 
 export function requireSha(value: string): string {

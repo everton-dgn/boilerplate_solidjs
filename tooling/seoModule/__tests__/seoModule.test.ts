@@ -36,8 +36,16 @@ test('a regra deixa o seo.ts só com seo e sem import local como valor', () => {
         code: "import { content } from './content.ts'\nexport const route = {}\nexport const other = content"
       },
       {
+        filename: SEO_FILE,
+        code: `import { SITE } from '@/constants/site/index.ts'\n${SEO}`
+      },
+      {
         filename: 'src/helpers/seo.ts',
         code: "import { content } from './content.ts'\nexport const content2 = content"
+      },
+      {
+        filename: SEO_FILE,
+        code: `const siteUrl = import.meta.env.VITE_SITE_URL\n${SEO}`
       }
     ],
     invalid: [
@@ -90,6 +98,46 @@ test('a regra deixa o seo.ts só com seo e sem import local como valor', () => {
         filename: 'src/routes/(seo)/sitemap.xml/seo.ts',
         code: `import { content } from '../content.ts'\n${SEO}`,
         errors: [{ messageId: 'localImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `import { content } from '@/routes/(base)/about/index.tsx'\n${SEO}`,
+        errors: [{ messageId: 'localImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `import { content } from '/src/routes/(base)/about/content.ts'\n${SEO}`,
+        errors: [{ messageId: 'localImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `${SEO}\nexport const load = () => import('./content.ts')`,
+        errors: [{ messageId: 'onlySeo' }, { messageId: 'localImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `void import('@/routes/(base)/about/content.ts')\n${SEO}`,
+        errors: [{ messageId: 'localImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `const lang = 'pt'\nvoid import(\`./content/\${lang}.ts\`)\n${SEO}`,
+        errors: [{ messageId: 'computedImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `const target = './content.ts'\nvoid import(target)\n${SEO}`,
+        errors: [{ messageId: 'computedImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `const pages = import.meta.glob('./content/*.ts', { eager: true })\n${SEO}`,
+        errors: [{ messageId: 'globImport' }]
+      },
+      {
+        filename: SEO_FILE,
+        code: `const pages = import.meta.glob('@/routes/**/content.ts')\n${SEO}`,
+        errors: [{ messageId: 'globImport' }]
       }
     ]
   })

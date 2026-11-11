@@ -3,12 +3,9 @@ import { createAPIHandler } from 'filesystem-routing/api'
 
 import { HTTP_NOT_FOUND, HTTP_OK } from '@/constants/http.ts'
 import type { SitemapContext } from '@/routes/(seo)/sitemap/types.ts'
-import {
-  GET as sourceGET,
-  HEAD as sourceHEAD
-} from '@/routes/(seo)/sitemaps/[source]/[part].xml/index.ts'
+import { GET as sourceGET } from '@/routes/(seo)/sitemaps/[source]/[part].xml/index.ts'
 
-import { GET as pageGET, HEAD as pageHEAD } from '../index.ts'
+import { GET as pageGET } from '../index.ts'
 
 const { readSitemapContext, buildSitemapPartResponse } = vi.hoisted(() => ({
   readSitemapContext: vi.fn<() => SitemapContext>(() => ({
@@ -36,12 +33,12 @@ const handler = createAPIHandler([
   {
     path: '/(seo)/sitemaps/pages/:part.xml/',
     $GET: { require: () => ({ GET: pageGET }) },
-    $HEAD: { require: () => ({ HEAD: pageHEAD }) }
+    $HEAD: { require: () => ({ GET: pageGET }) }
   },
   {
     path: '/(seo)/sitemaps/:source/:part.xml/',
     $GET: { require: () => ({ GET: sourceGET }) },
-    $HEAD: { require: () => ({ HEAD: sourceHEAD }) }
+    $HEAD: { require: () => ({ GET: sourceGET }) }
   }
 ])
 

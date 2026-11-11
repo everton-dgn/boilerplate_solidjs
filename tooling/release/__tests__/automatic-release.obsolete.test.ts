@@ -38,11 +38,11 @@ describe(
   () => {
     it('stops on invalid CI and skips the merge without failing when main advances', async context => {
       const f = await fixture(context)
-      await f.patch({ badRun: true })
+      await f.patch({ hasBadRun: true })
       await assert.rejects(f.run('prepare'), /successful push CI/u)
-      await f.patch({ badRun: false })
+      await f.patch({ hasBadRun: false })
       await f.run('prepare')
-      await f.patch({ advanced: true })
+      await f.patch({ hasAdvanced: true })
       const before = await f.state()
 
       await f.run('publish')
@@ -55,7 +55,7 @@ describe(
 
     it('postpones without artifacts when main advances before preparing', async context => {
       const f = await fixture(context)
-      await f.patch({ advanced: true })
+      await f.patch({ hasAdvanced: true })
 
       await f.run('prepare')
 
@@ -69,7 +69,7 @@ describe(
       const f = await fixture(context)
       await f.run('prepare')
       assert.equal(await f.lastOutput('publish'), 'true')
-      await f.patch({ advanced: true })
+      await f.patch({ hasAdvanced: true })
 
       await f.run('prepare')
 

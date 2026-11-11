@@ -35,6 +35,7 @@ const PROJECT_CHECK_INPUTS = [
   'patches/**'
 ]
 const STATIC_FILE_HEADERS = {
+  'strict-transport-security': SECURITY_HEADERS['strict-transport-security'],
   'x-content-type-options': SECURITY_HEADERS['x-content-type-options'],
   'cross-origin-resource-policy':
     SECURITY_HEADERS['cross-origin-resource-policy']
@@ -229,6 +230,9 @@ export default defineConfig(({ mode }) => {
         'dead-code-project': {
           command:
             'knip-bun --config tooling/knip.ts && knip-bun --config tooling/knip.ts --strict',
+          // Os plugins do Knip leem as configurações da raiz, dos hooks e dos
+          // workflows; como no lint de CSS, o rastreamento automático das
+          // leituras do Bun varia por sistema operacional.
           cache: {
             env: ['NODE_ENV'],
             input: [
@@ -236,6 +240,11 @@ export default defineConfig(({ mode }) => {
               'src/**',
               'paraglide/**',
               'tooling/**',
+              '*.ts',
+              'tsconfig*.json',
+              '.github/**',
+              '.lefthook.yml',
+              '.commitlintrc',
               'package.json',
               'bun.lock'
             ],
@@ -327,11 +336,6 @@ export default defineConfig(({ mode }) => {
       unstubGlobals: true,
       unstubEnvs: true,
       expect: { requireAssertions: true, poll: { interval: 10 } },
-      exclude: [
-        '**/node_modules/**',
-        '**/playwright/**',
-        '**/*.e2e.test.{ts,tsx}'
-      ],
       env: testEnv,
       coverage: {
         provider: 'v8',
@@ -347,7 +351,7 @@ export default defineConfig(({ mode }) => {
           'src/**/*.d.ts',
           'src/**/{constants,types,@types}/**',
           'src/**/{constants,types}.{ts,tsx}',
-          'src/**/*.test-d.{ts,tsx}',
+          'src/**/__tests__/**',
           'src/tests/**',
           'src/App.tsx',
           'src/Document.tsx',

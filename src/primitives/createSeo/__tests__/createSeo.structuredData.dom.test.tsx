@@ -21,7 +21,7 @@ function mountData(accessors: StructuredDataAccessor[]): void {
       for (const accessor of accessors) createSeo({ structuredData: accessor })
       return null
     },
-    { providers: false }
+    { hasProviders: false }
   )
 }
 
@@ -87,7 +87,7 @@ describe('dados estruturados publicados pela página', () => {
       '@type': 'Product',
       name: 'Antes'
     })
-    const [mounted, setMounted] = createSignal(true)
+    const [isMounted, setIsMounted] = createSignal(true)
 
     function ProductData() {
       createSeo({ structuredData: data })
@@ -96,11 +96,11 @@ describe('dados estruturados publicados pela página', () => {
 
     renderComponent(
       () => (
-        <Show when={mounted()}>
+        <Show when={isMounted()}>
           <ProductData />
         </Show>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     await waitForScripts(1)
 
@@ -108,7 +108,7 @@ describe('dados estruturados publicados pela página', () => {
     await vi.waitUntil(() => readScripts()[0]?.includes('Depois'), POLL)
     expect(readScripts()).toHaveLength(1)
 
-    setMounted(false)
+    setIsMounted(false)
     await waitForScripts(0)
     expect(readScripts()).toHaveLength(0)
   })
@@ -124,7 +124,7 @@ describe('dados estruturados publicados pela página', () => {
       return null
     }
 
-    renderComponent(ProductData, { providers: false })
+    renderComponent(ProductData, { hasProviders: false })
     const [fixed] = await waitForScripts(1)
     expect(parseNode(fixed).name).toBe('Fixo')
 

@@ -1,7 +1,9 @@
 import type { SitemapEntry, SitemapPartitionSource } from '@/@types/sitemap.ts'
 import { SITEMAP_URL_LIMIT } from '@/routes/(seo)/sitemap/constants.ts'
 
+import { buildSitemap } from '../../../buildSitemap/index.ts'
 import { createSitemapIndexBuilder } from '../../../createSitemapIndexBuilder/index.ts'
+import { validateLocations } from '../../../validateLocations/index.ts'
 import { SOURCE_ID_PATTERN } from '../../constants.ts'
 import type { ReadOptions } from '../../types.ts'
 import { readArrayPart } from '../sourceEntries/index.ts'
@@ -56,6 +58,10 @@ export async function planIndex(read: ReadOptions): Promise<IndexPlan> {
   }
   const arrayEntries = (await readArrayPart(read)) ?? []
   if (arrayEntries.length > 0) {
+    // O índice só lista a parte em array que cabe no orçamento; a rota
+    // array.xml faz a mesma verificação ao montar a resposta.
+    validateLocations({ entries: arrayEntries, siteUrl })
+    buildSitemap({ entries: arrayEntries, siteUrl, byteBudget })
     builder.add(new URL('/sitemaps/array.xml', siteUrl).href)
   }
   for (const source of sources) {

@@ -8,6 +8,10 @@ type RegistryOptions = {
   catalog: PageCatalog
   sources: readonly SitemapPartitionSource[]
 }
+type ManifestRegistryOptions = {
+  manifest: SitemapManifest
+  sources: readonly SitemapPartitionSource[]
+}
 
 const registries = new WeakMap<
   SitemapManifest,
@@ -17,10 +21,10 @@ const registries = new WeakMap<
   >
 >()
 
-function getRegistry(
-  manifest: SitemapManifest,
-  sources: readonly SitemapPartitionSource[]
-): Map<string, SitemapPartitionSource> {
+function getRegistry({
+  manifest,
+  sources
+}: ManifestRegistryOptions): Map<string, SitemapPartitionSource> {
   let bySources = registries.get(manifest)
   if (!bySources) {
     bySources = new WeakMap()
@@ -67,5 +71,5 @@ export function readRegistry({
   sources
 }: RegistryOptions): Map<string, SitemapPartitionSource> {
   if (sources.length === 0) return new Map()
-  return getRegistry(catalog.readRoutes().manifest, sources)
+  return getRegistry({ manifest: catalog.readRoutes().manifest, sources })
 }

@@ -140,25 +140,31 @@ imagens decorativas. Rodapés contextuais dentro de main permanecem. CSS
 calculado e conteúdo criado exclusivamente no navegador não são interpretados.
 Use marcação semântica para conteúdo que não deve aparecer.
 
-O patch Bun de `@mdream/js` corrige a conversão de espaços, títulos em listas e
-nomes de links com esses filtros. Uma ênfase cujo início foi removido, como um
-ícone SVG, ficava com o espaço dentro do delimitador (`** Warning:**`), e uma
-linha só de `===` ou `--` depois de uma quebra virava sublinhado de título. Um
-título vazio num item de lista virava `\###`, colado ao bloco seguinte. Um link
-com `aria-label` cujo único conteúdo é removido, como um ícone com
+O patch Bun de `@mdream/js` corrige a conversão de espaços e de nomes de links
+com esses filtros. Uma ênfase cujo início foi removido, como um ícone SVG,
+ficava com o espaço dentro do delimitador (`** Warning:**`). Um link com
+`aria-label` cujo único conteúdo é removido, como um ícone com
 `aria-hidden="true"`, saía sem texto (`[](/cart)`). A correção também preserva
 separadores entre palavras em wrappers inline, inclusive antes de um espaço
-inseparável. Títulos em listas ficam separados do texto seguinte, com os
-marcadores literais escapados na coluna do conteúdo; wrappers de ênfase e
-legendas mantêm seus delimitadores juntos. Links preservam o texto visível
-dentro de blocos e usam o nome acessível após ícones removidos, sem perder o
-espaço final nem mover para fora o espaço entre dois ícones. O patch altera só o
-`dist` do pacote e corresponde aos PRs
-[harlan-zw/mdream#385](https://github.com/harlan-zw/mdream/pull/385) (espaços e
-sublinhado de título), [#386](https://github.com/harlan-zw/mdream/pull/386)
-(títulos em listas) e [#390](https://github.com/harlan-zw/mdream/pull/390)
-(nomes de links). Remova-o quando uma versão publicada cobrir esses
-comportamentos e os testes de regressão de `convertHtml` passarem sem ele.
+inseparável; wrappers de ênfase e legendas mantêm seus delimitadores juntos.
+Links preservam o texto visível dentro de blocos e usam o nome acessível após
+ícones removidos, sem perder o espaço final nem mover para fora o espaço entre
+dois ícones. Títulos vazios em itens de lista e linhas só de `===` ou `--`
+depois de uma quebra já saem corretos na versão publicada, sem o patch.
+
+O patch altera só o `dist` do pacote. Ele é o build da tag instalada com os PRs
+[harlan-zw/mdream#385](https://github.com/harlan-zw/mdream/pull/385) (espaços) e
+[#390](https://github.com/harlan-zw/mdream/pull/390) (nomes de links) mesclados.
+Os dois conflitam em `parse.ts` e em `tags.ts`. Em `parse.ts`, o #385 mantém o
+espaço inicial dentro de elementos inline, e o #390 só registrava o espaço de um
+link quando o parser o descartava: a combinação registra esse espaço nos dois
+casos. Em `tags.ts`, os dois alteram a comparação do título com o texto do link:
+a combinação fica com a do #385 e descarta o bloco `else if (title)` do #390.
+Nessa combinação, um caso da suíte do #385 diverge: um link vazio com título
+terminado em espaço, dentro de código e seguido de `figcaption`, perde o espaço
+antes da legenda, que cada PR isolado mantém. Remova o patch quando uma versão
+publicada cobrir esses comportamentos e os testes de regressão de `convertHtml`
+passarem sem ele.
 
 GET com `Accept: text/markdown` recebe Markdown diretamente, sem redirect para
 arquivo. A negociação respeita pesos e especificidade, com HTML em empate. O
@@ -173,17 +179,23 @@ no SSR. HEAD renderiza a mesma representação e remove o corpo. APIs, assets, R
 e métodos de escrita ficam fora da negociação. Num caminho de página sem handler
 de API para o método, POST, PUT, PATCH, DELETE e OPTIONS recebem 405 com
 `Allow: GET, HEAD`: sem essa resposta, o handler do plugin renderizaria a página
-com status 200 no idioma base, fora do contexto de idioma. Os formulários do
-router enviam ao endpoint das server functions, que não passa por essa
-restrição.
+com status 200 no idioma base, fora do contexto de idioma. Rotas de API sem
+handler para o método também recebem 405, com os métodos atendidos no `Allow`.
+Os formulários do router enviam ao endpoint das server functions, que não passa
+por essa restrição.
 
 A localização preserva URL > cookie > Accept-Language. Redirects seguros para
 uma página elegível da mesma origem preservam a intenção `.md`; o middleware não
 segue redirects. Erros não viram documentos de sucesso. Um 404 HTML negociado
 mantém status 404, idioma e `noindex`; páginas sem opt-in não publicam seu
-conteúdo de sucesso pelo alias Markdown. Um `X-Robots-Tag` com `noindex` ou
-`none` na resposta da página também recusa a publicação;
-`max-image-preview: none` só limita a prévia de imagens e não conta.
+conteúdo de sucesso pelo alias Markdown. Sem opt-in, `Accept: text/markdown`
+recebe o HTML do render comum, em streaming e fora das vagas e do prazo da
+publicação; só o 404 da rota catch-all passa pela conversão. O 404 de uma rota
+com parâmetro sem opt-in também sai em HTML, e uma falha do render devolve a
+página de erro em HTML, igual à de `Accept: text/html`, no lugar do 500 público
+em texto. Um `X-Robots-Tag` com `noindex` ou `none` na resposta da página também
+recusa a publicação; `max-image-preview: none` só limita a prévia de imagens e
+não conta.
 
 As respostas convertidas na requisição recebem `text/markdown; charset=utf-8`,
 `private, no-store`, `Vary: Accept` adicional ao Vary existente e CSP com
@@ -211,14 +223,17 @@ Os limites ficam em `src/middleware/markdownContent/constants.ts`: prazo total
 de 15 segundos, HTML de até 2 MiB antes da conversão síncrona e Markdown de até
 2 MiB. A leitura verifica cada chunk e cancela o leitor ao exceder o teto;
 `Content-Length` não substitui essa contagem. O chunk corrente já foi alocado
-pelo produtor. A conversão só publica depois de validar o tamanho final. Timeout
-e desconexão abortam o sinal do render, mas código síncrono e serviços que
-ignoram `AbortSignal` não são preemptados. O SSR assíncrono pode ter montado o
-HTML inteiro antes da leitura, e a conversão mantém buffers intermediários; o
-limite não equivale a um teto total de memória do processo. As reservas de saída
-cobrem os corpos possuídos pela aplicação, não buffers do socket, CDN ou
-adapter. O [piloto HTTP](../testing.md#carga-da-publicação) mede esses efeitos
-no Node local. A hospedagem precisa de verificação própria.
+pelo produtor. A conversão só publica depois de validar o tamanho final. Exceder
+um dos tetos ou uma falha do conversor encerra a publicação com o 500 público no
+idioma da requisição, `private, no-store` e um registro `[middleware]`; o
+cancelamento continua seguindo o caminho da publicação. Timeout e desconexão
+abortam o sinal do render, mas código síncrono e serviços que ignoram
+`AbortSignal` não são preemptados. O SSR assíncrono pode ter montado o HTML
+inteiro antes da leitura, e a conversão mantém buffers intermediários; o limite
+não equivale a um teto total de memória do processo. As reservas de saída cobrem
+os corpos possuídos pela aplicação, não buffers do socket, CDN ou adapter. O
+[piloto HTTP](../testing.md#carga-da-publicação) mede esses efeitos no Node
+local. A hospedagem precisa de verificação própria.
 
 As páginas sobre o projeto e de contato usam os dados públicos do repositório. O
 aviso de privacidade descreve as preferências e os limites observáveis na
@@ -226,10 +241,10 @@ demonstração. O `contactPoint` usa `contato@example.com` e `0000000000` como
 placeholders, com `contactType: demo` e uma descrição que informa que esses
 valores não são canais de contato do mantenedor. O `address` é um
 `PostalAddress` com rua, cidade, estado, CEP e país de exemplo, identificado
-como fictício pela descrição. Os dois objetos ficam em
-`src/primitives/createSeo/buildStructuredData/index.ts`. Substitua esses dados
-ao adaptar o boilerplate para outro produto. Revise o aviso quando adicionar
-serviços ou coleta de dados.
+como fictício pela descrição. Os dois objetos ficam em `SITE.organization`, em
+`src/constants/site/index.ts`. Substitua esses dados ao adaptar o boilerplate
+para outro produto, ou remova o campo para tirá-lo do JSON-LD. Revise o aviso
+quando adicionar serviços ou coleta de dados.
 
 Valide com `vp run check:ci`, `vp run typecheck:node`, `vp run test:tooling` e
 os testes Node de `src/middleware/` e de SEO. Execute

@@ -1,4 +1,4 @@
-import { isServer, type ComponentProps } from '@solidjs/web'
+import type { ComponentProps } from '@solidjs/web'
 import { omit, untrack } from 'solid-js'
 
 import S from '../Input/styles.module.css'
@@ -13,10 +13,8 @@ export function Textarea(props: TextareaProps) {
   const initialValue = untrack(() => props.defaultValue)
   // No cliente, um value sem controle seria regravado por cima da edição
   // sempre que outra prop do campo mudasse.
-  const fieldState = (): Pick<TextareaProps, 'value'> => {
-    const value = isServer ? (props.value ?? initialValue) : props.value
-    return value === undefined ? {} : { value }
-  }
+  const fieldState = (): Pick<TextareaProps, 'value'> =>
+    props.value === undefined ? {} : { value: props.value }
   return (
     <textarea
       {...rest}

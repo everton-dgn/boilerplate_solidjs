@@ -1,4 +1,3 @@
-/* v8 ignore file -- Fixture de teste fora da cobertura da aplicação. */
 import { createRequestEvent, type RequestEvent } from '@solidjs/web'
 
 import { createPublicationController } from '@/infra/server/publication/index.ts'
@@ -100,7 +99,7 @@ export async function cancelOpenResponses(): Promise<void> {
     try {
       await response.body?.cancel()
     } catch {
-      /* Already consumed. */
+      /* Já consumido. */
     }
   }
 }

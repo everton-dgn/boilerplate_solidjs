@@ -398,6 +398,10 @@ describe('preserves visible link text and spaces around accessible labels', () =
       'Go [Item](https://example.com/c) Next'
     ],
     [
+      '<p>Go <a href="/c" aria-label="Item"><svg></svg> <svg></svg></a>Next</p>',
+      'Go [Item](https://example.com/c)Next'
+    ],
+    [
       '<p>Go <a href="/c" aria-label="A"><svg></svg> <!-- c --></a>Next</p>',
       'Go [A](https://example.com/c) Next'
     ]
@@ -480,20 +484,20 @@ describe('bounded HTML input', () => {
       url: 'https://example.com/en/page',
       signal: controller.signal
     })
-    let settled = false
+    let isSettled = false
     const observed = (async () => {
       try {
         return await conversion
       } catch (error) {
         return error
       } finally {
-        settled = true
+        isSettled = true
       }
     })()
     await vi.waitFor(() => expect(canceled).toHaveBeenCalledOnce())
-    expect(settled).toBe(false)
+    expect(isSettled).toBe(false)
     gate.resolve(void 0)
     await expect(observed).resolves.toBeInstanceOf(DOMException)
-    expect(settled).toBe(true)
+    expect(isSettled).toBe(true)
   })
 })

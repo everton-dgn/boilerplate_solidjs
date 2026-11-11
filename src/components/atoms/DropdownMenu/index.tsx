@@ -1,10 +1,10 @@
 import { For, Show } from 'solid-js'
 
+import { makeMenuKeyDown } from './helpers/makeMenuKeyDown/index.ts'
+import { makeTriggerProps } from './helpers/makeTriggerProps/index.ts'
 import { MenuItemBase } from './MenuItemBase/index.tsx'
 import { createMenuState } from './primitives/createMenuState/index.ts'
 import { createOutsideDismiss } from './primitives/createOutsideDismiss/index.ts'
-import { makeMenuKeyDown } from './primitives/makeMenuKeyDown/index.ts'
-import { makeTriggerProps } from './primitives/makeTriggerProps/index.ts'
 import type { DropdownMenuProps } from './types.ts'
 
 import S from './styles.module.css'

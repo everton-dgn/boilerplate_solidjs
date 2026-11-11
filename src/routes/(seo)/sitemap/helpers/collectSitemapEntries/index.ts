@@ -7,7 +7,7 @@ import type { SitemapManifest } from '../../types.ts'
 
 type RouteState = {
   noindex: boolean
-  article: boolean
+  isArticle: boolean
   datePublished: string | undefined
   dateModified: string | undefined
 }
@@ -30,7 +30,7 @@ type PageSource = {
 
 const INITIAL_STATE: RouteState = {
   noindex: false,
-  article: false,
+  isArticle: false,
   datePublished: undefined,
   dateModified: undefined
 }
@@ -38,14 +38,14 @@ const INITIAL_STATE: RouteState = {
 function resolveState({ parent, seo }: ResolveStateOptions): RouteState {
   return {
     noindex: seo?.noindex ?? parent.noindex,
-    article: seo?.type ? seo.type === 'article' : parent.article,
+    isArticle: seo?.type ? seo.type === 'article' : parent.isArticle,
     datePublished: seo?.article?.datePublished ?? parent.datePublished,
     dateModified: seo?.article?.dateModified ?? parent.dateModified
   }
 }
 
 function resolveEntry({ path, state }: ResolveEntryOptions): SitemapEntry {
-  const lastmod = state.article
+  const lastmod = state.isArticle
     ? (state.dateModified ?? state.datePublished)
     : undefined
   return lastmod === undefined ? { path } : { path, lastmod }

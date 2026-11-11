@@ -9,13 +9,16 @@ describe('conteúdo das páginas institucionais', () => {
   it('localiza os links internos uma vez e preserva os externos', () => {
     const page: SitePage = {
       title: 'Título',
-      description: 'Descrição',
       intro: 'Introdução',
       sections: [],
-      links: [...SITE_LINKS.pages, ...SITE_LINKS.sources]
+      links: [
+        ...SITE_LINKS.pages,
+        { label: 'Repositório', href: SITE.repositoryUrl },
+        { label: 'Documentação', href: `${SITE.repositoryUrl}#readme` }
+      ]
     }
     const host = renderComponent(() => <SiteContent page={page} />, {
-      providers: false
+      hasProviders: false
     })
     expect(
       Array.from(host.querySelectorAll('nav a'), link =>

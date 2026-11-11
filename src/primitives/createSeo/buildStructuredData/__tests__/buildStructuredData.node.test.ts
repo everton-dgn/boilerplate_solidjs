@@ -12,11 +12,18 @@ const page: SeoMetadata = {
   image: SITE.image
 }
 
-const organization = {
+const organizationWithoutContact = {
   '@type': 'Organization',
   '@id': `${SITE.url}/#organization`,
   name: SITE.title,
   description: SITE.description,
+  url: `${SITE.url}/`,
+  logo: { '@type': 'ImageObject', url: `${SITE.url}${SITE.logo}` },
+  sameAs: SITE.socialLinks
+}
+
+const organization = {
+  ...organizationWithoutContact,
   contactPoint: {
     '@type': 'ContactPoint',
     contactType: 'demo',
@@ -33,10 +40,7 @@ const organization = {
     postalCode: '00000-000',
     addressCountry: 'BR',
     description: 'Placeholder address for this boilerplate demonstration.'
-  },
-  url: `${SITE.url}/`,
-  logo: { '@type': 'ImageObject', url: `${SITE.url}${SITE.logo}` },
-  sameAs: SITE.socialLinks
+  }
 }
 
 describe('dados estruturados da página', () => {
@@ -76,6 +80,24 @@ describe('dados estruturados da página', () => {
       },
       organization
     ])
+  })
+
+  it('omite contato e endereço que a configuração do site não define', () => {
+    const { organization: configured } = SITE
+    SITE.organization = {}
+    try {
+      const graph = parseStructuredData(
+        buildStructuredData({
+          seo: page,
+          url: `${SITE.url}/guia`,
+          image: `${SITE.url}${SITE.image.path}`
+        })
+      )
+
+      expect(graph['@graph'][2]).toStrictEqual(organizationWithoutContact)
+    } finally {
+      SITE.organization = configured
+    }
   })
 
   it('publica artigos como Article com headline, autor e publisher', () => {

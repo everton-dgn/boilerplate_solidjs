@@ -1,9 +1,8 @@
 import { locales } from '@paraglide/runtime.js'
 
 import type { SitemapEntry } from '@/@types/sitemap.ts'
-import { buildLocaleAlternates } from '@/i18n/buildLocaleAlternates/index.ts'
 
-import { SITEMAP_LOC_LIMIT, SITEMAP_URL_LIMIT } from '../../constants.ts'
+import { SITEMAP_URL_LIMIT } from '../../constants.ts'
 import type {
   SitemapArtifactContext,
   SitemapManifest,
@@ -15,12 +14,12 @@ import {
   sitemapUrl
 } from '../normalizeSitemapEntries/index.ts'
 import type { PageCatalog, PagePartsOptions } from '../sitemapService/types.ts'
+import { validateLocations } from '../validateLocations/index.ts'
 
 type CatalogBudget = { siteUrl: string; byteBudget: number }
 type DirectOptions = SitemapRouteContext & CatalogBudget
 type ArtifactOptions = SitemapArtifactContext &
   CatalogBudget & { hasPartitionSources: boolean }
-type LocationOptions = { entries: readonly SitemapEntry[]; siteUrl: string }
 type IdentityOptions = { manifest: SitemapManifest; siteUrl: string }
 
 const encoder = new TextEncoder()
@@ -32,14 +31,6 @@ const staticIdentities = new WeakMap<
   SitemapManifest,
   Map<string, Set<string>>
 >()
-
-function checkLocations({ entries, siteUrl }: LocationOptions): void {
-  for (const { path } of entries) {
-    for (const { href } of buildLocaleAlternates({ href: path, siteUrl })) {
-      if (href.length > SITEMAP_LOC_LIMIT) throw new Error('loc excede limite')
-    }
-  }
-}
 
 function pageParts({
   entries,
@@ -53,7 +44,7 @@ function pageParts({
   ).byteLength
   let currentBytes = frameBytes
   for (const entry of entries) {
-    checkLocations({ entries: [entry], siteUrl })
+    validateLocations({ entries: [entry], siteUrl })
     const groupBytes =
       encoder.encode(buildSitemap({ entries: [entry], siteUrl })).byteLength -
       frameBytes
@@ -114,10 +105,6 @@ function cachedIdentities({ manifest, siteUrl }: IdentityOptions): Set<string> {
     bySite.set(siteUrl, urls)
   }
   return urls
-}
-
-export function validateLocations(options: LocationOptions): void {
-  checkLocations(options)
 }
 
 export function createDirectCatalog(options: DirectOptions): PageCatalog {

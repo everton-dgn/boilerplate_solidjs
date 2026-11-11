@@ -14,6 +14,7 @@ type OutputOptions = {
   releaseOutput: () => void
 }
 type AbortListenerHolder = { onAbort?: () => void }
+type BypassOptions = { response: Response; kind: PublicationOptions['kind'] }
 type HeadOptions = {
   response: Response
   abortPromise: Promise<never>
@@ -39,10 +40,7 @@ export function overloadResponse(method: string): Response {
   })
 }
 
-export function shouldBypassOutput(
-  response: Response,
-  kind: PublicationOptions['kind']
-): boolean {
+export function shouldBypassOutput({ response, kind }: BypassOptions): boolean {
   return (
     !response.body ||
     (kind === 'markdown' &&
@@ -65,7 +63,7 @@ export async function handleHeadResponse({
       headers: response.headers
     })
   }
-  void observeSettlement(cancellation, releaseOutput)
+  void observeSettlement({ task: cancellation, settle: releaseOutput })
   try {
     await Promise.race([cancellation, abortPromise])
   } catch (error) {
@@ -102,12 +100,12 @@ export function createOutputResponse({
     try {
       outputController.error(reason)
     } catch {
-      /* Already closed by the consumer. */
+      /* Já fechado pelo consumidor. */
     }
     try {
       await reader.cancel(reason)
     } catch {
-      /* Cancellation is best effort. */
+      /* O cancelamento é de melhor esforço. */
     }
     finishOutput()
   }

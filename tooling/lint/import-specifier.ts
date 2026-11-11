@@ -11,6 +11,30 @@ type ImportNode =
 
 type ImportLocation = { specifier: string; filename: string; root: string }
 
+function resolveAbsolute({
+  specifier,
+  filename,
+  root
+}: ImportLocation): string | undefined {
+  if (specifier.startsWith('@paraglide/')) {
+    return path.resolve(
+      root,
+      'paraglide',
+      specifier.slice('@paraglide/'.length)
+    )
+  }
+  if (specifier.startsWith('@/')) {
+    return path.resolve(root, 'src', specifier.slice('@/'.length))
+  }
+  if (specifier.startsWith('/src/')) {
+    return path.resolve(root, specifier.slice(1))
+  }
+  if (specifier.startsWith('.')) {
+    return path.resolve(path.dirname(filename), specifier)
+  }
+  return undefined
+}
+
 export function readStaticSpecifier({
   source
 }: ImportNode): string | undefined {
@@ -30,19 +54,7 @@ export function resolveProjectPath({
   root
 }: ImportLocation): string {
   const [clean = ''] = specifier.replaceAll('\\', '/').split(/[?#]/u)
-  let absolute
-  if (clean.startsWith('@paraglide/')) {
-    absolute = path.resolve(
-      root,
-      'paraglide',
-      clean.slice('@paraglide/'.length)
-    )
-  } else if (clean.startsWith('@/')) {
-    absolute = path.resolve(root, 'src', clean.slice('@/'.length))
-  } else if (clean.startsWith('/src/')) {
-    absolute = path.resolve(root, clean.slice(1))
-  } else if (clean.startsWith('.')) {
-    absolute = path.resolve(path.dirname(filename), clean)
-  } else return ''
+  const absolute = resolveAbsolute({ specifier: clean, filename, root })
+  if (absolute === undefined) return ''
   return path.relative(root, absolute).split(path.sep).join('/')
 }

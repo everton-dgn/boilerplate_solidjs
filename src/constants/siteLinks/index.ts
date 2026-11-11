@@ -13,13 +13,7 @@ export const SITE_LINKS = {
       { label: m.siteLinks_privacyLabel(), href: '/privacy' }
     ]
   },
-  get sources(): SiteLink[] {
-    return [
-      { label: m.siteLinks_repositoryLabel(), href: SITE.repositoryUrl },
-      {
-        label: m.siteLinks_documentationLabel(),
-        href: `${SITE.repositoryUrl}#readme`
-      }
-    ]
+  get repository(): SiteLink {
+    return { label: m.siteLinks_repositoryLabel(), href: SITE.repositoryUrl }
   }
 }

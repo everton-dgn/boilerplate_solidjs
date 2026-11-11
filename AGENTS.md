@@ -85,13 +85,6 @@ release. Add a tool name to select part of the graph. For example, run
 - Para validar mudanças, use `vp run check:ci` e `vp run test`, não os
   comandos embutidos `vp check` e `vp test` citados acima: eles pulam o
   `i18n:generate` e o lint de CSS.
-- `vp run` entrega aos scripts um stdin não bloqueante enquanto o bloco `run`
-  do `vite.config.ts` usar constantes, que fazem o Vite+ carregar a configuração
-  de forma dinâmica
-  ([vite-plus#3155](https://github.com/voidzero-dev/vite-plus/issues/3155)).
-  Prompts interativos não recebem a entrada; rode-os diretamente, como
-  `vp update --interactive --latest`, ou com `bun run <script>`. Detalhes em
-  [desenvolvimento](docs/development.md#execução-e-cache).
 
 ## Documentação de dependências
 
@@ -335,7 +328,7 @@ release. Add a tool name to select part of the graph. For example, run
   e o JSX para entender o elemento.
 - No `ToastProvider`, mantenha junto ao JSX os callbacks curtos de pausa e
   fechamento que usam o `id` de cada item do `For`. O handler da seção que lê a
-  origem do foco usa `createFocusOriginHandler`, compartilhado com
+  origem do foco usa `makeFocusOriginHandler`, compartilhado com
   `OutdatedPageNotice`, e atualiza `focusOrigin` no callback local. Preserve
   funções próprias para encontrar o vizinho e devolver o foco.
 - Callbacks de `ref` com uma chamada simples podem permanecer inline. Quando
@@ -447,6 +440,17 @@ release. Add a tool name to select part of the graph. For example, run
   variantes e tamanhos ficam no nível superior, fora da classe base.
 - Importe CSS Modules como `S`. O Stylelint exige snake_case em `src/**/*.css`;
   valide mudanças com `vp run lint:css` e `vp run test:tooling`.
+- Os tokens de `src/theme/tokens/` são a paleta do boilerplate para as
+  aplicações derivadas. Não aponte nem remova um token por não ter consumidor na
+  demonstração; revise apenas valor, nome ou uso incorretos.
+
+## Prop `label` do `Button`
+
+- A prop `label` de `src/components/atoms/Button/index.tsx` é um atalho
+  intencional para botão só com texto: `<Button label={m.save()} />`. Ela já
+  foi removida e restaurada mais de uma vez. Não a remova, não a aponte como
+  duplicação de `children` e não a trate como prop sem consumidor; detalhes em
+  [UI](docs/ui.md#botões).
 
 ## Dependências entre camadas
 
@@ -456,6 +460,13 @@ release. Add a tool name to select part of the graph. For example, run
   `Document`, `entry-server`, `entry-client`, `router`, `middleware`).
   Primitives globais não dependem de UI, rotas ou entradas; atoms não dependem
   de molecules/organisms, e molecules não dependem de organisms.
+- A camada de cada componente sai do que ele junta: atom não renderiza outro
+  componente; molecule junta atoms numa unidade, inclusive quando exporta as
+  próprias peças, como o `PageHero`; organism junta molecules numa seção da
+  interface, como o `Topbar`. O lint confere só a direção dos imports. Escolha
+  a camada ao criar o componente e, quando ele passar a renderizar outro da
+  mesma camada, mova a pasta uma camada acima. Critério e exemplos em
+  [arquitetura](docs/architecture.md#camadas-dos-componentes).
 - Produção em `src` não importa testes, fixtures de `src/tests` ou `tooling`.
   A exceção de testes vale como origem, inclusive para fixtures E2E.
   Primitives colocalizadas pertencem à camada do componente que as contém.
@@ -474,8 +485,9 @@ release. Add a tool name to select part of the graph. For example, run
   os valores em `src/middleware/securityHeaders/constants.ts`; não devolva a
   CSP nem os demais cabeçalhos das respostas da função ao `vercel.json`. Os
   estáticos não passam pela função: as `routeRules` do Nitro no
-  `vite.config.ts` gravam neles `X-Content-Type-Options` e
-  `Cross-Origin-Resource-Policy`, lidos de `SECURITY_HEADERS`. Ao publicar um
+  `vite.config.ts` gravam neles `Strict-Transport-Security`,
+  `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`, lidos de
+  `SECURITY_HEADERS`. Ao publicar um
   novo tipo de estático, acrescente o caminho a `STATIC_FILE_PATHS`, sem
   sobreposição parcial com os outros padrões nem com as demais `routeRules`.
   Os `.md` entram por idioma; ao mudar o `urlPatterns` do Paraglide, revise

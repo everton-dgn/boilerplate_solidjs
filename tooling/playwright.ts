@@ -15,9 +15,13 @@ const SHOULD_BUILD = env.TEST_PREBUILT !== 'true'
 if (!SHOULD_BUILD && !PRODUCTION_ROUTES) {
   throw new Error('TEST_PREBUILT requires production routes')
 }
+// Só o build do modo e2e mantém o manifesto do Vite no estático. Sem a guarda,
+// TEST_PREBUILT serviria as rotas de fixture à suíte de produção.
+const PREBUILT_GUARD =
+  "if [ -e .vercel/output/static/.vite ]; then echo 'TEST_PREBUILT found an e2e build; run vp run build first' >&2; exit 1; fi && "
 const BUILD_COMMAND = SHOULD_BUILD
   ? `vp run build --mode ${BUILD_MODE} && `
-  : ''
+  : PREBUILT_GUARD
 // Resolver as variáveis públicas no mesmo modo do build mantém os testes e o
 // servidor coerentes sobre a URL pública; variáveis já definidas prevalecem.
 const ROOT = fileURLToPath(new URL('..', import.meta.url))

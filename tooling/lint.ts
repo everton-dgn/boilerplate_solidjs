@@ -116,13 +116,28 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      // O tooling usa o node:test, sem each e com describe e it que devolvem
-      // Promise.
+      // O tooling não usa o Vitest: suítes e helpers de teste importam o
+      // node:test.
+      files: ['tooling/**/*.ts'],
+      rules: { 'vitest/no-import-node-test': 'off' }
+    },
+    {
+      // O node:test não tem each, e o runner acompanha a Promise que describe
+      // e it devolvem.
       files: ['tooling/**/__tests__/**/*.ts'],
       rules: {
-        'typescript/no-floating-promises': 'off',
-        'typescript/no-misused-promises': 'off',
-        'vitest/no-import-node-test': 'off',
+        'typescript/no-floating-promises': [
+          'error',
+          {
+            allowForKnownSafeCalls: [
+              {
+                from: 'package',
+                package: 'node:test',
+                name: ['describe', 'it', 'test', 'suite']
+              }
+            ]
+          }
+        ],
         'vitest/prefer-each': 'off'
       }
     },

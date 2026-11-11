@@ -21,6 +21,7 @@ import {
 import {
   documentUrl,
   isEligible,
+  isHtmlOnly,
   isUnpublished
 } from './helpers/markdownRouting/index.ts'
 import {
@@ -62,7 +63,11 @@ export async function markdownContent(
     const response = await render()
     return isPublished ? appendVary({ response, field: 'Accept' }) : response
   }
-  if (!isDirect && original.headers.has('authorization')) return render()
+  // Sem representação Markdown, o render segue em streaming, sem ocupar vaga
+  // nem prazo da publicação.
+  if (!isDirect && isHtmlOnly({ request: original, url, isPublished })) {
+    return render()
+  }
   const response = await runPublication({
     kind: 'markdown',
     signal: original.signal,

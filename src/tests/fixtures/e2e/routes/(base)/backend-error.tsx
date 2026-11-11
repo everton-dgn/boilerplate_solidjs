@@ -17,9 +17,9 @@ export const route = {
 
 export default function BackendError() {
   const [params] = useSearchParams()
-  const [requested, setRequested] = createSignal(params.phase !== 'action')
+  const [isRequested, setIsRequested] = createSignal(params.phase !== 'action')
   const data = createMemo(() =>
-    requested()
+    isRequested()
       ? getBackend(String(params.id))
       : { message: 'Pronto para consultar' }
   )
@@ -28,7 +28,7 @@ export default function BackendError() {
     <main>
       <h1>Dados do backend</h1>
       <p>{data().message}</p>
-      <button type="button" onClick={() => setRequested(true)}>
+      <button type="button" onClick={() => setIsRequested(true)}>
         Consultar backend
       </button>
     </main>

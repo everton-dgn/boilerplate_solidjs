@@ -12,6 +12,7 @@ const EXPECTED_SITEMAP_URLS = LOCALES.flatMap(locale =>
 )
 const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
+const HTTP_METHOD_NOT_ALLOWED = 405
 const CACHE_CONTROL = 'public, max-age=0, s-maxage=3600, stale-if-error=86400'
 // Respostas com s-maxage não levam o nonce da requisição para o cache.
 const NO_SCRIPTS = "script-src 'none'"
@@ -93,6 +94,19 @@ test.describe('índices na árvore real de produção', () => {
     expect(text.endsWith(`\nSitemap: ${readSiteOrigin()}/sitemap.xml\n`)).toBe(
       true
     )
+  })
+
+  // Sem o 405, o render trataria o método sem handler como a página 404.
+  test('recusa métodos sem handler na rota de API', async ({ request }) => {
+    for (const method of ['POST', 'PUT', 'DELETE']) {
+      const response = await request.fetch('/robots.txt', {
+        method,
+        maxRedirects: 0
+      })
+      expect(response.status(), method).toBe(HTTP_METHOD_NOT_ALLOWED)
+      expect(response.headers().allow).toBe('GET, HEAD')
+      expect(await response.body()).toHaveLength(0)
+    }
   })
 
   test('serve llms.txt sem redirecionamento', async ({ request }) => {

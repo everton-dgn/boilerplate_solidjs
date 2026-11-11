@@ -12,7 +12,7 @@
     "build": "bun --bun node_modules/vite-plus/bin/vp build",
     "start": "vp preview",
     "i18n:generate": "vp run i18n-generate",
-    "typecheck:node": "vp run i18n:generate && vp run typecheck-node",
+    "typecheck:node": "vp run typecheck-node",
     "lint": "vp run i18n:generate && vp run lint-project",
     "lint:css": "vp run lint-css",
     "format": "vp fmt",
@@ -35,16 +35,16 @@
     "test:e2e:codegen": "playwright codegen",
     "deps:update": "vp update --interactive --latest",
     "bun:update": "vp env pin bun@latest && vp install",
-    "detect:duplicates": "vp dlx jscpd src --pattern '**/*.{ts,tsx}' --reporters console",
+    "detect:duplicates": "vp dlx jscpd@5.4.3 src --pattern '**/*.{ts,tsx}' --reporters console",
     "dead-code": "vp run i18n:generate && vp run dead-code-project",
-    "dead-code:fix": "knip-bun --config tooling/knip.ts --fix --format",
+    "dead-code:fix": "vp run i18n:generate && knip-bun --config tooling/knip.ts --fix && vp fmt",
     "scan:secrets": "kingfisher scan . --git-history none --no-validate --redact --exclude node_modules --exclude dist --exclude dist-ssr --exclude .nitro --exclude .output --exclude .vercel --exclude .tsbuild --exclude playwright-report --exclude test-results --exclude coverage --exclude .vitest",
     "validate": "vp run check:ci && vp run typecheck:node && vp run dead-code && vp run test:coverage && vp run test:tooling && vp run test:release && vp run build",
     "commitlint": "commitlint"
   },
   "dependencies": {
-    "@inlang/paraglide-js": "3.2.1",
-    "@mdream/js": "2.0.3",
+    "@inlang/paraglide-js": "3.2.2",
+    "@mdream/js": "2.1.0",
     "@solidjs/router": "2.0.0-next.44",
     "@solidjs/web": "2.0.0-rc.21",
     "filesystem-routing": "0.5.0",
@@ -64,9 +64,9 @@
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
-    "eslint-plugin-solid": "0.18.1",
+    "eslint-plugin-solid": "0.19.0",
     "happy-dom": "21.0.4",
-    "knip": "6.44.2",
+    "knip": "6.45.0",
     "lefthook": "2.2.2",
     "nitro": "3.0.261103-rc",
     "playwright": "1.65.0",
@@ -97,9 +97,9 @@
   "workspaces": {
     "packages": [],
     "catalog": {
-      "vite": "npm:@voidzero-dev/vite-plus-core@1.5.0",
+      "vite": "npm:@voidzero-dev/vite-plus-core@1.5.1",
       "vitest": "5.1.0",
-      "vite-plus": "1.5.0",
+      "vite-plus": "1.5.1",
       "@vitest/browser-playwright": "5.1.0",
       "@vitest/coverage-v8": "5.1.0",
       "@vitest/ui": "5.1.0"
@@ -112,7 +112,7 @@
     "vitest": "catalog:"
   },
   "patchedDependencies": {
-    "@mdream/js@2.0.3": "patches/@mdream%2Fjs@2.0.3.patch",
+    "@mdream/js@2.1.0": "patches/@mdream%2Fjs@2.1.0.patch",
     "@solidjs/web@2.0.0-rc.21": "patches/@solidjs%2Fweb@2.0.0-rc.21.patch"
   }
 }

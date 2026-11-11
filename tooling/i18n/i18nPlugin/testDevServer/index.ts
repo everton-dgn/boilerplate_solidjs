@@ -1,4 +1,3 @@
-/* oxlint-disable vitest/no-import-node-test -- O tooling usa o runner nativo do Node.js. */
 import { once } from 'node:events'
 import { watch } from 'node:fs'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'

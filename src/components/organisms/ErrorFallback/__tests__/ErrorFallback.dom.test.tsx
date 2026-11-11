@@ -29,7 +29,7 @@ describe('metadados da falha', () => {
           <FailingPage />
         </Errored>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     await expect.poll(() => readMeta('robots')).toBe('noindex')
     expect(document.title).toBe(m.errorFallback_runtimeTitle())
@@ -45,7 +45,7 @@ describe('metadados da falha', () => {
   it('retira os metadados da falha quando a variante passa a ser página inexistente', async () => {
     const [kind, setKind] = createSignal<ErrorFallbackKind>('runtime')
     renderComponent(() => <ErrorFallback kind={kind()} />, {
-      providers: false
+      hasProviders: false
     })
     await expect.poll(() => readMeta('robots')).toBe('noindex')
     setKind('not-found')
@@ -64,7 +64,7 @@ describe('navegação após falha', () => {
     globalThis.history.replaceState(null, '', '/?filter=active&page=2')
 
     const host = renderComponent(() => <ErrorFallback kind="runtime" />, {
-      providers: false
+      hasProviders: false
     })
     const reload = host.querySelector<HTMLAnchorElement>('a')
     assert(reload)
@@ -74,7 +74,7 @@ describe('navegação após falha', () => {
 
   it('oferece voltar ao início quando a página não existe', () => {
     const host = renderComponent(() => <ErrorFallback kind="not-found" />, {
-      providers: false
+      hasProviders: false
     })
     const home = host.querySelector<HTMLAnchorElement>('a')
     assert(home)
@@ -85,7 +85,7 @@ describe('navegação após falha', () => {
   it('troca o ícone quando a variante muda e restaura o ícone anterior', async () => {
     const [kind, setKind] = createSignal<ErrorFallbackKind>('not-found')
     const host = renderComponent(() => <ErrorFallback kind={kind()} />, {
-      providers: false
+      hasProviders: false
     })
     const firstIcon = host.querySelector('a svg')?.outerHTML
     expect(firstIcon).toBeDefined()

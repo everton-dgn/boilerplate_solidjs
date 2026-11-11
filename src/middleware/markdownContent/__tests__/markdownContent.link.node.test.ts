@@ -89,7 +89,7 @@ async function cancelOpenResponses(): Promise<void> {
     try {
       await response.body?.cancel()
     } catch {
-      /* Already consumed. */
+      /* Já consumido. */
     }
   }
 }

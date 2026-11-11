@@ -15,7 +15,7 @@ import { uncachedResponse } from '../uncachedResponse/index.ts'
 // fora das páginas seria omitida sem aviso; o build recusa essas divergências.
 // O noindex herdado continua excluindo a página sem erro. O idioma de cada
 // arquivo vem da URL, para o llms-full.txt não depender do formato do índice.
-function buildStaticMarkdownListing(): Response {
+export function listStaticMarkdown(): Response {
   const paths: string[] = []
   const baseLocalePaths: string[] = []
   const mismatches: string[] = []
@@ -45,8 +45,6 @@ function buildStaticMarkdownListing(): Response {
   )
 }
 
-let staticMarkdownListing: Response | undefined
-
 // O header identifica a chamada do Nitro durante o build. Em produção o arquivo
 // já existe; um cliente não pode provocar a reconstrução do inventário por header.
 export function isStaticListing(request: Request): boolean {
@@ -55,12 +53,4 @@ export function isStaticListing(request: Request): boolean {
     request.headers.has('x-nitro-prerender') &&
     new URL(request.url).pathname === MARKDOWN_PRERENDER_PATH
   )
-}
-
-export function listStaticMarkdown(): Response {
-  if (import.meta.env.PROD) {
-    staticMarkdownListing ??= buildStaticMarkdownListing()
-    return staticMarkdownListing.clone()
-  }
-  return buildStaticMarkdownListing()
 }

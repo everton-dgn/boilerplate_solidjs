@@ -1,7 +1,4 @@
-import {
-  HTTP_INTERNAL_SERVER_ERROR,
-  HTTP_SERVICE_UNAVAILABLE
-} from '@/constants/http.ts'
+import { HTTP_INTERNAL_SERVER_ERROR } from '@/constants/http.ts'
 import { runPublication } from '@/infra/server/publication/index.ts'
 import type {
   PublicationContext,
@@ -10,6 +7,7 @@ import type {
 import { SITEMAP_SOURCES_TIMEOUT_MS } from '@/routes/(seo)/sitemap/constants.ts'
 
 import type { ServiceOptions } from '../../types.ts'
+import { errorResponse } from '../sitemapResponse/index.ts'
 
 type PublishOptions = {
   options: ServiceOptions
@@ -48,11 +46,7 @@ export async function publishSitemap({
       }
     }
   })
-  if (response.status === HTTP_INTERNAL_SERVER_ERROR) {
-    return new Response(null, {
-      status: HTTP_SERVICE_UNAVAILABLE,
-      headers: { 'cache-control': 'no-store' }
-    })
-  }
-  return response
+  return response.status === HTTP_INTERNAL_SERVER_ERROR
+    ? errorResponse()
+    : response
 }

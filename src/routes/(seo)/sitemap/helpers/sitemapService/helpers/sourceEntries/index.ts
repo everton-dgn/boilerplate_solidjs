@@ -4,25 +4,19 @@ import * as v from 'valibot'
 import type { SitemapEntry, SitemapPartitionSource } from '@/@types/sitemap.ts'
 import { SITEMAP_URL_LIMIT } from '@/routes/(seo)/sitemap/constants.ts'
 
-import { buildSitemap } from '../../../buildSitemap/index.ts'
 import {
   normalizeSitemapEntries,
   sitemapUrl
 } from '../../../normalizeSitemapEntries/index.ts'
-import { validateLocations } from '../../../sitemapCatalog/index.ts'
+import { sitemapEntrySchema } from '../../../sitemapEntrySchema/index.ts'
 import type { ReadOptions } from '../../types.ts'
-
-const EntrySchema = v.object({
-  path: v.string(),
-  lastmod: v.optional(v.string())
-})
 
 type PartitionReadOptions = ReadOptions & {
   source: SitemapPartitionSource
   part: string
 }
 
-const EntriesSchema = v.array(EntrySchema)
+const EntriesSchema = v.array(sitemapEntrySchema)
 const ENTRY_LIMIT = Math.floor(SITEMAP_URL_LIMIT / locales.length)
 
 async function readArraySources({
@@ -62,33 +56,16 @@ async function readArraySources({
   return collected.flat()
 }
 
-function normalizeUnique(
-  entries: readonly SitemapEntry[],
-  siteUrl: string
-): SitemapEntry[] {
-  const seen = new Set<string>()
-  for (const item of entries) {
-    const [normalized] = normalizeSitemapEntries({ entries: [item], siteUrl })
-    if (!normalized) throw new Error('Entrada inválida')
-    const key = sitemapUrl({ path: normalized.path, siteUrl })
-    if (seen.has(key)) throw new Error('Entrada duplicada')
-    seen.add(key)
-  }
-  return normalizeSitemapEntries({ entries, siteUrl })
-}
-
 export async function readArrayPart(
   read: ReadOptions
 ): Promise<SitemapEntry[] | undefined> {
-  const { options, catalog, byteBudget } = read
+  const { options, catalog } = read
   const { siteUrl } = options
   if (catalog.readRoutes().manifest.sources.length === 0) return undefined
   const entries = normalizeSitemapEntries({
     entries: await readArraySources(read),
     siteUrl
   })
-  validateLocations({ entries, siteUrl })
-  buildSitemap({ entries, siteUrl, byteBudget })
   return entries.length === 0 ? undefined : entries
 }
 
@@ -112,7 +89,10 @@ export async function readPartitionEntries({
   if (!Array.isArray(raw) || raw.length > ENTRY_LIMIT) {
     throw new Error('Partição excede limite')
   }
-  const entries = normalizeUnique(v.parse(EntriesSchema, raw), siteUrl)
+  const parsed = v.parse(EntriesSchema, raw)
+  // A normalização descarta URLs repetidas; numa partição, repetir é erro.
+  const entries = normalizeSitemapEntries({ entries: parsed, siteUrl })
+  if (entries.length !== parsed.length) throw new Error('Entrada duplicada')
   if (entries.length === 0) return entries
   const { matchRoute } = catalog.readRoutes()
   for (const entry of entries) {

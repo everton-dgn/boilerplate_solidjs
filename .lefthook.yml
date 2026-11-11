@@ -29,8 +29,8 @@ pre-push:
   # Sem piped, o Lefthook continua os jobs seguintes depois de uma falha.
   piped: true
   jobs:
-    # Estes comandos restauram a mesma saída do Paraglide pelo cache do Vite
-    # Task. Terminá-los antes dos testes evita restaurações concorrentes.
+    # O check:ci restaura a saída do Paraglide pelo cache do Vite Task.
+    # Terminá-lo antes dos testes evita restaurações concorrentes.
     - name: check-ci
       run: vp run check:ci
 

@@ -1,0 +1,1219 @@
+diff --git a/dist/_chunks/markdown-processor.mjs b/dist/_chunks/markdown-processor.mjs
+index ab043462e292ee1cdf51ed9b004e4e3034fd43e4..79f0dc58b2166133d7b93d6781f008fd14f8311e 100644
+--- a/dist/_chunks/markdown-processor.mjs
++++ b/dist/_chunks/markdown-processor.mjs
+@@ -437,7 +437,22 @@ const tagHandlers = {
+ 			if (isInsideRawHtmlBlock(state.depthMap) && !node.tagHandler?.literalEnter) return safeAnchorOutput(node, state.options, false, true);
+ 			const href = resolveUrl(node.attributes.href, state.options?.origin, state.options?.clean);
+ 			let title = node.attributes?.title;
+-			if (state.lastContentCache === title) title = "";
++			let preservesCodeWhitespace = false;
++			if (state.depthMap?.[23] && !state.depthMap[34] && !state.lastTextNode?.containsWhitespace) {
++				const buffer = state.buffer;
++				let tail = buffer.length - 1;
++				while (tail >= 0 && !buffer[tail]) tail--;
++				let parent = buffer[tail] === state.lastContentCache ? node.parent : void 0;
++				while (parent) {
++					if (parent.tagId === 23 && parent.tagHandler?.enter === tagHandlers[23].enter) {
++						preservesCodeWhitespace = true;
++						break;
++					}
++					parent = parent.parent;
++				}
++			}
++			const cachedText = preservesCodeWhitespace ? state.lastContentCache : state.lastContentCache?.replace(/[ \t\n\f\r]+$/, "");
++			if (title && !state.cacheFollowsSeparator && state.droppedPairAt !== state.buffer.length && cachedText === title.replace(/[ \t\n\f\r]+$/, "")) title = "";
+ 			if (!title && isAutolinkUri(href)) {
+ 				const buf = state.buffer;
+ 				let i = buf.length - 1;
+@@ -468,6 +483,7 @@ const tagHandlers = {
+ 					return "";
+ 				}
+ 			}
++			if (!node.childTextNodeIndex && !state.depthMap?.[34]) markRenderedChildContent(node);
+ 			return `]${serializeMarkdownResource(href, title)}`;
+ 		},
+ 		collapsesInnerWhiteSpace: true,
+@@ -868,6 +884,7 @@ const CAPTION_FRAME_SIZE = 4;
+ const CAPTION_OPEN = 1;
+ const CAPTION_INTERNAL_BREAK = 2;
+ const CAPTION_HEADING_BREAK = 4;
++const CAPTION_BLOCK_PREFIX = 8;
+ const CAPTION_DEFAULT_SPACING = -1;
+ const CAPTION_NO_ANCHOR = -1;
+ INLINE_MARKER_TYPE[14] = 1;
+@@ -1410,11 +1427,29 @@ function resetRetractedCaptionFrames(frames, count, fragment) {
+ 	for (let index = 0; index < count; index++) {
+ 		const offset = index * CAPTION_FRAME_SIZE;
+ 		if (frames[offset + 3] >= fragment) {
+-			frames[offset + 2] = frames[offset + 2] & -2;
++			frames[offset + 2] = frames[offset + 2] & -10;
+ 			frames[offset + 3] = CAPTION_NO_ANCHOR;
+ 		}
+ 	}
+ }
++function dropBlankLinkText(state, openFragment, label, trailingBlank) {
++	const buffer = state.buffer;
++	if (openFragment < 0 || buffer[openFragment] !== "[" || !hasNonWhitespace(label)) return false;
++	let hasSpace = false;
++	for (let index = openFragment + 1; index < buffer.length; index++) {
++		const fragment = buffer[index];
++		for (let offset = 0; offset < fragment.length; offset++) {
++			if (fragment.charCodeAt(offset) !== 32) return false;
++			hasSpace = true;
++		}
++	}
++	if (!hasSpace && !state.pendingInlineWhitespace && !trailingBlank) return false;
++	state.outputPositions?.replace(openFragment + 1, buffer.length, []);
++	buffer.length = openFragment + 1;
++	noteBufferRewrite(state);
++	state.pendingInlineWhitespace = false;
++	return true;
++}
+ function dropEmptyLinkText(buffer, openFragment, positions) {
+ 	for (let index = openFragment + 1; index < buffer.length; index++) if (hasNonWhitespace(buffer[index])) return false;
+ 	positions?.replace(openFragment, buffer.length, []);
+@@ -1732,6 +1767,10 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		emptyItemFragment: void 0,
+ 		headingBreakPending: false,
+ 		emptyItemAfterCr: false,
++		pendingLeadingBlank: false,
++		pendingPairSeparator: false,
++		separatorPending: false,
++		cacheFollowsSeparator: false,
+ 		tableRenderedTable: false,
+ 		tableCurrentRowCells: 0,
+ 		tableColumnAlignments: [],
+@@ -1756,6 +1795,14 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 	let pendingRawHtmlBoundary = false;
+ 	const openMarkers = [];
+ 	let openMarkerCount = 0;
++	const openMarkerFollowsSpace = [];
++	const openMarkerSeparatorTrimmed = [];
++	const openMarkerRunLength = [];
++	let silentMarkerCount = 0;
++	let blankMarkerCount = 0;
++	let pendingSpaceFragment = -1;
++	let pendingSpaceTrimmed = false;
++	const literalOpeners = [];
+ 	let captionFrames;
+ 	let captionFrameCount = 0;
+ 	let captionBoundary = 0;
+@@ -1860,32 +1907,46 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		let changed = false;
+ 		if (captionBoundary === 1 || captionBoundary === 3) changed = appendCaptionSpacing(captionBoundarySpacing, includeBoundaryListIndent);
+ 		const frames = captionFrames;
+-		if (frames) for (let index = 0; index < captionFrameCount; index++) {
+-			const offset = index * CAPTION_FRAME_SIZE;
+-			let flags = frames[offset + 2];
+-			if (flags & CAPTION_OPEN) continue;
+-			const anchor = frames[offset + 3];
+-			const beforeFragment = anchor === CAPTION_NO_ANCHOR ? state.buffer.length : anchor;
+-			let opening = flags & CAPTION_INTERNAL_BREAK ? "" : captionSpacingPrefix(frames[offset], true, beforeFragment);
+-			flags |= CAPTION_OPEN;
+-			if (!explicitTop || index !== captionFrameCount - 1) opening += "*";
+-			if (opening) {
+-				if (beforeFragment === state.buffer.length) {
+-					state.buffer.push(opening);
+-					state.lastContentCache = opening;
+-				} else {
+-					const anchored = state.buffer[beforeFragment];
+-					const replacement = opening + anchored;
+-					state.outputPositions?.replace(beforeFragment, beforeFragment + 1, [replacement], (offset) => offset + opening.length);
+-					state.buffer[beforeFragment] = replacement;
+-					noteBufferRewrite(state);
+-					const codeSpan = gfmLifecycle.openCodeSpans.at(-1);
+-					if (codeSpan?.fragment === beforeFragment) codeSpan.prefix = opening + codeSpan.prefix;
+-					if (state.lastContentCache === anchored) state.lastContentCache = replacement;
++		if (frames) {
++			let insertedFragment = -1;
++			let insertedLength = 0;
++			for (let index = 0; index < captionFrameCount; index++) {
++				const offset = index * CAPTION_FRAME_SIZE;
++				let flags = frames[offset + 2];
++				if (flags & CAPTION_OPEN) continue;
++				const anchor = frames[offset + 3];
++				const beforeFragment = anchor === CAPTION_NO_ANCHOR ? state.buffer.length : anchor;
++				let opening = flags & CAPTION_INTERNAL_BREAK && !(flags & CAPTION_BLOCK_PREFIX) ? "" : captionSpacingPrefix(frames[offset], true, beforeFragment);
++				if (state.pendingInlineWhitespace) {
++					if (!opening) {
++						const last = lastOutputChar(state.buffer, beforeFragment);
++						if (last !== -1 && last !== 32 && last !== 10 && last !== 9 && last !== 13) opening = " ";
++					}
++					state.pendingInlineWhitespace = false;
+ 				}
+-				changed = true;
++				flags |= CAPTION_OPEN;
++				if (!explicitTop || index !== captionFrameCount - 1) opening += "*";
++				if (opening) {
++					if (beforeFragment === state.buffer.length) {
++						state.buffer.push(opening);
++						state.lastContentCache = opening;
++					} else {
++						const anchored = state.buffer[beforeFragment];
++						const at = insertedFragment === beforeFragment ? insertedLength : 0;
++						const replacement = anchored.slice(0, at) + opening + anchored.slice(at);
++						state.outputPositions?.replace(beforeFragment, beforeFragment + 1, [replacement], (offset) => offset >= at ? offset + opening.length : offset);
++						state.buffer[beforeFragment] = replacement;
++						insertedFragment = beforeFragment;
++						insertedLength = at + opening.length;
++						noteBufferRewrite(state);
++						const codeSpan = gfmLifecycle.openCodeSpans.at(-1);
++						if (codeSpan?.fragment === beforeFragment) codeSpan.prefix = codeSpan.prefix.slice(0, at) + opening + codeSpan.prefix.slice(at);
++						if (state.lastContentCache === anchored) state.lastContentCache = replacement;
++					}
++					changed = true;
++				}
++				frames[offset + 2] = flags;
+ 			}
+-			frames[offset + 2] = flags;
+ 		}
+ 		return changed;
+ 	}
+@@ -1918,7 +1979,10 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		if (!frames) return;
+ 		for (let index = 0; index < captionFrameCount; index++) {
+ 			const offset = index * CAPTION_FRAME_SIZE;
+-			if ((frames[offset + 2] & CAPTION_OPEN) === 0 && frames[offset + 3] === CAPTION_NO_ANCHOR) frames[offset + 3] = fragment;
++			if ((frames[offset + 2] & CAPTION_OPEN) === 0 && frames[offset + 3] === CAPTION_NO_ANCHOR) {
++				frames[offset + 3] = fragment;
++				if (!(frames[offset + 2] & CAPTION_INTERNAL_BREAK)) frames[offset + 2] |= CAPTION_BLOCK_PREFIX;
++			}
+ 		}
+ 	}
+ 	function commitCaptionFrames() {
+@@ -1929,7 +1993,7 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 			if (frames[offset + 2] & CAPTION_OPEN) frames[offset + 3] = CAPTION_NO_ANCHOR;
+ 		}
+ 	}
+-	function flushCaptionBreakRun() {
++	function flushCaptionBreakRun(beforeText = false) {
+ 		if (captionBreakRun === 0) return false;
+ 		let index = state.buffer.length;
+ 		while (index !== 0) {
+@@ -1948,8 +2012,36 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 			state.buffer.length = index;
+ 			noteBufferRewrite(state);
+ 		}
+-		const output = `  \n${state.listIndent}`.repeat(captionBreakRun);
++		const output = (gfmLifecycle.openCodeSpans.length ? "\n" : `  \n${state.listIndent}`).repeat(captionBreakRun);
+ 		captionBreakRun = 0;
++		if (beforeText && !gfmLifecycle.openCodeSpans.length && openMarkerCount && (openMarkers[openMarkerCount - 1] & MARKER_TYPE_MASK) <= 4) for (let frame = 0; frame < captionFrameCount; frame++) {
++			const offset = frame * CAPTION_FRAME_SIZE;
++			const anchor = captionFrames[offset + 3];
++			if (captionFrames[offset + 2] & CAPTION_OPEN || anchor === CAPTION_NO_ANCHOR) continue;
++			let onlyOpeners = true;
++			for (let index = anchor; index < state.buffer.length && onlyOpeners; index++) {
++				const fragment = state.buffer[index];
++				for (let at = 0; at < fragment.length; at++) {
++					const code = fragment.charCodeAt(at);
++					if (code !== 42 && code !== 126) {
++						onlyOpeners = false;
++						break;
++					}
++				}
++			}
++			if (onlyOpeners) {
++				prepareCaptionOutput(false);
++				const fragment = state.buffer[anchor];
++				let at = fragment.length;
++				while (at > 0 && (fragment.charCodeAt(at - 1) === 42 || fragment.charCodeAt(at - 1) === 126)) at--;
++				const replacement = fragment.slice(0, at) + output + fragment.slice(at);
++				state.outputPositions?.replace(anchor, anchor + 1, [replacement], (position) => position >= at ? position + output.length : position);
++				state.buffer[anchor] = replacement;
++				state.lastContentCache = state.buffer.at(-1);
++				noteBufferRewrite(state);
++				return true;
++			}
++		}
+ 		state.buffer.push(output);
+ 		state.lastContentCache = output;
+ 		return true;
+@@ -1975,6 +2067,63 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 			restoreQuoteParentBoundary();
+ 		} else if (captionBreakRun !== 0 && captionFrameCount === 0 && captionBoundary < 3) captionBoundary = 2;
+ 	}
++	function hoistOpenerSpace() {
++		const buffer = state.buffer;
++		const depthMap = state.depthMap;
++		const index = openMarkerCount - 1;
++		let fragment = openMarkers[index] >> 3;
++		if (fragment !== buffer.length - 1 || (openMarkers[index] & MARKER_TYPE_MASK) > 4 || depthMap[23] || depthMap[34] || depthMap[46] || depthMap[82] || depthMap[92]) return false;
++		if (state.blockquotes.at(-1)?.fragment === fragment + 1) return false;
++		fragment -= openMarkerRunLength[index] - 1;
++		if (literalOpeners.length) {
++			const link = openLinkFragment < -1 ? -openLinkFragment - 2 : openLinkFragment;
++			let at = fragment;
++			while (at > 0 && !buffer[at - 1]) at--;
++			if (followsLiteralOpener(link >= 0 && link === at - 1 ? link : fragment)) return true;
++		}
++		if (buffer[fragment].charCodeAt(0) === 32) return true;
++		let previous = fragment;
++		let before = -1;
++		while (before === -1 && --previous >= 0) {
++			const value = buffer[previous];
++			if (value) before = value.charCodeAt(value.length - 1);
++		}
++		if (previous >= 0 && previous === (openLinkFragment < -1 ? -openLinkFragment - 2 : openLinkFragment)) before = lastOutputChar(buffer, previous);
++		if (before !== -1 && before !== 32 && before !== 10 && before !== 9) {
++			const opener = ` ${buffer[fragment]}`;
++			state.outputPositions?.replace(fragment, fragment + 1, [opener], (offset) => offset > 0 ? offset + 1 : offset);
++			buffer[fragment] = opener;
++			noteBufferRewrite(state);
++		}
++		return true;
++	}
++	function placeLeadingBlank() {
++		const depthMap = state.depthMap;
++		if (depthMap[23] || depthMap[34] || depthMap[46] || depthMap[82] || depthMap[92] || openMarkerCount && hoistOpenerSpace()) return;
++		const end = state.buffer.length - 1;
++		const link = openLinkFragment < -1 ? -openLinkFragment - 2 : openLinkFragment;
++		if (!(openMarkerCount && openMarkers[openMarkerCount - 1] >> 3 === end) && !(link >= 0 && link === end) && !(literalOpeners.length && followsLiteralOpener(end + 1))) {
++			state.pendingInlineWhitespace = true;
++			state.pendingLeadingBlank = true;
++			state.pendingPairSeparator = false;
++		}
++	}
++	function followsLiteralOpener(fragment) {
++		const end = literalOpeners[literalOpeners.length - 1];
++		if (end < 0 || end > fragment || fragment > state.buffer.length) return false;
++		for (let index = end; index < fragment; index++) if (state.buffer[index]) return false;
++		return true;
++	}
++	function holdLiteralOpener(held) {
++		const end = literalOpeners[literalOpeners.length - 1];
++		if (end < 0 || end >= held) return held;
++		const limit = Math.min(held, state.buffer.length);
++		for (let index = end; index < limit; index++) if (state.buffer[index]) {
++			for (let pair = 1; pair < literalOpeners.length; pair += 2) literalOpeners[pair] = -1;
++			return held;
++		}
++		return end;
++	}
+ 	function captionExitOpensBlockLine(buff) {
+ 		let fragment = buff.length - 1;
+ 		let cursor = buff[fragment].length;
+@@ -2051,18 +2200,31 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 			if (ownsCaptionSpace) {
+ 				if (captionBoundary !== 5 && textNode.value.charCodeAt(0) === 32) textNode.value = textNode.value.slice(1);
+ 				if (!hasNonWhitespace(textNode.value)) return;
+-				flushCaptionBreakRun();
++				flushCaptionBreakRun(true);
+ 				prepareCaptionOutput(false);
+ 				commitCaptionFrames();
+ 				captionBoundary = 0;
+ 			}
+ 			if (state.pendingInlineWhitespace) {
+-				if (!textNode.value.trim()) return;
+-				if (lastChar && !" \n	\r".includes(lastChar) && !" \n	\r".includes(textNode.value[0] || "")) textNode.value = ` ${textNode.value}`;
++				if (!hasNonWhitespace(textNode.value)) return;
++				if (lastChar && !" \n	\r".includes(lastChar) && !" \n	\r".includes(textNode.value[0] || "") && !(literalOpeners.length && followsLiteralOpener(state.buffer.length)) && !(openMarkerCount && hoistOpenerSpace())) {
++					if (textNode.generatedMarkdown?.prefix || state.pendingLeadingBlank) {
++						state.buffer.push(" ");
++						state.lastContentCache = " ";
++						state.separatorPending = true;
++						lastChar = " ";
++					} else textNode.value = ` ${textNode.value}`;
++				}
+ 				state.pendingInlineWhitespace = false;
+ 			}
+ 			if (textNode.value === " " && (lastChar === " " || lastChar === "\n" || lastChar === "	" || lastChar === "\r")) return;
+ 			if (!ownsCaptionSpace && shouldAddSpacingBeforeText(lastChar, lastNode, textNode)) textNode.value = ` ${textNode.value}`;
++			if (openMarkerCount && textNode.value.charCodeAt(0) === 32 && hoistOpenerSpace()) {
++				let start = 1;
++				while (textNode.value.charCodeAt(start) === 32) start++;
++				textNode.value = textNode.value.slice(start);
++				if (!textNode.value) return;
++			}
+ 			if ((state.depthMap[34] || 0) > 0 && (state.depthMap[25] || 0) > 0) {
+ 				const indent = state.listIndent;
+ 				let value = textNode.value.replace(/\n(?!\n|$)/g, `\n${indent}`);
+@@ -2086,6 +2248,8 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 				noteGeneratedFences(state, textNode.generatedMarkdown);
+ 				textNode.value = `${textNode.generatedMarkdown.prefix}${textNode.value}${textNode.generatedMarkdown.suffix}`;
+ 			}
++			state.cacheFollowsSeparator = state.separatorPending === true;
++			state.separatorPending = false;
+ 			const wrapWidth = state.options?.wrapWidth;
+ 			if (wrapWidth && canWrapHere(state.depthMap)) {
+ 				const column = currentColumn(state.buffer, Math.max(wrapWidth, state.listIndent.length + 1));
+@@ -2103,6 +2267,9 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 					const first = textNode.value.charCodeAt(0);
+ 					if (first !== 11 && !isAsciiWhitespace(first) || (openMarkers[openMarkerCount - 1] & MARKER_TYPE_MASK) > 4 || !isVerticalTabRun(textNode.value)) openMarkerCount = 0;
+ 					commitCaptionFrames();
++				} else if (openMarkerCount && textNode.containsWhitespace === void 0 && textNode.value && (openMarkers[openMarkerCount - 1] & MARKER_TYPE_MASK) > 4) {
++					if (silentMarkerCount >= openMarkerCount) openMarkerCount = 0;
++					else blankMarkerCount = openMarkerCount;
+ 				}
+ 			}
+ 		}
+@@ -2131,6 +2298,11 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		if (pendingRawHtmlBoundary && eventType === 0 && node.type === 1 && node.tagId === 34 && !node.tagHandler?.literalEnter) pendingRawHtmlBoundary = false;
+ 		state.depth = node.depth;
+ 		if (node.type === 1 ? node.excludedFromMarkdown : node.parent?.excludedFromMarkdown) return;
++		const blank = node.type === 2 && node.leadingBlank ? node.value : void 0;
++		if (blank !== void 0 && !hasNonWhitespace(blank)) {
++			if (blank && !node.excludedFromMarkdown && !state.pendingInlineWhitespace && !captionNeedsPreparation()) placeLeadingBlank();
++			return;
++		}
+ 		if (state.tableRowOpenerPending && state.depthMap[28] <= 1) {
+ 			const tagId = node.type === 1 ? node.tagId : void 0;
+ 			const cellEvent = tagId === 32 || tagId === 31;
+@@ -2180,6 +2352,7 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 				} else if (consumePendingPreChild(state, node, eventType, preparePendingPreFence)) return;
+ 			} else if (consumePendingPreChild(state, node, eventType, preparePendingPreFence)) return;
+ 		}
++		const movesBlankPastLink = node.type === 2 && node.isLinkLabel === true && dropBlankLinkText(state, openLinkFragment < -1 ? -openLinkFragment - 2 : openLinkFragment, node.value, node.parent?.trailingBlankAt !== void 0 && node.parent.trailingBlankAt === node.parent.currentWalkIndex);
+ 		let lastBuffEntry = buff.at(-1);
+ 		let lastChar = lastBuffEntry?.charAt(lastBuffEntry.length - 1) || "";
+ 		if (!lastChar && buff.length > 1) {
+@@ -2188,12 +2361,14 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		}
+ 		if (node.type === 2 && eventType === 0) {
+ 			processTextNode(node, lastNode, lastChar);
++			if (movesBlankPastLink) state.pendingInlineWhitespace = true;
+ 			return;
+ 		}
+ 		if (node.type !== 1) return;
+ 		const element = node;
+ 		const handler = node.tagHandler;
+ 		const tagId = element.tagId;
++		if (eventType === 1) while (literalOpeners.length && literalOpeners[literalOpeners.length - 2] >= element.depth) literalOpeners.length -= 2;
+ 		const insideRawHtmlRegion = isInsideRawHtmlBlock(state.depthMap);
+ 		if (captionBoundary >= 3 && tagId === 25) {
+ 			restoreQuoteParentBoundary();
+@@ -2230,13 +2405,15 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 					lastChar = lastBuffEntry?.charAt(lastBuffEntry.length - 1) || "";
+ 				}
+ 			}
+-			if (state.pendingInlineWhitespace) {
++			const captionHasAnchor = captionFrameCount !== 0 && (captionFrames[(captionFrameCount - 1) * CAPTION_FRAME_SIZE + 2] & CAPTION_OPEN) === 0 && captionFrames[(captionFrameCount - 1) * CAPTION_FRAME_SIZE + 3] !== CAPTION_NO_ANCHOR;
++			if (state.pendingInlineWhitespace && !captionHasAnchor) {
+ 				state.pendingInlineWhitespace = false;
+ 				if (breakOutput?.charCodeAt(0) === 60) {
+ 					const last = lastOutputChar(buff);
+ 					if (last !== -1 && last !== 32 && last !== 10 && last !== 9 && last !== 13) {
+ 						buff.push(" ");
+ 						state.lastContentCache = " ";
++						state.separatorPending = true;
+ 					}
+ 				}
+ 			}
+@@ -2331,7 +2508,7 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 				openLinkFragment = -1;
+ 				return;
+ 			}
+-			if (eventType === 1 && tagId === 26 && openLinkFragment !== -1 && !handler.literalExit && !insideRawHtmlRegion && !gfmLifecycle.openCodeSpans.length && lastChar === " ") {
++			if (eventType === 1 && tagId === 26 && openLinkFragment !== -1 && handler.exit === tagHandlers[26].exit && !handler.literalExit && !insideRawHtmlRegion && !gfmLifecycle.openCodeSpans.length && lastOutputChar(buff) === 32) {
+ 				const bracket = openLinkFragment < -1 ? -openLinkFragment - 2 : openLinkFragment;
+ 				let removed = 0;
+ 				for (let index = buff.length - 1; index > bracket; index--) {
+@@ -2340,11 +2517,14 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 					while (end > 0 && fragment.charCodeAt(end - 1) === 32) end--;
+ 					removed += fragment.length - end;
+ 					if (end === 0) continue;
+-					if (removed && !isAsciiWhitespace(fragment.charCodeAt(end - 1))) {
++					const code = fragment.charCodeAt(end - 1);
++					if (removed && (code < 9 || code === 11 || code > 13)) {
+ 						trimTrailingSpaces(buff);
+ 						const cache = state.lastContentCache;
+ 						if (cache) state.lastContentCache = cache.slice(0, Math.max(0, cache.length - removed));
+ 						state.pendingInlineWhitespace = true;
++						state.pendingLeadingBlank = false;
++						state.pendingPairSeparator = false;
+ 						lastBuffEntry = buff.at(-1);
+ 						lastChar = String.fromCharCode(lastOutputChar(buff));
+ 					}
+@@ -2366,7 +2546,7 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 				else {
+ 					gfmAction = res;
+ 					if (res._tag === "BlockquoteExit") closesQuote = state.blockquotes.length > 0;
+-					if (res._tag === "CodeSpanEnter" && captionBoundary === 3 && res.output === " `") res.output = "`";
++					if (res._tag === "CodeSpanEnter" && res.output === " `" && (captionBoundary === 3 || captionFrameCount !== 0 && (captionFrames[(captionFrameCount - 1) * CAPTION_FRAME_SIZE + 2] & CAPTION_OPEN) === 0)) res.output = "`";
+ 					handlerOutput = consumeGfmAction(res, state, gfmLifecycle);
+ 				}
+ 				if (handlerOutput) output = [handlerOutput];
+@@ -2486,18 +2666,34 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		if (eventType === 1 && openMarkerCount) {
+ 			const markerType = handlerOutput === void 0 ? 0 : INLINE_MARKER_TYPE[tagId];
+ 			if (markerType && (tagId !== 23 || !state.depthMap[34] && !isInsideRawHtmlBlock(state.depthMap)) && !handler?.literalExit) {
+-				const packed = openMarkers[--openMarkerCount];
+-				const restoresHeadingBreak = buff[packed >> 3]?.includes("\n");
+-				const idx = dropEmptyMarker(buff, packed, markerType, state.outputPositions);
++				const slot = --openMarkerCount;
++				const marker = openMarkers[slot];
++				const hoisted = markerType <= 4 && buff[marker >> 3]?.charCodeAt(0) === 32;
++				const restoresHeadingBreak = buff[marker >> 3]?.includes("\n");
++				let idx = dropEmptyMarker(buff, marker, markerType, state.outputPositions);
+ 				if (idx >= 0) {
+ 					noteBufferRewrite(state);
++					if (hoisted) {
++						state.pendingInlineWhitespace = true;
++						state.pendingLeadingBlank = true;
++						state.pendingPairSeparator = false;
++					}
++					if (openMarkerFollowsSpace[slot] && buff[idx - 1] === " ") {
++						idx--;
++						state.outputPositions?.replace(idx, buff.length, []);
++						buff.length = idx;
++						state.pendingInlineWhitespace = true;
++						state.pendingLeadingBlank = true;
++						state.pendingPairSeparator = openMarkerSeparatorTrimmed[slot];
++					}
+ 					if (restoresHeadingBreak) state.headingBreakPending = true;
+ 					resetRetractedCaptionFrames(captionFrames, captionFrameCount, idx);
+ 					state.lastContentCache = idx > 0 ? buff[idx - 1] : void 0;
++					state.droppedPairAt = buff.length;
+ 					restoreQuoteParentBoundary();
+ 					return;
+ 				}
+-				if (markerType <= 4 && dropVerticalTabMarker(buff, packed, markerType, handlerOutput, state.outputPositions)) {
++				if (markerType <= 4 && dropVerticalTabMarker(buff, marker, markerType, handlerOutput, state.outputPositions)) {
+ 					noteBufferRewrite(state);
+ 					state.lastContentCache = buff[buff.length - 1];
+ 					return;
+@@ -2538,19 +2734,23 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		}
+ 		let newLines = Math.max(0, configuredNewLines - (measureFromOutputTail ? 0 : lastNewLines));
+ 		if (newLines > 0 && buff.length === 0 && !hasYieldedContent) newLines = 0;
+-		if (state.pendingInlineWhitespace) {
++		pendingSpaceFragment = -1;
++		if (state.pendingInlineWhitespace && !(captionFrameCount !== 0 && (captionFrames[(captionFrameCount - 1) * CAPTION_FRAME_SIZE + 2] & CAPTION_OPEN) === 0 && (captionTransition || captionFrames[(captionFrameCount - 1) * CAPTION_FRAME_SIZE + 3] !== CAPTION_NO_ANCHOR || !output && newLines === 0 && (eventType === 1 || tagId === 49 || tagId === 52 || tagId === 53)))) {
+ 			const firstOutput = output?.[0]?.[0] || "";
++			const owed = !!state.pendingPairSeparator && !(eventType === 0 && tagId === 22);
+ 			if (eventType === 0) {
+-				if (!isInlineElement || newLines > 0 || firstOutput === "\n" || firstOutput === "\r") state.pendingInlineWhitespace = false;
++				if (!isInlineElement && (tagId !== 36 || firstOutput) && !owed || newLines > 0 || firstOutput === "\n" || firstOutput === "\r") state.pendingInlineWhitespace = false;
+ 				else if (firstOutput) {
+-					if (lastChar && !" \n	\r".includes(lastChar) && !" \n	\r".includes(firstOutput)) {
++					if (lastChar && !" \n	\r".includes(lastChar) && !" \n	\r".includes(firstOutput) && !(literalOpeners.length && followsLiteralOpener(state.buffer.length)) && !(openMarkerCount && hoistOpenerSpace())) {
+ 						state.buffer.push(" ");
+ 						state.lastContentCache = " ";
+ 						lastChar = " ";
++						pendingSpaceFragment = state.buffer.length - 1;
++						pendingSpaceTrimmed = !state.pendingLeadingBlank || owed;
+ 					}
+ 					state.pendingInlineWhitespace = false;
+ 				}
+-			} else if (!isInlineElement || newLines > 0) state.pendingInlineWhitespace = false;
++			} else if (!isInlineElement && !owed || newLines > 0) state.pendingInlineWhitespace = false;
+ 		}
+ 		if (newLines > 0) {
+ 			if (!buff.length && !captionEvent && !captionTransition) {
+@@ -2602,7 +2802,11 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 								buff.length--;
+ 							}
+ 						}
+-						if (eventType === 1 && isInlineElement) state.pendingInlineWhitespace = true;
++						if (eventType === 1 && isInlineElement) {
++							state.pendingInlineWhitespace = true;
++							state.pendingLeadingBlank = false;
++							state.pendingPairSeparator = false;
++						}
+ 					}
+ 				}
+ 				state.lastTextNode = void 0;
+@@ -2705,6 +2909,7 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 				state.lastContentCache = fragment;
+ 			}
+ 		}
++		if (eventType === 0 && handler?.literalEnter && (handler.isInline ?? tagId === -1) && outputStart < buff.length) literalOpeners.push(element.depth, buff.length);
+ 		if (trailingEmphasisWhitespace) {
+ 			state.buffer.push(trailingEmphasisWhitespace);
+ 			state.lastContentCache = trailingEmphasisWhitespace;
+@@ -2724,12 +2929,34 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 		}
+ 		if (eventType === 0 && handlerOutput !== void 0 && isInlineElement && !handler?.literalEnter) {
+ 			const markerType = INLINE_MARKER_TYPE[tagId];
+-			if (markerType && (tagId !== 23 || !state.depthMap[34] && !isInsideRawHtmlBlock(state.depthMap)) && buff[buff.length - 1] === handlerOutput) openMarkers[openMarkerCount++] = buff.length - 1 << 3 | markerType;
+-			else if (openMarkerCount && !(tagId === 26 && cleanEmptyLinkText) && hasNonWhitespace(handlerOutput)) {
++			if (markerType && (tagId !== 23 || !state.depthMap[34] && !isInsideRawHtmlBlock(state.depthMap)) && buff[buff.length - 1] === handlerOutput) {
++				const previous = openMarkers[openMarkerCount - 1];
++				openMarkerRunLength[openMarkerCount] = openMarkerCount > 0 && markerType <= 4 && (previous & MARKER_TYPE_MASK) <= 4 && previous >> 3 === buff.length - 2 ? openMarkerRunLength[openMarkerCount - 1] + 1 : 1;
++				const followsSpace = pendingSpaceFragment === buff.length - 2;
++				openMarkerFollowsSpace[openMarkerCount] = followsSpace;
++				openMarkerSeparatorTrimmed[openMarkerCount] = followsSpace && pendingSpaceTrimmed;
++				if (silentMarkerCount > openMarkerCount) silentMarkerCount = openMarkerCount;
++				if (blankMarkerCount > openMarkerCount) blankMarkerCount = 0;
++				openMarkers[openMarkerCount++] = buff.length - 1 << 3 | markerType;
++			} else if (openMarkerCount && !(tagId === 26 && cleanEmptyLinkText) && hasNonWhitespace(handlerOutput)) {
+ 				openMarkerCount = 0;
+ 				commitCaptionFrames();
+ 			}
+-		} else if (openMarkerCount && (eventType === 1 && handler?.literalExit || tagId !== -1 && !isInlineElement || output?.some(hasNonWhitespace))) openMarkerCount = 0;
++		} else if (openMarkerCount && (eventType === 1 && handler?.literalExit || tagId !== -1 && !isInlineElement && (output !== void 0 || configuredNewLines > 0) || output?.some(hasNonWhitespace))) openMarkerCount = 0;
++		else if (openMarkerCount && eventType === 1 && tagId !== -1 && !isInlineElement) {
++			if (blankMarkerCount && blankMarkerCount <= openMarkerCount) {
++				const kept = openMarkerCount - blankMarkerCount;
++				for (let i = 0; i < kept; i++) {
++					openMarkers[i] = openMarkers[i + blankMarkerCount];
++					openMarkerFollowsSpace[i] = openMarkerFollowsSpace[i + blankMarkerCount];
++					openMarkerSeparatorTrimmed[i] = openMarkerSeparatorTrimmed[i + blankMarkerCount];
++					openMarkerRunLength[i] = openMarkerRunLength[i + blankMarkerCount];
++				}
++				openMarkerCount = kept;
++				blankMarkerCount = 0;
++			}
++			silentMarkerCount = openMarkerCount;
++		}
+ 		if (eventType === 1 && tagId === 26) openLinkFragment = -1;
+ 		if (closesQuote && state.depthMap[25] && !state.depthMap[34] && !insideRawHtmlRegion && !isInsideTableCell(state)) {
+ 			captionBoundary = 3;
+@@ -2750,6 +2977,7 @@ function createMarkdownProcessor(options = {}, createStream) {
+ 	}
+ 	function getNonQuoteHeldOutputFragment(final = false) {
+ 		let heldFragment = final ? Infinity : Math.min(openMarkerCount ? openMarkers[0] >> 3 : Infinity, gfmLifecycle.openCodeSpans[0]?.fragment ?? Infinity, state.emptyItemFragment ?? Infinity, state.codeFence?.fragment ?? Infinity, openLinkFragment === -1 ? Infinity : openLinkFragment < -1 ? -openLinkFragment - 2 : openLinkFragment - Number(openLinkHeadingBreak));
++		if (!final && literalOpeners.length) heldFragment = holdLiteralOpener(heldFragment);
+ 		if (cleanPass && !final) heldFragment = Math.min(heldFragment, cleanPass.held());
+ 		const captionHoldCount = final ? 0 : captionFrameCount;
+ 		for (let index = 0; index < captionHoldCount; index++) {
+diff --git a/dist/_chunks/output-runner.mjs b/dist/_chunks/output-runner.mjs
+index 43662440ffce8dc762c483a94dce825ffbc0d635..85e8926efa1e26c5bf2119ec27711cffad7b1dba 100644
+--- a/dist/_chunks/output-runner.mjs
++++ b/dist/_chunks/output-runner.mjs
+@@ -5,9 +5,11 @@ function createParseState(processor, options) {
+ 		depthMap: processor.state.depthMap,
+ 		depth: 0,
+ 		resolvedPlugins: options.plugins,
++		outputEvent: processor.processEvent,
+ 		tagHandlers: options.tagHandlers,
+ 		tagOverrideHandlers: options.tagOverrideHandlers,
+ 		plainText: options.plainText,
++		keepLeadingBlanks: processor.state.outputFormat === "text",
+ 		urlBaseTarget: processor.state
+ 	};
+ }
+diff --git a/dist/_chunks/parse.mjs b/dist/_chunks/parse.mjs
+index e9932fc152b3ba8b4ae3f8b0339177c1fc104d75..9998b237176aacdb7abffcb4ddb4178c5af5f81f 100644
+--- a/dist/_chunks/parse.mjs
++++ b/dist/_chunks/parse.mjs
+@@ -1,5 +1,5 @@
+ import { NO_SPACING, TagIdMap, isInsideRawHtmlBlock } from "./const.mjs";
+-import { decodeHTMLEntities, resolveUrl, traverseUpToFirstBlockNode } from "./url.mjs";
++import { countContentInEnclosingLink, decodeHTMLEntities, hasNonWhitespace, resolveUrl, traverseUpToFirstBlockNode } from "./url.mjs";
+ const selfClosing = { isSelfClosing: true };
+ const rawText = { isNonNesting: true };
+ const inertRawText = {
+@@ -89,6 +89,9 @@ function shouldProtectDecodedEntityReferences(state) {
+ 	const depthMap = state.depthMap;
+ 	return !state.plainText && !depthMap[4] && !depthMap[34] && !depthMap[23] && !isInsideRawHtmlBlock(depthMap);
+ }
++function keepsLeadingBlank(node) {
++	return node.tagHandler?.isInline ?? node.tagId === -1;
++}
+ const SCRIPT_DATA = 0;
+ const SCRIPT_DATA_ESCAPED = 1;
+ const SCRIPT_DATA_ESCAPED_DASH = 2;
+@@ -370,6 +373,7 @@ function finalizeParse(leftover, state, handleEvent) {
+ 		let text = trailing;
+ 		if (state.currentNode?.tagHandler?.isNonNesting) {
+ 			if (state.rawtextEndTagPending) text = "";
++			else if (!(state.discardExcludedText && state.currentNode.tagHandler.excludesTextNodes) && hasNonWhitespace(text)) state.textBufferContainsNonWhitespace = true;
+ 		} else {
+ 			const incompleteTagIndex = findIncompleteTagResidualIndex(trailing);
+ 			if (incompleteTagIndex !== -1) text = trailing.slice(0, incompleteTagIndex);
+@@ -391,7 +395,10 @@ var ParsedElementNode = class {
+ 	tagHandler;
+ 	currentWalkIndex;
+ 	childTextNodeIndex;
+-	containsWhitespace;
++	linkContentCounted;
++	enterSkipped;
++	hiddenTextNodes;
++	trailingBlankAt;
+ 	pluginOutput;
+ 	context;
+ 	cachedDepthMap;
+@@ -433,6 +440,11 @@ function scriptSequenceEnd(html, nameStart) {
+ 	const delimiter = html.charCodeAt(delimiterIndex);
+ 	return delimiter === GT_CHAR || delimiter === SLASH_CHAR || isWhitespace(delimiter) ? delimiterIndex + 1 : SCRIPT_SEQUENCE_NO_MATCH;
+ }
++function inInertRawText(state) {
++	const node = state.currentNode;
++	const handler = node?.tagHandler;
++	return !!handler?.isNonNesting && !!handler.excludesTextNodes && node.tagId !== 4 && !isScriptElement(node);
++}
+ function isScriptElement(node) {
+ 	return node.tagId === 52 && node.name === "script";
+ }
+@@ -498,7 +510,14 @@ function pushScriptTextChunk(state, text) {
+ }
+ function scanScriptChunk(html, start, state) {
+ 	const result = findScriptEndTag(html, start, state);
+-	if (state.discardExcludedText && state.currentNode?.tagHandler?.excludesTextNodes) return result;
++	if (state.discardExcludedText && state.currentNode?.tagHandler?.excludesTextNodes) {
++		if ((result === SCRIPT_SCAN_COMPLETE ? html.length : result <= SCRIPT_SEQUENCE_INCOMPLETE ? -result - 2 : result) > start) {
++			state.lastCharWasWhitespace = false;
++			state.justClosedTag = false;
++			state.textBufferContainsWhitespace = false;
++		}
++		return result;
++	}
+ 	if (result === SCRIPT_SCAN_COMPLETE) pushScriptTextChunk(state, html.substring(start));
+ 	else if (result <= SCRIPT_SEQUENCE_INCOMPLETE) pushScriptTextChunk(state, html.substring(start, -result - 2));
+ 	else pushScriptTextChunk(state, html.substring(start, result));
+@@ -533,7 +552,8 @@ function parseHtml(html, options = {}) {
+ 		depthMap: /* @__PURE__ */ new Uint16Array(113),
+ 		depth: 0,
+ 		resolvedPlugins: options.resolvedPlugins || [],
+-		tagHandlers: options.tagHandlers
++		tagHandlers: options.tagHandlers,
++		outputEvent: (event) => events.push(event)
+ 	};
+ 	let remainingHtml = parseHtmlInternal(html, state, (event) => {
+ 		events.push(event);
+@@ -737,8 +757,10 @@ function parseHtmlInternal(htmlChunk, state, handleEvent) {
+ 					peekEnd++;
+ 				}
+ 				if (peekEnd === chunkLength) {
+-					state.textBufferContainsNonWhitespace = true;
+-					state.lastCharWasWhitespace = false;
++					if (!state.currentNode.name.startsWith(normalizeTagName(htmlChunk.substring(i + 2, peekEnd)))) {
++						state.textBufferContainsNonWhitespace = true;
++						state.lastCharWasWhitespace = false;
++					}
+ 					textBuffer += htmlChunk.substring(i);
+ 					break;
+ 				}
+@@ -749,6 +771,10 @@ function parseHtmlInternal(htmlChunk, state, handleEvent) {
+ 					textBuffer += htmlChunk[i++];
+ 					continue;
+ 				}
++				if (inInertRawText(state)) {
++					if (state.inertBodyBlankPending || i > 0 && isWhitespace(htmlChunk.charCodeAt(i - 1))) state.lastCharWasWhitespace = false;
++					state.inertBodyBlankPending = false;
++				}
+ 			}
+ 			if (textBuffer.length > 0) {
+ 				processTextBuffer(textBuffer, state, handleEvent);
+@@ -861,6 +887,10 @@ function parseHtmlInternal(htmlChunk, state, handleEvent) {
+ 		state.entitySeals = void 0;
+ 	}
+ 	if (remainingHtml.length > 0 && isWhitespace(remainingHtml.charCodeAt(0))) state.lastCharWasWhitespace = false;
++	if (inInertRawText(state)) {
++		const last = chunkLength - remainingHtml.length - 1;
++		if (last >= 0 && isWhitespace(htmlChunk.charCodeAt(last))) state.inertBodyBlankPending = true;
++	}
+ 	state.trailingText = textBuffer;
+ 	return remainingHtml;
+ }
+@@ -956,10 +986,19 @@ function processTextBuffer(textBuffer, state, handleEvent) {
+ 	}
+ 	const excludesTextNodes = (state.flattenedOpaqueDepth || 0) > 0 || state.flattenedRawExcludesText || state.currentNode?.tagHandler?.excludesTextNodes || state.currentNode?.excludedFromMarkdown;
+ 	const inPreTag = (state.depthMap[34] || 0) > 0;
+-	if (!inPreTag && !containsNonWhitespace && !state.currentNode.childTextNodeIndex) return;
++	const isLeadingBlank = !inPreTag && !containsNonWhitespace && !state.currentNode.childTextNodeIndex;
++	if (isLeadingBlank && state.currentNode.tagId === 26 && state.currentNode.currentWalkIndex) state.currentNode.trailingBlankAt = state.currentNode.currentWalkIndex;
++	if (isLeadingBlank && (state.plainText && !state.keepLeadingBlanks || !keepsLeadingBlank(state.currentNode))) return;
+ 	let text = textBuffer;
+ 	if (text.length === 0) return;
+-	const parentsToIncrement = traverseUpToFirstBlockNode(state.currentNode);
++	let parentsToIncrement;
++	if (isLeadingBlank && !state.resolvedPlugins?.length) {
++		if (state.leadingBlankParent !== state.currentNode) {
++			state.leadingBlankParent = state.currentNode;
++			state.leadingBlankAncestors = traverseUpToFirstBlockNode(state.currentNode);
++		}
++		parentsToIncrement = state.leadingBlankAncestors;
++	} else parentsToIncrement = traverseUpToFirstBlockNode(state.currentNode);
+ 	const firstBlockParent = parentsToIncrement.at(-1);
+ 	const firstInBlock = containsWhitespace && !firstBlockParent.childTextNodeIndex;
+ 	const inlineAtRoot = firstInBlock && !firstBlockParent.parent && (firstBlockParent.tagHandler?.isInline ?? firstBlockParent.tagId === -1);
+@@ -968,6 +1007,29 @@ function processTextBuffer(textBuffer, state, handleEvent) {
+ 		while (start < text.length && (inPreTag ? text.charCodeAt(start) === NEWLINE_CHAR || text.charCodeAt(start) === CARRIAGE_RETURN_CHAR : isWhitespace(text.charCodeAt(start)))) start++;
+ 		if (start > 0) text = text.substring(start);
+ 	}
++	if (isLeadingBlank) {
++		if (text) {
++			const blank = {
++				type: 2,
++				value: text,
++				parent: state.currentNode,
++				index: state.currentNode.currentWalkIndex,
++				depth: state.depth,
++				containsWhitespace,
++				excludedFromMarkdown: excludesTextNodes,
++				leadingBlank: true
++			};
++			handleEvent({
++				type: 0,
++				node: blank
++			});
++			if (!blank.excludedFromMarkdown && hasNonWhitespace(blank.value)) {
++				state.currentNode.currentWalkIndex++;
++				for (const parent of parentsToIncrement) parent.childTextNodeIndex = (parent.childTextNodeIndex || 0) + 1;
++			}
++		}
++		return;
++	}
+ 	if (state.hasEncodedHtmlEntity) {
+ 		text = decodeHTMLEntities(String(text), false, shouldProtectDecodedEntityReferences(state));
+ 		state.hasEncodedHtmlEntity = false;
+@@ -985,12 +1047,42 @@ function processTextBuffer(textBuffer, state, handleEvent) {
+ 	if (inlineAtRoot) textNode.trimsAtLineStart = true;
+ 	state.endTagClosedNothing = false;
+ 	for (const parent of parentsToIncrement) parent.childTextNodeIndex = (parent.childTextNodeIndex || 0) + 1;
++	let hasText = false;
++	let wasBlank = false;
++	if (state.depthMap[26]) {
++		for (let i = 0; i < textNode.value.length; i++) if (!isWhitespace(textNode.value.charCodeAt(i))) {
++			hasText = true;
++			break;
++		}
++		wasBlank = !hasText && !inPreTag;
++	}
+ 	handleEvent({
+ 		type: 0,
+ 		node: textNode
+ 	});
++	if (state.depthMap[26]) {
++		const isBlank = textNode.rewrittenBlank ?? wasBlank;
++		const hidden = textNode.excludedFromMarkdown || isBlank && !wasBlank;
++		if (hidden || isBlank) countHiddenLinkText(parentsToIncrement, hidden);
++		else if ((hasText || textNode.rewrittenBlank === false) && (state.depthMap[26] > 1 || !hasAnchorParent(parentsToIncrement))) countContentInEnclosingLink(firstBlockParent);
++	}
+ 	state.lastTextNode = textNode;
+ }
++function hasAnchorParent(parents) {
++	for (let i = 0; i < parents.length; i++) if (parents[i].tagId === 26) return true;
++	return false;
++}
++function countHiddenLinkText(parents, excluded) {
++	for (const parent of parents) {
++		if (parent.tagId !== 26 || parent.excludedFromMarkdown || parent.enterSkipped) continue;
++		const hidden = parent.hiddenTextNodes || 0;
++		if (excluded || hidden + 1 === parent.childTextNodeIndex) parent.hiddenTextNodes = hidden + 1;
++	}
++}
++function linkLabelTarget(node, state, handleEvent) {
++	if (!node.childTextNodeIndex) return handleEvent;
++	if (node.childTextNodeIndex === node.hiddenTextNodes && !node.excludedFromMarkdown && !node.enterSkipped) return state.outputEvent;
++}
+ function processClosingTag(htmlChunk, position, state, handleEvent) {
+ 	let i = position + 2;
+ 	const tagNameStart = i;
+@@ -1127,21 +1219,25 @@ function processClosingTag(htmlChunk, position, state, handleEvent) {
+ }
+ function closeNode(node, state, handleEvent) {
+ 	if (!node) return;
+-	if (node.tagId === 26 && !node.childTextNodeIndex) {
++	const emitLabel = node.tagId === 26 ? linkLabelTarget(node, state, handleEvent) : void 0;
++	if (emitLabel) {
+ 		const prefix = node.attributes?.title || node.attributes?.["aria-label"] || "";
+ 		if (prefix) {
+ 			node.childTextNodeIndex = 1;
+-			handleEvent({
++			emitLabel({
+ 				type: 0,
+ 				node: {
+ 					type: 2,
+ 					value: prefix,
+ 					parent: node,
+ 					index: 0,
+-					depth: node.depth + 1
++					depth: node.depth + 1,
++					isLinkLabel: true
+ 				}
+ 			});
+-			for (const parent of traverseUpToFirstBlockNode(node)) parent.childTextNodeIndex = (parent.childTextNodeIndex || 0) + 1;
++			const parents = traverseUpToFirstBlockNode(node);
++			for (const parent of parents) parent.childTextNodeIndex = (parent.childTextNodeIndex || 0) + 1;
++			if (state.depthMap[26] > 1) countContentInEnclosingLink(parents.at(-1));
+ 		}
+ 	}
+ 	const tagId = node.tagId;
+diff --git a/dist/_chunks/src.mjs b/dist/_chunks/src.mjs
+index 0e5db6cb9e06f64c91662383ab3b5a940594cd32..42b7277c06656869e2d88a629234cd541b2e4d29 100644
+--- a/dist/_chunks/src.mjs
++++ b/dist/_chunks/src.mjs
+@@ -237,7 +237,13 @@ function createMarkdownDrain(context, _hasPlugins) {
+ 		}
+ 		return newContent;
+ 	}
+-	return { getMarkdownChunk };
++	function drainKeepingDroppedPair(final = false) {
++		const pending = state.droppedPairAt === state.buffer.length;
++		const chunk = getMarkdownChunk(final);
++		state.droppedPairAt = pending ? state.buffer.length : void 0;
++		return chunk;
++	}
++	return { getMarkdownChunk: drainKeepingDroppedPair };
+ }
+ async function* streamHtmlToMarkdown$1(htmlStream, options = {}, resolvedPlugins = [], tagOverrideHandlers) {
+ 	if (!htmlStream) throw new Error("Invalid HTML stream provided");
+@@ -248,6 +254,7 @@ async function* streamHtmlToMarkdown$1(htmlStream, options = {}, resolvedPlugins
+ 		depthMap: processor.state.depthMap,
+ 		depth: 0,
+ 		resolvedPlugins,
++		outputEvent: processor.processEvent,
+ 		tagHandlers,
+ 		tagOverrideHandlers,
+ 		plainText: false,
+@@ -290,6 +297,7 @@ function htmlToMarkdown(html, options = {}) {
+ 		depthMap: processor.state.depthMap,
+ 		depth: 0,
+ 		resolvedPlugins: plugins,
++		outputEvent: processor.processEvent,
+ 		tagHandlers,
+ 		tagOverrideHandlers,
+ 		plainText: false,
+diff --git a/dist/_chunks/tag-overrides.mjs b/dist/_chunks/tag-overrides.mjs
+index 003a8a7d17246bba8ca6256417ae6e129a6638c6..a57f89ee7df4d86f7b0e68dbee7ab9a329022992 100644
+--- a/dist/_chunks/tag-overrides.mjs
++++ b/dist/_chunks/tag-overrides.mjs
+@@ -1,4 +1,5 @@
+ import { TagIdMap } from "./const.mjs";
++import { countContentInEnclosingLink } from "./url.mjs";
+ function checkClean(options) {
+ 	const clean = options.clean;
+ 	if (clean && typeof clean.apply !== "function") throw new TypeError("The clean option needs cleanup rules from clean(). Import it from '@mdream/js/clean'.");
+@@ -51,9 +52,19 @@ function assertEngineOptions(options, entry = "converter") {
+ 	const plugins = options.plugins;
+ 	if (plugins != null && !Array.isArray(plugins)) throw new TypeError("@mdream/js takes `plugins` as an array, such as { plugins: [frontmatterPlugin()] } with frontmatterPlugin from '@mdream/js/plugins'.");
+ }
++function isBlankText(value, inPreTag) {
++	if (!value) return true;
++	if (inPreTag) return false;
++	for (let i = 0; i < value.length; i++) {
++		const code = value.charCodeAt(i);
++		if (code !== 32 && code !== 9 && code !== 10 && code !== 12 && code !== 13) return false;
++	}
++	return true;
++}
+ function processPluginsForEvent(event, plugins, state, processEvent) {
+ 	state.depth = event.node.depth;
+ 	if (plugins?.length) {
++		const text = event.node.type === 2 ? event.node.value : void 0;
+ 		if (event.node.type === 1 && event.type === 0) {
+ 			const element = event.node;
+ 			let hasCheckedAttributes = false;
+@@ -76,7 +87,11 @@ function processPluginsForEvent(event, plugins, state, processEvent) {
+ 			const res = plugin.beforeNodeProcess?.(event, state);
+ 			if (typeof res === "object") shouldSkip = res.skip;
+ 		}
+-		if (shouldSkip) return true;
++		if (shouldSkip) {
++			if (event.node.type === 2) event.node.excludedFromMarkdown = true;
++			else if (event.type === 0 && event.node.tagId === 26) event.node.enterSkipped = true;
++			return true;
++		}
+ 		if (event.node.type === 1) {
+ 			const element = event.node;
+ 			const fn = event.type === 0 ? "onNodeEnter" : "onNodeExit";
+@@ -89,7 +104,10 @@ function processPluginsForEvent(event, plugins, state, processEvent) {
+ 					if (result) (pluginOutputs ??= []).push(result);
+ 				}
+ 			}
+-			if (pluginOutputs) element.pluginOutput = element.pluginOutput ? element.pluginOutput.concat(pluginOutputs) : pluginOutputs;
++			if (pluginOutputs) {
++				element.pluginOutput = element.pluginOutput ? element.pluginOutput.concat(pluginOutputs) : pluginOutputs;
++				if (state.depthMap?.[26] && pluginOutputs.some((output) => !isBlankText(output, (state.depthMap?.[34] || 0) > 0))) countContentInEnclosingLink(element.tagId === 26 ? element.parent : element);
++			}
+ 		} else if (event.node.type === 2 && event.type === 0) {
+ 			const textNode = event.node;
+ 			for (let index = 0; index < plugins.length; index++) {
+@@ -98,11 +116,15 @@ function processPluginsForEvent(event, plugins, state, processEvent) {
+ 				if (plugin.processTextNode) {
+ 					const result = plugin.processTextNode(textNode, state);
+ 					if (result) {
+-						if (result.skip) return true;
++						if (result.skip) {
++							textNode.excludedFromMarkdown = true;
++							return true;
++						}
+ 						textNode.value = result.content;
+ 					}
+ 				}
+ 			}
++			if (state.depthMap?.[26] && textNode.value !== text) textNode.rewrittenBlank = isBlankText(textNode.value, (state.depthMap[34] || 0) > 0);
+ 		}
+ 	}
+ 	processEvent(event);
+diff --git a/dist/_chunks/text.mjs b/dist/_chunks/text.mjs
+index d6862fd3a440948dcde9f7ac6ce7a7611d1f61f4..bd36d46a47a958d50fee203b1bf22373149f4fd9 100644
+--- a/dist/_chunks/text.mjs
++++ b/dist/_chunks/text.mjs
+@@ -169,7 +169,10 @@ function trailingNewlines(buffer) {
+ 	}
+ 	return count;
+ }
+-function appendOutput(state, element, eventType, output) {
++function isInlineElement(element) {
++	return element.tagHandler ? element.tagHandler.isInline === true : element.tagId === -1;
++}
++function appendOutput(state, element, eventType, output, afterLiteralOpener = false) {
+ 	const buffer = state.buffer;
+ 	const wantedNewlines = newlineConfig(element, state.depthMap)[eventType] || 0;
+ 	if (wantedNewlines > 0 && buffer.length > 0 && !(state.depthMap[34] > 0 && element.tagId !== 34)) {
+@@ -178,7 +181,7 @@ function appendOutput(state, element, eventType, output) {
+ 		if (trimmed.length !== tail.length) buffer[buffer.length - 1] = trimmed;
+ 	}
+ 	const missingNewlines = Math.max(0, wantedNewlines - trailingNewlines(buffer));
+-	const isInline = element.tagHandler ? element.tagHandler.isInline === true : element.tagId === -1;
++	const isInline = isInlineElement(element);
+ 	if (buffer.length === 0) {
+ 		if (output) buffer.push(output);
+ 		return;
+@@ -189,7 +192,7 @@ function appendOutput(state, element, eventType, output) {
+ 			if (!isInline || element.tagId === 6 || missingNewlines > 0 || firstOutput === "\n" || firstOutput === "\r") state.pendingInlineWhitespace = false;
+ 			else if (firstOutput) {
+ 				const last = charOf(lastOutputChar(buffer));
+-				if (last && !" \n	\r".includes(last) && !" \n	\r".includes(firstOutput)) buffer.push(" ");
++				if (last && !" \n	\r".includes(last) && !" \n	\r".includes(firstOutput) && !afterLiteralOpener) buffer.push(" ");
+ 				state.pendingInlineWhitespace = false;
+ 			}
+ 		} else if (!isInline || missingNewlines > 0) state.pendingInlineWhitespace = false;
+@@ -239,6 +242,13 @@ function createTextOutputProcessor(options, hasPlugins = false) {
+ 	let captionBreakOwnsLine = false;
+ 	const openQuotes = [];
+ 	const openQuoteNodes = [];
++	const literalOpeners = [];
++	function followsLiteralOpener() {
++		const end = literalOpeners[literalOpeners.length - 1];
++		if (end < 0 || end > state.buffer.length) return false;
++		for (let index = end; index < state.buffer.length; index++) if (state.buffer[index]) return false;
++		return true;
++	}
+ 	function pushCaptionBoundary(newlines) {
+ 		if (state.buffer.length === 0 || newlines === 0) return false;
+ 		const tail = state.buffer[state.buffer.length - 1];
+@@ -263,14 +273,18 @@ function createTextOutputProcessor(options, hasPlugins = false) {
+ 	function processTextNode(node, lastNode) {
+ 		if (node.trimsAtLineStart) trimTextAtLineStart(node, state.buffer);
+ 		if (node.excludedFromMarkdown || !node.value) return;
++		if (node.leadingBlank && !hasNonWhitespace(node.value)) {
++			if (captionClosedSpacing === 0 && !(captionOpen > 0 && !captionContent) && openQuotes.at(-1) !== state.buffer.length - 1 && !(literalOpeners.length && followsLiteralOpener())) state.pendingInlineWhitespace = true;
++			return;
++		}
+ 		if (hasVisibleContent(node.value) && openCaptionBoundary()) {
+ 			node.value = trimAsciiWhitespaceStart(node.value);
+ 			state.pendingInlineWhitespace = false;
+ 		}
+ 		const last = charOf(lastOutputChar(state.buffer));
+ 		if (state.pendingInlineWhitespace) {
+-			if (!node.value.trim()) return;
+-			if (last && !" \n	\r".includes(last) && !" \n	\r".includes(node.value[0] || "")) node.value = ` ${node.value}`;
++			if (!hasNonWhitespace(node.value)) return;
++			if (last && !" \n	\r".includes(last) && !" \n	\r".includes(node.value[0] || "") && !(literalOpeners.length && followsLiteralOpener())) node.value = ` ${node.value}`;
+ 			state.pendingInlineWhitespace = false;
+ 		}
+ 		if (state.depthMap[34] && state.buffer.length === 0) preserveLeadingWhitespace = true;
+@@ -305,7 +319,9 @@ function createTextOutputProcessor(options, hasPlugins = false) {
+ 		}
+ 		if (event.node.type !== 1) return;
+ 		const element = event.node;
++		if (event.type === 1) while (literalOpeners.length && literalOpeners[literalOpeners.length - 2] >= element.depth) literalOpeners.length -= 2;
+ 		let output;
++		let literalEnter = false;
+ 		if (element.tagId === 81 && event.type === 1 && openQuotes.length !== 0) {
+ 			let record = openQuoteNodes.length - 1;
+ 			while (record >= 0 && openQuoteNodes[record] !== element) record--;
+@@ -335,7 +351,13 @@ function createTextOutputProcessor(options, hasPlugins = false) {
+ 		if (element.pluginOutput?.length) {
+ 			output = element.pluginOutput.join("");
+ 			element.pluginOutput = void 0;
+-		} else output = elementOutput(element, event.type, state);
++		} else {
++			output = elementOutput(element, event.type, state);
++			if (event.type === 0 && output) {
++				const override = state.options.tagOverrides?.[element.name];
++				literalEnter = typeof override === "object" && override.enter !== void 0 && (element.tagHandler?.isInline ?? element.tagId === -1);
++			}
++		}
+ 		if (element.tagId === 6 && event.type === 0 && output) {
+ 			const currentNewlines = trailingNewlines(state.buffer);
+ 			if (!state.depthMap[34] && currentNewlines >= 2) output = void 0;
+@@ -360,13 +382,16 @@ function createTextOutputProcessor(options, hasPlugins = false) {
+ 			output = trimAsciiWhitespaceStart(output);
+ 			state.pendingInlineWhitespace = false;
+ 		}
+-		appendOutput(state, element, event.type, output);
++		const outputStart = state.buffer.length;
++		appendOutput(state, element, event.type, output, literalOpeners.length !== 0 && followsLiteralOpener());
++		if (literalEnter && state.buffer.length > outputStart) literalOpeners.push(element.depth, state.buffer.length);
+ 		if (element.tagId === 81 && event.type === 0 && (output === "\"" || output === " \"") && state.buffer.at(-1) === output) {
+ 			openQuotes.push(state.buffer.length - 1);
+ 			openQuoteNodes.push(element);
+ 		} else if (openQuotes.length !== 0) {
+-			const isInline = element.tagHandler ? element.tagHandler.isInline === true : element.tagId === -1;
+-			if (output && hasNonWhitespace(output) || element.tagId !== -1 && !isInline) {
++			const isInline = isInlineElement(element);
++			const blockWrites = element.tagId !== -1 && !isInline && (output !== void 0 && output.length > 0 || newlineConfig(element, state.depthMap)[event.type] > 0);
++			if (output && hasNonWhitespace(output) || blockWrites) {
+ 				openQuotes.length = 0;
+ 				openQuoteNodes.length = 0;
+ 			}
+@@ -393,6 +418,15 @@ function createTextOutputProcessor(options, hasPlugins = false) {
+ 		if (contextStart > 0 && first >= 56320 && first <= 57343) contextStart--;
+ 		if (contextStart === 0) return;
+ 		if (state.options.wrapWidth) bufferColumn = columnAt(content, contextStart, bufferColumn);
++		for (let pair = 1; pair < literalOpeners.length; pair += 2) {
++			let end = literalOpeners[pair];
++			if (end >= keepFrom) end -= keepFrom - 1;
++			else if (end >= 0) {
++				while (end < keepFrom && !buffer[end]) end++;
++				end = end === keepFrom ? 1 : -1;
++			}
++			literalOpeners[pair] = end;
++		}
+ 		const kept = buffer.slice(keepFrom);
+ 		buffer.length = 0;
+ 		buffer.push(content.slice(contextStart, keptStart));
+diff --git a/dist/_chunks/types.d.mts b/dist/_chunks/types.d.mts
+index 40d94afa75635f953ca3c094d63dd8cb51f8f58e..d183dc6ee52fbebcd962a89241ff22b6198a140b 100644
+--- a/dist/_chunks/types.d.mts
++++ b/dist/_chunks/types.d.mts
+@@ -109,6 +109,8 @@ interface CleanTarget {
+   depthMap: Uint16Array;
+   /** The last buffer entry the converter wrote. */
+   lastContentCache?: string;
++  /** Buffer length right after an empty marker pair was dropped. */
++  droppedPairAt?: number;
+   options?: EngineOptions;
+   /** @internal */
+   outputPositions?: OutputPositions;
+@@ -189,6 +191,14 @@ export interface ElementNode extends Node {
+   pluginOutput?: string[];
+   /** Whether this element's enter event wrote an inline wrapper. */
+   hasEnterOutput?: boolean;
++  /** Content below this node already counts for the nearest link at or above it. */
++  linkContentCounted?: boolean;
++  /** A plugin skipped this link's start, so it takes no title or aria-label text. */
++  enterSkipped?: boolean;
++  /** Text counted in this link that never shows: excluded text and the blank text after it. */
++  hiddenTextNodes?: number;
++  /** The child count when this link dropped a blank after other content, as the space in `<a><svg></svg> </a>`. */
++  trailingBlankAt?: number;
+ }
+ export interface TextNode extends Node {
+   /** Text content (for TEXT_NODE) */
+@@ -202,11 +212,21 @@ export interface TextNode extends Node {
+   context?: PluginContext;
+   /** Follows an end tag that closed nothing, so it gets no separator. */
+   joinsPrevious?: boolean;
++  /**
++   * Whitespace that opens an inline element, other than one with a literal
++   * `tagOverrides` opener. While it stays whitespace it is placed as a word
++   * separator, and is not written as text.
++   */
++  leadingBlank?: boolean;
+   /**
+    * First text with no block ancestor: it drops its leading whitespace when
+    * the output is at the start of a line.
+    */
+   trimsAtLineStart?: boolean;
++  /** Set when a hook changed this text inside a link: whether the new value shows nothing. */
++  rewrittenBlank?: boolean;
++  /** The title or aria-label written for a link with no visible text. */
++  isLinkLabel?: boolean;
+ }
+ /**
+  * Base DOM node interface
+@@ -297,6 +317,15 @@ interface MdreamRuntimeState extends Partial<MdreamProcessingState>, PluginState
+   buffer: string[];
+   /** Performance cache for last content to avoid iteration */
+   lastContentCache?: string;
++  /** Buffer length right after an empty marker pair was dropped. */
++  droppedPairAt?: number;
++  /**
++   * A separator was just written on its own, so the next text does not start
++   * the run the redundant-title check compares.
++   */
++  separatorPending?: boolean;
++  /** The cached run follows such a separator, whether or not a drain took it. */
++  cacheFollowsSeparator?: boolean;
+   /** Reference to the last processed node */
+   lastNode?: Node;
+   context?: PluginContext;
+diff --git a/dist/_chunks/url.mjs b/dist/_chunks/url.mjs
+index c2a1274427ad6a77c5ee3145cb7d6bbc19e09df4..c3d4b5bd9a518e37e692b7a9c916ac695cc285bd 100644
+--- a/dist/_chunks/url.mjs
++++ b/dist/_chunks/url.mjs
+@@ -648,23 +648,27 @@ function traverseUpToFirstBlockNode(node) {
+ }
+ function markRenderedChildContent(node) {
+ 	let parent = node.parent;
+-	let anchorInScope = false;
+ 	while (parent) {
+ 		parent.childTextNodeIndex = (parent.childTextNodeIndex || 0) + 1;
+-		if (parent.tagId === 26) anchorInScope = true;
+ 		if (!isInlineNode(parent)) break;
+ 		parent = parent.parent;
+ 	}
+-	if (anchorInScope) return;
+-	let anchorFound = false;
+-	while (parent?.parent) {
+-		parent = parent.parent;
+-		if (!anchorFound) {
+-			if (parent.tagId !== 26) continue;
+-			anchorFound = true;
++	countContentInEnclosingLink(parent);
++}
++function countContentInEnclosingLink(block) {
++	let parent = block;
++	while (parent && !parent.linkContentCounted) {
++		parent.linkContentCounted = true;
++		if (parent.tagId !== 26) {
++			parent = parent.parent;
++			continue;
++		}
++		while (isInlineNode(parent)) {
++			parent.childTextNodeIndex = (parent.childTextNodeIndex || 0) + 1;
++			if (!parent.parent) return;
++			parent = parent.parent;
+ 		}
+ 		parent.childTextNodeIndex = (parent.childTextNodeIndex || 0) + 1;
+-		if (!isInlineNode(parent)) return;
+ 	}
+ }
+ const URL_SCHEME_RE = /^[A-Z][\dA-Z+.-]*:/i;
+@@ -747,4 +751,4 @@ function safeAnchorOutput(node, options, entering, protectMarkdown = false) {
+ 	if (!entering) return "</a>";
+ 	return `<a href="${escapeHtml(resolved, true, protectMarkdown)}"${node.attributes?.title === void 0 ? "" : ` title="${escapeHtml(node.attributes.title, true, protectMarkdown)}"`}>`;
+ }
+-export { blockOpenPrefix, decodeHTMLEntities, endsAtHardBreak, escapeHtml, figcaptionOwnsBlockSpacing, getLanguageFromAttributes, hasNonWhitespace, isCharacterReferenceTail, isDataUrl, isEmptyLinkHref, isInsideHeading, isInsideTableCell, isSafeHtmlUrl, lastOutputChar, listMarkerLineStart, markRenderedChildContent, needsSpacing, noteBufferRewrite, orderedItemNumber, parseUnsignedInteger, pendingMarkerIndent, resolveUrl, safeAnchorOutput, suppressesFormattingInPre, traverseUpToFirstBlockNode, trimOutputStart, trimTextAtLineStart };
++export { blockOpenPrefix, countContentInEnclosingLink, decodeHTMLEntities, endsAtHardBreak, escapeHtml, figcaptionOwnsBlockSpacing, getLanguageFromAttributes, hasNonWhitespace, isCharacterReferenceTail, isDataUrl, isEmptyLinkHref, isInsideHeading, isInsideTableCell, isSafeHtmlUrl, lastOutputChar, listMarkerLineStart, markRenderedChildContent, needsSpacing, noteBufferRewrite, orderedItemNumber, parseUnsignedInteger, pendingMarkerIndent, resolveUrl, safeAnchorOutput, suppressesFormattingInPre, traverseUpToFirstBlockNode, trimOutputStart, trimTextAtLineStart };
+diff --git a/dist/parse.d.mts b/dist/parse.d.mts
+index e7724d5038330179a63c30565a8f980d03aab245..006bef3cb2724dff9dea8c5730cf72c50e90c01b 100644
+--- a/dist/parse.d.mts
++++ b/dist/parse.d.mts
+@@ -63,12 +63,18 @@ export interface ParseState {
+   lastTextNode?: Node;
+   /** Resolved plugin instances for event processing */
+   resolvedPlugins?: TransformPlugin[];
++  /** Hands an event to the output past plugins and the splitter, as Rust writes a link label. */
++  outputEvent?: (event: NodeEvent) => void;
+   /** Output-specific tag behavior. Parsing metadata is used when absent. */
+   tagHandlers?: Record<number, TagHandler>;
+   /** Tag override handlers built from declarative tagOverrides config */
+   tagOverrideHandlers?: Map<string, TagHandler>;
+   /** Whether emitted text should skip Markdown-only escaping */
+   plainText?: boolean;
++  keepLeadingBlanks?: boolean;
++  /** Reuse ancestry for repeated retained blanks before any visible child. */
++  leadingBlankParent?: ElementNode;
++  leadingBlankAncestors?: ElementNode[];
+   /** Output state whose `options.origin` the first usable `<base href>` replaces. */
+   urlBaseTarget?: {
+     options: EngineOptions;
+@@ -83,6 +89,8 @@ export interface ParseState {
+   trailingText?: string;
+   /** The trailing run is an unfinished end tag of the open rawtext element. */
+   rawtextEndTagPending?: boolean;
++  /** A raw-text body the output drops left the previous chunk on a whitespace character. */
++  inertBodyBlankPending?: boolean;
+   /** The last token was an end tag that closed nothing; the next text joins. */
+   endTagClosedNothing?: boolean;
+ }
+diff --git a/dist/splitter.mjs b/dist/splitter.mjs
+index 57e3883b1304041def46be18829c01411a162b48..a99c70151deb460dcf4f9107a7ab46a9ac0bbed3 100644
+--- a/dist/splitter.mjs
++++ b/dist/splitter.mjs
+@@ -263,6 +263,7 @@ function* htmlToMarkdownSplitChunksStream(html, options = {}) {
+ 		depthMap: processor.state.depthMap,
+ 		depth: 0,
+ 		resolvedPlugins: opts.resolvedPlugins,
++		outputEvent: processor.processEvent,
+ 		tagHandlers,
+ 		tagOverrideHandlers: opts.tagOverrideHandlers,
+ 		urlBaseTarget: processor.state

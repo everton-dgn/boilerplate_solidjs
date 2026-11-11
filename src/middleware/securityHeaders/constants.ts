@@ -2,7 +2,7 @@
 // Cross-Origin-Embedder-Policy exige que recursos de outra origem respondam
 // com CORP ou CORS; os recursos do app são da mesma origem.
 export const SECURITY_HEADERS = {
-  'strict-transport-security': 'max-age=63072000; includeSubDomains; preload',
+  'strict-transport-security': 'max-age=63072000; includeSubDomains',
   'x-frame-options': 'DENY',
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',
