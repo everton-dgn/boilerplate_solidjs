@@ -46,7 +46,7 @@ const STATED_SIZE = 10
 const UNSAFE_INTEGER = Number.MAX_SAFE_INTEGER + 1
 const FRACTION = 1.5
 const BUILD_ID_LIMIT = 64
-const SCHEMA_FAILURE = /^Invalid |^Incoherent manifest$/u
+const SCHEMA_FAILURE = /^Invalid |^Manifesto incoerente$/u
 const IDENTITIES = JSON.stringify({ urls: ['https://a.test/en'], entries: [] })
 const directories: string[] = []
 
@@ -152,14 +152,14 @@ describe('leitura limitada dos artefatos do sitemap', () => {
       SITEMAP_MANIFEST_MAX_BYTES + 1
     )
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
-      'Artifact above the limit'
+      'Artefato acima do limite'
     )
   })
 
   it('não aloca além do stat quando o arquivo cresce durante a leitura', async () => {
     const { handle, read } = await useChangingFile([STATED_SIZE, 1])
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
-      'Artifact changed while reading'
+      'Artefato alterado na leitura'
     )
     expect(read.mock.calls[0]?.[0]).toHaveLength(STATED_SIZE + 1)
     expect(read).toHaveBeenLastCalledWith(
@@ -174,7 +174,7 @@ describe('leitura limitada dos artefatos do sitemap', () => {
   it('recusa arquivo que encolhe durante a leitura', async () => {
     const { handle } = await useChangingFile([STATED_SIZE - 1])
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
-      'Artifact changed while reading'
+      'Artefato alterado na leitura'
     )
     expect(handle.fd).toBe(-1)
   })
@@ -260,7 +260,7 @@ describe('leitura limitada dos artefatos do sitemap', () => {
       JSON.stringify({ ...arrayManifest(), identities: null })
     )
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
-      'Incoherent manifest'
+      'Manifesto incoerente'
     )
   })
 
@@ -270,7 +270,7 @@ describe('leitura limitada dos artefatos do sitemap', () => {
     await writeFile(file, IDENTITIES)
     await truncate(file, SITEMAP_IDENTITIES_MAX_BYTES + 1)
     await expect(createSitemapArtifacts().readIdentities()).rejects.toThrow(
-      'Artifact above the limit'
+      'Artefato acima do limite'
     )
   })
 
@@ -280,12 +280,12 @@ describe('leitura limitada dos artefatos do sitemap', () => {
       {
         contents: IDENTITIES.slice(1),
         edit: {},
-        failure: 'Identities from another generation'
+        failure: 'Identidades de outra geração'
       },
       {
         contents: IDENTITIES.replace('/en', '/pt'),
         edit: {},
-        failure: 'Identities from another generation'
+        failure: 'Identidades de outra geração'
       },
       {
         contents: corrupted,
@@ -308,7 +308,7 @@ describe('leitura limitada dos artefatos do sitemap', () => {
   it('compara o build com o valor do bundle, nunca com o do manifesto', async () => {
     await writeManifest(JSON.stringify(manifest({ buildId: 'other-build' })))
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
-      'Manifest from another build'
+      'Manifesto de outro build'
     )
     vi.stubEnv('PUBLICATION_BUILD_ID', 'other-build')
     await expect(

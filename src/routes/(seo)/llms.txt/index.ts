@@ -67,7 +67,7 @@ const renderLlmsText = memoizeOnce({
 function missingArtifact(): Response {
   logServerFailure({
     source: 'llms',
-    error: new Error('llms.txt outside the file layer')
+    error: new Error('llms.txt fora da camada de arquivos')
   })
   return new Response(null, {
     status: HTTP_SERVICE_UNAVAILABLE,

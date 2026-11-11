@@ -73,7 +73,7 @@ export function renderPart({
 }: RenderOptions): Response {
   const { siteUrl, method = 'GET' } = options
   if (entries.length * locales.length > SITEMAP_URL_LIMIT) {
-    throw new Error('Sitemap exceeds the URL limit')
+    throw new Error('Sitemap excede limite de URLs')
   }
   validateLocations({ entries, siteUrl })
   const xml = buildSitemap({ entries, siteUrl, byteBudget })
@@ -92,6 +92,6 @@ export async function respondIndex(read: ReadOptions): Promise<Response> {
     if (xml) return xmlResponse({ xml, method })
   }
   if (indexCount === 0) return errorResponse(HTTP_NOT_FOUND)
-  if (!indexXml) throw new Error('Missing index')
+  if (!indexXml) throw new Error('Índice ausente')
   return xmlResponse({ xml: indexXml, method })
 }

@@ -33,7 +33,7 @@ async function readArraySources({
     context.signal.throwIfAborted()
     const result = await context.readSource({ key: source, run: source })
     if (!Array.isArray(result) || count + result.length > ENTRY_LIMIT) {
-      throw new Error('Array source exceeds the limit')
+      throw new Error('Fonte em array excede limite')
     }
     count += result.length
     const routePath = manifest.sourceRoutes?.[index]
@@ -49,7 +49,7 @@ async function readArraySources({
       routePath &&
       entries.some(entry => matchRoute?.(entry.path) !== routePath)
     ) {
-      throw new Error('Array source published another route')
+      throw new Error('Fonte em array publicou outra rota')
     }
     collected.push(entries)
   }
@@ -87,17 +87,17 @@ export async function readPartitionEntries({
       })
   })
   if (!Array.isArray(raw) || raw.length > ENTRY_LIMIT) {
-    throw new Error('Partition exceeds the limit')
+    throw new Error('Partição excede limite')
   }
   const parsed = v.parse(EntriesSchema, raw)
   // A normalização descarta URLs repetidas; numa partição, repetir é erro.
   const entries = normalizeSitemapEntries({ entries: parsed, siteUrl })
-  if (entries.length !== parsed.length) throw new Error('Duplicate entry')
+  if (entries.length !== parsed.length) throw new Error('Entrada duplicada')
   if (entries.length === 0) return entries
   const { matchRoute } = catalog.readRoutes()
   for (const entry of entries) {
     if (!matchRoute || matchRoute(entry.path) !== selected.routePath) {
-      throw new Error('Entry outside the source')
+      throw new Error('Entrada fora da fonte')
     }
   }
   return entries

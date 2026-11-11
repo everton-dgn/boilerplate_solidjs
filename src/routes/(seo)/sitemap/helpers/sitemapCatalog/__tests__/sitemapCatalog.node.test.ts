@@ -31,7 +31,7 @@ describe('catálogo direto de sitemap', () => {
       manifest: { entries: [{ path: '/page' }], sources: [] }
     })
     expect(() => oversized.readSummary()).toThrow(
-      'Locale group exceeds the limit'
+      'Grupo de idiomas excede limite'
     )
   })
 })

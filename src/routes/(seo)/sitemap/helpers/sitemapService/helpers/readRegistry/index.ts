@@ -47,18 +47,18 @@ function getRegistry({
       source.id === 'array' ||
       ids.has(source.id)
     ) {
-      throw new Error('Invalid source ID')
+      throw new Error('ID de fonte inválido')
     }
     ids.set(source.id, source)
     if (routes.has(source.routePath)) {
-      throw new Error('Two sources on the same route')
+      throw new Error('Duas fontes na mesma rota')
     }
     if (arrayRoutes.has(source.routePath)) {
-      throw new Error('Array and partitioned sources on the same route')
+      throw new Error('Fonte em array e particionada na mesma rota')
     }
     routes.add(source.routePath)
     if (!eligible.has(source.routePath)) {
-      throw new Error('Source route is not eligible')
+      throw new Error('Rota da fonte não é elegível')
     }
   }
   bySources.set(sources, ids)

@@ -37,7 +37,9 @@ describe('normalização das entradas do sitemap', () => {
     String.raw`/a\b`,
     '/a b'
   ])('rejeita o caminho %j', path => {
-    expect(() => normalize([{ path }])).toThrow('Invalid sitemap path')
+    expect(() => normalize([{ path }])).toThrow(
+      'Caminho inválido para o sitemap'
+    )
   })
 
   it('deduplica pelo caminho normalizado, mantendo a primeira ocorrência', () => {

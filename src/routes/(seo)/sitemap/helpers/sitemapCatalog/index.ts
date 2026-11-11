@@ -54,7 +54,7 @@ function pageParts({
       (current.length === 0 && shouldSplitByUrls) ||
       frameBytes + groupBytes > byteBudget
     ) {
-      throw new Error('Locale group exceeds the limit')
+      throw new Error('Grupo de idiomas excede limite')
     }
     if (shouldSplitByUrls || currentBytes + groupBytes > byteBudget) {
       parts.push(current)
@@ -134,7 +134,7 @@ export function createArtifactCatalog({
   const readManifest = async () => {
     const manifest = await artifacts.readManifest()
     if (manifest.siteUrl !== siteUrl || manifest.byteBudget !== byteBudget) {
-      throw new Error('Manifest from another generation')
+      throw new Error('Manifesto de outra geração')
     }
     return manifest
   }
@@ -142,7 +142,7 @@ export function createArtifactCatalog({
     readSummary: async () => {
       const manifest = await readManifest()
       if (manifest.hasPartitionSources !== hasPartitionSources) {
-        throw new Error('Manifest from another source registry')
+        throw new Error('Manifesto de outro registro de fontes')
       }
       return {
         partCount: manifest.pagePartCount,
@@ -156,7 +156,7 @@ export function createArtifactCatalog({
     readPart: async index => {
       const { pagePartCount } = await readManifest()
       if (index <= pagePartCount) {
-        throw new Error('Static part outside the file layer')
+        throw new Error('Parte estática fora da camada de arquivos')
       }
     },
     readSinglePart: async () => {
