@@ -8,10 +8,10 @@ As páginas em `src/routes` usam `export default` e são descobertas pelo
 `filesystem-routing`. `index.tsx` define `/`, `[id].tsx` define um parâmetro
 dinâmico e `[...404]/index.tsx` captura caminhos desconhecidos. O
 `export const route` define opções como `preload`, usado pelo fallback para
-responder com HTTP 404. Componentes colocalizados podem ficar em pastas
-`components` dentro de `routes`: use exportações nomeadas para que eles não
-sejam registrados como páginas. Não é necessário editar `src/router.ts` ao
-adicionar uma página.
+responder com HTTP 404. Componentes e outros módulos usados por uma única rota
+ficam na pasta dela, com dois ou mais auxiliares agrupados em `helpers/`: sem
+`export default` nem handler HTTP, eles não são registrados como páginas. Não é
+necessário editar `src/router.ts` ao adicionar uma página.
 
 O arquivo `src/routes/(base).tsx` define o layout compartilhado com `Topbar` e
 renderiza `props.children` com `RouteSectionProps`. Sua pasta `(base)/` contém
