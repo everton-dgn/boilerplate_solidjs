@@ -14,6 +14,7 @@ type OutputOptions = {
   releaseOutput: () => void
 }
 type AbortListenerHolder = { onAbort?: () => void }
+type BypassOptions = { response: Response; kind: PublicationOptions['kind'] }
 type HeadOptions = {
   response: Response
   abortPromise: Promise<never>
@@ -39,10 +40,7 @@ export function overloadResponse(method: string): Response {
   })
 }
 
-export function shouldBypassOutput(
-  response: Response,
-  kind: PublicationOptions['kind']
-): boolean {
+export function shouldBypassOutput({ response, kind }: BypassOptions): boolean {
   return (
     !response.body ||
     (kind === 'markdown' &&

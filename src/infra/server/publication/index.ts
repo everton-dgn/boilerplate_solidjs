@@ -235,7 +235,7 @@ export function createPublicationController(
         void discardResponse(response)
         return errorResponse()
       }
-      if (shouldBypassOutput(response, kind)) {
+      if (shouldBypassOutput({ response, kind })) {
         releaseOutput()
         return response
       }
