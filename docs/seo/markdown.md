@@ -152,17 +152,17 @@ Links preservam o texto visível dentro de blocos e usam o nome acessível após
 dois ícones. Títulos vazios em itens de lista e linhas só de `===` ou `--`
 depois de uma quebra já saem corretos na versão publicada, sem o patch.
 
-O patch altera só o `dist` do pacote. Ele é o build da tag `v2.1.0` com os PRs
+O patch altera só o `dist` do pacote. Ele é o build da tag instalada com os PRs
 [harlan-zw/mdream#385](https://github.com/harlan-zw/mdream/pull/385) (espaços) e
 [#390](https://github.com/harlan-zw/mdream/pull/390) (nomes de links) mesclados.
 Os dois conflitam em `parse.ts`: o #385 mantém o espaço inicial dentro de
 elementos inline, e o #390 só registrava o espaço de um link quando o parser o
 descartava. A combinação registra esse espaço nos dois casos e usa a comparação
-de título do #385. Nela, um caso da suíte do #385 ainda diverge: um link vazio
-com título terminado em espaço, dentro de código e seguido de `figcaption`,
-perde o espaço antes da legenda. Remova o patch quando uma versão publicada
-cobrir esses comportamentos e os testes de regressão de `convertHtml` passarem
-sem ele.
+de título do #385. Nela, um caso da suíte do #385 diverge: um link vazio com
+título terminado em espaço, dentro de código e seguido de `figcaption`, perde o
+espaço antes da legenda, que cada PR isolado mantém. Remova o patch quando uma
+versão publicada cobrir esses comportamentos e os testes de regressão de
+`convertHtml` passarem sem ele.
 
 GET com `Accept: text/markdown` recebe Markdown diretamente, sem redirect para
 arquivo. A negociação respeita pesos e especificidade, com HTML em empate. O
