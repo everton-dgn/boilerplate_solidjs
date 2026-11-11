@@ -6,7 +6,7 @@
       "name": "boilerplate_solidjs",
       "dependencies": {
         "@inlang/paraglide-js": "3.2.2",
-        "@mdream/js": "2.0.3",
+        "@mdream/js": "2.1.0",
         "@solidjs/router": "2.0.0-next.44",
         "@solidjs/web": "2.0.0-rc.21",
         "filesystem-routing": "0.5.0",
@@ -47,8 +47,8 @@
     "lefthook",
   ],
   "patchedDependencies": {
-    "@mdream/js@2.0.3": "patches/@mdream%2Fjs@2.0.3.patch",
     "@solidjs/web@2.0.0-rc.21": "patches/@solidjs%2Fweb@2.0.0-rc.21.patch",
+    "@mdream/js@2.1.0": "patches/@mdream%2Fjs@2.1.0.patch",
   },
   "overrides": {
     "@solidjs/compiler": "2.0.0-rc.21",
@@ -195,7 +195,7 @@
 
     "@lix-js/sdk": ["@lix-js/sdk@0.20.1", "", { "dependencies": { "@bytecodealliance/jco-transpile": "0.13.0", "binaryen": "130.0.0", "fflate": "^0.8.3" } }, "sha512-oscOFP8Cr1My6Wh2KVYC9+aJ1mHs+d7vnD+7PPJaA4L+Y1FR37Sm99SrFGfvUizaj/XtRi2GlDF2IOFt9iXMNQ=="],
 
-    "@mdream/js": ["@mdream/js@2.0.3", "", { "dependencies": { "cac": "^7.0.1", "pathe": "^2.0.3" }, "bin": { "mdream-js": "./bin/mdream.mjs" } }, "sha512-n35jmVwE663LBHr9iawaIbO+zpJ5EoCFD9UpG4XRYHs//YUqIX322d/F+QuF08Yi64dpFfzz4p4/joTnVZDvJA=="],
+    "@mdream/js": ["@mdream/js@2.1.0", "", { "dependencies": { "cac": "^7.1.0", "pathe": "^2.0.3" }, "bin": { "mdream-js": "./bin/mdream.mjs" } }, "sha512-fctd6z1bvutUEEj5nyxgVq60et2Fu4m61okxHqHAXoGVjJv3KqxVLbqtJAgzs43ytZryFXb8FIWYO916dEVqjA=="],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.2.3", "", { "dependencies": { "@tybys/wasm-util": "0.10.3" }, "peerDependencies": { "@emnapi/core": "^1.7.1 || ^2.0.0-alpha.4", "@emnapi/runtime": "^1.7.1 || ^2.0.0-alpha.4" } }, "sha512-UMduMbqO5s5zF2NkNacMT/yK5Y5QiKvWr2+50bzIIxFDwVJ2h49b+oyjaCGPhJxd2/gC2x39EHv/gHVuu36x2Q=="],
 

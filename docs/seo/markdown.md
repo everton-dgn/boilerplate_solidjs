@@ -140,25 +140,29 @@ imagens decorativas. Rodapés contextuais dentro de main permanecem. CSS
 calculado e conteúdo criado exclusivamente no navegador não são interpretados.
 Use marcação semântica para conteúdo que não deve aparecer.
 
-O patch Bun de `@mdream/js` corrige a conversão de espaços, títulos em listas e
-nomes de links com esses filtros. Uma ênfase cujo início foi removido, como um
-ícone SVG, ficava com o espaço dentro do delimitador (`** Warning:**`), e uma
-linha só de `===` ou `--` depois de uma quebra virava sublinhado de título. Um
-título vazio num item de lista virava `\###`, colado ao bloco seguinte. Um link
-com `aria-label` cujo único conteúdo é removido, como um ícone com
+O patch Bun de `@mdream/js` corrige a conversão de espaços e de nomes de links
+com esses filtros. Uma ênfase cujo início foi removido, como um ícone SVG,
+ficava com o espaço dentro do delimitador (`** Warning:**`). Um link com
+`aria-label` cujo único conteúdo é removido, como um ícone com
 `aria-hidden="true"`, saía sem texto (`[](/cart)`). A correção também preserva
 separadores entre palavras em wrappers inline, inclusive antes de um espaço
-inseparável. Títulos em listas ficam separados do texto seguinte, com os
-marcadores literais escapados na coluna do conteúdo; wrappers de ênfase e
-legendas mantêm seus delimitadores juntos. Links preservam o texto visível
-dentro de blocos e usam o nome acessível após ícones removidos, sem perder o
-espaço final nem mover para fora o espaço entre dois ícones. O patch altera só o
-`dist` do pacote e corresponde aos PRs
-[harlan-zw/mdream#385](https://github.com/harlan-zw/mdream/pull/385) (espaços e
-sublinhado de título), [#386](https://github.com/harlan-zw/mdream/pull/386)
-(títulos em listas) e [#390](https://github.com/harlan-zw/mdream/pull/390)
-(nomes de links). Remova-o quando uma versão publicada cobrir esses
-comportamentos e os testes de regressão de `convertHtml` passarem sem ele.
+inseparável; wrappers de ênfase e legendas mantêm seus delimitadores juntos.
+Links preservam o texto visível dentro de blocos e usam o nome acessível após
+ícones removidos, sem perder o espaço final nem mover para fora o espaço entre
+dois ícones. Títulos vazios em itens de lista e linhas só de `===` ou `--`
+depois de uma quebra já saem corretos na versão publicada, sem o patch.
+
+O patch altera só o `dist` do pacote. Ele é o build da tag `v2.1.0` com os PRs
+[harlan-zw/mdream#385](https://github.com/harlan-zw/mdream/pull/385) (espaços) e
+[#390](https://github.com/harlan-zw/mdream/pull/390) (nomes de links) mesclados.
+Os dois conflitam em `parse.ts`: o #385 mantém o espaço inicial dentro de
+elementos inline, e o #390 só registrava o espaço de um link quando o parser o
+descartava. A combinação registra esse espaço nos dois casos e usa a comparação
+de título do #385. Nela, um caso da suíte do #385 ainda diverge: um link vazio
+com título terminado em espaço, dentro de código e seguido de `figcaption`,
+perde o espaço antes da legenda. Remova o patch quando uma versão publicada
+cobrir esses comportamentos e os testes de regressão de `convertHtml` passarem
+sem ele.
 
 GET com `Accept: text/markdown` recebe Markdown diretamente, sem redirect para
 arquivo. A negociação respeita pesos e especificidade, com HTML em empate. O
