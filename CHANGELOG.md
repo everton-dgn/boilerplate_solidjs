@@ -2,6 +2,43 @@
 
 ## Unreleased
 
+## 1.15.0 - 2026-11-11
+
+### Added
+
+- cap the catalog bytes the generator reads (db6f2ff)
+
+### Fixed
+
+- check the catalog size before reading it (901c6f4)
+- regenerate the lockfile (b7eba0c)
+- refresh the locked transitive dependencies (cc45e24)
+- refuse an e2e build under TEST\_PREBUILT (cbd1550)
+- update mdream to 2.1.0 (43cec4d)
+- update paraglide to 3.2.2 and knip to 6.45.0 (34d0d65)
+- keep the server up when a render is abandoned in the first write (bf741f0)
+- reject import.meta.glob in seo modules (1ff601b)
+- keep the controlled Input value in the server HTML (2e5803c)
+- restore the cross-run validation cache (776a45b)
+- keep the CI end-to-end suites on two workers (451db95)
+- serialize the array sitemap part once per request (f5cbe5d)
+- update vite-plus to 1.5.1 (d94f75d)
+- call location directly in the navigation guards (25e404b)
+- restore the Button label prop and document why it stays (d22209d)
+- send the application HSTS on static files (6a63dde)
+- reject computed dynamic imports in seo modules (8a6629b)
+- answer 405 when an API route lacks the method (e863d66)
+- drop glyph names from the Inter files (01abf5e)
+- render pages without opt-in outside the publication (7a700f9)
+- keep publication cancellations out of the operation log (211013e)
+- list the published languages from the configured locales (9ba4c21)
+- serve the variable Inter latin subset (247099a)
+- drop preload from the default HSTS header (0b1443c)
+- reject route imports through aliases in seo modules (2995252)
+- answer 405 to methods an API route does not handle (f3e49f1)
+- answer conversion failures with the localized public 500 (191b7aa)
+- update eslint-plugin-solid to 0.19.0 (5068721)
+
 ## 1.14.4 - 2026-11-08
 
 ### Fixed
