@@ -229,6 +229,14 @@ das outras tarefas, use `vp run --no-cache typecheck:node`,
 `vp run --no-cache lint:css` ou `vp run --no-cache dead-code`. `check:fix`,
 build e as suítes do Vitest mantêm seus comandos próprios.
 
+Antes de ignorar o cache, veja o que ele faria: `vp run --dry-run check:ci`
+lista cada comando da execução e indica se ele acertaria o cache, sem rodar nada
+nem gravar no cache. Com `--json`, o mesmo plano sai num documento para scripts.
+Para descobrir por que uma tarefa perdeu o cache, rode-a com `-v`, que lista as
+mudanças por trás de cada perda, inclusive os arquivos de entrada alterados;
+`-vv` acrescenta as entradas inalteradas e as saídas que um acerto restaura. O
+plano não substitui a conferência de invalidação descrita acima.
+
 ## Runtimes e CI
 
 No CI e na automação de release, o `setup-vp` fornece o Node e o Bun declarados
