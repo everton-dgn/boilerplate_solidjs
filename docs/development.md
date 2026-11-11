@@ -427,10 +427,6 @@ seguintes depois de uma falha.
   runtime do Solid, e o de `@solidjs/signals` prende o núcleo reativo à mesma
   versão do `solid-js`, que o declara com `^`. Atualize os dois junto com
   `solid-js` e `@solidjs/web`, respeitando a compatibilidade do plugin do Vite.
-- O override de `fast-uri` corrige avisos de segurança numa transitiva do
-  commitlint. O `bun.lock` guarda o `ajv` preso a uma versão exata do
-  `fast-uri`, herança da migração do lockfile, e por isso o `bun audit fix` não
-  a alcança. Remova o override quando `bun audit` passar sem ele.
 - O plugin do Solid compila com o compilador nativo e não instala Babel. Para
   usar `compiler: 'babel'`, declare `@babel/core` e `@solidjs/babel-plugin` como
   devDependencies, com o plugin Babel na versão do runtime do Solid; a opção
