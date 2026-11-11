@@ -179,7 +179,7 @@ export function createPublicationController(
         else sourceCounts.delete(key)
         finish()
       }
-      void observeSettlement(task, settle)
+      void observeSettlement({ task, settle })
       return task
     }
     const context: PublicationContext = { signal: combined, readSource }
@@ -191,9 +191,12 @@ export function createPublicationController(
           isActive: () => !hasProducerReleased,
           observe: operation => {
             children += 1
-            void observeSettlement(operation, () => {
-              children -= 1
-              finish()
+            void observeSettlement({
+              task: operation,
+              settle: () => {
+                children -= 1
+                finish()
+              }
             })
           },
           run: () => run(context)
@@ -206,7 +209,7 @@ export function createPublicationController(
       hasRunSettled = true
       finish()
     }
-    void observeSettlement(producer, settleRun)
+    void observeSettlement({ task: producer, settle: settleRun })
 
     const discardResponse = async (response: Response): Promise<void> => {
       try {

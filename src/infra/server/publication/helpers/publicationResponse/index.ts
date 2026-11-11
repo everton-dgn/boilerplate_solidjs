@@ -65,7 +65,7 @@ export async function handleHeadResponse({
       headers: response.headers
     })
   }
-  void observeSettlement(cancellation, releaseOutput)
+  void observeSettlement({ task: cancellation, settle: releaseOutput })
   try {
     await Promise.race([cancellation, abortPromise])
   } catch (error) {

@@ -1,7 +1,9 @@
-export async function observeSettlement(
-  task: Promise<unknown>,
-  settle: () => void
-): Promise<void> {
+type SettlementOptions = { task: Promise<unknown>; settle: () => void }
+
+export async function observeSettlement({
+  task,
+  settle
+}: SettlementOptions): Promise<void> {
   try {
     await task
   } catch {
