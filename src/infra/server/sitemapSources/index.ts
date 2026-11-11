@@ -1,5 +1,5 @@
 import 'server-only'
 import type { SitemapPartitionSource } from '@/@types/sitemap.ts'
 
-// Applications register their own server-only sources here.
+// As aplicações registram aqui as próprias fontes exclusivas do servidor.
 export const sitemapSources: readonly SitemapPartitionSource[] = []

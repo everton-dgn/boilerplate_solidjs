@@ -111,7 +111,7 @@ export async function convertHtml({
   signal
 }: ConvertOptions): Promise<string> {
   signal.throwIfAborted()
-  // Async SSR may already hold the complete HTML; this limits additional accumulation.
+  // O SSR assíncrono pode já ter o HTML completo; isto limita o acúmulo adicional.
   const reader = response.body?.getReader()
   if (!reader) throw new Error('Markdown response has no body')
   const chunks: Uint8Array[] = []
@@ -122,7 +122,7 @@ export async function convertHtml({
       try {
         await reader.cancel()
       } catch {
-        // A failed cancellation still closes ownership of this reader.
+        // Um cancelamento que falha ainda encerra a posse deste reader.
       }
     })()
     return cancellation

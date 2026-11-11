@@ -102,12 +102,12 @@ export function createOutputResponse({
     try {
       outputController.error(reason)
     } catch {
-      /* Already closed by the consumer. */
+      /* Já fechado pelo consumidor. */
     }
     try {
       await reader.cancel(reason)
     } catch {
-      /* Cancellation is best effort. */
+      /* O cancelamento é de melhor esforço. */
     }
     finishOutput()
   }
