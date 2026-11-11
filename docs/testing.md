@@ -354,9 +354,11 @@ credenciais de backend desse arquivo não são repassadas ao preview. Com
 PRs, inclusive de forks, mantêm os builds locais sem credenciais da Vercel. Os
 comandos locais também continuam compilando por padrão. Para conferir um build
 de produção já gerado, use `TEST_PREBUILT=true vp run test:e2e:production`. O
-modo exige rotas de produção; usá-lo com a suíte de fixtures causa erro. Os
-testes de `tooling/__tests__/playwright.test.ts` executam os comandos de startup
-com um CLI simulado e verificam a quantidade de builds em cada modo.
+modo exige rotas de produção; usá-lo com a suíte de fixtures causa erro. Um
+build do modo `e2e` em `.vercel/output`, deixado por um `vp run test:e2e`
+anterior, é recusado antes de o preview iniciar. Os testes de
+`tooling/__tests__/playwright.test.ts` executam os comandos de startup com um
+CLI simulado e verificam a quantidade de builds em cada modo.
 
 Use `vp run test:e2e:ui` para abrir a interface interativa do Playwright. Com
 `CI=true`, os E2E usam dois workers; localmente, mantêm o paralelismo padrão.

@@ -129,6 +129,45 @@ it('rejects prebuilt mode for fixture routes', async () => {
   )
 })
 
+it('refuses to preview an e2e build as a prebuilt production build', async context => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'playwright-prebuilt-'))
+  context.after(() => rm(directory, { recursive: true, force: true }))
+  await mkdir(path.join(directory, '.vercel/output/static/.vite'), {
+    recursive: true
+  })
+  await writeFile(
+    path.join(directory, 'vp'),
+    '#!/bin/sh\nprintf "%s\\n" "$*" >> "$COMMAND_LOG"\n',
+    { mode: 0o755 }
+  )
+  const { stdout } = await exec(
+    execPath,
+    [
+      '--input-type=module',
+      '--eval',
+      `const {default: config} = await import(${JSON.stringify(CONFIG)}); process.stdout.write(JSON.stringify(config));`
+    ],
+    { env: { ...env, TEST_PRODUCTION_ROUTES: 'true', TEST_PREBUILT: 'true' } }
+  )
+  const server = v
+    .parse(configSchema, JSON.parse(stdout))
+    .webServer.at(LAST_INDEX)
+  assert.ok(server)
+  const log = path.join(directory, 'commands')
+  await assert.rejects(
+    exec('sh', ['-c', server.command], {
+      cwd: directory,
+      env: {
+        ...env,
+        PATH: `${directory}${path.delimiter}${env.PATH ?? ''}`,
+        COMMAND_LOG: log
+      }
+    }),
+    { code: 1, stderr: /TEST_PREBUILT found an e2e build/u }
+  )
+  await assert.rejects(readFile(log, 'utf8'), { code: 'ENOENT' })
+})
+
 it('isolates publication saturation from normal fixtures and production routes', async () => {
   for (const isLoadEnabled of [false, true]) {
     const { stdout } = await exec(
