@@ -14,7 +14,7 @@ type ApiRequest = {
   path: string
   method: string
   payload?: Json
-  allowMissing?: boolean
+  canBeMissing?: boolean
 }
 type SourceRun = {
   conclusion: string
@@ -57,7 +57,7 @@ async function request<T>({
   path,
   method,
   payload,
-  allowMissing = false
+  canBeMissing = false
 }: ApiRequest): Promise<T> {
   const args = ['api', path, '--method', method, '--include']
   if (payload !== undefined) args.push('--input', '-')
@@ -74,7 +74,7 @@ async function request<T>({
         }
         // O status HTTP vem no stdout mesmo quando o gh falha; só o 404 esperado
         // vira ausência, nunca uma falha de autenticação ou de rede.
-        if (allowMissing && /^HTTP\/\S+ 404\b/mu.test(stdout)) {
+        if (canBeMissing && /^HTTP\/\S+ 404\b/mu.test(stdout)) {
           resolve('')
           return
         }
@@ -128,7 +128,7 @@ export function mutate<T>(mutation: Mutation): Promise<T> {
 }
 
 export function optionalApi<T>(path: string): Promise<T | undefined> {
-  return request<T | undefined>({ path, method: 'GET', allowMissing: true })
+  return request<T | undefined>({ path, method: 'GET', canBeMissing: true })
 }
 
 export function requireSha(value: string): string {

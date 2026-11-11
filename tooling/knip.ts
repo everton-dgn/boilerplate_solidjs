@@ -10,7 +10,7 @@ import type { KnipConfig } from 'knip'
 
 type DiscoverRouteModulesOptions = {
   directory: string
-  production: boolean
+  isProduction: boolean
 }
 
 function isModuleRef(value: unknown): value is ModuleRef {
@@ -32,7 +32,7 @@ function routeSources(route: RouteManifestEntry): string[] {
 
 async function discoverRouteModules({
   directory,
-  production
+  isProduction
 }: DiscoverRouteModulesOptions) {
   const router = new PageFileSystemRouter({
     dir: `${import.meta.dirname}/../${directory}`,
@@ -45,7 +45,8 @@ async function discoverRouteModules({
 
   return [...sources].map(
     src =>
-      path.relative(`${import.meta.dirname}/..`, src) + (production ? '!' : '')
+      path.relative(`${import.meta.dirname}/..`, src) +
+      (isProduction ? '!' : '')
   )
 }
 
@@ -110,14 +111,14 @@ const config = {
 
 export default async function configureKnip(): Promise<KnipConfig> {
   const [pages, fixtures, e2ePages] = await Promise.all([
-    discoverRouteModules({ directory: 'src/routes', production: true }),
+    discoverRouteModules({ directory: 'src/routes', isProduction: true }),
     discoverRouteModules({
       directory: 'src/tests/fixtures/routes',
-      production: false
+      isProduction: false
     }),
     discoverRouteModules({
       directory: 'src/tests/fixtures/e2e/routes',
-      production: false
+      isProduction: false
     })
   ])
 
