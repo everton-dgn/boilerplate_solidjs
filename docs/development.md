@@ -194,15 +194,18 @@ tarefas com cache `lint-project`, `lint-css`, `check-project` e
 declaram `dependsOn: ['lint-css']`: o lint de CSS roda antes, com cache e
 entradas próprias, e uma mudança só em TypeScript não o executa de novo. As duas
 tarefas compartilham as entradas da constante `PROJECT_CHECK_INPUTS`.
-`vp run typecheck:node` usa a tarefa `typecheck-node`; `vp run test:tooling` usa
-a tarefa `test-tooling`, sem cache, porque os testes dependem de diretórios
-temporários que o cache não rastreia. O Vite+ reaproveita resultados
-bem-sucedidos quando os arquivos lidos, as listagens de diretórios, os
-argumentos e as variáveis de ambiente selecionadas continuam iguais. As tarefas
-de lint incluem `NODE_ENV` na chave do cache; `PATH` e `NODE_OPTIONS` chegam ao
-processo sem invalidar o resultado. O Vite também registra as variáveis que
-carrega. A configuração do servidor limita `loadEnv` aos prefixos `HOST` e
-`PORT`, para não registrar todo o ambiente.
+`check-project` roda `vp check --continue-on-error`: uma falha de formatação não
+interrompe o lint nem a checagem de tipos, a saída reúne os três resultados e o
+comando termina com erro se qualquer um deles falhar. `vp run typecheck:node`
+usa a tarefa `typecheck-node`; `vp run test:tooling` usa a tarefa
+`test-tooling`, sem cache, porque os testes dependem de diretórios temporários
+que o cache não rastreia. O Vite+ reaproveita resultados bem-sucedidos quando os
+arquivos lidos, as listagens de diretórios, os argumentos e as variáveis de
+ambiente selecionadas continuam iguais. As tarefas de lint incluem `NODE_ENV` na
+chave do cache; `PATH` e `NODE_OPTIONS` chegam ao processo sem invalidar o
+resultado. O Vite também registra as variáveis que carrega. A configuração do
+servidor limita `loadEnv` aos prefixos `HOST` e `PORT`, para não registrar todo
+o ambiente.
 
 O rastreamento automático registra os arquivos que o lint type-aware lê,
 inclusive os tipos em `node_modules`, mas não vê as leituras do `tsc` nativo.
