@@ -5,10 +5,13 @@ import messageFormat from '@inlang/plugin-message-format'
 import { checkBundle } from '@inlang/sdk'
 import * as v from 'valibot'
 
+import { CATALOGS_MAX_BYTES } from './constants.ts'
+
 type CatalogOptions = {
   root: string
   locales: readonly string[]
   baseLocale: string
+  maxBytes?: number
 }
 
 type ParseOptions = { file: string; source: string }
@@ -171,7 +174,8 @@ async function validateMessages({
 export async function readCatalogs({
   root,
   locales,
-  baseLocale
+  baseLocale,
+  maxBytes = CATALOGS_MAX_BYTES
 }: CatalogOptions): Promise<Record<string, Catalog>> {
   if (
     !locales.includes(baseLocale) ||
@@ -193,6 +197,7 @@ export async function readCatalogs({
     locales.map(locale => [locale, {}])
   )
   const owners = new Map<string, string>()
+  let totalBytes = 0
 
   for (const [directory, entries] of filesByDirectory) {
     const present = entries.map(file => path.basename(file, '.json'))
@@ -209,10 +214,14 @@ export async function readCatalogs({
       ...locales.filter(item => item !== baseLocale)
     ]) {
       const file = path.join(directory, `${locale}.json`)
-      const catalog = parseCatalog({
-        file,
-        source: await readFile(path.join(root, file), 'utf8')
-      })
+      const content = await readFile(path.join(root, file))
+      totalBytes += content.byteLength
+      if (totalBytes > maxBytes) {
+        throw new Error(
+          `[i18n] Catalogs exceed the ${maxBytes} byte budget at ${file}. Raise CATALOGS_MAX_BYTES only after measuring the build memory.`
+        )
+      }
+      const catalog = parseCatalog({ file, source: content.toString('utf8') })
       current[locale] = catalog
       Object.assign(catalogs[locale] ?? {}, catalog)
     }

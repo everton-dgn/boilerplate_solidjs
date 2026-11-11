@@ -210,6 +210,28 @@ describe('colocated translations', () => {
       /es\.json: missing-variable.*name/u
     )
   })
+
+  it('fails at the catalog that crosses the byte budget, before parsing it', async context => {
+    const parent = await sandbox(context)
+    const options = await fixture({ parent })
+    const valid = Buffer.byteLength(
+      JSON.stringify({ home_hello: 'Hello {name}' })
+    )
+    const broken = '{'
+    await writeFile(
+      path.join(options.root, 'src/routes/Home/i18n/es.json'),
+      broken
+    )
+    const total = valid * (LOCALES.length - 1) + broken.length
+    await assert.rejects(
+      readCatalogs({ ...options, maxBytes: total - 1 }),
+      /exceed the \d+ byte budget at src\/routes\/Home\/i18n\/es\.json/u
+    )
+    await assert.rejects(
+      readCatalogs({ ...options, maxBytes: total }),
+      /Invalid catalog src\/routes\/Home\/i18n\/es\.json/u
+    )
+  })
 })
 
 describe('catalog file filter', () => {
