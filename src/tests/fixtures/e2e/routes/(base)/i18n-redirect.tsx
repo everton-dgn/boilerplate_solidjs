@@ -31,9 +31,9 @@ export default function I18nRedirect() {
   const location = useLocation()
   const navigate = useNavigate()
   const localizedNavigate = createLocalizedNavigate()
-  const [requested, setRequested] = createSignal(params.initial === '1')
+  const [isRequested, setIsRequested] = createSignal(params.initial === '1')
   const result = createMemo(() =>
-    requested() ? readRedirect({ locale: 'es', source: 'query' }) : ''
+    isRequested() ? readRedirect({ locale: 'es', source: 'query' }) : ''
   )
   return (
     <main>
@@ -65,7 +65,7 @@ export default function I18nRedirect() {
       <form action={submitRelative.with('empty')} method="post">
         <button type="submit">Relative empty redirect</button>
       </form>
-      <button type="button" onClick={() => setRequested(true)}>
+      <button type="button" onClick={() => setIsRequested(true)}>
         Spanish query redirect
       </button>
       <button

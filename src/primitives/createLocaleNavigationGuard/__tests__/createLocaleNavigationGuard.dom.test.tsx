@@ -168,11 +168,11 @@ describe('locale guard with Router response processing', () => {
     )
     let request: (() => void) | undefined
     function Page() {
-      const [requested, setRequested] = createSignal(false)
+      const [isRequested, setIsRequested] = createSignal(false)
       request = () => {
-        setRequested(true)
+        setIsRequested(true)
       }
-      const value = createMemo(() => (requested() ? read() : ''))
+      const value = createMemo(() => (isRequested() ? read() : ''))
       return (
         <>
           <p>Ready</p>

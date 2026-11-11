@@ -87,7 +87,7 @@ describe('dados estruturados publicados pela página', () => {
       '@type': 'Product',
       name: 'Antes'
     })
-    const [mounted, setMounted] = createSignal(true)
+    const [isMounted, setIsMounted] = createSignal(true)
 
     function ProductData() {
       createSeo({ structuredData: data })
@@ -96,7 +96,7 @@ describe('dados estruturados publicados pela página', () => {
 
     renderComponent(
       () => (
-        <Show when={mounted()}>
+        <Show when={isMounted()}>
           <ProductData />
         </Show>
       ),
@@ -108,7 +108,7 @@ describe('dados estruturados publicados pela página', () => {
     await vi.waitUntil(() => readScripts()[0]?.includes('Depois'), POLL)
     expect(readScripts()).toHaveLength(1)
 
-    setMounted(false)
+    setIsMounted(false)
     await waitForScripts(0)
     expect(readScripts()).toHaveLength(0)
   })

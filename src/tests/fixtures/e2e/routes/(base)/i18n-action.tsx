@@ -10,12 +10,12 @@ export const route = {
 } satisfies RouteDefinition
 
 export default function I18nAction() {
-  const [requested, setRequested] = createSignal(false)
-  const title = createMemo(() => (requested() ? getTitle() : ''))
+  const [isRequested, setIsRequested] = createSignal(false)
+  const title = createMemo(() => (isRequested() ? getTitle() : ''))
   return (
     <main>
       <h1>Server locale</h1>
-      <button type="button" onClick={() => setRequested(true)}>
+      <button type="button" onClick={() => setIsRequested(true)}>
         Read server locale
       </button>
       <Loading fallback={<p>Loading</p>}>

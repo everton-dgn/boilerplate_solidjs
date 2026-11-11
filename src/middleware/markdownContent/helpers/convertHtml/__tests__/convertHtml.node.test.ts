@@ -480,20 +480,20 @@ describe('bounded HTML input', () => {
       url: 'https://example.com/en/page',
       signal: controller.signal
     })
-    let settled = false
+    let isSettled = false
     const observed = (async () => {
       try {
         return await conversion
       } catch (error) {
         return error
       } finally {
-        settled = true
+        isSettled = true
       }
     })()
     await vi.waitFor(() => expect(canceled).toHaveBeenCalledOnce())
-    expect(settled).toBe(false)
+    expect(isSettled).toBe(false)
     gate.resolve(void 0)
     await expect(observed).resolves.toBeInstanceOf(DOMException)
-    expect(settled).toBe(true)
+    expect(isSettled).toBe(true)
   })
 })

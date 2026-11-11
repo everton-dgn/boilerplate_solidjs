@@ -36,8 +36,8 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
       '@type': 'Product',
       name: 'Inicial'
     })
-    const [visible, setVisible] = createSignal(true)
-    const [mounted, setMounted] = createSignal(true)
+    const [isVisible, setIsVisible] = createSignal(true)
+    const [isMounted, setIsMounted] = createSignal(true)
 
     function ConditionalData() {
       createSeo({ structuredData: data })
@@ -49,7 +49,7 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
         structuredData: () => ({ '@type': 'Product', name: 'Fixo' })
       })
       return (
-        <Show when={visible()}>
+        <Show when={isVisible()}>
           <ConditionalData />
         </Show>
       )
@@ -70,7 +70,7 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
 
     renderComponent(
       () => (
-        <Show when={mounted()}>
+        <Show when={isMounted()}>
           <Router>
             {props => {
               createSeo({ route: true })
@@ -110,10 +110,10 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
       true
     ])
 
-    setVisible(false)
+    setIsVisible(false)
     await vi.waitUntil(() => readScripts().length === 1, POLL)
     expect(readScripts()[0]).toContain('Fixo')
-    setVisible(true)
+    setIsVisible(true)
     await vi.waitUntil(() => readScripts().length === DATA_SCRIPTS, POLL)
 
     history.set({ value: '/publica', scroll: false })
@@ -137,7 +137,7 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
       false
     ])
 
-    setMounted(false)
+    setIsMounted(false)
     await vi.waitUntil(
       () => readScripts().length === 0 && !readCanonical(),
       POLL
