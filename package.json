@@ -108,6 +108,7 @@
   "overrides": {
     "@solidjs/compiler": "2.0.0-rc.21",
     "@solidjs/signals": "2.0.0-rc.21",
+    "fast-uri": "3.1.9",
     "vite": "catalog:",
     "vitest": "catalog:"
   },
