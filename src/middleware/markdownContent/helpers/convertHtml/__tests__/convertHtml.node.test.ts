@@ -398,6 +398,10 @@ describe('preserves visible link text and spaces around accessible labels', () =
       'Go [Item](https://example.com/c) Next'
     ],
     [
+      '<p>Go <a href="/c" aria-label="Item"><svg></svg> <svg></svg></a>Next</p>',
+      'Go [Item](https://example.com/c)Next'
+    ],
+    [
       '<p>Go <a href="/c" aria-label="A"><svg></svg> <!-- c --></a>Next</p>',
       'Go [A](https://example.com/c) Next'
     ]
