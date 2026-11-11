@@ -232,6 +232,23 @@ describe('colocated translations', () => {
       /Invalid catalog src\/routes\/Home\/i18n\/es\.json/u
     )
   })
+
+  it('checks the size before reading the catalog that crosses the budget', async context => {
+    const parent = await sandbox(context)
+    const options = await fixture({ parent })
+    const valid = Buffer.byteLength(
+      JSON.stringify({ home_hello: 'Hello {name}' })
+    )
+    // Um diretório responde ao stat e falha na leitura: o erro do teto prova
+    // que a conferência veio antes de abrir o arquivo.
+    const unreadable = path.join(options.root, 'src/routes/Home/i18n/es.json')
+    await rm(unreadable)
+    await mkdir(path.join(unreadable, 'entry'), { recursive: true })
+    await assert.rejects(
+      readCatalogs({ ...options, maxBytes: valid * (LOCALES.length - 1) }),
+      /exceed the \d+ byte budget at src\/routes\/Home\/i18n\/es\.json/u
+    )
+  })
 })
 
 describe('catalog file filter', () => {

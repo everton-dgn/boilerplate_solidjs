@@ -1,4 +1,4 @@
-import { glob, readFile } from 'node:fs/promises'
+import { glob, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 
 import messageFormat from '@inlang/plugin-message-format'
@@ -30,6 +30,7 @@ type ClaimOptions = {
   owners: Map<string, string>
 }
 type CatalogFileOptions = { root: string; file: string }
+type BudgetOptions = { bytes: number; maxBytes: number; file: string }
 
 // O glob da leitura e o filtro do watcher descrevem o mesmo conjunto: os
 // agregados em .paraglide/ e a saída em paraglide/ nunca são catálogos.
@@ -48,6 +49,13 @@ function claimMessages({ keys, directory, owners }: ClaimOptions): void {
     }
     owners.set(key, directory)
   }
+}
+
+function assertBudget({ bytes, maxBytes, file }: BudgetOptions): void {
+  if (bytes <= maxBytes) return
+  throw new Error(
+    `[i18n] Catalogs exceed the ${maxBytes} byte budget at ${file}. Raise CATALOGS_MAX_BYTES only after measuring the build memory.`
+  )
 }
 
 const TextSchema = v.string()
@@ -214,13 +222,13 @@ export async function readCatalogs({
       ...locales.filter(item => item !== baseLocale)
     ]) {
       const file = path.join(directory, `${locale}.json`)
-      const content = await readFile(path.join(root, file))
+      const location = path.join(root, file)
+      const { size } = await stat(location)
+      assertBudget({ bytes: totalBytes + size, maxBytes, file })
+      const content = await readFile(location)
       totalBytes += content.byteLength
-      if (totalBytes > maxBytes) {
-        throw new Error(
-          `[i18n] Catalogs exceed the ${maxBytes} byte budget at ${file}. Raise CATALOGS_MAX_BYTES only after measuring the build memory.`
-        )
-      }
+      // O arquivo pode crescer entre o stat e a leitura.
+      assertBudget({ bytes: totalBytes, maxBytes, file })
       const catalog = parseCatalog({ file, source: content.toString('utf8') })
       current[locale] = catalog
       Object.assign(catalogs[locale] ?? {}, catalog)
