@@ -13,7 +13,7 @@ function mountSwitcher() {
     routes: [{ path: '*all', component: LocaleSwitcher }]
   })
   return renderComponent(() => <Router>{props => props.children}</Router>, {
-    providers: false
+    hasProviders: false
   })
 }
 

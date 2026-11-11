@@ -94,7 +94,7 @@ async function renderGuardedRouter({
         }}
       </Router>
     ),
-    { providers: false }
+    { hasProviders: false }
   )
   await expect.poll(() => host.textContent).toBe('/en/start')
   return {

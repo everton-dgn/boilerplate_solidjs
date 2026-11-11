@@ -21,7 +21,7 @@ function mountData(accessors: StructuredDataAccessor[]): void {
       for (const accessor of accessors) createSeo({ structuredData: accessor })
       return null
     },
-    { providers: false }
+    { hasProviders: false }
   )
 }
 
@@ -100,7 +100,7 @@ describe('dados estruturados publicados pela página', () => {
           <ProductData />
         </Show>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     await waitForScripts(1)
 
@@ -124,7 +124,7 @@ describe('dados estruturados publicados pela página', () => {
       return null
     }
 
-    renderComponent(ProductData, { providers: false })
+    renderComponent(ProductData, { hasProviders: false })
     const [fixed] = await waitForScripts(1)
     expect(parseNode(fixed).name).toBe('Fixo')
 

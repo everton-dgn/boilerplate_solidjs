@@ -222,24 +222,24 @@ for (const fixture of CASES) {
   })
 }
 
-// errorPage: a navegação recebe a página de erro do app. Depois de next() o
+// hasErrorPage: a navegação recebe a página de erro do app. Depois de next() o
 // render já aconteceu e o plugin não permite outro, então a resposta é o 500
 // em texto, como fora de navegação.
 type MiddlewareCase = {
   phase: 'before' | 'after'
-  navigation: boolean
-  errorPage: boolean
+  isNavigation: boolean
+  hasErrorPage: boolean
 }
 
 const MIDDLEWARE_CASES: MiddlewareCase[] = [
-  { phase: 'before', navigation: true, errorPage: true },
-  { phase: 'after', navigation: true, errorPage: false },
-  { phase: 'before', navigation: false, errorPage: false }
+  { phase: 'before', isNavigation: true, hasErrorPage: true },
+  { phase: 'after', isNavigation: true, hasErrorPage: false },
+  { phase: 'before', isNavigation: false, hasErrorPage: false }
 ]
 
 test.describe('exceções no middleware', () => {
-  for (const { phase, navigation, errorPage } of MIDDLEWARE_CASES) {
-    test(`exceção ${phase === 'before' ? 'antes' : 'depois'} de next() ${navigation ? 'numa navegação' : 'fora de navegação'} ${errorPage ? 'mostra a página de erro' : 'vira 500 em texto'}`, async ({
+  for (const { phase, isNavigation, hasErrorPage } of MIDDLEWARE_CASES) {
+    test(`exceção ${phase === 'before' ? 'antes' : 'depois'} de next() ${isNavigation ? 'numa navegação' : 'fora de navegação'} ${hasErrorPage ? 'mostra a página de erro' : 'vira 500 em texto'}`, async ({
       request,
       baseURL
     }) => {
@@ -254,13 +254,13 @@ test.describe('exceções no middleware', () => {
 
       const response = await fetch(
         `${baseURL}/outside-error?case=middleware-${phase}&id=${id}`,
-        { headers: { accept: navigation ? 'text/html' : 'application/json' } }
+        { headers: { accept: isNavigation ? 'text/html' : 'application/json' } }
       )
       const body = await response.text()
 
       expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
       expect(response.headers.get('x-content-type-options')).toBe('nosniff')
-      if (errorPage) {
+      if (hasErrorPage) {
         expect(response.headers.get('content-type')).toContain('text/html')
         expect(response.headers.get('content-language')).toBe('en')
         expect(body).toContain('Something went wrong!')

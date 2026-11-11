@@ -1,9 +1,9 @@
 import { SITE_CACHE_CONTROL } from '../cache.ts'
 
 // A constante lê o ambiente ao carregar, então cada cenário reimporta o módulo.
-async function loadCacheControl(production: boolean): Promise<string> {
+async function loadCacheControl(isProduction: boolean): Promise<string> {
   vi.resetModules()
-  vi.stubEnv('PROD', production)
+  vi.stubEnv('PROD', isProduction)
   const reloaded = await import('../cache.ts')
   return reloaded.SITE_CACHE_CONTROL
 }

@@ -57,7 +57,7 @@ async function renderAt({
         }}
       </Router>
     ),
-    { providers: false }
+    { hasProviders: false }
   )
   await vi.waitUntil(ready, POLL)
   return SITE.url

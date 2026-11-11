@@ -15,7 +15,7 @@ describe('localizedLink contracts', () => {
           Docs
         </LocalizedLink>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     const anchor = host.querySelector('a')
     expect(anchor?.getAttribute('href')).toBe('/pt/docs?q=1#section')
@@ -31,7 +31,7 @@ describe('localizedLink contracts', () => {
           Docs
         </LocalizedLink>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     expect(host.querySelector('a')?.target).toBe('')
   })
@@ -51,7 +51,7 @@ describe('localizedLink contracts', () => {
           Docs
         </LocalizedLink>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     const anchor = host.querySelector('a')
     assert(anchor)
@@ -74,7 +74,7 @@ describe('localizedLink contracts', () => {
           <LocalizedLink href="#section">Section</LocalizedLink>
         </>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     const anchors = host.querySelectorAll('a')
     expect(anchors[0]?.getAttribute('href')).toBe('/api/report')
@@ -103,7 +103,7 @@ describe('localizedLink contracts', () => {
     })
     const host = renderComponent(
       () => <Router>{props => props.children}</Router>,
-      { providers: false }
+      { hasProviders: false }
     )
     await expect
       .poll(() => host.querySelector('a')?.getAttribute('href'))

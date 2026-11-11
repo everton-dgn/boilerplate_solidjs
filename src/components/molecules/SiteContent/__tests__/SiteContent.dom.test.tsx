@@ -18,7 +18,7 @@ describe('conteúdo das páginas institucionais', () => {
       ]
     }
     const host = renderComponent(() => <SiteContent page={page} />, {
-      providers: false
+      hasProviders: false
     })
     expect(
       Array.from(host.querySelectorAll('nav a'), link =>

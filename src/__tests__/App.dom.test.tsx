@@ -82,7 +82,7 @@ function renderApp(): HTMLDivElement {
         <App />
       </Loading>
     ),
-    { providers: false }
+    { hasProviders: false }
   )
 }
 
@@ -149,7 +149,7 @@ describe('feedback de erro da aplicação', () => {
             <App />
           </Loading>
         ),
-        { providers: false }
+        { hasProviders: false }
       )
 
       await expect

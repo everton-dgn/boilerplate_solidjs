@@ -48,8 +48,8 @@ if (process.argv[1].endsWith('/git')) {
   if (command === 'push') {
     const ref = 'refs/heads/' + s.branch;
     if (!s.release || !rest.includes('--force-with-lease=' + ref + ':' + head) || !rest.includes(':' + ref)) throw Error('Unsafe cleanup');
-    if (s.cleanupRace) { save(); process.exitCode = 1; return; }
-    s.ref = null; s.deleted = true; out(''); return;
+    if (s.hasCleanupRace) { save(); process.exitCode = 1; return; }
+    s.ref = null; s.isDeleted = true; out(''); return;
   }
   if (command === 'merge-base' && rest[0] === '--is-ancestor' && (s.notAncestors ?? []).includes(rest[1])) { save(); process.exitCode = 1; return; }
   if (['fetch', 'merge-base'].includes(command)) out('');
@@ -75,17 +75,17 @@ if (process.argv[1].endsWith('/git')) {
     if (s.pr?.number === number) s.pr.state = 'closed';
     value = { number, state: 'closed' };
   }
-  else if (endpoint === root + '/actions/runs/1') value = { conclusion: s.badRun ? 'failure' : 'success', event: 'push', head_branch: 'main', head_sha: source, path: '.github/workflows/ci.yml', head_repository: { full_name: 'owner/repo' } };
-  else if (endpoint === root + '/git/ref/heads/main') value = { object: { sha: s.advanced ? 'e'.repeat(40) : s.merged ? merge : source } };
-  else if (endpoint === root + '/rules/branches/main?per_page=100') value = s.unprotected ? [] : [{type:'pull_request'}, {type:'required_status_checks', parameters:{strict_required_status_checks_policy: !s.loose, required_status_checks:[{context:'CI required',integration_id:15368}]}}];
+  else if (endpoint === root + '/actions/runs/1') value = { conclusion: s.hasBadRun ? 'failure' : 'success', event: 'push', head_branch: 'main', head_sha: source, path: '.github/workflows/ci.yml', head_repository: { full_name: 'owner/repo' } };
+  else if (endpoint === root + '/git/ref/heads/main') value = { object: { sha: s.hasAdvanced ? 'e'.repeat(40) : s.isMerged ? merge : source } };
+  else if (endpoint === root + '/rules/branches/main?per_page=100') value = s.isUnprotected ? [] : [{type:'pull_request'}, {type:'required_status_checks', parameters:{strict_required_status_checks_policy: !s.isLoose, required_status_checks:[{context:'CI required',integration_id:15368}]}}];
   else if (endpoint === root + '/check-runs') {
     if (body.name !== 'CI required' || body.head_sha !== head || body.conclusion !== 'success') throw Error('Wrong validated commit');
-    s.check = body; s.checked = true; value = {id:1};
+    s.check = body; s.isChecked = true; value = {id:1};
   }
-  else if (endpoint.startsWith(root + '/git/ref/heads/release/')) value = s.ref === null ? undefined : s.release && s.cleanupAdvanced ? {object:{sha:source}} : s.ref;
+  else if (endpoint.startsWith(root + '/git/ref/heads/release/')) value = s.ref === null ? undefined : s.release && s.hasCleanupAdvanced ? {object:{sha:source}} : s.ref;
   else if (endpoint === root + '/git/commits/' + source) value = { sha: source, tree: { sha: 'base-tree' }, parents: [] };
   else if (endpoint === root + '/git/commits/' + head) value = { sha: head, tree: { sha: 'release-tree' }, parents: [{sha: s.hasUnexpectedParent ? 'e'.repeat(40) : source}] };
-  else if (endpoint === root + '/git/commits/' + merge) value = { sha: merge, tree: { sha: s.race ? 'wrong-tree' : 'release-tree' }, parents: [{sha: s.hasDifferentMergeBase ? 'e'.repeat(40) : source}, {sha: head}] };
+  else if (endpoint === root + '/git/commits/' + merge) value = { sha: merge, tree: { sha: s.hasRace ? 'wrong-tree' : 'release-tree' }, parents: [{sha: s.hasDifferentMergeBase ? 'e'.repeat(40) : source}, {sha: head}] };
   else if (endpoint.startsWith(root + '/git/commits/') && s.commits?.[endpoint.slice(root.length + 13)]) value = s.commits[endpoint.slice(root.length + 13)];
   else if (endpoint === root + '/git/trees') { s.files = Object.fromEntries(body.tree.map(f => [f.path, f.content])); value = {sha: 'release-tree'}; }
   else if (endpoint === root + '/git/commits') value = {sha: head};
@@ -100,15 +100,15 @@ if (process.argv[1].endsWith('/git')) {
   else if (endpoint === root + '/pulls/1/merge') {
     if (body.merge_method !== 'merge' || body.sha !== head) throw Error('Unsafe merge');
     // O GitHub rejeita um PR desatualizado na fronteira da mutação quando há strict checks.
-    if (s.race && s.checked) { save(); process.exitCode=1; return; }
-    s.merged = true; Object.assign(s.pr, {state:'closed', merged:true, merge_commit_sha:merge}); value = {merged:true,sha:merge};
+    if (s.hasRace && s.isChecked) { save(); process.exitCode=1; return; }
+    s.isMerged = true; Object.assign(s.pr, {state:'closed', merged:true, merge_commit_sha:merge}); value = {merged:true,sha:merge};
   }
   else if (endpoint === root + '/git/ref/tags/v1.0.0') value = s.tagRef;
   else if (endpoint === root + '/git/tags') { s.tag = {object: {sha: body.object, type: body.type}}; value = {sha:tag}; }
-  else if (endpoint === root + '/git/tags/' + tag) value = s.wrongTag ? {object:{sha:source,type:'commit'}} : s.tag;
+  else if (endpoint === root + '/git/tags/' + tag) value = s.hasWrongTag ? {object:{sha:source,type:'commit'}} : s.tag;
   else if (endpoint === root + '/releases/tags/v1.0.0') value = s.release;
   else if (endpoint === root + '/releases') {
-    if (s.failRelease) { save(); process.exitCode=1; return; }
+    if (s.shouldFailRelease) { save(); process.exitCode=1; return; }
     value = s.release = body;
   }
   else throw Error('Unexpected fake gh call: ' + method + ' ' + endpoint);

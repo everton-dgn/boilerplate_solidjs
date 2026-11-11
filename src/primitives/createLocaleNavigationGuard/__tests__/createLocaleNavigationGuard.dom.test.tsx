@@ -42,7 +42,7 @@ function renderGuardedRouter({
         }}
       </Router>
     ),
-    { providers: false }
+    { hasProviders: false }
   )
 }
 

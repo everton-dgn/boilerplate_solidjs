@@ -48,7 +48,7 @@ describe('notificações no navegador', () => {
           <Trigger />
         </ToastProvider>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     const trigger = page.getByRole('button', { name: 'Show toast' })
     await userEvent.click(trigger)
@@ -70,7 +70,7 @@ describe('notificações no navegador', () => {
           <PairTrigger />
         </ToastProvider>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     const trigger = page.getByRole('button', { name: 'Show toasts' })
     await userEvent.click(trigger)
@@ -121,7 +121,7 @@ describe('notificações no navegador', () => {
             <Probe />
           </ToastProvider>
         ),
-        { providers: false }
+        { hasProviders: false }
       )
       const trigger = page.getByRole('button', { name: 'Show toasts' })
       await userEvent.click(trigger)

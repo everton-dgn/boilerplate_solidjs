@@ -14,7 +14,7 @@ describe('shared input and textarea styles', () => {
           <Textarea />
         </>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     const input = host.querySelector('input')
     const textarea = host.querySelector('textarea')
@@ -46,7 +46,7 @@ describe('shared input and textarea styles', () => {
           <Field aria-invalid="true" />
         </>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     const [normal, destructive, invalid] = host.querySelectorAll(tag)
     assert(normal && destructive && invalid)
@@ -82,7 +82,7 @@ describe('shared input and textarea styles', () => {
           <Textarea disabled placeholder="Message" />
         </>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     const input = host.querySelector('input')
     const textarea = host.querySelector('textarea')

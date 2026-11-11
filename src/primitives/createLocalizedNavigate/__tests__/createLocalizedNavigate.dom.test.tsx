@@ -24,7 +24,7 @@ describe('createLocalizedNavigate contracts', () => {
     })
     const host = renderComponent(
       () => <Router>{props => props.children}</Router>,
-      { providers: false }
+      { hasProviders: false }
     )
     await expect
       .poll(() => host.textContent)
@@ -60,7 +60,7 @@ describe('createLocalizedNavigate contracts', () => {
     })
     const host = renderComponent(
       () => <Router>{props => props.children}</Router>,
-      { providers: false }
+      { hasProviders: false }
     )
     await expect.poll(() => host.textContent).toBe('/en/docs')
     assert(navigate)
@@ -104,7 +104,7 @@ describe('createLocalizedNavigate contracts', () => {
     })
     const host = renderComponent(
       () => <Router>{props => props.children}</Router>,
-      { providers: false }
+      { hasProviders: false }
     )
     await expect.poll(() => host.textContent).toBe('Ready')
     assert(navigate)

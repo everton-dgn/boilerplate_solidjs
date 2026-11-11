@@ -29,18 +29,18 @@ export type State = {
   hasUnexpectedParent?: boolean
   hasTagRefFailure?: boolean
   hasDifferentMergeBase?: boolean
-  failRelease?: boolean
-  badRun?: boolean
-  advanced?: boolean
-  race?: boolean
-  wrongTag?: boolean
-  unprotected?: boolean
-  loose?: boolean
-  checked?: boolean
-  merged?: boolean
-  deleted?: boolean
-  cleanupAdvanced?: boolean
-  cleanupRace?: boolean
+  shouldFailRelease?: boolean
+  hasBadRun?: boolean
+  hasAdvanced?: boolean
+  hasRace?: boolean
+  hasWrongTag?: boolean
+  isUnprotected?: boolean
+  isLoose?: boolean
+  isChecked?: boolean
+  isMerged?: boolean
+  isDeleted?: boolean
+  hasCleanupAdvanced?: boolean
+  hasCleanupRace?: boolean
   release?: { tag_name: string }
   pr?: { state: string }
   closed?: number[]

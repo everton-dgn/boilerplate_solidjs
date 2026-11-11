@@ -79,7 +79,7 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
           </Router>
         </Show>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
 
     await vi.waitUntil(() => readScripts().length === ALL_SCRIPTS, POLL)

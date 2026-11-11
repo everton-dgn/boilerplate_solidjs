@@ -7,7 +7,7 @@ import { readFixtureMarker } from '../../outside-error/readFixtureMarker/index.t
 import { recordFixtureThrow } from '../../outside-error/recordFixtureThrow/index.ts'
 
 type GateProps = { id: string }
-type RejectionProps = { id: string; inElement?: boolean }
+type RejectionProps = { id: string; isInElement?: boolean }
 
 // Lê, registra e lança o marcador no corpo do componente, durante o render.
 function ImmediateThrower(): never {
@@ -43,7 +43,7 @@ function GatedRejection(props: RejectionProps) {
     await waitFixtureGate({ id: props.id, real })
     throw fixtureError(marker)
   })
-  return <>{props.inElement ? <p>{data()}</p> : data()}</>
+  return <>{props.isInElement ? <p>{data()}</p> : data()}</>
 }
 
 export const route = {
@@ -83,7 +83,7 @@ export default function OutsideError() {
         </Match>
         <Match when={params.case === 'async-element'}>
           <Loading fallback={<p>Carregando fixture...</p>}>
-            <GatedRejection id={id} inElement />
+            <GatedRejection id={id} isInElement />
           </Loading>
         </Match>
       </Switch>

@@ -35,7 +35,7 @@ describe('cálculo do SEO da rota', () => {
           }}
         </Router>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     await vi.waitUntil(() => readCanonical()?.endsWith('/en') === true, POLL)
     expect(resolveRouteSeo).toHaveBeenCalledOnce()

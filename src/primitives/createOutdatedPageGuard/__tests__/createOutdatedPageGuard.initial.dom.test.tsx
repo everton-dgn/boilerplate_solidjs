@@ -39,7 +39,7 @@ describe('guard de página ainda atual', () => {
           }}
         </Router>
       ),
-      { providers: false }
+      { hasProviders: false }
     )
     await expect.poll(() => host.textContent).toBe('/en/start')
     assert(navigate)

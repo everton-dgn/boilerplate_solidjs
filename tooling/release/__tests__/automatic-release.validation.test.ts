@@ -52,7 +52,7 @@ describe(
     it('rejects a release whose source CI no longer passes', async context => {
       const f = await fixture(context)
       await f.run('prepare')
-      await f.patch({ badRun: true })
+      await f.patch({ hasBadRun: true })
       const before = await f.state()
 
       await assert.rejects(f.run('publish'), /successful push CI/u)
