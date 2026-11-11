@@ -78,7 +78,7 @@ function readOnce<T>(read: () => Promise<T>): () => Promise<T> {
 function artifactPath(file: string): string {
   const main: unknown = Reflect.get(globalThis, '__nitro_main__')
   if (typeof main !== 'string') {
-    throw new TypeError('Diretório da função desconhecido')
+    throw new TypeError('Unknown function directory')
   }
   return nodePath.join(
     nodePath.dirname(fileURLToPath(main)),
@@ -97,17 +97,17 @@ async function readBounded({
   try {
     const stats = await handle.stat()
     if (!stats.isFile() || stats.size > maxBytes) {
-      throw new Error('Artefato acima do limite')
+      throw new Error('Artifact above the limit')
     }
     const bytes = new Uint8Array(stats.size + 1)
     let total = 0
     let read = await handle.read(bytes, 0, bytes.byteLength, null)
     while (read.bytesRead > 0) {
       total += read.bytesRead
-      if (total > stats.size) throw new Error('Artefato alterado na leitura')
+      if (total > stats.size) throw new Error('Artifact changed while reading')
       read = await handle.read(bytes, total, bytes.byteLength - total, null)
     }
-    if (total !== stats.size) throw new Error('Artefato alterado na leitura')
+    if (total !== stats.size) throw new Error('Artifact changed while reading')
     return bytes.subarray(0, total)
   } finally {
     await handle.close()
@@ -133,10 +133,10 @@ function assertManifest(manifest: SitemapArtifactManifest): void {
     isRootStatic ===
       (!hasArraySources && !hasPartitionSources && pagePartCount > 0) &&
     hasArraySources === (identities !== null)
-  if (!isCoherent) throw new Error('Manifesto incoerente')
+  if (!isCoherent) throw new Error('Incoherent manifest')
   const expected = import.meta.env.PUBLICATION_BUILD_ID
   if (!expected || buildId !== expected) {
-    throw new Error('Manifesto de outro build')
+    throw new Error('Manifest from another build')
   }
 }
 
@@ -152,14 +152,14 @@ export function createSitemapArtifacts(): SitemapArtifacts {
   })
   const readIdentities = readOnce(async (): Promise<SitemapIdentities> => {
     const { identities } = await readManifest()
-    if (!identities) throw new Error('Manifesto sem identidades')
+    if (!identities) throw new Error('Manifest without identities')
     const bytes = await readBounded({
       file: artifactPath(identities.file),
       maxBytes: identities.bytes
     })
     const hash = createHash('sha256').update(bytes).digest('hex')
     if (bytes.byteLength !== identities.bytes || hash !== identities.sha256) {
-      throw new Error('Identidades de outra geração')
+      throw new Error('Identities from another generation')
     }
     const { urls, entries } = v.parse(
       IdentitiesSchema,

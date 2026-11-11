@@ -19,7 +19,7 @@ const W3C_DATETIME =
 
 function normalizePath(path: string): string {
   if (!SITE_PATH.test(path)) {
-    throw new Error(`Caminho inválido para o sitemap: ${path}`)
+    throw new Error(`Invalid sitemap path: ${path}`)
   }
   const collapsed = path.replaceAll(/\/+/gu, '/')
   return collapsed.length > 1 ? collapsed.replace(/\/$/u, '') : collapsed

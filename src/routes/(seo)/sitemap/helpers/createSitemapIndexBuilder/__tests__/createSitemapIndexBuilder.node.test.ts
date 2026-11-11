@@ -20,6 +20,6 @@ describe('construção incremental do índice', () => {
     const builder = createSitemapIndexBuilder(BYTE_BUDGET)
     expect(() => {
       for (const location of locations) builder.add(location)
-    }).toThrow('Índice excede limite de bytes')
+    }).toThrow('Index exceeds the byte limit')
   })
 })

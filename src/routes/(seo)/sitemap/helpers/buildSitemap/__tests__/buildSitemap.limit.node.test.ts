@@ -20,6 +20,6 @@ describe('montagem limitada de XML', () => {
         siteUrl: 'https://example.com',
         byteBudget: 100_000
       })
-    ).toThrow('Sitemap excede limite de bytes')
+    ).toThrow('Sitemap exceeds the byte limit')
   })
 })

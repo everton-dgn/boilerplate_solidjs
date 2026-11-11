@@ -15,16 +15,16 @@ export function createSitemapIndexBuilder(byteBudget: number): IndexBuilder {
   const chunks = [START]
   let bytes = encoder.encode(START).byteLength + encoder.encode(END).byteLength
   let count = 0
-  if (bytes > byteBudget) throw new Error('Índice excede limite de bytes')
+  if (bytes > byteBudget) throw new Error('Index exceeds the byte limit')
   return {
     add(location) {
       if (count >= SITEMAP_URL_LIMIT || location.length > SITEMAP_LOC_LIMIT) {
-        throw new Error('Índice excede limite')
+        throw new Error('Index exceeds the limit')
       }
       const chunk = `  <sitemap><loc>${escapeXml(location)}</loc></sitemap>\n`
       const nextBytes = bytes + encoder.encode(chunk).byteLength
       if (nextBytes > byteBudget) {
-        throw new Error('Índice excede limite de bytes')
+        throw new Error('Index exceeds the byte limit')
       }
       bytes = nextBytes
       count += 1

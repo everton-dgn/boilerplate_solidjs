@@ -33,13 +33,13 @@ async function addSourcePartitions({
     run: signal => source.listPartitions({ limit: limit + 1, signal })
   })
   if (!Array.isArray(ids) || ids.length > limit) {
-    throw new Error('Índice acima do limite de URLs')
+    throw new Error('Index above the URL limit')
   }
   if (
     new Set(ids).size !== ids.length ||
     ids.some(id => typeof id !== 'string' || !SOURCE_ID_PATTERN.test(id))
   ) {
-    throw new Error('Partições inválidas')
+    throw new Error('Invalid partitions')
   }
   for (const id of ids) {
     builder.add(

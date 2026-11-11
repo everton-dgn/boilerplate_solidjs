@@ -15,7 +15,7 @@ const encoder = new TextEncoder()
 
 export class SitemapByteLimitError extends Error {
   public constructor() {
-    super('Sitemap excede limite de bytes')
+    super('Sitemap exceeds the byte limit')
     this.name = 'SitemapByteLimitError'
   }
 }

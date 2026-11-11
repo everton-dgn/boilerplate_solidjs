@@ -43,7 +43,7 @@ function validateBudget(byteBudget: number): void {
     byteBudget < 1 ||
     byteBudget > SITEMAP_BYTE_LIMIT
   ) {
-    throw new Error('Orçamento inválido')
+    throw new Error('Invalid budget')
   }
 }
 
@@ -150,7 +150,7 @@ export async function buildSitemapIndexResponse(
     validateBudget(byteBudget)
     const catalog = createCatalog({ options, byteBudget })
     const { partCount, isFileRoot } = await catalog.readSummary()
-    if (isFileRoot) throw new Error('Raiz estática fora da camada de arquivos')
+    if (isFileRoot) throw new Error('Static root outside the file layer')
     const hasArraySources = await catalog.readHasArraySources()
     if (partCount === 0 && !hasArraySources && sources.length === 0) {
       return errorResponse(HTTP_NOT_FOUND)
