@@ -22,7 +22,7 @@ env:
   # Única versão do Vercel CLI usada no pull, no build e no deploy. Para
   # atualizar, escolha uma versão estável publicada no npm (vercel), troque o
   # valor aqui e valide o E2E de produção e o deploy no push da main.
-  VERCEL_CLI_VERSION: '64.7.0'
+  VERCEL_CLI_VERSION: '65.14.0'
 
 jobs:
   proof:
