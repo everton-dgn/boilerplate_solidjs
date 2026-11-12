@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.15.1 - 2026-11-11
+
+### Fixed
+
+- refresh the locked transitive dependencies (f3fb673)
+- update the development node runtime to 24.22.3 (6330a51)
+- update knip to 6.45.1 (b3e172d)
+- update vite-plus to 1.6.0 (a252719)
+
 ## 1.15.0 - 2026-11-11
 
 ### Added
