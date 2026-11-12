@@ -257,7 +257,7 @@ export default defineConfig(({ mode }) => {
           cache: { env: ['NODE_ENV'], input: PROJECT_CHECK_INPUTS }
         },
         'check-project': {
-          command: 'vp check',
+          command: 'vp check --continue-on-error',
           dependsOn: ['lint-css'],
           cache: { env: ['NODE_ENV'], input: PROJECT_CHECK_INPUTS }
         },

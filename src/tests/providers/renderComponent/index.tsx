@@ -13,19 +13,17 @@ export function renderComponent(
   const host = document.createElement('div')
   document.body.append(host)
 
-  let dispose: (() => void) | undefined = undefined
+  // WHY: registrado antes do render para remover o host mesmo se ele lançar; os
+  // hooks rodam em ordem inversa, então o dispose abaixo executa primeiro.
+  onTestFinished(() => host.remove())
 
-  onTestFinished(() => {
-    dispose?.()
-    host.remove()
-  })
-
-  dispose = render(
+  const dispose = render(
     options.hasProviders === false
       ? component
       : () => <Provider>{component()}</Provider>,
     host
   )
+  onTestFinished(dispose)
 
   return host
 }
