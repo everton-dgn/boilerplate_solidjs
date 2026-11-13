@@ -57,11 +57,13 @@ export function Dialog(props: DialogProps) {
     queueMicrotask(() => synchronize(untrack(() => props.open)))
   }
 
+  const saveElement = (value: HTMLDialogElement) => {
+    element = value
+  }
+
   return (
     <dialog
-      ref={value => {
-        element = value
-      }}
+      ref={saveElement}
       class={[S.dialog, props.class]}
       closedby="closerequest"
       aria-labelledby={`${id}-title`}

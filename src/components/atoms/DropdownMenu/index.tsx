@@ -19,6 +19,9 @@ export function DropdownMenu<Value extends string = string>(
   }
   const triggerProps = makeTriggerProps({ menu, ids })
   const handleKeyDown = makeMenuKeyDown(menu)
+  const saveContent = (node: HTMLDivElement) => {
+    menu.refs.content = node
+  }
 
   createOutsideDismiss(menu)
 
@@ -28,9 +31,7 @@ export function DropdownMenu<Value extends string = string>(
 
       <Show when={menu.isOpen()}>
         <div
-          ref={node => {
-            menu.refs.content = node
-          }}
+          ref={saveContent}
           id={ids.content}
           role="menu"
           tabindex={-1}
