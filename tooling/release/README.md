@@ -35,8 +35,7 @@ executam a mesma entrada do workflow e verificam essa árvore de imports.
 
 `BREAKING CHANGE:` e `BREAKING-CHANGE:` contam no início de qualquer linha do
 corpo fora de blocos de código, mesmo sem a linha em branco que o commitlint
-exige antes do rodapé; commits criados fora do hook podem omiti-la. O Dependabot
-de actions usa `ci(deps)`, que não gera release.
+exige antes do rodapé; commits criados fora do hook podem omiti-la.
 
 A primeira release parte de `0.0.0` e gera `1.0.0`. Depois disso, a versão do
 `package.json` deve coincidir com a última tag estável alcançável pelo commit.
