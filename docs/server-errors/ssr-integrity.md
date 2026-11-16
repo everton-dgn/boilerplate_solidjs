@@ -47,6 +47,13 @@ passa pela política de `configureServerErrors` e encerra o render sem chamar
 exceção para o chamador. O descarte libera o owner e as fontes assíncronas
 pendentes.
 
+Há uma exceção antes do primeiro envio. Quando falha a serialização do erro de
+um `<Errored>`, ou do motivo de uma rejeição que um `<Errored>` capturou, o
+runtime grava no lugar um `Error` só com a mensagem e o render continua. A falha
+ainda chega ao hook e marca `hasErrors`, então o Markdown recusa a página. Esse
+erro já passou pelo hook, e em produção a mensagem é a pública. Uma rejeição sem
+`<Errored>` que a capture continua encerrando o render.
+
 No HTML em streaming, uma falha ocorrida enquanto o shell é montado impede que
 ele seja enviado, e a resposta é um 500. Depois do shell, os bytes já enviados
 não podem ser recolhidos: a falha chega ao hook, o render continua e o cliente
