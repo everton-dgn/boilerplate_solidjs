@@ -54,7 +54,7 @@
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
     "@commitlint/config-conventional": "21.2.4",
-    "@iconify-json/hugeicons": "1.2.35",
+    "@iconify-json/hugeicons": "1.2.36",
     "@inlang/plugin-message-format": "4.6.0",
     "@inlang/sdk": "4.2.0",
     "@playwright/test": "1.65.1",

@@ -16,7 +16,7 @@
       "devDependencies": {
         "@commitlint/cli": "21.2.4",
         "@commitlint/config-conventional": "21.2.4",
-        "@iconify-json/hugeicons": "1.2.35",
+        "@iconify-json/hugeicons": "1.2.36",
         "@inlang/plugin-message-format": "4.6.0",
         "@inlang/sdk": "4.2.0",
         "@playwright/test": "1.65.1",
@@ -168,7 +168,7 @@
 
     "@emnapi/wasi-threads": ["@emnapi/wasi-threads@1.2.3", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-ELEBe8PsLvvJ6QMr0zLt8ffvOHW/dc1m3CEzNMg7aJUv3bMaoDtw2TXyDAwkYBuroxxuHEwhRTLJSe5sya547g=="],
 
-    "@iconify-json/hugeicons": ["@iconify-json/hugeicons@1.2.35", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-c06tY90JZnKhOLBAKoQ1z2pqXMRdATuYXslTKwaaIAjLzKsTIsE+GGknY6+qo/SP0U/NG9xQjr4N+zfDqOeQiQ=="],
+    "@iconify-json/hugeicons": ["@iconify-json/hugeicons@1.2.36", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-AN5LVEmU7X/ynnA+HItRZq+YtFLtbjeFezRI3cPwpAuHerzi5WhwaH7ChoXakJqVLL/CvorDWl9rUFJBSG4nEA=="],
 
     "@iconify/types": ["@iconify/types@2.0.0", "", {}, "sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg=="],
 
