@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.15.2 - 2026-11-16
+
+### Fixed
+
+- refresh the locked transitive dependencies (35c76ca)
+- update the hugeicons icon set to 1.2.36 (e6d7e2a)
+- update playwright to 1.65.1 (43dc7d7)
+- update solid to 2.0.0-rc.23 and drop the &#64;solidjs/web patch (d60bef2)
+
 ## 1.15.1 - 2026-11-11
 
 ### Fixed
