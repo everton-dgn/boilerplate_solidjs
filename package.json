@@ -46,9 +46,9 @@
     "@inlang/paraglide-js": "3.2.2",
     "@mdream/js": "2.1.0",
     "@solidjs/router": "2.0.0-next.44",
-    "@solidjs/web": "2.0.0-rc.21",
+    "@solidjs/web": "2.0.0-rc.23",
     "filesystem-routing": "0.5.0",
-    "solid-js": "2.0.0-rc.21",
+    "solid-js": "2.0.0-rc.23",
     "valibot": "1.5.0"
   },
   "devDependencies": {
@@ -106,13 +106,12 @@
     }
   },
   "overrides": {
-    "@solidjs/compiler": "2.0.0-rc.21",
-    "@solidjs/signals": "2.0.0-rc.21",
+    "@solidjs/compiler": "2.0.0-rc.23",
+    "@solidjs/signals": "2.0.0-rc.23",
     "vite": "catalog:",
     "vitest": "catalog:"
   },
   "patchedDependencies": {
-    "@mdream/js@2.1.0": "patches/@mdream%2Fjs@2.1.0.patch",
-    "@solidjs/web@2.0.0-rc.21": "patches/@solidjs%2Fweb@2.0.0-rc.21.patch"
+    "@mdream/js@2.1.0": "patches/@mdream%2Fjs@2.1.0.patch"
   }
 }
