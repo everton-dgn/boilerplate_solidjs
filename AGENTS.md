@@ -30,512 +30,516 @@ release. Add a tool name to select part of the graph. For example, run
 
 <!--VITE PLUS END-->
 
-## Dimensionamento das aplicações derivadas
+## Sizing the derived applications
 
-- Este repositório é um boilerplate para aplicações de qualquer porte. As
-  páginas, os dados e o tráfego demonstrativos não representam o tamanho das
-  aplicações que serão construídas com ele. Nunca use o tamanho atual da
-  demonstração como justificativa para descartar requisitos de escala.
-- Ao escolher uma solução, examine o crescimento do volume de dados, da
-  concorrência e do número de idiomas. Identifique custo por requisição e por
-  build, memória, armazenamento e limites do ambiente de execução. Declare
-  quais custos crescem com o conjunto inteiro e quais ficam limitados por lote
-  ou operação.
-- Considere aplicações pequenas e grandes, com dados estáticos ou dinâmicos,
-  múltiplas instâncias e atualizações concorrentes quando esses cenários
-  afetarem o contrato. Limites operacionais devem ser explícitos e
-  configuráveis quando pertinente, com comportamento definido ao excedê-los.
-  Não prometa capacidade ilimitada.
-- Prefira caminhos que funcionem com a configuração padrão e permitam crescer
-  sem reescrever o contrato público. Se determinada escala exigir paginação,
-  processamento fora da requisição ou persistência compartilhada, implemente
-  o contrato necessário ao escopo e documente a responsabilidade da aplicação
-  derivada. Não trate cache por processo como persistência compartilhada.
-- Dimensione a validação pelos riscos e pelas fronteiras reais, incluindo
-  falhas e concorrência. Use cenários determinísticos para correção e medições
-  isoladas para custo; meça um piloto antes de ampliar a carga. Os testes da
-  demonstração não comprovam capacidade de produção.
-- Considerar aplicações de qualquer porte não autoriza infraestrutura
-  especulativa, dependências novas ou ampliação de escopo. Explicite o limite
-  da solução atual e a mudança concreta exigida para ultrapassá-lo.
+- This repository is a boilerplate for applications of any size. The demo
+  pages, data and traffic do not represent the size of the applications that
+  will be built with it. Never use the current size of the demo as a reason to
+  discard scale requirements.
+- When choosing a solution, examine the growth of the data volume, of the
+  concurrency and of the number of locales. Identify the cost per request and
+  per build, memory, storage and the limits of the runtime environment. State
+  which costs grow with the whole set and which stay bounded by batch or
+  operation.
+- Consider small and large applications, with static or dynamic data, multiple
+  instances and concurrent updates when those scenarios affect the contract.
+  Operational limits must be explicit and configurable when relevant, with a
+  defined behavior when they are exceeded. Do not promise unlimited capacity.
+- Prefer paths that work with the default configuration and allow growing
+  without rewriting the public contract. If a given scale requires pagination,
+  processing outside the request or shared persistence, implement the contract
+  the scope needs and document the responsibility of the derived application.
+  Do not treat a per-process cache as shared persistence.
+- Size the validation by the risks and the real boundaries, failures and
+  concurrency included. Use deterministic scenarios for correctness and
+  isolated measurements for cost; measure a pilot before raising the load. The
+  demo tests do not prove production capacity.
+- Considering applications of any size does not authorize speculative
+  infrastructure, new dependencies or a wider scope. State the limit of the
+  current solution and the concrete change required to go past it.
 
-## Runtime dos comandos
+## Command runtime
 
-- Use `vp run dev` e `vp run build`: os scripts chamam o CLI local do Vite+
-  com Bun explicitamente. Os comandos embutidos `vp dev` e `vp build` seguem
-  a seleção de Node do CLI global.
-- Preserve Node no Vitest, nos testes de tooling fora de `tooling/release/` e
-  no SSR de produção até as incompatibilidades descritas em
-  [desenvolvimento](docs/development.md) serem resolvidas e verificadas.
-  O Nitro escolhe o runtime da função Vercel pelo `engines.node`, então
-  executar o build em Bun não troca a função para Bun.
-- O Knip, o lint de CSS, o backend simulado de E2E e a automação de release executam
-  em Bun. Valide a automação com `vp run test:release`, também executado no
-  pre-push. No CI, essa suíte roda quando a automação ou suas dependências
-  mudam; a publicação mantém as verificações reais sem repetir os testes.
-  Só o job de plano da release instala dependências e importa o Vite+
-  (`tooling/release/plan-release.ts`); os jobs com escrita usam apenas Git,
-  `gh` e módulos `node:`. O pre-push roda o Knip (`vp run dead-code`) em
-  paralelo com `test:tooling` e `test:release`; no CI, o Knip roda no job
-  `Quality`.
-- As tarefas do `vite.config.ts` que executam arquivos de `tooling/`, como o
-  `i18n:generate` e o lint de CSS, usam `bun tooling/<arquivo>.ts`. O `vpx`
-  recomendado no bloco gerenciado acima vale para scripts avulsos, fora desses
-  fluxos.
-- Para validar mudanças, use `vp run check:ci` e `vp run test`, não os
-  comandos embutidos `vp check` e `vp test` citados acima: eles pulam o
-  `i18n:generate` e o lint de CSS.
+- Use `vp run dev` and `vp run build`: the scripts call the local Vite+ CLI
+  with Bun explicitly. The built-in `vp dev` and `vp build` commands follow the
+  Node selection of the global CLI.
+- Keep Node in Vitest, in the tooling tests outside `tooling/release/` and in
+  the production SSR until the incompatibilities described in
+  [development](docs/development.md) are solved and verified. Nitro chooses the
+  runtime of the Vercel function from `engines.node`, so running the build in
+  Bun does not switch the function to Bun.
+- Knip, the CSS lint, the mocked E2E backend and the release automation run in
+  Bun. Validate the automation with `vp run test:release`, which also runs in
+  the pre-push. In CI, that suite runs when the automation or its dependencies
+  change; the publication keeps the real checks without repeating the tests.
+  Only the plan job of the release installs dependencies and imports Vite+
+  (`tooling/release/plan-release.ts`); the jobs with write permission use only
+  Git, `gh` and `node:` modules. The pre-push runs Knip (`vp run dead-code`) in
+  parallel with `test:tooling` and `test:release`; in CI, Knip runs in the
+  `Quality` job.
+- The `vite.config.ts` tasks that run files of `tooling/`, such as
+  `i18n:generate` and the CSS lint, use `bun tooling/<file>.ts`. The `vpx`
+  recommended in the managed block above applies to standalone scripts, outside
+  those flows.
+- To validate changes, use `vp run check:ci` and `vp run test`, not the built-in
+  `vp check` and `vp test` commands cited above: they skip `i18n:generate` and
+  the CSS lint.
 
-## Documentação de dependências
+## Dependency documentation
 
-- Não repita números de versões de dependências em guias, instruções ou
-  comentários. Consulte `package.json`, `bun.lock`
-  e o workflow responsável por ferramentas instaladas no CI.
-- Documente o contrato, os limites e os comandos de validação. Ao atualizar
-  dependências, revise o comportamento e mantenha os números nos arquivos que
-  controlam a instalação.
+- Do not repeat dependency version numbers in guides, instructions or comments.
+  Check `package.json`, `bun.lock` and the workflow responsible for the tools
+  installed in CI.
+- Document the contract, the limits and the validation commands. When updating
+  dependencies, review the behavior and keep the numbers in the files that
+  control the installation.
 
-## Arquivos gerados do i18n
+## Generated i18n files
 
-- O CLI oficial do Paraglide pode substituir e remover módulos em
-  `paraglide/`. Temporários produzidos pelo gerador em `.paraglide/`
-  também podem ser removidos diretamente, assim como as raízes temporárias
-  criadas pelos testes de `tooling/i18n/`. A dispensa de lixeira vale somente
-  para esses artefatos; catálogos autorais em `src/**/i18n/` continuam
-  seguindo a regra de exclusão pela lixeira.
+- The official Paraglide CLI can replace and remove modules in `paraglide/`.
+  Temporary files produced by the generator in `.paraglide/` can also be removed
+  directly, as can the temporary roots created by the tests of `tooling/i18n/`.
+  Skipping the trash applies only to those artifacts; the authored catalogs in
+  `src/**/i18n/` still follow the rule of deleting through the trash.
 
-## Nomes de arquivos e pastas de módulos
+## File and folder names of modules
 
-- Quando um módulo exportar uma única função, componente ou classe, use o
-  mesmo nome e capitalização no arquivo ou na pasta que contém seu `index`:
-  `makeSystemTheme/index.ts`, `Button/index.tsx` ou `readBackend/index.ts`.
-  Arquivo solto fora de uma pasta `index` segue o kebab-case exigido por
+- When a module exports a single function, component or class, use the same
+  name and capitalization in the file or in the folder that holds its `index`:
+  `makeSystemTheme/index.ts`, `Button/index.tsx` or `readBackend/index.ts`. A
+  loose file outside an `index` folder follows the kebab-case required by
   `unicorn/filename-case`.
-- Módulos com várias exportações relacionadas são exceção. Use um nome que
-  descreva a responsabilidade compartilhada, como `themeStorage` para
-  `readTheme` e `saveTheme`. Quando houver uma exportação principal e funções
-  auxiliares relacionadas, o módulo pode manter o nome da principal, como
-  `createMenuState` com `queryMenuItems`.
-- Tipos e constantes auxiliares não tornam, por si só, um módulo de função
-  única uma exceção. Funções internas não exportadas também não interferem
-  na escolha do nome.
-- Não separe exportações relacionadas apenas para satisfazer esta convenção
-  nem acrescente exportações artificiais para evitar uma renomeação.
-  Exportações sem responsabilidade comum devem ser avaliadas separadamente;
-  a regra de nomes não autoriza uma reorganização automática.
-- Preserve nomes exigidos pelo framework, pelo roteamento ou por ferramentas,
-  além de arquivos gerados e módulos de suporte como `types.ts`, `constants.ts`
-  e `context.ts`. Esta regra não exige renomear pastas organizacionais.
-- Ao renomear um módulo, atualize seus imports, referências documentais e
-  nomes dos testes correspondentes, preservando os sufixos de ambiente.
+- Modules with several related exports are the exception. Use a name that
+  describes the shared responsibility, such as `themeStorage` for `readTheme`
+  and `saveTheme`. When there is a main export and related helper functions,
+  the module can keep the name of the main one, such as `createMenuState` with
+  `queryMenuItems`.
+- Helper types and constants do not, by themselves, make a single-function
+  module an exception. Internal functions that are not exported do not affect
+  the choice of the name either.
+- Do not split related exports just to satisfy this convention, and do not add
+  artificial exports to avoid a rename. Exports without a common responsibility
+  must be evaluated separately; the naming rule does not authorize an automatic
+  reorganization.
+- Keep names required by the framework, by the routing or by tools, plus
+  generated files and support modules such as `types.ts`, `constants.ts` and
+  `context.ts`. This rule does not require renaming organizational folders.
+- When renaming a module, update its imports, documentation references and the
+  names of the matching tests, keeping the environment suffixes.
 
-## JavaScript e renderização no servidor
+## JavaScript and server rendering
 
-- A aplicação exige JavaScript para os controles interativos. Não crie
-  fallbacks de navegação em `noscript`, classes ou scripts para ocultar
-  controles quando JavaScript estiver desativado, nem suporte alternativo
-  específico para esse cenário.
-- Preserve SSR, SEO e testes do HTML inicial: eles verificam o conteúdo entregue
-  pelo servidor e a hidratação, sem prometer operação da aplicação sem JavaScript.
+- The application requires JavaScript for the interactive controls. Do not
+  create navigation fallbacks in `noscript`, classes or scripts to hide controls
+  when JavaScript is disabled, or alternative support specific to that scenario.
+- Keep SSR, SEO and the initial HTML tests: they check the content delivered by
+  the server and the hydration, without promising that the application works
+  without JavaScript.
 
-## Traduções
+## Translations
 
-- Idiomas e idioma base vêm de `project.inlang/settings.json`. Cada consumidor
-  mantém `i18n/{pt,en,es}.json` colocalizados. Compartilhe em
-  `src/i18n/` somente a partir do segundo consumidor de produção.
-- Use IDs globais com prefixo do dono e os mesmos parâmetros nos três idiomas.
-  Importe `m` de `@paraglide/messages.js` e `Locale` de
-  `@paraglide/runtime.js`; não edite `paraglide/` nem `.paraglide/`.
-- Chame mensagens no componente ou em getters. Não capture idioma nem texto
-  traduzido no topo de módulo compartilhado entre requisições SSR.
-- Links de páginas usam `LocalizedLink`, a navegação programática usa
-  `createLocalizedNavigate()` e os redirects usam `localizedRedirect()`.
-  `localizeHref()` fica para compor URLs de SEO e de índices. `paths` mantém
-  os caminhos tipados sem idioma. Endpoints e assets ficam sem prefixo
+- The locales and the base locale come from `project.inlang/settings.json`. Each
+  consumer keeps colocated `i18n/{pt,en,es}.json` files. Share in `src/i18n/`
+  only from the second production consumer on.
+- Use global IDs prefixed with the owner and the same parameters in the three
+  locales. Import `m` from `@paraglide/messages.js` and `Locale` from
+  `@paraglide/runtime.js`; do not edit `paraglide/` or `.paraglide/`.
+- Call messages in the component or in getters. Do not capture the locale or a
+  translated text at the top of a module shared between SSR requests.
+- Page links use `LocalizedLink`, programmatic navigation uses
+  `createLocalizedNavigate()` and redirects use `localizedRedirect()`.
+  `localizeHref()` is for composing SEO and index URLs. `paths` keeps the typed
+  paths without a locale. Endpoints and assets stay without a prefix
   (`shouldLocalize: false`).
-- Preserve `AsyncLocalStorage`, o corpo original das server functions, a
-  navegação de documento na troca de idioma e a tolerância a cookies bloqueados.
-- Rode `vp run i18n:generate` para conferir paridade, duplicatas e parâmetros.
-  Mudanças de integração exigem typecheck, tooling, testes e os E2E de i18n.
-  A divisão é por página e mensagem; cada módulo inclui os três idiomas usados.
+- Keep `AsyncLocalStorage`, the original body of the server functions, the
+  document navigation on locale change and the tolerance to blocked cookies.
+- Run `vp run i18n:generate` to check parity, duplicates and parameters.
+  Integration changes require typecheck, tooling, tests and the i18n E2E tests.
+  The split is per page and message; each module includes the three locales it
+  uses.
+- The repository's code, tests and documentation are written in English. The
+  Portuguese and Spanish catalogs, the language labels and the tests that check
+  translated texts are the application's internationalization and stay in their
+  languages.
 
-## Tipos TypeScript
+## TypeScript types
 
-- Nunca escreva tipagens inline grandes ou estruturadas em parâmetros,
-  retornos, callbacks ou anotações de variáveis, inclusive nos testes. Extraia
-  um `type` nomeado antes de usar. Considere estruturada uma tipagem com
-  múltiplas propriedades, objetos aninhados ou membros que sejam funções;
-  caber em uma linha não libera a tipagem inline.
-- Por exemplo, use `create(context: Context): RuleListeners`, com
-  `type RuleListeners = { Program: (node: object) => void }` declarado à parte.
-  Não use `create(context: Context): { Program: (node: object) => void }`.
-- Tipos simples como `string`, `Theme`, `Theme[]` e `string | undefined`
-  podem permanecer inline. Antes de entregar, revise as assinaturas e
-  anotações adicionadas para extrair estruturas inline. Lint aprovado não
-  dispensa essa revisão. Siga a seção "Localização de tipos" ao extraí-las.
-- Use `type` para declarar tipos de objetos, props e contratos em código e
-  testes. O lint aplica `typescript/consistent-type-definitions` com `type`.
-- Preserve `interface` quando houver necessidade de mesclagem de declarações:
-  `RequestEventLocals` em `src/@types/solid.d.ts`, `ImportMetaEnv` em
-  `src/@types/env.d.ts` e `RouteInfo` em `src/@types/router.d.ts` estendem
-  interfaces de terceiros. Mantenha a exceção do lint restrita aos arquivos
-  que precisam desse comportamento.
-- Não edite declarações geradas para trocar `interface` por `type`.
-  `src/@types/routes.d.ts` pertence ao gerador `filesystem-routing` e permanece
-  excluído do lint.
+- Never write large or structured inline types in parameters, return types,
+  callbacks or variable annotations, tests included. Extract a named `type`
+  before using it. A type with multiple properties, nested objects or members
+  that are functions counts as structured; fitting on one line does not allow
+  the inline type.
+- For example, use `create(context: Context): RuleListeners`, with
+  `type RuleListeners = { Program: (node: object) => void }` declared
+  separately. Do not use
+  `create(context: Context): { Program: (node: object) => void }`.
+- Simple types such as `string`, `Theme`, `Theme[]` and `string | undefined` can
+  stay inline. Before delivering, review the added signatures and annotations to
+  extract inline structures. A passing lint does not waive that review. Follow
+  the "Type location" section when extracting them.
+- Use `type` to declare object, props and contract types in code and tests. The
+  lint applies `typescript/consistent-type-definitions` with `type`.
+- Keep `interface` when declaration merging is needed: `RequestEventLocals` in
+  `src/@types/solid.d.ts`, `ImportMetaEnv` in `src/@types/env.d.ts` and
+  `RouteInfo` in `src/@types/router.d.ts` extend third-party interfaces. Keep the
+  lint exception restricted to the files that need that behavior.
+- Do not edit generated declarations to swap `interface` for `type`.
+  `src/@types/routes.d.ts` belongs to the `filesystem-routing` generator and
+  stays excluded from the lint.
 
-## Localização de tipos
+## Type location
 
-- Declare tipos pequenos e exclusivos de um arquivo no próprio arquivo,
-  próximos do código que os utiliza.
-- O critério para criar `types.ts` é o número de arquivos que importam o tipo.
-  Com um único consumidor, declare no próprio arquivo e não exporte. O
-  `types.ts` começa a valer a partir de dois consumidores, ou quando o bloco
-  passar de cerca de 30 linhas e atrapalhar a leitura da implementação.
-- Não exporte um tipo local apenas para permitir que outro arquivo o importe
-  de um componente, hook, serviço ou outra implementação.
-- Quando um tipo precisar ser compartilhado, mova-o para um arquivo de tipos
-  próximo da funcionalidade e atualize os consumidores.
-- Separe também tipos extensos quando suas declarações dificultarem a leitura
-  da implementação, mesmo que tenham apenas um consumidor.
-- Não crie um arquivo separado para cada tipo pequeno nem concentre tipos
-  sem relação em um `types.ts` global.
-- Preserve os tipos que precisam ser exportados como parte de uma API pública
-  intencional.
+- Declare small types exclusive to one file in that file, close to the code that
+  uses them.
+- The criterion for creating `types.ts` is the number of files that import the
+  type. With a single consumer, declare it in the file itself and do not export
+  it. `types.ts` applies from two consumers on, or when the block goes past about
+  30 lines and gets in the way of reading the implementation.
+- Do not export a local type just so another file can import it from a
+  component, hook, service or other implementation.
+- When a type needs to be shared, move it to a types file close to the feature
+  and update the consumers.
+- Also separate long types when their declarations make the implementation hard
+  to read, even with a single consumer.
+- Do not create a separate file for each small type, and do not gather unrelated
+  types in a global `types.ts`.
+- Keep the types that need to be exported as part of an intentional public API.
 
-## Localização de módulos
+## Module location
 
-- O critério de consumidores vale para qualquer módulo, não só para funções:
-  helpers, constantes, configurações, schemas, builders e tipos. As pastas
-  globais `src/helpers/`, `src/constants/` e os tipos compartilhados em
-  `src/@types/` recebem só módulos com dois ou mais consumidores de produção.
-  Um módulo usado por uma única rota fica dentro da pasta dela em
-  `src/routes/`, e um módulo usado por um único componente fica dentro da
-  pasta do componente.
-- Constante de consumidor único fica no próprio arquivo que a usa. Quando for
-  configuração que o projeto edita, vai para um `constants.ts` na pasta do
-  consumidor, como `DropdownMenu/constants.ts` e
-  `(seo)/robots.txt/constants.ts`. Nunca em `src/constants/` antes do segundo
-  consumidor.
-- Extraia constantes para expressar significado de domínio, configuração ou
-  um contrato compartilhado. Dois consumidores, por si só, não justificam um
-  módulo compartilhado: valores idiomáticos como o `-1` de `.at(-1)` ficam no
-  ponto de uso. Não crie um nome, arquivo ou comentário apenas para explicar
-  a semântica evidente de uma API nativa.
-- Códigos HTTP usados pela aplicação ficam em `src/constants/http.ts`, mesmo
-  quando um código ainda tiver um único consumidor. O arquivo reúne os status
-  do protocolo; acrescente apenas códigos efetivamente usados. Testes podem
-  manter valores esperados literais para validar o contrato de forma independente.
-- Rota que passa a precisar de módulos locais vira pasta com `index.ts`:
-  `robots.txt.ts` passa a `robots.txt/index.ts`, e o que a rota consome fica
-  dentro dessa pasta. `sitemap.xml/`, `llms.txt/` e `robots.txt/` seguem esse
-  formato.
-- Quando uma rota ou componente tiver dois ou mais módulos auxiliares locais,
-  agrupe-os em uma pasta `helpers/` dentro da pasta da rota ou componente.
-  Com apenas um helper local, mantenha-o diretamente na pasta do consumidor.
-  `constants.ts` e `types.ts` são módulos de suporte e não entram nessa
-  contagem. Essa organização não muda o critério de compartilhamento das
-  pastas globais.
-- Pasta ou arquivo em `src/routes/` só vira rota com `export default` ou com
-  um handler HTTP (`GET`, `POST` e os demais métodos reconhecidos). Módulos
-  colocalizados não exportam esses nomes.
-- Previsão de reuso não justifica a extração. Mova para a pasta global
-  correspondente quando o segundo consumidor aparecer, atualizando imports,
-  testes e os guias correspondentes em `docs/`.
-- Testes não decidem a localização. Um módulo colocalizado mantém seus
-  testes em `__tests__/` ao lado dele.
+- The consumer criterion applies to any module, not only to functions: helpers,
+  constants, configs, schemas, builders and types. The global folders
+  `src/helpers/`, `src/constants/` and the shared types in `src/@types/` only
+  receive modules with two or more production consumers. A module used by a
+  single route lives inside its folder in `src/routes/`, and a module used by a
+  single component lives inside the folder of the component.
+- A single-consumer constant lives in the file that uses it. When it is a
+  config the project edits, it goes into a `constants.ts` in the folder of the
+  consumer, such as `DropdownMenu/constants.ts` and
+  `(seo)/robots.txt/constants.ts`. Never in `src/constants/` before the second
+  consumer.
+- Extract constants to express domain meaning, configuration or a shared
+  contract. Two consumers, by themselves, do not justify a shared module:
+  idiomatic values such as the `-1` of `.at(-1)` stay where they are used. Do
+  not create a name, file or comment just to explain the obvious semantics of a
+  native API.
+- HTTP codes used by the application live in `src/constants/http.ts`, even when
+  a code still has a single consumer. The file gathers the protocol statuses;
+  add only codes actually used. Tests can keep literal expected values to check
+  the contract independently.
+- A route that starts needing local modules becomes a folder with `index.ts`:
+  `robots.txt.ts` becomes `robots.txt/index.ts`, and what the route consumes
+  lives inside that folder. `sitemap.xml/`, `llms.txt/` and `robots.txt/` follow
+  that format.
+- When a route or component has two or more local helper modules, group them in
+  a `helpers/` folder inside the folder of the route or component. With a single
+  local helper, keep it directly in the folder of the consumer. `constants.ts`
+  and `types.ts` are support modules and do not enter that count. That
+  organization does not change the sharing criterion of the global folders.
+- A folder or file in `src/routes/` only becomes a route with `export default`
+  or with an HTTP handler (`GET`, `POST` and the other recognized methods).
+  Colocated modules do not export those names.
+- Expected reuse does not justify the extraction. Move to the matching global
+  folder when the second consumer shows up, updating imports, tests and the
+  matching guides in `docs/`.
+- Tests do not decide the location. A colocated module keeps its tests in
+  `__tests__/` next to it.
 
-## Coesão e tamanho dos módulos
+## Cohesion and size of modules
 
-- Use o número de linhas como sinal para examinar responsabilidades e custo de
-  leitura, sem impor um teto de linhas para dividir arquivos.
-- Extraia blocos coesos que possam ser compreendidos e alterados juntos, como
-  preparação e publicação de release ou consulta de caches. Mantenha na entrada
-  a sequência que coordena essas operações e as decisões principais do fluxo.
-- Agrupe configurações extensas por responsabilidade, preservando os valores,
-  a precedência dos overrides e a ordem de avaliação que tenha efeito.
-- Preserve juntas as operações que dependem do mesmo contexto local. Evite
-  arquivos com wrappers que apenas encaminham chamadas, fragmentos sem sentido
-  próprio ou um arquivo por função só para reduzir a contagem de linhas.
-- Declare os contratos compartilhados perto da funcionalidade e mantenha os
-  tipos privados junto de seu único consumidor, respeitando as exceções de
-  tamanho da seção "Localização de tipos".
+- Use the number of lines as a signal to examine responsibilities and reading
+  cost, without imposing a line ceiling for splitting files.
+- Extract cohesive blocks that can be understood and changed together, such as
+  preparing and publishing a release or querying caches. Keep in the entry the
+  sequence that coordinates those operations and the main decisions of the flow.
+- Group long configs by responsibility, keeping the values, the precedence of
+  the overrides and the evaluation order that has an effect.
+- Keep together the operations that depend on the same local context. Avoid
+  files with wrappers that only forward calls, fragments without meaning of
+  their own or one file per function just to lower the line count.
+- Declare the shared contracts close to the feature and keep the private types
+  next to their single consumer, respecting the size exceptions of the "Type
+  location" section.
 
-## Módulos de página
+## Page modules
 
-- Metadados próprios da página ficam em `seo.ts`, ao lado de `index.tsx`.
-  Exporte o objeto `seo` com `satisfies SeoRouteInfo` e importe-o para
-  `route.info.seo`. A página continua declarando `llms`, `markdown` e os demais
-  controles da rota explicitamente.
-- Declare `route.info.markdown: true` na folha para publicar a representação
-  derivada do HTML assentado: o build gera um `.md` estático por idioma. Use
-  `'dynamic'` quando o conteúdo depender da requisição; a conversão acontece a
-  cada pedido. O SEO efetivo precisa permitir indexação.
-  Não crie produtores `markdown.ts`, manifestos ou conteúdo exclusivo de Markdown.
-- Páginas parametrizadas ficam fora do build e usam o matching nativo na
-  requisição. A enumeração finita de sitemap e llms.txt é um contrato separado.
-- Textos e links localizados são getters ou chamadas no componente: não capture
-  idioma no topo do módulo. Objetos usados pelo HTML podem permanecer como dados
-  de UI; não precisam implementar um contrato de publicação.
-- `seo.ts` fica ao lado de `index.tsx`, sem entrar na contagem de helpers.
-  Não exporte componente padrão nem handlers HTTP nesse módulo.
-- O corpo da página (os textos e dados que o componente renderiza, como o
-  `content` de about, contact e privacy) fica em `index.tsx`, nunca em `seo.ts`.
-  O manifesto de rotas importa o `route` de cada página no bundle inicial, e
-  tudo o que `seo.ts` importa vai junto: um `content` exportado de lá leva os
-  textos de todas as páginas, nos três idiomas, para o bundle inicial. Os getters
-  de `seo` chamam as mensagens direto, sem ler o objeto da página. Não mova o
-  `content` para `seo.ts`, para um módulo que o `seo.ts` importe nem para outro
-  que o `route` alcance. A regra `project/seo-module`
-  (`tooling/seoModule/index.ts`) recusa no lint qualquer export além de `seo` e
-  qualquer import local como valor em `seo.ts`, e o `I18n.production.e2e`
-  confere o resultado no build; detalhes em [SEO](docs/seo.md). Ao mudar a
-  regra, rode `vp run test:tooling`.
-- Markdown usa main semântico e filtros do conversor. Use `data-md-exclude`
-  para excluir conteúdo; CSS calculado não é interpretado. Preserve citações
-  contextuais em footer dentro de main.
-- Antes de publicar HTML convertido, exija estado de integridade do render
-  presente, concluído e sem erros. O hook global marca esse estado; não passe
-  `onError` local ao `renderToStream`, que o desviaria. Preserve o sinal de
-  cancelamento até `renderToStream` e o streaming do HTML normal.
+- The page's own metadata lives in `seo.ts`, next to `index.tsx`. Export the
+  `seo` object with `satisfies SeoRouteInfo` and import it into
+  `route.info.seo`. The page still declares `llms`, `markdown` and the other
+  route controls explicitly.
+- Declare `route.info.markdown: true` on the leaf to publish the representation
+  derived from the settled HTML: the build generates one static `.md` per
+  locale. Use `'dynamic'` when the content depends on the request; the
+  conversion happens on each request. The effective SEO must allow indexing.
+  Do not create `markdown.ts` producers, manifests or Markdown-only content.
+- Parameterized pages stay out of the build and use the native matching on the
+  request. The finite enumeration of the sitemap and llms.txt is a separate
+  contract.
+- Localized texts and links are getters or calls in the component: do not
+  capture the locale at the top of the module. Objects used by the HTML can stay
+  as UI data; they do not need to implement a publication contract.
+- `seo.ts` lives next to `index.tsx`, without entering the helper count. Do not
+  export a default component or HTTP handlers from that module.
+- The page body (the texts and data the component renders, such as the
+  `content` of about, contact and privacy) lives in `index.tsx`, never in
+  `seo.ts`. The route manifest imports the `route` of each page in the initial
+  bundle, and everything `seo.ts` imports goes with it: a `content` exported
+  from there takes the texts of every page, in the three locales, into the
+  initial bundle. The `seo` getters call the messages directly, without reading
+  the page object. Do not move `content` to `seo.ts`, to a module `seo.ts`
+  imports or to another one the `route` reaches. The `project/seo-module` rule
+  (`tooling/seoModule/index.ts`) refuses in the lint any export other than `seo`
+  and any local value import in `seo.ts`, and `I18n.production.e2e` checks the
+  result in the build; details in [SEO](docs/seo.md). When changing the rule,
+  run `vp run test:tooling`.
+- Markdown uses a semantic main and the converter filters. Use
+  `data-md-exclude` to exclude content; computed CSS is not interpreted. Keep
+  contextual citations in a footer inside main.
+- Before publishing converted HTML, require a render integrity state that is
+  present, completed and without errors. The global hook marks that state; do
+  not pass a local `onError` to `renderToStream`, which would divert it. Keep the
+  cancellation signal up to `renderToStream` and the streaming of the normal
+  HTML.
 
-## Parâmetros de função
+## Function parameters
 
-- Prefira um único parâmetro nas funções do projeto. Quando houver vários
-  valores, prefira um objeto nomeado: `makeBroadcastChannel({ name, receive })`.
-  Desestruture na assinatura e nomeie o tipo do objeto conforme a seção
-  "Localização de tipos".
-- O lint permite até dois parâmetros. Esse limite mantém espaço para
-  assinaturas de bibliotecas, sem mudar a preferência por um argumento.
-- O motivo é o ponto de chamada. Com dois argumentos posicionais, um booleano
-  ou uma string solta não dizem o que significam: `publish('dark', true)` exige
-  abrir a assinatura, enquanto `publish({ theme: 'dark', persisted: true })` se
-  explica sozinho.
-- Um parâmetro só permanece posicional. Não crie objeto para envolver um
-  argumento único.
-- A preferência vale para as funções do projeto. Assinaturas ditadas por terceiros
-  ficam como o contrato exige, sem adaptação: middlewares `(request, next)` em
-  `src/middleware/`, callbacks de teste e hooks de plugin do Vite.
+- Prefer a single parameter in the project's functions. When there are several
+  values, prefer a named object: `makeBroadcastChannel({ name, receive })`.
+  Destructure in the signature and name the object type according to the "Type
+  location" section.
+- The lint allows up to two parameters. That limit leaves room for library
+  signatures, without changing the preference for one argument.
+- The reason is the call site. With two positional arguments, a boolean or a
+  loose string does not say what it means: `publish('dark', true)` requires
+  opening the signature, while `publish({ theme: 'dark', persisted: true })`
+  explains itself.
+- A single parameter stays positional. Do not create an object to wrap a single
+  argument.
+- The preference applies to the project's functions. Signatures dictated by
+  third parties stay as the contract requires, without adaptation: `(request,
+  next)` middlewares in `src/middleware/`, test callbacks and Vite plugin hooks.
 
-## Eventos em JSX
+## Events in JSX
 
-- Handlers de eventos DOM e de props de componentes podem permanecer inline
-  quando descrevem uma ação local curta. Construir um objeto de argumentos ou
-  usar uma guarda simples não exige extração por si só.
-- Extraia uma função nomeada quando houver lógica complexa, várias etapas,
-  reuso ou um nome que esclareça a intenção. Evite criar uma sequência de
-  handlers que apenas repassam chamadas e obrigam alternar entre as declarações
-  e o JSX para entender o elemento.
-- No `ToastProvider`, mantenha junto ao JSX os callbacks curtos de pausa e
-  fechamento que usam o `id` de cada item do `For`. O handler da seção que lê a
-  origem do foco usa `makeFocusOriginHandler`, compartilhado com
-  `OutdatedPageNotice`, e atualiza `focusOrigin` no callback local. Preserve
-  funções próprias para encontrar o vizinho e devolver o foco.
-- Callbacks de `ref` com uma chamada simples podem permanecer inline. Quando
-  houver atribuição com `=` ou lógica adicional, extraia uma função nomeada.
-  Callbacks de renderização e outras props seguem seus contratos próprios.
-- Aplique a regra em código novo e nos trechos alterados, sem refatoração em
-  massa de componentes existentes. A escolha entre inline e função nomeada é
-  conferida na revisão; o lint atual não impõe essa decisão.
+- DOM event handlers and component prop handlers can stay inline when they
+  describe a short local action. Building an argument object or using a simple
+  guard does not require extraction by itself.
+- Extract a named function when there is complex logic, several steps, reuse or
+  a name that clarifies the intent. Avoid creating a chain of handlers that only
+  forward calls and force switching between the declarations and the JSX to
+  understand the element.
+- In `ToastProvider`, keep next to the JSX the short pause and close callbacks
+  that use the `id` of each `For` item. The section handler that reads the focus
+  origin uses `makeFocusOriginHandler`, shared with `OutdatedPageNotice`, and
+  updates `focusOrigin` in the local callback. Keep dedicated functions to find
+  the neighbor and return the focus.
+- `ref` callbacks with a simple call can stay inline. When there is an
+  assignment with `=` or additional logic, extract a named function. Render
+  callbacks and other props follow their own contracts.
+- Apply the rule to new code and to the changed parts, without a mass refactor
+  of existing components. The choice between inline and a named function is
+  checked in review; the current lint does not enforce that decision.
 
-## Condicionais e fluxo de controle
+## Conditionals and control flow
 
-- Evite ao máximo encadear condições com `else if`. Prefira guard clauses
-  (cláusulas de guarda) e retornos antecipados quando cada ramo puder encerrar
-  o fluxo. `if` isolado e `if/else` simples continuam permitidos.
-- Para selecionar valores por uma chave, prefira mapas de consulta quando a
-  correspondência for direta. Considere `switch` para vários casos discretos
-  da mesma expressão, quando isso deixar a decisão mais clara.
-- Preserve a ordem de avaliação e a exclusividade dos ramos. Não transforme
-  uma cadeia de `else if` em vários `if` independentes que possam executar
-  mais de um ramo, nem em ternários aninhados ou abstrações artificiais.
-- Mantenha `else if` quando as alternativas prejudicarem a clareza ou exigirem
-  duplicar trabalho comum necessário após os ramos.
-- Aplique a regra em código novo e nos trechos alterados pela tarefa. Ela não
-  autoriza refatoração em massa de código adjacente.
+- Avoid chaining conditions with `else if` as much as possible. Prefer guard
+  clauses and early returns when each branch can end the flow. A single `if`
+  and a simple `if/else` are still allowed.
+- To select values by a key, prefer lookup maps when the mapping is direct.
+  Consider `switch` for several discrete cases of the same expression, when that
+  makes the decision clearer.
+- Keep the evaluation order and the exclusivity of the branches. Do not turn an
+  `else if` chain into several independent `if` statements that can run more
+  than one branch, or into nested ternaries or artificial abstractions.
+- Keep `else if` when the alternatives hurt clarity or require duplicating
+  common work needed after the branches.
+- Apply the rule to new code and to the parts the task changes. It does not
+  authorize a mass refactor of adjacent code.
 
 ## Exports
 
-- Exporte na própria declaração: `export function`, `export const`,
-  `export type` e `export default`. Não use lista local como `export { x }`,
-  `export { x as y }` ou `export type { T }`.
-- Lista de exports só vale em reexport com `from`, como
-  `export { default, route } from '@/routes/(base)/(home)/index.tsx'` nas
-  fixtures E2E, porque não há declaração local para marcar.
-- `export {}` vazio também é recusado. Para transformar em módulo um `.d.ts`
-  que só tem `declare global`, use um `import` real, como
-  `import 'vite/client'` em `src/@types/env.d.ts`.
-- `import/exports-last` exige os exports no fim do arquivo. Declare antes
-  deles os tipos, constantes e helpers privados. Quando um valor exportado
-  precisar existir antes do código privado que o consome, mova-o para um
-  módulo próprio, como `tooling/backendPolicy/constants.ts`, em vez de
-  exportar os helpers.
-- A regra `project/no-export-list` (`tooling/noExportList/index.ts`,
-  registrada no plugin de `tooling/project-plugin.ts`) aplica a
-  convenção. Valide com `vp run check:ci` e, ao mudar a regra, com
+- Export in the declaration itself: `export function`, `export const`,
+  `export type` and `export default`. Do not use a local list such as
+  `export { x }`, `export { x as y }` or `export type { T }`.
+- An export list is only valid in a re-export with `from`, such as
+  `export { default, route } from '@/routes/(base)/(home)/index.tsx'` in the E2E
+  fixtures, because there is no local declaration to mark.
+- An empty `export {}` is refused too. To turn into a module a `.d.ts` that only
+  has `declare global`, use a real `import`, such as `import 'vite/client'` in
+  `src/@types/env.d.ts`.
+- `import/exports-last` requires the exports at the end of the file. Declare the
+  private types, constants and helpers before them. When an exported value needs
+  to exist before the private code that consumes it, move it to a module of its
+  own, such as `tooling/backendPolicy/constants.ts`, instead of exporting the
+  helpers.
+- The `project/no-export-list` rule (`tooling/noExportList/index.ts`, registered
+  in the plugin of `tooling/project-plugin.ts`) applies the convention. Validate
+  with `vp run check:ci` and, when changing the rule, with
   `vp run test:tooling`.
 
-## Funções que retornam Promise
+## Functions that return a Promise
 
-- Quando uma função apenas repassar uma Promise, retorne-a diretamente, sem
-  `async`, preservando o tipo de retorno `Promise<T>` quando explícito.
-  Isso também vale para handlers HTTP como `GET`.
-- Use `async` quando precisar de `await` para consumir o resultado ou tratar
-  a rejeição com `try/catch`. Preserve também `async` quando o contrato exigir
-  que erros síncronos do corpo sejam convertidos em rejeições da Promise.
-- O lint mantém `typescript/promise-function-async` desativada para permitir
-  esse retorno direto. Preserve `typescript/require-await` e
-  `typescript/return-await`; não adicione `await` ou comentários de disable
-  apenas para satisfazer a antiga exigência de `async`.
+- When a function only passes a Promise along, return it directly, without
+  `async`, keeping the `Promise<T>` return type when explicit. That also applies
+  to HTTP handlers such as `GET`.
+- Use `async` when you need `await` to consume the result or to handle the
+  rejection with `try/catch`. Also keep `async` when the contract requires
+  synchronous errors of the body to become Promise rejections.
+- The lint keeps `typescript/promise-function-async` off to allow that direct
+  return. Keep `typescript/require-await` and `typescript/return-await`; do not
+  add `await` or disable comments just to satisfy the old `async` requirement.
 
-## Comentários no código
+## Code comments
 
-- Não acrescente comentários que repitam nomes, tipos, condições ou passos
-  visíveis no código. Isso vale também para JSDoc, cabeçalhos de funções e
-  resumos inseridos por agentes de IA.
-- Comente apenas um motivo ou restrição que o código não esclarece, como uma
-  exigência de segurança, uma incompatibilidade de biblioteca ou uma condição
-  de corrida. Use o menor comentário que preserve essa informação.
-- Guias de uso, decisões de arquitetura e explicações extensas ficam na
-  documentação. Não copie esses textos para cada implementação.
-- Preserve diretivas de ferramentas, licenças e contratos relevantes. Ao
-  editar, remova comentários redundantes ou desatualizados no trecho alterado.
+- Do not add comments that repeat names, types, conditions or steps visible in
+  the code. That also applies to JSDoc, function headers and summaries inserted
+  by AI agents.
+- Comment only a reason or constraint the code does not make clear, such as a
+  security requirement, a library incompatibility or a race condition. Use the
+  smallest comment that keeps that information.
+- Usage guides, architecture decisions and long explanations live in the
+  documentation. Do not copy those texts into each implementation.
+- Keep tool directives, licenses and relevant contracts. When editing, remove
+  redundant or outdated comments in the changed part.
 
-## Nomes de booleanos
+## Boolean names
 
-- Booleanos próprios do projeto usam um prefixo que expresse seu significado:
-  `is` para estado (`isOpen`), `has` para presença (`hasErrors`), `can` para
-  capacidade (`canSubmit`) e `should` para uma decisão (`shouldLocalize`).
-  Prefira nomes afirmativos, sem dupla negação.
-- A convenção vale para variáveis, parâmetros, propriedades e getters de
-  signals booleanos. O setter acompanha o getter: `[isOpen, setIsOpen]`.
-- Preserve nomes de contratos externos, atributos HTML, propriedades ARIA,
-  APIs de bibliotecas e código gerado, como `disabled`, `checked` e `reload`.
-  Uma função que executa uma ação e retorna sucesso continua com nome de ação,
-  como `saveTheme`; o retorno booleano não a transforma em uma consulta.
-- Esta convenção é conferida na revisão. O lint atual não verifica nomes pelo
-  tipo booleano; não crie exceções genéricas nem afirme cobertura automática.
+- The project's own booleans use a prefix that expresses their meaning: `is`
+  for state (`isOpen`), `has` for presence (`hasErrors`), `can` for capability
+  (`canSubmit`) and `should` for a decision (`shouldLocalize`). Prefer
+  affirmative names, without double negation.
+- The convention applies to variables, parameters, properties and getters of
+  boolean signals. The setter follows the getter: `[isOpen, setIsOpen]`.
+- Keep the names of external contracts, HTML attributes, ARIA properties,
+  library APIs and generated code, such as `disabled`, `checked` and `reload`. A
+  function that performs an action and returns success keeps an action name,
+  such as `saveTheme`; the boolean return does not turn it into a query.
+- This convention is checked in review. The current lint does not check names
+  by the boolean type; do not create generic exceptions or claim automatic
+  coverage.
 
-## Nomes de signal
+## Signal names
 
-- O par desestruturado de `createSignal` usa `[x, setX]`: o nome do setter é o
-  do getter com prefixo `set`. `[isOpen, setIsOpen]`, `[isReady, setIsReady]`.
-  Nunca `[theme, setPreference]` nem `[systemTheme, setSystem]`.
-- Quando o nome interno e o nome público divergem, renomeie o getter, não o
-  setter, e exponha o alias no retorno. Em `createTheme` o signal interno é
-  `[themePreference, setThemePreference]` e o retorno publica
+- The destructured pair of `createSignal` uses `[x, setX]`: the setter name is
+  the getter name with the `set` prefix. `[isOpen, setIsOpen]`,
+  `[isReady, setIsReady]`. Never `[theme, setPreference]` or
+  `[systemTheme, setSystem]`.
+- When the internal name and the public name differ, rename the getter, not the
+  setter, and expose the alias in the return. In `createTheme` the internal
+  signal is `[themePreference, setThemePreference]` and the return publishes
   `theme: themePreference`.
-- O mesmo vale para `createStore` e qualquer primitive que devolva o par.
+- The same applies to `createStore` and any primitive that returns the pair.
 
-## Classes CSS
+## CSS classes
 
-- Use snake_case em todas as classes CSS do projeto, incluindo CSS Modules e
-  utilitários globais: `.home_link`, `.radio_indicator` e `.sr_only`. Nomes de
-  uma palavra, como `.btn`, continuam válidos.
-- Em componentes com variantes ou tamanhos, use classes independentes da classe
-  base, com os prefixos `variant_` e `size_`: `.variant_default`, `.size_sm`.
-  Concatene o prefixo com o valor da prop no acesso ao CSS Module, sem criar
-  mapas de constantes apenas para selecionar classes.
-- Use nesting para estados e media queries de cada classe. As classes de
-  variantes e tamanhos ficam no nível superior, fora da classe base.
-- Importe CSS Modules como `S`. O Stylelint exige snake_case em `src/**/*.css`;
-  valide mudanças com `vp run lint:css` e `vp run test:tooling`.
-- Os tokens de `src/theme/tokens/` são a paleta do boilerplate para as
-  aplicações derivadas. Não aponte nem remova um token por não ter consumidor na
-  demonstração; revise apenas valor, nome ou uso incorretos.
+- Use snake_case in every CSS class of the project, CSS Modules and global
+  utilities included: `.home_link`, `.radio_indicator` and `.sr_only`. One-word
+  names, such as `.btn`, are still valid.
+- In components with variants or sizes, use classes independent from the base
+  class, with the `variant_` and `size_` prefixes: `.variant_default`,
+  `.size_sm`. Concatenate the prefix with the value of the prop when accessing
+  the CSS Module, without creating constant maps just to select classes.
+- Use nesting for the states and media queries of each class. The variant and
+  size classes live at the top level, outside the base class.
+- Import CSS Modules as `S`. Stylelint requires snake_case in `src/**/*.css`;
+  validate changes with `vp run lint:css` and `vp run test:tooling`.
+- The tokens of `src/theme/tokens/` are the palette of the boilerplate for the
+  derived applications. Do not flag or remove a token for having no consumer in
+  the demo; review only a wrong value, name or use.
 
-## Prop `label` do `Button`
+## The `label` prop of `Button`
 
-- A prop `label` de `src/components/atoms/Button/index.tsx` é um atalho
-  intencional para botão só com texto: `<Button label={m.save()} />`. Ela já
-  foi removida e restaurada mais de uma vez. Não a remova, não a aponte como
-  duplicação de `children` e não a trate como prop sem consumidor; detalhes em
-  [UI](docs/ui.md#botões).
+- The `label` prop of `src/components/atoms/Button/index.tsx` is an intentional
+  shortcut for a text-only button: `<Button label={m.save()} />`. It has been
+  removed and restored more than once. Do not remove it, do not flag it as a
+  duplication of `children` and do not treat it as a prop without a consumer;
+  details in [UI](docs/ui.md#buttons).
 
-## Dependências entre camadas
+## Dependencies between layers
 
-- Preserve `architecture/layer-imports` em `tooling/architecturePolicy/index.ts`.
-  `helpers`, `constants`, `@types`, `data`, `infra`, `theme`, `i18n` e
-  `paraglide` não dependem de UI, primitives, rotas ou entradas (`App`,
-  `Document`, `entry-server`, `entry-client`, `router`, `middleware`).
-  Primitives globais não dependem de UI, rotas ou entradas; atoms não dependem
-  de molecules/organisms, e molecules não dependem de organisms.
-- A camada de cada componente sai do que ele junta: atom não renderiza outro
-  componente; molecule junta atoms numa unidade, inclusive quando exporta as
-  próprias peças, como o `PageHero`; organism junta molecules numa seção da
-  interface, como o `Topbar`. O lint confere só a direção dos imports. Escolha
-  a camada ao criar o componente e, quando ele passar a renderizar outro da
-  mesma camada, mova a pasta uma camada acima. Critério e exemplos em
-  [arquitetura](docs/architecture.md#camadas-dos-componentes).
-- Produção em `src` não importa testes, fixtures de `src/tests` ou `tooling`.
-  A exceção de testes vale como origem, inclusive para fixtures E2E.
-  Primitives colocalizadas pertencem à camada do componente que as contém.
-- Imports de tipo e reexportações também respeitam as camadas. Caminhos
-  calculados e outros carregadores exigem revisão; não contorne a política
-  com imports dinâmicos ou comentários de disable.
-- Ao criar camada ou alias, atualize a regra e seus testes. Use as APIs de
-  `vite-plus/lint/plugins` e `vite-plus/lint/plugins-dev`, sem instalar outra
-  cópia de Oxlint. Rode `vp run test:tooling` e `vp run check:ci`. Consulte a
-  matriz e os limites em [arquitetura](docs/architecture.md#dependências-entre-camadas).
+- Keep `architecture/layer-imports` in `tooling/architecturePolicy/index.ts`.
+  `helpers`, `constants`, `@types`, `data`, `infra`, `theme`, `i18n` and
+  `paraglide` do not depend on UI, primitives, routes or entries (`App`,
+  `Document`, `entry-server`, `entry-client`, `router`, `middleware`). Global
+  primitives do not depend on UI, routes or entries; atoms do not depend on
+  molecules/organisms, and molecules do not depend on organisms.
+- The layer of each component comes from what it puts together: an atom does
+  not render another component; a molecule puts atoms together into a unit, even
+  when it exports its own pieces, such as `PageHero`; an organism puts molecules
+  together into a section of the interface, such as `Topbar`. The lint checks
+  only the direction of the imports. Choose the layer when creating the
+  component and, when it starts rendering another one of the same layer, move
+  the folder one layer up. Criterion and examples in
+  [architecture](docs/architecture.md#component-layers).
+- Production code in `src` does not import tests, fixtures of `src/tests` or
+  `tooling`. The test exception applies as an origin, E2E fixtures included.
+  Colocated primitives belong to the layer of the component that holds them.
+- Type imports and re-exports also respect the layers. Computed paths and other
+  loaders require review; do not work around the policy with dynamic imports or
+  disable comments.
+- When creating a layer or an alias, update the rule and its tests. Use the
+  `vite-plus/lint/plugins` and `vite-plus/lint/plugins-dev` APIs, without
+  installing another copy of Oxlint. Run `vp run test:tooling` and
+  `vp run check:ci`. See the matrix and the limits in
+  [architecture](docs/architecture.md#dependencies-between-layers).
 
-## Cabeçalhos de segurança e CSP
+## Security headers and CSP
 
-- Antes de alterar cabeçalhos, CSP, nonce ou as entradas de renderização, leia
-  [docs/security.md](docs/security.md). Os cabeçalhos saem do middleware, com
-  os valores em `src/middleware/securityHeaders/constants.ts`; não devolva a
-  CSP nem os demais cabeçalhos das respostas da função ao `vercel.json`. Os
-  estáticos não passam pela função: as `routeRules` do Nitro no
-  `vite.config.ts` gravam neles `Strict-Transport-Security`,
-  `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`, lidos de
-  `SECURITY_HEADERS`. Ao publicar um
-  novo tipo de estático, acrescente o caminho a `STATIC_FILE_PATHS`, sem
-  sobreposição parcial com os outros padrões nem com as demais `routeRules`.
-  Os `.md` entram por idioma; ao mudar o `urlPatterns` do Paraglide, revise
-  esses padrões. O
-  `vercel.json` guarda só o `Content-Type` dos `.md`, que numa route rule
-  também sobrescreveria os erros da função
-  ([limites conhecidos](docs/security.md#limites-conhecidos)).
-- Não acrescente `'unsafe-inline'`, `'unsafe-eval'` nem hosts ao `script-src`,
-  nem `'unsafe-inline'` ao `style-src`.
-- Não renderize `<style>` nem use a prop `style` em JSX renderizado no SSR: a
-  CSP bloqueia o atributo. Use classes.
-- Todo `<script>` do `Document` recebe `nonce={nonce}`, e o
-  `src/entry-server.tsx` repassa `event.nonce` ao `renderToStream`.
-- Preserve o par de entradas autorais, com a mesma árvore em
-  `src/entry-server.tsx` e `src/entry-client.tsx`, e a regressão `FragmentCss`,
-  da fixture `/fragment-css` descrita no guia.
-- A CSP não é enviada em desenvolvimento. Confira mudanças de CSP com
+- Before changing headers, CSP, nonce or the render entries, read
+  [docs/security.md](docs/security.md). The headers come from the middleware,
+  with the values in `src/middleware/securityHeaders/constants.ts`; do not move
+  the CSP or the other headers of the function responses back to `vercel.json`.
+  The static files do not go through the function: the Nitro `routeRules` in
+  `vite.config.ts` write `Strict-Transport-Security`, `X-Content-Type-Options`
+  and `Cross-Origin-Resource-Policy` into them, read from `SECURITY_HEADERS`.
+  When publishing a new kind of static file, add the path to
+  `STATIC_FILE_PATHS`, without a partial overlap with the other patterns or with
+  the other `routeRules`. The `.md` files come in per locale; when changing the
+  Paraglide `urlPatterns`, review those patterns. `vercel.json` keeps only the
+  `Content-Type` of the `.md` files, which in a route rule would also overwrite
+  the errors of the function ([known limits](docs/security.md#known-limits)).
+- Do not add `'unsafe-inline'`, `'unsafe-eval'` or hosts to `script-src`, or
+  `'unsafe-inline'` to `style-src`.
+- Do not render `<style>` or use the `style` prop in JSX rendered in the SSR:
+  the CSP blocks the attribute. Use classes.
+- Every `<script>` of `Document` receives `nonce={nonce}`, and
+  `src/entry-server.tsx` passes `event.nonce` to `renderToStream`.
+- Keep the pair of authored entries, with the same tree in
+  `src/entry-server.tsx` and `src/entry-client.tsx`, and the `FragmentCss`
+  regression, from the `/fragment-css` fixture described in the guide.
+- The CSP is not sent in development. Check CSP changes with
   `vp run test:e2e:production`.
 
-## Erros no servidor e chamadas de backend
+## Server errors and backend calls
 
-- Antes de alterar backend, server functions ou tratamento SSR, leia
-  [docs/server-errors.md](docs/server-errors.md) e o guia correspondente:
-  [chamadas de backend](docs/server-errors/backend.md) ou
-  [integridade do SSR](docs/server-errors/ssr-integrity.md). Toda operação deve
-  terminar em dados públicos ou em um erro público novo antes de chegar ao Solid.
-- HTTP usa `requestJson`. SDK e banco exigem adapter em `src/infra/server/`,
-  com `server-only` e `protectServerOperation({ run })` envolvendo leitura,
-  validação e saída. `allowControl` pertence somente ao registro global de
-  server functions.
-- O schema seleciona os campos públicos: a verificação estrutural do wrapper
-  não identifica dados confidenciais em strings. Não retorne erros, promises
-  aninhadas ou trabalho adiado sem contrato específico.
-- Erro público só nasce de `createPublicError()`, importado de
-  `@/infra/server/publicErrors/index.ts`; somente esse módulo pode chamar
-  `markSafeError`. Nunca publique mensagem, causa, propriedades, corpo ou
-  headers de um erro upstream, inclusive dentro de um resultado.
-- Não registre erro original, headers, cookies, argumentos, corpos ou
-  credenciais; logs detalhados exigem remoção de dados sensíveis definida antes.
-  O `console` fica reservado a `logServerFailure`.
-- Preserve as restrições de `tooling/backendPolicy`. Um SDK novo exige
-  restrição do pacote no lint, com exceção só para o adapter. Não contorne o
-  contrato com disable, imports calculados ou as demais lacunas listadas no
-  guia.
-- Após mudar essa fronteira, rode `vp run test:tooling`, os testes Node
-  pertinentes e `vp run test:e2e src/tests/pages/BackendError
-  src/tests/pages/OutsideError src/tests/pages/OutdatedPage`. Preserve no CI a
-  verificação do corpo completo em SSR inicial, streaming e chamada HTTP.
-- Em atualizações do Solid ou do plugin, siga o roteiro "Atualizar o Solid" do
-  guia: só retire o wrapper quando uma reprodução sem essa interceptação provar
-  a cobertura na versão instalada.
+- Before changing the backend, server functions or SSR handling, read
+  [docs/server-errors.md](docs/server-errors.md) and the matching guide:
+  [backend calls](docs/server-errors/backend.md) or
+  [SSR integrity](docs/server-errors/ssr-integrity.md). Every operation must end
+  in public data or in a new public error before it reaches Solid.
+- HTTP uses `requestJson`. An SDK or a database requires an adapter in
+  `src/infra/server/`, with `server-only` and `protectServerOperation({ run })`
+  wrapping the read, the validation and the output. `allowControl` belongs only
+  to the global registry of server functions.
+- The schema selects the public fields: the structural check of the wrapper
+  does not identify confidential data in strings. Do not return errors, nested
+  promises or deferred work without a specific contract.
+- A public error is only born from `createPublicError()`, imported from
+  `@/infra/server/publicErrors/index.ts`; only that module can call
+  `markSafeError`. Never publish the message, cause, properties, body or headers
+  of an upstream error, inside a result included.
+- Do not log the original error, headers, cookies, arguments, bodies or
+  credentials; detailed logs require a removal of sensitive data defined
+  beforehand. The `console` is reserved for `logServerFailure`.
+- Keep the restrictions of `tooling/backendPolicy`. A new SDK requires
+  restricting the package in the lint, with an exception only for the adapter.
+  Do not work around the contract with disable comments, computed imports or the
+  other gaps listed in the guide.
+- After changing that boundary, run `vp run test:tooling`, the relevant Node
+  tests and
+  `vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError src/tests/pages/OutdatedPage`.
+  Keep in CI the check of the complete body in the initial SSR, streaming and
+  HTTP call.
+- On Solid or plugin updates, follow the "Upgrading Solid" roadmap of the
+  guide: only remove the wrapper when a reproduction without that interception
+  proves the coverage in the installed version.

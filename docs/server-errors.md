@@ -1,223 +1,231 @@
-# Erros no servidor e chamadas de backend
+# Server errors and backend calls
 
-[Voltar ao README](../README.md)
+[Back to the README](../README.md)
 
-Toda chamada de backend deve entregar dados públicos ou um erro público novo
-antes de chegar ao Solid. Essa regra vale também para fixtures e código gerado
-por IA. O contrato abaixo deve ser preservado nas atualizações de dependências.
+Every backend call must deliver public data or a new public error before it
+reaches Solid. This rule also applies to fixtures and to AI-generated code. The
+contract below must be kept through dependency upgrades.
 
-## Proteção atual
+## Current protection
 
-Os módulos desta proteção ficam em `src/infra/server/`. `publicErrors` pertence
-a essa camada porque depende de `server-only` e da autorização de serialização
-do Solid. `data/errorApi/` fica reservado à normalização de erros de domínio,
-quando houver consumidores. Novos imports de erros públicos usam
-`@/infra/server/publicErrors/index.ts`.
+The modules of this protection live in `src/infra/server/`. `publicErrors`
+belongs to that layer because it depends on `server-only` and on the
+serialization authorization of Solid. `data/errorApi/` stays reserved for the
+normalization of domain errors, when there are consumers. New imports of public
+errors use `@/infra/server/publicErrors/index.ts`.
 
-O [registro central](../src/infra/server/configureServerErrors/index.ts) usa
-`configureServerFunctionsServer({ wrapInvocation })`. O
-[Vite](../vite.config.ts) o carrega por `serverFunctions.serverSetup`, cobrindo
-server functions chamadas diretamente no SSR e pelo transporte HTTP. O mesmo
-módulo instala, em todos os modos, o hook `configureServerErrors({ onError })`
-de `@solidjs/web`; a troca pelo erro público acontece só em produção.
+The [central registration](../src/infra/server/configureServerErrors/index.ts)
+uses `configureServerFunctionsServer({ wrapInvocation })`.
+[Vite](../vite.config.ts) loads it through `serverFunctions.serverSetup`,
+covering server functions called directly in the SSR and through the HTTP
+transport. The same module installs, in every mode, the
+`configureServerErrors({ onError })` hook of `@solidjs/web`; the replacement
+with the public error happens only in production.
 
-- [requestJson](../src/infra/server/requestJson/index.ts) verifica o status
-  HTTP, lê o JSON de sucesso e aplica o schema de saída dentro da proteção.
+- [requestJson](../src/infra/server/requestJson/index.ts) checks the HTTP
+  status, reads the success JSON and applies the output schema inside the
+  protection.
 - [protectServerOperation](../src/infra/server/protectServerOperation/index.ts)
-  captura lançamentos e rejeições e verifica a estrutura do resultado.
-- [publicErrors](../src/infra/server/publicErrors/index.ts) cria um erro novo
-  com a mensagem pública do catálogo colocalizado, no idioma da requisição, como
-  descrito em [Idioma da mensagem pública](#idioma-da-mensagem-pública).
-- [logServerFailure](../src/infra/server/logServerFailure/index.ts) é o único
-  ponto de log: grava a mensagem fixa da origem e, para um `Error`, só a classe
-  e os frames filtrados descritos em
-  [Log de falhas](server-errors/logging.md#log-de-falhas).
-- Os módulos importam `server-only`; o plugin impede que entrem no bundle
-  cliente. O alias de testes existe somente no projeto Node.
+  catches throws and rejections and checks the structure of the result.
+- [publicErrors](../src/infra/server/publicErrors/index.ts) creates a new error
+  with the public message of the colocated catalog, in the locale of the
+  request, as described in
+  [Locale of the public message](#locale-of-the-public-message).
+- [logServerFailure](../src/infra/server/logServerFailure/index.ts) is the only
+  log point: it writes the fixed message of the source and, for an `Error`, only
+  the class and the filtered frames described in
+  [Failure log](server-errors/logging.md#failure-log).
+- The modules import `server-only`; the plugin keeps them out of the client
+  bundle. The test alias exists only in the Node project.
 
-Em produção o runtime do Solid já troca todo erro lançado por
-`Error("Internal Server Error")`, em SSR, streaming e HTTP, inclusive fora de
-server functions. Ele não barra um `Error` devolvido como dado: esse caso,
-medido nos três canais, só é recusado pela verificação estrutural do wrapper.
-Por isso o `wrapInvocation` continua registrado. Um fallback genérico e HTML
-escapado não removem dados do payload já enviado.
+In production the Solid runtime already replaces every thrown error with
+`Error("Internal Server Error")`, in SSR, streaming and HTTP, even outside
+server functions. It does not stop an `Error` returned as data: that case,
+measured in the three channels, is only refused by the structural check of the
+wrapper. That is why `wrapInvocation` stays registered. A generic fallback and
+escaped HTML do not remove data from a payload that was already sent.
 
-`ResponseEnvelope` também é uma `Response`. O wrapper verifica o valor do
-envelope antes de aceitar uma resposta sem corpo como controle, inclusive nos
-status 204, 205 e 304. Depois reconstrói a resposta com os dados verificados.
-`respond(dados)` tem o tipo dos dados para quem chama a server function; a
-fronteira usa `isResponseEnvelope()` para reconhecer seu envelope em runtime.
-Chamadas diretas no SSR recebem os dados desembrulhados pelo Solid.
+`ResponseEnvelope` is a `Response` too. The wrapper checks the value of the
+envelope before accepting a response without a body as a control, the 204, 205
+and 304 statuses included. Then it rebuilds the response with the checked data.
+`respond(data)` has the type of the data for the caller of the server function;
+the boundary uses `isResponseEnvelope()` to recognize its envelope at run time.
+Direct calls in the SSR receive the data unwrapped by Solid.
 
-O hook `onError` é aditivo. Em produção, ele troca qualquer falha que chega ao
-runtime, inclusive de render e de rejeições fora de server functions, por um
-`createPublicError()` novo. Nos dois modos, registra o log `[server-error]`
-quando o erro não era público. Sinais de controle (`Response` sem corpo,
-envelopes e `NotReadyError`) seguem a política padrão do runtime.
-`Response.error()` também não tem corpo, mas o status 0 não sai como HTTP, então
-ela vira falha pública. O caso do envelope lançado por uma query no SSR está em
-[Validação e recuperação](server-errors/recovery.md#validação-e-recuperação). O
-retorno do hook vai ao cliente sem nova sanitização, então ele nunca devolve o
-objeto recebido, nem um erro público, que pode ter ganhado campos depois de
-criado. O hook é síncrono e não lança, nem quando o log falha: uma falha dele
-faria o runtime registrar o erro do hook.
+The `onError` hook is additive. In production, it replaces any failure that
+reaches the runtime, render failures and rejections outside server functions
+included, with a new `createPublicError()`. In both modes, it writes the
+`[server-error]` log when the error was not public. Control signals (`Response`
+without a body, envelopes and `NotReadyError`) follow the default policy of the
+runtime. `Response.error()` has no body either, but status 0 does not go out as
+HTTP, so it becomes a public failure. The case of an envelope thrown by a query
+in the SSR is in
+[Validation and recovery](server-errors/recovery.md#validation-and-recovery).
+The return of the hook goes to the client without another sanitization, so it
+never returns the object it received, nor a public error, which may have gained
+fields after it was created. The hook is synchronous and does not throw, not
+even when the log fails: a failure of the hook would make the runtime log the
+error of the hook.
 
-Limites do hook:
+Limits of the hook:
 
-- A rejeição de uma fonte assíncrona é serializada com a política padrão antes
-  de qualquer hook. O mesmo corpo leva "Internal Server Error" para a fonte e a
-  mensagem pública para o boundary.
-- Em desenvolvimento o hook não troca o erro, como descrito em
-  [Log de falhas](server-errors/logging.md#log-de-falhas): o navegador recebe o
-  erro que o runtime recebeu, que numa server function já é o erro público do
-  wrapper.
-- Valores primitivos lançados não têm veredito por objeto; o hook roda e
-  registra o log a cada vez que o runtime os encontra.
+- The rejection of an async source is serialized with the default policy before
+  any hook. The same body carries "Internal Server Error" for the source and the
+  public message for the boundary.
+- In development the hook does not replace the error, as described in
+  [Failure log](server-errors/logging.md#failure-log): the browser receives the
+  error that the runtime received, which in a server function is already the
+  public error of the wrapper.
+- Thrown primitive values have no per-object verdict; the hook runs and writes
+  the log every time the runtime finds them.
 
-O handler nativo do plugin contém exceções que escapam dos middlewares, chama o
-hook com `kind: "request"` e responde com 500 sem corpo. Ele também aceita uma
-`Response` ou um envelope lançado com corpo, portanto essa contenção não
-substitui a política de dados públicos nem a página de erro do app. O export
-padrão de [`src/middleware/index.ts`](../src/middleware/index.ts) é
-`createMiddleware()`, que adapta o evento do plugin à cadeia de `Request` do
-`filesystem-routing` e de `composeMiddleware`, entregando essa cadeia a
-`containFailures`. A contenção, em
+The native handler of the plugin contains exceptions that escape the
+middlewares, calls the hook with `kind: "request"` and answers 500 without a
+body. It also accepts a thrown `Response` or envelope with a body, so that
+containment does not replace the public data policy or the error page of the
+app. The default export of
+[`src/middleware/index.ts`](../src/middleware/index.ts) is `createMiddleware()`,
+which adapts the plugin event to the `Request` chain of `filesystem-routing` and
+`composeMiddleware`, handing that chain to `containFailures`. The containment,
+in
 [`src/middleware/containFailures/index.ts`](../src/middleware/containFailures/index.ts),
-compõe a cadeia inteira dentro de si, e uma exceção nos middlewares, nas rotas
-de API ou no handler de páginas vira 500 com os headers de segurança e o log
-`[middleware]`. Só uma `Response` sem corpo e com status diferente de 0 passa
-como controle, e sai com os mesmos headers; uma `Response` com corpo lançada
-vira 500, porque pode carregar dados upstream. O middleware, o hook e o wrapper
-usam a mesma classificação,
-[`isControlResponse`](../src/infra/server/isControlResponse/index.ts). Os
-headers de um `Response.redirect()` devolvido são imutáveis, então vão numa
-cópia sem corpo; o retorno cru de `fetch()`, com headers imutáveis e corpo
-upstream, não é copiado e vira 500. Em desenvolvimento o erro original segue
-para o Vite. O build E2E monta a entrada com a mesma fábrica e passa as falhas
-injetadas em `createMiddleware(extra)`, que as põe antes da cadeia e dentro da
-mesma contenção. Como o E2E não chama o export padrão, um teste unitário exige
-que ele contenha falhas, e a suíte `test:e2e:production` confere os headers do
-middleware na entrada real.
+composes the whole chain inside itself, and an exception in the middlewares, in
+the API routes or in the page handler becomes a 500 with the security headers
+and the `[middleware]` log. Only a `Response` without a body and with a status
+other than 0 passes as a control, and it goes out with the same headers; a
+thrown `Response` with a body becomes a 500, because it may carry upstream data.
+The middleware, the hook and the wrapper use the same classification,
+[`isControlResponse`](../src/infra/server/isControlResponse/index.ts). The
+headers of a returned `Response.redirect()` are immutable, so they go on a copy
+without a body; the raw return of `fetch()`, with immutable headers and an
+upstream body, is not copied and becomes a 500. In development the original
+error goes on to Vite. The E2E build assembles the entry with the same factory
+and passes the injected failures in `createMiddleware(extra)`, which puts them
+before the chain and inside the same containment. Since the E2E tests do not
+call the default export, a unit test requires it to contain failures, and the
+`test:e2e:production` suite checks the middleware headers on the real entry.
 
-As respostas da contenção não voltam pelo `securityHeaders`, então a própria
-contenção grava os cabeçalhos de segurança e a Content-Security-Policy com o
-nonce da requisição, lido por
-[`requestNonce`](../src/middleware/securityHeaders/index.ts), que usa o campo
-nativo `event.nonce`. Uma falha anterior ao `securityHeaders` pode encontrar a
-requisição sem nonce; a contenção o cria antes de renderizar a página de erro,
-para que os scripts dela, o handler do plugin e a CSP usem o mesmo valor. Sem
-evento de requisição, o 500 em texto sai com `script-src 'none'`. O desenho da
-CSP está no guia de [cabeçalhos de segurança](security.md).
+The responses of the containment do not go back through `securityHeaders`, so
+the containment itself writes the security headers and the
+Content-Security-Policy with the nonce of the request, read by
+[`requestNonce`](../src/middleware/securityHeaders/index.ts), which uses the
+native `event.nonce` field. A failure before `securityHeaders` can find the
+request without a nonce; the containment creates it before rendering the error
+page, so that its scripts, the plugin handler and the CSP use the same value.
+Without a request event, the text 500 goes out with `script-src 'none'`. The
+design of the CSP is in the [security headers](security.md) guide.
 
-Numa navegação, o 500 mostra a página de erro do app. Navegação é um `GET` ou
-`HEAD` num caminho de página cujo `Accept` permita HTML ou Markdown, incluindo
-curingas e a ausência do header, conforme `isPageRequest` em
-[`requestClassification`](../src/middleware/requestClassification/index.ts); um
-cliente que peça só Markdown também recebe a página de erro em HTML. Esse
-critério é mais amplo que o do servidor de desenvolvimento do plugin, que só
-considera HTML, `*/*` ou a falta de `accept`. `containFailures` grava um
-`createPublicError()` em `locals.serverFailure` e chama o render da página. O
-`ServerFailureGate` de [`App.tsx`](../src/App.tsx) lança esse erro antes do
-Router, o `Errored` raiz mostra o `ErrorFallback` e o cliente hidrata o fallback
-pelo erro serializado. Como o erro já é público, o hook não registra outro log.
-O status é forçado para 500 na resposta. Se o render devolver algo que não seja
-HTML, como o redirect de idioma de um caminho sem prefixo, a resposta é o 500 em
-texto.
+In a navigation, the 500 shows the error page of the app. A navigation is a
+`GET` or `HEAD` on a page path whose `Accept` allows HTML or Markdown, wildcards
+and a missing header included, according to `isPageRequest` in
+[`requestClassification`](../src/middleware/requestClassification/index.ts); a
+client that asks only for Markdown also gets the error page in HTML. This
+criterion is broader than the one of the plugin development server, which only
+considers HTML, `*/*` or a missing `accept`. `containFailures` writes a
+`createPublicError()` in `locals.serverFailure` and calls the page render. The
+`ServerFailureGate` of [`App.tsx`](../src/App.tsx) throws that error before the
+Router, the root `Errored` shows `ErrorFallback` and the client hydrates the
+fallback from the serialized error. Since the error is already public, the hook
+does not write another log. The status is forced to 500 in the response. If the
+render returns something that is not HTML, such as the locale redirect of a path
+without a prefix, the response is the text 500.
 
-O render recebido pelo middleware é o dispatcher do plugin, que atende o
-endpoint de server functions (`/_server`) antes da página. Por isso esse
-endpoint e as rotas de API reconhecidas pelo `createAPIMatcher` do
-`filesystem-routing` nunca recebem a página de erro, mesmo com `accept` de HTML:
-chamar o render ali executaria a função sem os middlewares que falharam. Esses
-caminhos e os outros métodos recebem a mensagem pública em texto. O plugin
-aceita um único render por requisição: se a cadeia falhar depois de já ter
-renderizado a página, a resposta também é o 500 em texto. Se o render de erro
-falhar, a resposta é o 500 em texto e o log ganha a linha `[error-page]`, com a
-classe e os frames do erro do render descritos em
-[Log de falhas](server-errors/logging.md#log-de-falhas). A contenção lê o
-endpoint do export `endpoint` de `virtual:solid-server-function-handler`, o
-mesmo valor que o dispatcher do plugin usa, com `serverFunctions.endpoint` e o
-`base` do Vite já aplicados; mudar essas opções não exige editar o middleware.
-No projeto Node do Vitest, um alias troca esse módulo por um stub com o valor
-padrão.
+The render that the middleware receives is the plugin dispatcher, which serves
+the server function endpoint (`/_server`) before the page. That is why this
+endpoint and the API routes recognized by the `createAPIMatcher` of
+`filesystem-routing` never receive the error page, even with an HTML `accept`:
+calling the render there would run the function without the middlewares that
+failed. Those paths and the other methods receive the public message in text.
+The plugin accepts a single render per request: if the chain fails after it has
+already rendered the page, the response is also the text 500. If the error
+render fails, the response is the text 500 and the log gets the `[error-page]`
+line, with the class and the frames of the render error described in
+[Failure log](server-errors/logging.md#failure-log). The containment reads the
+endpoint from the `endpoint` export of `virtual:solid-server-function-handler`,
+the same value the plugin dispatcher uses, with `serverFunctions.endpoint` and
+the Vite `base` already applied; changing those options does not require editing
+the middleware. In the Vitest Node project, an alias replaces that module with a
+stub that has the default value.
 
-O cancelamento da própria requisição não é falha. Quando o valor capturado é o
-`signal.reason` da requisição, com o sinal abortado, a contenção responde o 500
-em texto, sem log e sem chamar o render. Esse caso cobre a desconexão do cliente
-e o prazo da publicação, que chegam pelo mesmo sinal, porque o render em modo
-`async` rejeita com esse motivo ao ser abandonado. A comparação é por
-identidade: qualquer outro valor lançado com o sinal abortado continua
-registrado como falha, inclusive um `AbortError` de outro sinal ou um erro que
-traga o motivo em `cause`. Na página de erro, o critério usa o sinal de
-`event.request`, que é o que o render lê: o cancelamento não acrescenta a linha
-`[error-page]`, e a falha original já foi registrada antes do render. Um erro
-distinto desse render mantém a linha. Em desenvolvimento o valor é relançado,
-como qualquer outro. Um motivo primitivo não tem identidade própria e se
-confunde com o mesmo valor lançado. O runtime rejeita com o próprio motivo,
-inclusive `null`, `false`, zero, string vazia e `NaN`; o middleware usa
-`Object.is` para comparar o motivo sem perder esses valores.
+The cancellation of the request itself is not a failure. When the caught value
+is the `signal.reason` of the request, with the signal aborted, the containment
+answers the text 500, without a log and without calling the render. That case
+covers the client disconnecting and the deadline of the publication, which
+arrive through the same signal, because the render in `async` mode rejects with
+that reason when it is abandoned. The comparison is by identity: any other value
+thrown with the signal aborted is still logged as a failure, including an
+`AbortError` of another signal or an error that carries the reason in `cause`.
+On the error page, the criterion uses the signal of `event.request`, which is
+the one the render reads: the cancellation does not add the `[error-page]` line,
+and the original failure was already logged before the render. A different error
+from that render keeps the line. In development the value is rethrown, like any
+other. A primitive reason has no identity of its own and is mistaken for the
+same value thrown. The runtime rejects with the reason itself, `null`, `false`,
+zero, an empty string and `NaN` included; the middleware uses `Object.is` to
+compare the reason without losing those values.
 
-A contenção só alcança a janela da cadeia de middleware. A criação do evento, o
-commit da resposta e falhas do corpo depois que a `Response` sai ficam fora
-dela. O comportamento foi medido no preview do Nitro; o runtime da Vercel não
-foi medido localmente.
+The containment only reaches the window of the middleware chain. Creating the
+event, committing the response and body failures after the `Response` leaves are
+outside it. The behavior was measured on the Nitro preview; the Vercel runtime
+was not measured locally.
 
-## Idioma da mensagem pública
+## Locale of the public message
 
-A mensagem de `createPublicError()` e dos 500 em texto vem do ID
-`publicErrors_message`, em `src/infra/server/publicErrors/i18n/`, com os três
-idiomas. `publicErrorMessage()` lê o idioma na hora da chamada, pelo contexto
-que o `paraglideMiddleware` abre em `localizeRequest`: páginas usam URL, cookie,
-`Accept-Language` e idioma base, e server functions chamadas por HTTP usam antes
-o `Referer` de mesma origem. O render, as server functions chamadas no SSR, o
-hook de `configureServerErrors` e a contenção da cadeia interna rodam dentro
-desse contexto.
+The message of `createPublicError()` and of the text 500 responses comes from
+the `publicErrors_message` ID, in `src/infra/server/publicErrors/i18n/`, with
+the three locales. `publicErrorMessage()` reads the locale at call time, through
+the context that `paraglideMiddleware` opens in `localizeRequest`: pages use the
+URL, the cookie, `Accept-Language` and the base locale, and server functions
+called over HTTP use the same-origin `Referer` first. The render, the server
+functions called in the SSR, the `configureServerErrors` hook and the
+containment of the inner chain run inside that context.
 
-Fora dele, a mensagem sai no idioma base. Isso vale para as contenções externas,
-que tratam falhas do próprio `localizeRequest` e do adaptador Markdown antes do
-render, e para caminhos que não passam pela localização, como `robots.txt`. Numa
-navegação tratada por essas contenções, o erro público nasce antes do render e
-leva o idioma base no payload serializado, enquanto a página de erro renderiza
-no idioma da requisição. O adaptador Markdown também roda fora do contexto e,
-por isso, resolve o idioma do seu 500 pela requisição original, na mesma ordem
-do `localizeRequest`.
+Outside it, the message is in the base locale. That applies to the outer
+containments, which handle failures of `localizeRequest` itself and of the
+Markdown adapter before the render, and to paths that do not go through the
+localization, such as `robots.txt`. In a navigation handled by those
+containments, the public error is created before the render and carries the base
+locale in the serialized payload, while the error page renders in the locale of
+the request. The Markdown adapter also runs outside the context and, for that
+reason, resolves the locale of its 500 from the original request, in the same
+order as `localizeRequest`.
 
-O hook é síncrono e não pode lançar: se a resolução do idioma falhar, a mensagem
-sai no idioma base. O texto vem só do catálogo, sem nada do erro original. Os
-testes Node e E2E conferem o texto esperado no idioma de cada caso.
+The hook is synchronous and cannot throw: if resolving the locale fails, the
+message is in the base locale. The text comes only from the catalog, with
+nothing from the original error. The Node and E2E tests check the expected text
+in the locale of each case.
 
-## Log de falhas
+## Failure log
 
-Veja [log de falhas](server-errors/logging.md#log-de-falhas).
+See [failure log](server-errors/logging.md#failure-log).
 
-## Como adicionar uma chamada
+## Adding a call
 
-Veja
-[como adicionar uma chamada](server-errors/backend.md#como-adicionar-uma-chamada).
+See [adding a call](server-errors/backend.md#adding-a-call).
 
-## O que o lint cobre
+## What the lint covers
 
-Veja [o que o lint cobre](server-errors/backend.md#o-que-o-lint-cobre).
+See [what the lint covers](server-errors/backend.md#what-the-lint-covers).
 
-## Consumo em páginas
+## Use in pages
 
-Veja [consumo em páginas](server-errors/backend.md#consumo-em-páginas).
+See [use in pages](server-errors/backend.md#use-in-pages).
 
-## Validação e recuperação
+## Validation and recovery
 
-Veja
-[validação e recuperação](server-errors/recovery.md#validação-e-recuperação).
+See
+[validation and recovery](server-errors/recovery.md#validation-and-recovery).
 
-### Página desatualizada após um deploy
+### Outdated page after a deploy
 
-Veja
-[página desatualizada após um deploy](server-errors/recovery.md#página-desatualizada-após-um-deploy).
+See
+[outdated page after a deploy](server-errors/recovery.md#outdated-page-after-a-deploy).
 
-## Atualizar o Solid
+## Upgrading Solid
 
-Veja [atualizar o Solid](server-errors/solid-upgrades.md#atualizar-o-solid).
+See [upgrading Solid](server-errors/solid-upgrades.md#upgrading-solid).
 
-## Integridade do SSR para Markdown
+## SSR integrity for Markdown
 
-Veja
-[integridade do SSR para Markdown](server-errors/ssr-integrity.md#integridade-do-ssr-para-markdown).
+See
+[SSR integrity for Markdown](server-errors/ssr-integrity.md#ssr-integrity-for-markdown).

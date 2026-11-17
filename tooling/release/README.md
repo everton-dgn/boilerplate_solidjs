@@ -1,254 +1,263 @@
-# Releases automáticas
+# Automatic releases
 
-O workflow `Automatic release` é iniciado quando o CI de um push na `main`
-termina com sucesso. Ele confere o repositório, o workflow e o SHA aprovado
-antes de preparar qualquer alteração.
+The `Automatic release` workflow starts when the CI of a push to `main` ends
+successfully. It checks the repository, the workflow and the approved SHA before
+preparing any change.
 
-O processo cria uma branch `release/vX.Y.Z-<sha>` com mudanças somente em
-`package.json` e `CHANGELOG.md` e abre um PR. A publicação reaproveita o CI
-aprovado da origem e verifica o conteúdo exato do commit de release antes do
-merge normal. Depois cria uma tag anotada e publica as notas na GitHub Release.
-Não publica no npm nem faz deploy.
+The process creates a `release/vX.Y.Z-<sha>` branch with changes only to
+`package.json` and `CHANGELOG.md` and opens a PR. The publication reuses the
+approved CI of the source and checks the exact content of the release commit
+before the normal merge. Then it creates an annotated tag and publishes the
+notes in the GitHub Release. It does not publish to npm or deploy.
 
-## Organização do código
+## Code organization
 
-`automatic-release.ts` lê o modo e o contexto, valida o artifact e coordena as
-etapas. `prepare-release.ts` prepara a branch e o PR e verifica os commits
-envolvidos. `publish-release.ts` integra a release, verifica o merge e publica a
-tag e as notas. `repository.ts` reúne as consultas de estado e as proteções do
-repositório; `context.ts` mantém o contexto da execução e suas saídas.
+`automatic-release.ts` reads the mode and the context, validates the artifact
+and coordinates the steps. `prepare-release.ts` prepares the branch and the PR
+and checks the commits involved. `publish-release.ts` integrates the release,
+checks the merge and publishes the tag and the notes. `repository.ts` gathers
+the state queries and the repository protections; `context.ts` keeps the context
+of the run and its outputs.
 
-Os tipos compartilhados dessas etapas ficam em `types.ts`; os tipos privados
-permanecem no módulo que os usa. A árvore de imports dos jobs com escrita
-continua usando apenas módulos nativos, sem instalar dependências. Os testes
-executam a mesma entrada do workflow e verificam essa árvore de imports.
+The types shared by those steps live in `types.ts`; the private types stay in
+the module that uses them. The import tree of the jobs with write permission
+still uses only native modules, without installing dependencies. The tests run
+the same entry as the workflow and check that import tree.
 
-## Versionamento
+## Versioning
 
-| Commit                                                             | Incremento                 |
-| ------------------------------------------------------------------ | -------------------------- |
-| `feat`                                                             | Minor                      |
-| `fix`, `perf`, `revert`                                            | Patch                      |
-| `chore(deps)`, `chore(deps-dev)`, `build(deps)`, `build(deps-dev)` | Patch                      |
-| `!` no cabeçalho, `BREAKING CHANGE:` ou `BREAKING-CHANGE:`         | Major                      |
-| Outros tipos, sem mudança incompatível                             | Não geram release sozinhos |
+| Commit                                                             | Increment                     |
+| ------------------------------------------------------------------ | ----------------------------- |
+| `feat`                                                             | Minor                         |
+| `fix`, `perf`, `revert`                                            | Patch                         |
+| `chore(deps)`, `chore(deps-dev)`, `build(deps)`, `build(deps-dev)` | Patch                         |
+| `!` in the header, `BREAKING CHANGE:` or `BREAKING-CHANGE:`        | Major                         |
+| Other types, without a breaking change                             | Do not create a release alone |
 
-`BREAKING CHANGE:` e `BREAKING-CHANGE:` contam no início de qualquer linha do
-corpo fora de blocos de código, mesmo sem a linha em branco que o commitlint
-exige antes do rodapé; commits criados fora do hook podem omiti-la.
+`BREAKING CHANGE:` and `BREAKING-CHANGE:` count at the start of any line of the
+body outside code blocks, even without the blank line that commitlint requires
+before the footer; commits created outside the hook can leave it out.
 
-A primeira release parte de `0.0.0` e gera `1.0.0`. Depois disso, a versão do
-`package.json` deve coincidir com a última tag estável alcançável pelo commit.
-Se houver mais de um tipo de mudança, vale o maior incremento.
+The first release starts from `0.0.0` and creates `1.0.0`. After that, the
+version of `package.json` must match the last stable tag reachable from the
+commit. When there is more than one kind of change, the largest increment wins.
 
-As notas preenchidas manualmente em `## Unreleased` são preservadas. Quando essa
-seção está vazia, as notas são geradas dos commits, agrupadas em `Added`,
-`Changed` e `Fixed`. O Oxfmt do Vite+ formata os arquivos gerados no job de
-plano, o único que instala dependências.
+Notes filled in by hand under `## Unreleased` are kept. When that section is
+empty, the notes are generated from the commits, grouped in `Added`, `Changed`
+and `Fixed`. The Vite+ Oxfmt formats the generated files in the plan job, the
+only one that installs dependencies.
 
-## Ativação no GitHub
+## Enabling on GitHub
 
-Em Settings > Actions > General > Workflow permissions, habilite a opção
-"Permitir que o GitHub Actions crie e aprove pull requests" ("Allow GitHub
-Actions to create and approve pull requests"). O workflow tem três jobs:
+In Settings > Actions > General > Workflow permissions, turn on "Allow GitHub
+Actions to create and approve pull requests". The workflow has three jobs:
 
-| Job       | Permissões                                                                 | O que roda                                                  |
-| --------- | -------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `plan`    | `actions: read`, `contents: read`                                          | Instala as dependências, calcula o plano e formata arquivos |
-| `prepare` | `actions: read`, `contents: write`, `pull-requests: write`                 | Cria a branch e o PR e fecha PRs de release obsoletos       |
-| `publish` | `actions: read`, `checks: write`, `contents: write`, `pull-requests: read` | Atesta, integra, cria a tag e publica as notas              |
+| Job       | Permissions                                                                | What runs                                                    |
+| --------- | -------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `plan`    | `actions: read`, `contents: read`                                          | Installs the dependencies, computes the plan and formats     |
+| `prepare` | `actions: read`, `contents: write`, `pull-requests: write`                 | Creates the branch and the PR and closes stale release PRs   |
+| `publish` | `actions: read`, `checks: write`, `contents: write`, `pull-requests: read` | Attests, integrates, creates the tag and publishes the notes |
 
-Só `plan` executa `vp install` e importa o Vite+. Ele entrega o artifact
-`release-plan` com o `package.json` e o `CHANGELOG.md` formatados. Os jobs com
-escrita preparam só a toolchain pela ação `setup-project`
-(`install-dependencies: false`), baixam o artifact com verificação de digest e
-executam `bun --no-install`, sem pacotes de terceiros no processo que recebe o
-`GH_TOKEN`. Antes de qualquer escrita, o script recalcula o plano com Git e
-código nativo e recusa o artifact se a estrutura ou a origem divergirem, se o
-`package.json` mudar algo além da versão ou se o changelog diferir do plano em
-algo além de espaços. A versão e a tag vêm do plano recalculado, e as notas, da
-seção da versão no changelog conferido. O merge exige `contents: write`;
-`publish` só lê PRs. O workflow não aprova o próprio PR nem ignora regras de
-proteção.
+Only `plan` runs `vp install` and imports Vite+. It hands over the
+`release-plan` artifact with the formatted `package.json` and `CHANGELOG.md`.
+The jobs with write permission prepare only the toolchain through the
+`setup-project` action (`install-dependencies: false`), download the artifact
+with a digest check and run `bun --no-install`, without third-party packages in
+the process that receives the `GH_TOKEN`. Before any write, the script computes
+the plan again with Git and native code and refuses the artifact if the
+structure or the source differ, if `package.json` changes anything besides the
+version or if the changelog differs from the plan in anything besides
+whitespace. The version and the tag come from the recomputed plan, and the
+notes, from the version section of the checked changelog. The merge requires
+`contents: write`; `publish` only reads PRs. The workflow does not approve its
+own PR or ignore protection rules.
 
-O ruleset `.github/main-ruleset.json` protege a `main`: exige PR, merge normal,
-conversas resolvidas e o check `CI required` do GitHub Actions, com a branch
-atualizada antes do merge. Bloqueia exclusão e force push, sem atores com
-bypass, inclusive administradores. Não exige aprovação humana, para permitir a
-release automática e o trabalho individual no repositório.
+The `.github/main-ruleset.json` ruleset protects `main`: it requires a PR, a
+normal merge, resolved conversations and the `CI required` check from GitHub
+Actions, with the branch up to date before the merge. It blocks deletion and
+force pushes, without bypass actors, administrators included. It does not
+require human approval, to allow the automatic release and individual work in
+the repository.
 
-O ruleset `.github/release-tags-ruleset.json` protege as tags `v*` contra
-atualização e exclusão, também sem atores com bypass. A criação continua livre
-para a automação publicar novas tags; uma tag existente com outro SHA faz a
-release falhar em vez de ser sobrescrita.
+The `.github/release-tags-ruleset.json` ruleset protects the `v*` tags against
+updates and deletion, also without bypass actors. Creation stays open so the
+automation can publish new tags; an existing tag with another SHA makes the
+release fail instead of being overwritten.
 
-Os JSONs são o contrato versionado da configuração remota. Alterá-los no Git não
-atualiza o GitHub automaticamente; mudanças precisam ser aplicadas aos rulesets
-pela API ou pela interface do repositório.
+The JSON files are the versioned contract of the remote configuration. Changing
+them in Git does not update GitHub automatically; changes must be applied to the
+rulesets through the API or the repository interface.
 
-PRs criados pelo `GITHUB_TOKEN` não dependem de um novo evento de PR para
-validação. O job `publish` consulta novamente o CI de origem e exige que o
-commit de release seja seu filho direto. Aceita somente os dois arquivos
-previstos, com tipos e permissões preservados. O `package.json` deve manter
-todos os campos da origem, exceto a versão calculada; o changelog deve
-corresponder ao conteúdo gerado pelo plano. Mudanças em dependências, scripts,
-outros arquivos ou no conteúdo esperado impedem a publicação.
+PRs created by `GITHUB_TOKEN` do not depend on a new PR event for validation.
+The `publish` job reads the source CI again and requires the release commit to
+be its direct child. It accepts only the two expected files, with their types
+and permissions kept. `package.json` must keep every field of the source, except
+the computed version; the changelog must match the content generated by the
+plan. Changes to dependencies, scripts, other files or the expected content
+prevent the publication.
 
-Depois dessas verificações, `publish`, com `checks: write`, registra
-`CI required` no SHA exato da release. O resultado identifica a validação de
-metadados e aponta para o CI aprovado da origem. A release não repete cobertura,
-tooling nem E2E. Os testes específicos da automação executam em Bun no pre-push
-e no CI quando houver mudanças relevantes; a publicação não os repete.
+After those checks, `publish`, with `checks: write`, records `CI required` on
+the exact SHA of the release. The result identifies the metadata validation and
+points to the approved CI of the source. The release does not repeat coverage,
+tooling or E2E. The specific tests of the automation run in Bun in the pre-push
+and in CI when there are relevant changes; the publication does not repeat them.
 
-O job `publish` expõe `tag` e `version` como saídas para um job seguinte no
-mesmo workflow, como deploy ou publicação de pacote, porque a tag criada com o
-`GITHUB_TOKEN` não dispara outros workflows; as saídas ficam vazias quando o
-merge é adiado.
+The `publish` job exposes `tag` and `version` as outputs for a later job in the
+same workflow, such as a deploy or a package publication, because the tag
+created with `GITHUB_TOKEN` does not trigger other workflows; the outputs are
+empty when the merge is postponed.
 
-O script confere as regras ativas da `main` antes de criar qualquer artefato de
-release e repete a conferência imediatamente antes do merge. Se faltar a
-exigência de CI estrito, a preparação para sem criar commit, branch ou PR. As
-versões de Node, Bun e Vite+ vêm do `package.json`; só o job `plan` instala as
-dependências, com lockfile congelado.
+The script checks the active rules of `main` before creating any release
+artifact and repeats the check right before the merge. If the strict CI
+requirement is missing, the preparation stops without creating a commit, branch
+or PR. The Node, Bun and Vite+ versions come from `package.json`; only the
+`plan` job installs the dependencies, with a frozen lockfile.
 
-Os três jobs fazem checkout da ponta da `main`, e o script confere que ela
-contém o SHA de origem e o próprio código em execução. O checkout não guarda o
-token: os comandos do Git que acessam o remoto se autenticam pelo helper do `gh`
-com o `GH_TOKEN` do passo, o que permite usar a automação em repositório
-privado.
+The three jobs check out the tip of `main`, and the script checks that it
+contains the source SHA and the code that is running. The checkout does not keep
+the token: the Git commands that reach the remote authenticate through the `gh`
+helper with the `GH_TOKEN` of the step, which allows using the automation in a
+private repository.
 
-Novos PRs podem cancelar seu CI anterior. Pushes não cancelam o workflow em
-andamento, preservando o deploy. A release aceita somente a branch `main` no
-gatilho `workflow_run`. Execuções elegíveis compartilham um grupo de
-concorrência; as inelegíveis usam grupos exclusivos por execução e não
-substituem uma release pendente. Entre releases elegíveis, a mais recente
-substitui a pendente anterior, preservando a execução já em andamento.
+New PRs can cancel their previous CI. Pushes do not cancel the running workflow,
+keeping the deploy. The release accepts only the `main` branch in the
+`workflow_run` trigger. Eligible runs share a concurrency group; ineligible ones
+use groups exclusive to each run and do not replace a pending release. Between
+eligible releases, the most recent one replaces the previous pending one,
+keeping the run already in progress.
 
-## Integração com a Vercel
+## Vercel integration
 
-O projeto da Vercel recebe deploys de produção pelo job `deploy` do CI. Nesta
-instância, é o projeto `boilerplate-solidjs`, no escopo
-`verton-toffanettos-projects`; uma cópia do boilerplate usa o próprio projeto. O
-job depende de `check`, que exige o sucesso do E2E de produção, e executa
-somente em push na `main`. O CI de PRs valida o código sem publicar na Vercel.
+The Vercel project receives production deploys through the `deploy` job of the
+CI. In this instance, it is the `boilerplate-solidjs` project, in the
+`verton-toffanettos-projects` scope; a copy of the boilerplate uses its own
+project. The job depends on `check`, which requires the production E2E to
+succeed, and runs only on a push to `main`. The PR CI validates the code without
+publishing to Vercel.
 
-No push para `main`, o job de E2E de produção usa a versão do Vercel CLI fixada
-em `VERCEL_CLI_VERSION`, no `env` do
-[workflow do CI](../../.github/workflows/ci.yml), a mesma em `pull`, `build` e
-`deploy`. Para atualizar, troque esse valor por uma versão estável publicada no
-npm e confira o E2E de produção e o deploy do push na `main`. O job carrega as
-configurações da Vercel e executa `vercel build --prod` uma vez. O secret
-`VERCEL_TOKEN` chega somente aos passos de `pull`, `build` e `deploy`; a
-inspeção e o empacotamento do output rodam sem ele. A documentação da Vercel
-passa o token também ao `vercel build`, por isso o build o mantém. O Playwright
-testa esse output sem recompilar, recebendo apenas as variáveis públicas
-`VITE_*` do `.vercel/.env.production.local` baixado pelo `vercel pull`, sem as
-credenciais de backend. O job empacota somente `.vercel/output` em tar,
-preservando permissões e links, e compara o conteúdo e a listagem dos arquivos
-após os testes antes de enviá-lo ao GitHub Actions. O passo
-`Package deployment artifact` recusa links que saiam do output e funções com
-`filePathMap`, pois essas referências exigiriam publicar arquivos fora do
-artefato testado. O Nitro atual gera a função com suas dependências dentro do
-output.
+On the push to `main`, the production E2E job uses the Vercel CLI version pinned
+in `VERCEL_CLI_VERSION`, in the `env` of the
+[CI workflow](../../.github/workflows/ci.yml), the same in `pull`, `build` and
+`deploy`. To update it, replace that value with a stable version published on
+npm and check the production E2E and the deploy of the push to `main`. The job
+loads the Vercel settings and runs `vercel build --prod` once. The
+`VERCEL_TOKEN` secret only reaches the `pull`, `build` and `deploy` steps; the
+inspection and the packaging of the output run without it. The Vercel
+documentation passes the token to `vercel build` too, so the build keeps it.
+Playwright tests that output without building again, receiving only the public
+`VITE_*` variables of the `.vercel/.env.production.local` file downloaded by
+`vercel pull`, without the backend credentials. The job packages only
+`.vercel/output` in a tar, keeping permissions and links, and compares the
+content and the file listing after the tests before uploading it to GitHub
+Actions. The `Package deployment artifact` step refuses links that leave the
+output and functions with `filePathMap`, because those references would require
+publishing files outside the tested artifact. The current Nitro generates the
+function with its dependencies inside the output.
 
-O job `deploy` roda sob o grupo de concorrência `vercel-production`. Antes de
-qualquer preparo, consulta o head da `main` pela API e só publica se ele ainda
-for o SHA validado pelo run; um run mais antigo que termine depois de outro mais
-novo registra o motivo no resumo e não publica. Falha na consulta reprova o job.
-Em seguida, faz checkout do mesmo SHA, prepara a toolchain do `package.json` sem
-instalar dependências e baixa o artefato da mesma execução do CI. A verificação
-de integridade do download causa erro se o digest divergir. O nome inclui o SHA
-e o upload substitui apenas o artefato desse nome na execução atual, permitindo
-repetir jobs que falharam. A retenção é de um dia; após expirar, execute
-novamente o job que gera e testa o build. Arquivos de ambiente e
-`.vercel/project.json` ficam fora do tar.
+The `deploy` job runs under the `vercel-production` concurrency group. Before
+any preparation, it reads the head of `main` through the API and only publishes
+if it is still the SHA validated by the run; an older run that ends after a
+newer one records the reason in the summary and does not publish. A failure in
+that read fails the job. Then it checks out the same SHA, prepares the toolchain
+of `package.json` without installing dependencies and downloads the artifact of
+the same CI run. The integrity check of the download fails if the digest
+differs. The name includes the SHA, and the upload replaces only the artifact
+with that name in the current run, which allows re-running failed jobs. The
+retention is one day; after it expires, run again the job that generates and
+tests the build. Environment files and `.vercel/project.json` stay out of the
+tar.
 
-Depois da aprovação de todos os checks, o deploy publica esse output com
-`vercel deploy --prebuilt --prod`, sem outro build. PRs não usam credenciais da
-Vercel e mantêm os builds locais de teste. O script `build` chama o CLI local do
-Vite+ com Bun explicitamente; para executá-lo, use `vp run build`.
+After every check passes, the deploy publishes that output with
+`vercel deploy --prebuilt --prod`, without another build. PRs do not use Vercel
+credentials and keep the local test builds. The `build` script calls the local
+Vite+ CLI with Bun explicitly; to run it, use `vp run build`.
 
-O GitHub precisa destas configurações em Settings > Secrets and variables >
-Actions:
+GitHub needs these settings in Settings > Secrets and variables > Actions:
 
-| Tipo     | Nome                | Finalidade                               |
-| -------- | ------------------- | ---------------------------------------- |
-| Secret   | `VERCEL_TOKEN`      | Autorizar pull, build e deploy na Vercel |
-| Variable | `VERCEL_ORG_ID`     | Identificar a equipe da conta pessoal    |
-| Variable | `VERCEL_PROJECT_ID` | Identificar o projeto de destino         |
+| Kind     | Name                | Purpose                                   |
+| -------- | ------------------- | ----------------------------------------- |
+| Secret   | `VERCEL_TOKEN`      | Authorize pull, build and deploy          |
+| Variable | `VERCEL_ORG_ID`     | Identify the team of the personal account |
+| Variable | `VERCEL_PROJECT_ID` | Identify the target project               |
 
-Nesta instância, os IDs e o secret `VERCEL_TOKEN` estão cadastrados no GitHub, e
-a credencial `github-boilerplate-solidjs-ci` está restrita ao projeto
-`boilerplate-solidjs`, sem expiração. Numa cópia, crie em
-[Tokens da Vercel](https://vercel.com/account/tokens) um token restrito ao
-próprio projeto. O valor fica somente no secret do repositório, sem ser
-adicionado aos arquivos de ambiente.
+In this instance, the IDs and the `VERCEL_TOKEN` secret are registered on
+GitHub, and the `github-boilerplate-solidjs-ci` credential is restricted to the
+`boilerplate-solidjs` project, without expiration. In a copy, create in
+[Vercel Tokens](https://vercel.com/account/tokens) a token restricted to the
+project itself. The value lives only in the repository secret, without being
+added to the environment files.
 
-O vínculo Git também foi desconectado no projeto remoto. O `vercel.json`
-desativa deploys disparados pela integração Git com
-`git.deploymentEnabled: false`. Isso preserva a exigência de publicar pelo CI
-mesmo se o repositório for reconectado à Vercel.
+The Git link was also disconnected in the remote project. `vercel.json` turns
+off the deploys triggered by the Git integration with
+`git.deploymentEnabled: false`. That keeps the requirement of publishing through
+the CI even if the repository is connected to Vercel again.
 
-O build usa Bun e mantém `ENABLE_EXPERIMENTAL_COREPACK=0` no ambiente do passo
-`vercel build` do CI. O Corepack não gerencia Bun, e o valor no passo impede que
-configurações antigas baixadas por `vercel pull` reativem o Corepack no CLI. O
-projeto não usa build remoto: um `vercel deploy` manual sem `--prebuilt`
-precisaria da mesma variável nas configurações do projeto na Vercel. Preserve
-também `LEFTHOOK=0` no deploy. As variáveis `HOST`, `PORT` e `BASE_URL_TEST`
-pertencem à execução local e aos testes. O contrato atual em `env.ts` não exige
-segredos de aplicação.
+The build uses Bun and keeps `ENABLE_EXPERIMENTAL_COREPACK=0` in the environment
+of the `vercel build` step of the CI. Corepack does not manage Bun, and the
+value in the step stops old settings downloaded by `vercel pull` from turning
+Corepack back on in the CLI. The project does not use a remote build: a manual
+`vercel deploy` without `--prebuilt` would need the same variable in the project
+settings on Vercel. Also keep `LEFTHOOK=0` in the deploy. The `HOST`, `PORT` and
+`BASE_URL_TEST` variables belong to the local run and to the tests. The current
+contract in `env.ts` requires no application secrets.
 
-A automação de release usa o token automático do GitHub. Ela só começa após o CI
-completo passar, incluindo o deploy. O merge de versionamento feito pelo
-`GITHUB_TOKEN` não dispara um segundo CI: a release publica a tag e as notas,
-sem um segundo deploy para a mudança de `package.json` e `CHANGELOG.md`.
+The release automation uses the automatic GitHub token. It only starts after the
+whole CI passes, the deploy included. The versioning merge made by
+`GITHUB_TOKEN` does not trigger a second CI: the release publishes the tag and
+the notes, without a second deploy for the change to `package.json` and
+`CHANGELOG.md`.
 
-## Recuperação
+## Recovery
 
-Na aba Actions, execute manualmente `Automatic release`, na branch `main`,
-informando em `source_run_id` o ID do CI de push que originou a release. Uma
-nova execução reutiliza a branch e o PR existentes, valida novamente o commit e
-retoma após merge ou criação da tag, se necessário. Tags existentes com outro
-SHA e releases com notas divergentes provocam erro; não são sobrescritas.
+In the Actions tab, run `Automatic release` by hand, on the `main` branch,
+passing in `source_run_id` the ID of the push CI that originated the release. A
+new run reuses the existing branch and PR, validates the commit again and
+resumes after the merge or the tag creation, if needed. Existing tags with
+another SHA and releases with diverging notes cause an error; they are not
+overwritten.
 
-Uma release já integrada pode retomar a publicação mesmo se a proteção da `main`
-tiver mudado depois do merge, pois essa retomada não altera a branch. Continuam
-obrigatórias a identidade do PR, a validação do conteúdo preparado e a igualdade
-dos pais e da árvore do merge com o resultado validado.
+A release already integrated can resume the publication even if the protection
+of `main` changed after the merge, because that resumption does not change the
+branch. The identity of the PR, the validation of the prepared content and the
+equality of the parents and the tree of the merge with the validated result are
+still required.
 
-Se a versão do `package.json` estiver à frente da última tag estável, recupere a
-execução original antes de iniciar outra release. Não integre manualmente um PR
-de release bloqueado: uma base diferente ou alterações no merge impedem a
-retomada automática. Nesse caso, é necessário revisar o SHA validado e o estado
-da publicação antes de corrigir os metadados; não crie uma tag na ponta atual da
-`main` apenas para fazer as versões coincidirem.
+If the version of `package.json` is ahead of the last stable tag, recover the
+original run before starting another release. Do not merge a blocked release PR
+by hand: a different base or changes in the merge prevent the automatic
+resumption. In that case, review the validated SHA and the state of the
+publication before fixing the metadata; do not create a tag at the current tip
+of `main` just to make the versions match.
 
-Após confirmar a publicação, a automação exclui a branch de release somente se
-ela ainda aponta para o SHA validado. A exclusão usa uma comparação atômica de
-SHA; uma atualização concorrente impede a limpeza. Se a branch já foi excluída,
-a recuperação usa o PR integrado e não recria a branch. O PR e a tag permanecem.
+After confirming the publication, the automation deletes the release branch only
+if it still points to the validated SHA. The deletion uses an atomic SHA
+comparison; a concurrent update prevents the cleanup. If the branch was already
+deleted, the recovery uses the merged PR and does not create the branch again.
+The PR and the tag stay.
 
-Se a `main` avançar antes do merge, a execução termina sem erro e registra o
-motivo no resumo: o CI do novo commit inicia outra release, que inclui as
-mudanças pendentes. Quando o avanço aparece no `prepare`, ele fecha o PR desta
-origem. Quando aparece no `publish`, que só lê PRs, o merge é pulado e o PR fica
-aberto até a próxima preparação. Toda preparação confere os 100 PRs abertos mais
-recentes para a `main` e fecha os de release abertos pela automação cuja origem
-é ancestral estrita da origem atual; com mais PRs abertos, o resumo avisa que os
-mais antigos ficaram de fora. PRs humanos, outras branches e origens mais novas
-não são tocados. As branches permanecem para inspeção; não há exclusão
-automática de branches abandonadas antes do merge.
+If `main` moves forward before the merge, the run ends without an error and
+records the reason in the summary: the CI of the new commit starts another
+release, which includes the pending changes. When the move shows up in
+`prepare`, it closes the PR of this source. When it shows up in `publish`, which
+only reads PRs, the merge is skipped and the PR stays open until the next
+preparation. Every preparation checks the 100 most recent open PRs to `main` and
+closes the release PRs opened by the automation whose source is a strict
+ancestor of the current source; with more open PRs, the summary warns that the
+oldest ones were left out. Human PRs, other branches and newer sources are not
+touched. The branches stay for inspection; there is no automatic deletion of
+branches abandoned before the merge.
 
-Se a `main` avançar entre a última conferência e a chamada de merge, a exigência
-de branch atualizada do ruleset bloqueia a integração no GitHub. O script mantém
-a verificação posterior dos pais e da árvore antes de criar a tag como defesa
-adicional. A proteção remota precisa permanecer ativa durante a release.
+If `main` moves forward between the last check and the merge call, the
+up-to-date branch requirement of the ruleset blocks the integration on GitHub.
+The script keeps the later check of the parents and the tree before creating the
+tag as an extra defense. The remote protection must stay active during the
+release.
 
-Se alguém fechar o PR de release sem integrá-lo, reabra o mesmo PR antes de
-reexecutar com o mesmo `source_run_id`. A automação respeita o fechamento
-manual.
+If someone closes the release PR without merging it, reopen the same PR before
+running again with the same `source_run_id`. The automation respects the manual
+closing.
 
-## Validação local e no CI
+## Local and CI validation
 
 ```sh
 vp run test
@@ -256,38 +265,40 @@ vp run test:release
 vp run typecheck:node
 ```
 
-`vp run test:release` executa apenas `tooling/release` em Bun, com isolamento
-entre arquivos e timeout de 60 segundos. A suíte com subprocessos mantém o
-limite de 30 segundos por teste. O comando roda em todo pre-push e faz parte de
-`vp run validate`. `vp run test:tooling` mantém os demais módulos em Node.
+`vp run test:release` runs only `tooling/release` in Bun, with isolation between
+files and a 60-second timeout. The suite with subprocesses keeps the 30-second
+limit per test. The command runs on every pre-push and is part of
+`vp run validate`. `vp run test:tooling` keeps the other modules on Node.
 
-No CI, um passo do job `Quality` compara os commits e decide se roda essa suíte.
-PRs usam o ancestral comum da base com o SHA testado; pushes comparam `before`
-com esse SHA. Histórico indisponível, SHA inválido ou erro de comparação fazem
-os testes rodar. Renomeações são tratadas como exclusão e adição para preservar
-os caminhos de origem e destino na seleção.
+In CI, a step of the `Quality` job compares the commits and decides whether to
+run that suite. PRs use the common ancestor of the base with the tested SHA;
+pushes compare `before` with that SHA. Unavailable history, an invalid SHA or a
+comparison error make the tests run. Renames are treated as a deletion and an
+addition to keep the source and target paths in the selection.
 
-O filtro em `shouldTestRelease/index.ts` cobre `tooling/release/`,
+The filter in `shouldTestRelease/index.ts` covers `tooling/release/`,
 `tooling/fmt.ts`, `.commitlintrc`, `package.json`, `bun.lock`, `bunfig.toml`,
-`vite.config.ts`, `tsconfig.json`, `tsconfig.node.json`, os workflows de CI e
-release e as ações locais em `.github/actions/`. Ao acrescentar uma dependência
-local da automação, atualize essa lista e os testes do filtro. Mudanças somente
-na aplicação ou em guias fora da pasta de release não executam a suíte no CI.
+`vite.config.ts`, `tsconfig.json`, `tsconfig.node.json`, the CI and release
+workflows and the local actions in `.github/actions/`. When adding a local
+dependency of the automation, update that list and the tests of the filter.
+Changes only to the application or to guides outside the release folder do not
+run the suite in CI.
 
-A seleção não pula o workflow nem o job `Quality`. `CI required` exige sucesso
-de todos os jobs, exceto quando o push da `main` reaproveita a validação do PR,
-conforme o
-[guia de desenvolvimento](../../docs/development.md#reutilização-da-validação-do-pr-na-main).
-A recuperação manual também mantém as verificações reais de origem, commit e
-publicação; ela não repete os testes.
+The selection does not skip the workflow or the `Quality` job. `CI required`
+requires every job to succeed, except when the push to `main` reuses the PR
+validation, according to the
+[development guide](../../docs/development.md#reusing-the-pr-validation-on-main).
+The manual recovery also keeps the real checks of source, commit and
+publication; it does not repeat the tests.
 
-Os testes de integração substituem `git` e `gh` por executáveis sintéticos e
-isolam o `PATH` dos subprocessos. O Git sintético recusa fetch e push sem o
-helper de credenciais do `gh`. Eles geram o artifact com o script do job `plan`
-e executam os jobs com escrita com `bun --no-install`, inclusive com artifacts
-adulterados. Um teste estático confere que a entrada desses jobs só alcança
-módulos `node:` e que o workflow mantém as permissões e a instalação separadas.
-Nenhuma ferramenta valida a sintaxe dos workflows localmente; o GitHub a valida
-ao carregar o arquivo. Não usam credenciais reais nem criam releases remotas. As
-fixtures ficam no diretório temporário do sistema e a suíte as descarta ao
-terminar. Se uma execução interrompida deixar resíduos, use `trash`.
+The integration tests replace `git` and `gh` with synthetic executables and
+isolate the `PATH` of the subprocesses. The synthetic Git refuses fetch and push
+without the `gh` credential helper. They generate the artifact with the script
+of the `plan` job and run the jobs with write permission with
+`bun --no-install`, tampered artifacts included. A static test checks that the
+entry of those jobs only reaches `node:` modules and that the workflow keeps the
+permissions and the installation separate. No tool validates the syntax of the
+workflows locally; GitHub validates it when loading the file. They do not use
+real credentials or create remote releases. The fixtures live in the temporary
+folder of the system, and the suite discards them when it ends. If an
+interrupted run leaves leftovers, use `trash`.
