@@ -182,10 +182,9 @@ task. The two can differ, so check `package.json` before running one directly.
 To select updates, use `vp run deps:update`, which runs
 `vp update --interactive --latest`; `vp outdated` only lists the available
 versions. Both commands compare each package only with the `latest` dist-tag and
-leave out versions published only under another tag, such as the Solid RCs under
-`next`. For those packages, check the tags with `bun info <package> dist-tags`,
-for example `bun info solid-js dist-tags`, and update the pinned version in
-`package.json` by hand.
+leave out versions published only under another tag, such as a prerelease under
+`next`. To adopt one, check the tags with `bun info <package> dist-tags` and
+update the pinned version in `package.json` by hand.
 
 `vp run lint`, `vp run lint:css`, `vp run check:ci` and `vp run dead-code` use
 the cached tasks `lint-project`, `lint-css`, `check-project` and
@@ -483,8 +482,8 @@ the next jobs after a failure.
 
 ## External references
 
-- SolidJS: https://v2.solidjs.com
-- Solid Router: https://v2.solidjs.com/routing/solid-router
+- SolidJS: https://docs.solidjs.com
+- Solid Router: https://docs.solidjs.com/routing/solid-router
 - Vite+: https://viteplus.dev/guide/
 - Vite: https://vite.dev
 - Vitest: https://vitest.dev
