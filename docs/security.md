@@ -1,167 +1,169 @@
-# Cabeçalhos de segurança e CSP
+# Security headers and CSP
 
-[Voltar ao README](../README.md)
+[Back to the README](../README.md)
 
-## Política de conteúdo
+## Content policy
 
-Os cabeçalhos de segurança das respostas da função saem do middleware. Para
-arquivos estáticos, as `routeRules` do Nitro configuram
-`Strict-Transport-Security`, `X-Content-Type-Options` e
-`Cross-Origin-Resource-Policy`, conforme os
-[limites conhecidos](#limites-conhecidos). O `securityHeaders` grava em toda
-resposta da cadeia `Strict-Transport-Security`, `X-Frame-Options`,
-`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`,
-`Cross-Origin-Opener-Policy`, `Cross-Origin-Embedder-Policy`,
-`Cross-Origin-Resource-Policy` e a `Content-Security-Policy`. Os valores ficam
-em
+The security headers of the function responses come from the middleware. For
+static files, the Nitro `routeRules` set `Strict-Transport-Security`,
+`X-Content-Type-Options` and `Cross-Origin-Resource-Policy`, as described in the
+[known limits](#known-limits). `securityHeaders` writes on every response of the
+chain `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`,
+`Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`,
+`Cross-Origin-Embedder-Policy`, `Cross-Origin-Resource-Policy` and the
+`Content-Security-Policy`. The values are in
 [`securityHeaders/constants.ts`](../src/middleware/securityHeaders/constants.ts).
-A contenção de falhas grava os mesmos cabeçalhos no 500, na página de erro e no
-controle lançado.
+The failure containment writes the same headers on the 500, on the error page
+and on the thrown control.
 
-A CSP usa `script-src 'nonce-<valor>' 'strict-dynamic'`, sem `'unsafe-inline'`
-para scripts. As demais diretivas são `default-src 'self'`, `style-src 'self'`,
-`object-src 'none'`, `base-uri 'self'`, `form-action 'self'` e
-`frame-ancestors 'none'`. O app não usa WebAssembly nem `eval`, então a política
-não inclui `'wasm-unsafe-eval'`. Só respostas `text/html` levam o nonce; texto,
-XML, JSON e redirects que passam pela função saem com `script-src 'none'`. Assim
-o robots e o sitemap dinâmico não guardam o nonce de uma requisição no cache
-compartilhado. O llms.txt e o sitemap puramente estático saem como arquivos do
-build, sem a CSP do middleware.
+The CSP uses `script-src 'nonce-<value>' 'strict-dynamic'`, without
+`'unsafe-inline'` for scripts. The other directives are `default-src 'self'`,
+`style-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`
+and `frame-ancestors 'none'`. The app uses neither WebAssembly nor `eval`, so
+the policy does not include `'wasm-unsafe-eval'`. Only `text/html` responses
+carry the nonce; text, XML, JSON and redirects that go through the function go
+out with `script-src 'none'`. That way, robots and the dynamic sitemap do not
+keep the nonce of a request in the shared cache. llms.txt and a purely static
+sitemap go out as build files, without the CSP of the middleware.
 
-O `style-src` também fica sem `'unsafe-inline'`. No build os estilos chegam só
-por `<link>` da mesma origem, e um `<style>` ou um atributo `style` no HTML é
-bloqueado. Por isso o `Document` aplica o tema do cookie só pela classe `light`
-ou `dark` do `<html>`, e o `color-scheme` vem das regras `.light`/`.dark` de
-[`colors.css`](../src/theme/tokens/colors.css). Não use a prop `style` em JSX
-renderizado no servidor: o SSR grava o atributo para qualquer valor não nulo, e
-a CSP o bloqueia. O `applyTheme` grava o `color-scheme` direto em
-`element.style`, pelo CSSOM, que a CSP não bloqueia.
+`style-src` has no `'unsafe-inline'` either. In the build, styles only arrive
+through a same-origin `<link>`, and a `<style>` or a `style` attribute in the
+HTML is blocked. That is why `Document` applies the theme of the cookie only
+through the `light` or `dark` class of `<html>`, and `color-scheme` comes from
+the `.light`/`.dark` rules of [`colors.css`](../src/theme/tokens/colors.css). Do
+not use the `style` prop in JSX rendered on the server: the SSR writes the
+attribute for any non-null value, and the CSP blocks it. `applyTheme` writes
+`color-scheme` directly on `element.style`, through the CSSOM, which the CSP
+does not block.
 
 ## HSTS
 
-O `Strict-Transport-Security` sai com `max-age=63072000; includeSubDomains`, sem
-`preload`. Essa diretiva não muda o comportamento do navegador: ela autoriza
-qualquer pessoa a submeter o domínio à
-[lista de preload](https://hstspreload.org/), embutida nos navegadores. Depois
-da inclusão, todos os subdomínios, inclusive os internos, passam a exigir HTTPS
-válido, e a remoção leva meses. Por isso o hstspreload.org pede que projetos que
-entregam configuração pronta não a incluam por padrão
+`Strict-Transport-Security` goes out with `max-age=63072000; includeSubDomains`,
+without `preload`. That directive does not change the behavior of the browser:
+it allows anyone to submit the domain to the
+[preload list](https://hstspreload.org/), built into browsers. After the
+inclusion, every subdomain, internal ones included, starts requiring valid
+HTTPS, and removal takes months. That is why hstspreload.org asks projects that
+ship ready-made configuration not to include it by default
 ([Preloading Should Be Opt-In](https://hstspreload.org/#opt-in)).
 
-Sem a lista, o navegador só conhece a política depois da primeira resposta
-HTTPS. Até lá, quem chega por um link `http://` faz um pedido em texto aberto,
-que alguém na mesma rede pode interceptar para manter a navegação em HTTP. A
-lista fecha essa brecha da primeira visita e, de quebra, evita esse redirect. O
-Chrome já tenta HTTPS primeiro em sites públicos, mas volta para HTTP com um
-aviso que o usuário pode ignorar; a lista não deixa passar. Domínios sob TLDs
-que estão inteiros na lista, como `.dev` e `.app`, já têm essa proteção. Para
-entrar na lista, confirme que todos os subdomínios atendem HTTPS, acrescente
-`preload` ao valor em
+Without the list, the browser only learns the policy after the first HTTPS
+response. Until then, someone who arrives through an `http://` link makes a
+plaintext request, which someone on the same network can intercept to keep the
+navigation on HTTP. The list closes that first-visit gap and, as a bonus, avoids
+that redirect. Chrome already tries HTTPS first on public sites, but falls back
+to HTTP with a warning that the user can ignore; the list does not let it
+through. Domains under TLDs that are entirely on the list, such as `.dev` and
+`.app`, already have this protection. To join the list, confirm that every
+subdomain serves HTTPS, add `preload` to the value in
 [`securityHeaders/constants.ts`](../src/middleware/securityHeaders/constants.ts)
-e submeta o domínio no hstspreload.org.
+and submit the domain on hstspreload.org.
 
-Os arquivos estáticos não passam pelo middleware, então as `routeRules` gravam
-neles o mesmo valor. Sem isso, a Vercel aplica o padrão dela, `max-age=63072000`
-sem `includeSubDomains`, e cada resposta HSTS atualiza a política guardada no
-navegador: o JavaScript e o CSS de uma página, servidos depois do HTML,
-retirariam a cobertura dos subdomínios que a resposta da função acabou de
-declarar.
+Static files do not go through the middleware, so the `routeRules` write the
+same value on them. Without that, Vercel applies its default, `max-age=63072000`
+without `includeSubDomains`, and each HSTS response updates the policy stored in
+the browser: the JavaScript and the CSS of a page, served after the HTML, would
+take away the subdomain coverage that the function response had just declared.
 
-## Nonce e entradas de renderização
+## Nonce and render entries
 
-O nonce tem 16 bytes de `crypto.getRandomValues` em base64 e é criado a cada
-requisição por [`requestNonce`](../src/middleware/securityHeaders/index.ts), no
-primeiro acesso a `event.nonce`. Esse campo pertence ao contrato nativo do
-plugin do Solid. O `securityHeaders` o preenche antes do render, e a contenção
-também o cria quando uma falha ocorre antes desse middleware, para que a página
-de erro e a CSP coincidam. Um nonce fornecido pelo host é preservado; quando ele
-separa scripts e estilos, a CSP e o `Document` usam o campo `script`. O caminho
-até os scripts é:
+The nonce has 16 bytes of `crypto.getRandomValues` in base64 and is created for
+each request by [`requestNonce`](../src/middleware/securityHeaders/index.ts), on
+the first access to `event.nonce`. That field belongs to the native contract of
+the Solid plugin. `securityHeaders` fills it before the render, and the
+containment also creates it when a failure happens before that middleware, so
+that the error page and the CSP match. A nonce provided by the host is kept;
+when it separates scripts and styles, the CSP and `Document` use the `script`
+field. The path to the scripts is:
 
-- O handler nativo do plugin lê `event.nonce` e o grava no script de um redirect
-  decidido depois do shell.
-- [`src/entry-server.tsx`](../src/entry-server.tsx) passa o nonce ao
-  `renderToStream`, que o grava no `HydrationScript`, nos scripts de dados e de
-  streaming, no script de título e nos `modulepreload`. Ele também o grava nos
-  `<link rel="stylesheet">`, que o `'self'` do `style-src` já libera.
-- O `Document` grava `nonce` no script inline do tema e no script da entrada do
-  cliente, que ele mesmo renderiza com o caminho literal
-  `/src/entry-client.tsx`. No build, o handler do plugin troca esse caminho pelo
-  asset com hash.
+- The native handler of the plugin reads `event.nonce` and writes it in the
+  script of a redirect decided after the shell.
+- [`src/entry-server.tsx`](../src/entry-server.tsx) passes the nonce to
+  `renderToStream`, which writes it in the `HydrationScript`, in the data and
+  streaming scripts, in the title script and in the `modulepreload` links. It
+  also writes it in the `<link rel="stylesheet">` tags, which the `'self'` of
+  `style-src` already allows.
+- `Document` writes `nonce` in the inline theme script and in the script of the
+  client entry, which it renders itself with the literal path
+  `/src/entry-client.tsx`. In the build, the plugin handler replaces that path
+  with the hashed asset.
 
-O Nitro usa a entrada SSR nativa do `@solidjs/vite-plugin`, sem substituição
-local. As entradas autorais de renderização permanecem porque `entry-server.tsx`
-cria o estado de integridade do render e o conclui pelo `onCompleteAll`, que a
-entrada gerada pelo plugin não passa ao `renderToStream`; sem esse estado
-concluído, todo `.md` responde 500 e o prerender interrompe o build. O plugin
-exige o par cliente/servidor quando uma dessas entradas existe, e
-`entry-client.tsx` confere o idioma e instala a detecção de página desatualizada
-e a guarda de histórico antes de `hydrate()`, código que só poderia ir para
-`start.clientSetup` se as duas entradas fossem geradas. Ambas usam a mesma
-árvore de `Document` e `App`. Com as entradas autorais, o plugin deixa de gerar
-o `DefaultErrorBoundary` de produção e a opção `start.productionErrorBoundary`
-não tem efeito; o `Errored` raiz do `App` continua responsável pela página de
-erro. Uma exceção no próprio `Document` sai síncrona do `renderToStream` e a
-contenção de falhas responde o 500 em texto, com o log fixo.
+Nitro uses the native SSR entry of `@solidjs/vite-plugin`, without a local
+replacement. The authored render entries stay because `entry-server.tsx` creates
+the render integrity state and completes it through `onCompleteAll`, which the
+entry generated by the plugin does not pass to `renderToStream`; without that
+completed state, every `.md` answers 500 and the prerender stops the build. The
+plugin requires the client and server pair when one of those entries exists, and
+`entry-client.tsx` checks the locale and installs the outdated page detection
+and the history guard before `hydrate()`, code that could only go to
+`start.clientSetup` if both entries were generated. Both use the same `Document`
+and `App` tree. With authored entries, the plugin stops generating the
+production `DefaultErrorBoundary`, and the `start.productionErrorBoundary`
+option has no effect; the root `Errored` of `App` is still responsible for the
+error page. An exception in `Document` itself leaves `renderToStream`
+synchronously, and the failure containment answers the 500 in text, with the
+fixed log.
 
-## Validação e CSS em streaming
+## Validation and streamed CSS
 
-Em desenvolvimento a CSP não é enviada: o HMR usa estilos inline, enquanto a
-política de produção permite apenas folhas externas. Os demais cabeçalhos valem.
-A CSP deve ser conferida no build, com `vp run start` ou
-`vp run test:e2e:production`. Todo script novo no `Document` precisa de
-`nonce={nonce}`.
+In development the CSP is not sent: HMR uses inline styles, while the production
+policy only allows external stylesheets. The other headers apply. The CSP must
+be checked in the build, with `vp run start` or `vp run test:e2e:production`.
+Every new script in `Document` needs `nonce={nonce}`.
 
-Componentes `lazy()` com CSS própria podem aparecer em um fragmento depois que o
-dado assíncrono de um `Loading` resolve. O runtime anuncia a folha com
-`data-dfc` e libera o fragmento por um listener instalado por script com nonce,
-sem handlers inline. O template do conteúdo precede os links, inclusive quando a
-CSS já está em cache. A fixture `/fragment-css` verifica a ordem no HTML, a
-renderização com estilos e a ausência de violações de CSP com a folha nova ou
-armazenada no cache do navegador, sem modificar o HTML da aplicação.
+`lazy()` components with their own CSS can appear in a fragment after the async
+data of a `Loading` resolves. The runtime announces the stylesheet with
+`data-dfc` and releases the fragment through a listener installed by a script
+with a nonce, without inline handlers. The content template comes before the
+links, even when the CSS is already cached. The `/fragment-css` fixture checks
+the order in the HTML, the rendering with styles and the absence of CSP
+violations with the stylesheet new or stored in the browser cache, without
+changing the HTML of the application.
 
-## Limites conhecidos
+## Known limits
 
-- Na Vercel, arquivos estáticos (`/assets/`, `/images/`, `/favicon/`, os `.md`
-  sob o prefixo de cada idioma, `/llms.txt`, `/llms-full.txt`,
-  `/_markdown/static.json` e os sitemaps gerados no build) saem do CDN sem
-  passar pela função. As `routeRules` do Nitro no `vite.config.ts` gravam neles
-  só `Strict-Transport-Security`, `X-Content-Type-Options` e
-  `Cross-Origin-Resource-Policy`, com os valores de `SECURITY_HEADERS`; a lista
-  `STATIC_FILE_PATHS` define os caminhos. O preset da Vercel transforma essas
-  regras em rotas do `.vercel/output/config.json`, e o runtime do Nitro aplica
-  os mesmos valores às respostas da função nesses caminhos. `/assets/` e
-  `/images/` são `publicAssets` sem fallthrough: recebem cache imutável, e um
-  arquivo ausente recebe o 404 `no-store` do Nitro. O `vercel.json` guarda só o
-  `Content-Type` dos `.md`: numa route rule, o h3 sobrescreveria com ele também
-  as respostas de erro da função. A CSP e as políticas de frame só têm efeito
-  nas respostas que passam pelo middleware. Pelo mesmo motivo, um arquivo que
-  não deve ser público precisa sair de `.vercel/output/static`: o middleware não
-  consegue bloqueá-lo. O manifesto do Vite e o das server functions listam
-  caminhos do código-fonte. O plugin do Solid apaga o primeiro, que ele mesmo
-  liga, e grava o segundo na saída do SSR, então nenhum `.vite/` chega ao
-  estático; o `BuildOutput` confere a ausência. Ligar `build.manifest` fora do
-  modo `e2e` faria o manifesto ser publicado.
-- O Nitro compila todas as `routeRules`, inclusive as que a aplicação
-  acrescentar, com o preMerge do h3, sem opção para desligá-lo
-  ([nitrojs/nitro#5048](https://github.com/nitrojs/nitro/issues/5048)). Padrões
-  com sobreposição parcial, como `/**.md` ao lado de `/assets/**` ou
-  `/pt/blog/**` ao lado de `/pt/**.md`, fazem a compilação voltar ao modo
-  simples, com o mesmo resultado e um aviso no desenvolvimento e em cada build.
-  Por isso os `.md` entram em `STATIC_FILE_PATHS` como `/<idioma>/**.md`, com os
-  idiomas de `project.inlang/settings.json`. Isso depende de o `urlPatterns` de
-  `project.inlang/paraglide.config.ts` prefixar todos os idiomas: uma aplicação
-  que sirva um idioma sem prefixo precisa de um padrão próprio para os `.md`
-  dele, ou eles saem do CDN sem esses cabeçalhos. O `AgentReadiness` confere os
-  cabeçalhos de cada `.md` publicado.
-- No CDN da Vercel, as rotas do `config.json` comparam o caminho ainda
-  codificado, e o arquivo estático é encontrado pelo caminho decodificado. Uma
-  grafia com percent-encoding de um caminho estático, como `/%70t/index.md` ou
-  `/%66avicon/apple-touch-icon.png`, recebe o arquivo sem
-  `X-Content-Type-Options` e `Cross-Origin-Resource-Policy`, e com o HSTS padrão
-  da Vercel no lugar do da aplicação. Esses arquivos são públicos, e as URLs que
-  a aplicação publica usam a grafia canônica.
-- `Cross-Origin-Embedder-Policy: require-corp` bloqueia recursos de outra origem
-  sem `Cross-Origin-Resource-Policy` ou CORS. Ao adicionar fontes, imagens ou
-  scripts externos, confira se o provedor envia esses cabeçalhos ou revise a
-  política.
+- On Vercel, static files (`/assets/`, `/images/`, `/favicon/`, the `.md` files
+  under the prefix of each locale, `/llms.txt`, `/llms-full.txt`,
+  `/_markdown/static.json` and the sitemaps generated in the build) go out from
+  the CDN without going through the function. The Nitro `routeRules` in
+  `vite.config.ts` write on them only `Strict-Transport-Security`,
+  `X-Content-Type-Options` and `Cross-Origin-Resource-Policy`, with the values
+  of `SECURITY_HEADERS`; the `STATIC_FILE_PATHS` list defines the paths. The
+  Vercel preset turns those rules into routes of `.vercel/output/config.json`,
+  and the Nitro runtime applies the same values to the function responses on
+  those paths. `/assets/` and `/images/` are `publicAssets` without fallthrough:
+  they get an immutable cache, and a missing file gets the `no-store` 404 of
+  Nitro. `vercel.json` keeps only the `Content-Type` of the `.md` files: in a
+  route rule, h3 would also overwrite the error responses of the function with
+  it. The CSP and the frame policies only take effect on the responses that go
+  through the middleware. For the same reason, a file that must not be public
+  has to leave `.vercel/output/static`: the middleware cannot block it. The Vite
+  manifest and the server function manifest list source code paths. The Solid
+  plugin deletes the first one, which it turns on itself, and writes the second
+  one in the SSR output, so no `.vite/` reaches the static output; `BuildOutput`
+  checks that it is missing. Turning on `build.manifest` outside the `e2e` mode
+  would publish the manifest.
+- Nitro compiles every `routeRules` entry, the ones the application adds
+  included, with the h3 preMerge, with no option to turn it off
+  ([nitrojs/nitro#5048](https://github.com/nitrojs/nitro/issues/5048)). Patterns
+  that overlap in part, such as `/**.md` next to `/assets/**` or `/pt/blog/**`
+  next to `/pt/**.md`, make the compilation fall back to the simple mode, with
+  the same result and a warning in development and in each build. That is why
+  the `.md` files enter `STATIC_FILE_PATHS` as `/<locale>/**.md`, with the
+  locales of `project.inlang/settings.json`. This depends on the `urlPatterns`
+  of `project.inlang/paraglide.config.ts` prefixing every locale: an application
+  that serves a locale without a prefix needs its own pattern for the `.md`
+  files of that locale, or they go out from the CDN without these headers.
+  `AgentReadiness` checks the headers of each published `.md`.
+- On the Vercel CDN, the routes of `config.json` compare the path still encoded,
+  and the static file is found by the decoded path. A percent-encoded spelling
+  of a static path, such as `/%70t/index.md` or
+  `/%66avicon/apple-touch-icon.png`, gets the file without
+  `X-Content-Type-Options` and `Cross-Origin-Resource-Policy`, and with the
+  Vercel default HSTS instead of the one of the application. Those files are
+  public, and the URLs that the application publishes use the canonical
+  spelling.
+- `Cross-Origin-Embedder-Policy: require-corp` blocks resources from another
+  origin without `Cross-Origin-Resource-Policy` or CORS. When adding external
+  fonts, images or scripts, check that the provider sends those headers or
+  review the policy.
