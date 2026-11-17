@@ -1,26 +1,37 @@
 # SolidJS + Vite+ Boilerplate
 
-Base para projetos com SolidJS, TypeScript e renderização no servidor (SSR).
-Inclui roteamento por arquivos, server functions, servidor Nitro e validação
-automatizada com Vite+.
+A starting point for projects with SolidJS, TypeScript and server-side rendering
+(SSR). It includes file-based routing, server functions, a Nitro server and
+automated validation with Vite+.
 
-Veja a
-[demonstração do SolidJS Boilerplate](https://boilerplate-solidjs.devinsights.dev/en)
-para conhecer as páginas, os componentes e os idiomas disponíveis.
+See the
+[SolidJS Boilerplate demo](https://boilerplate-solidjs.devinsights.dev/en) for
+the pages, the components and the available languages.
 
-## O que já vem pronto
+## What comes ready
 
-- SSR com hidratação, páginas de erro e proteção de chamadas de backend.
-- Português, inglês e espanhol, com inglês como idioma base e URLs localizadas.
-- Componentes com CSS Modules, tema claro, escuro ou do sistema e persistência.
-- SEO por rota, dados estruturados, sitemap, `robots.txt` e `llms.txt`.
-- Testes de unidade, componentes e navegador com Vitest e Playwright.
-- Formatação, lint, tipos, hooks de Git e CI com deploy na Vercel.
+- SSR with hydration, error pages and protection for backend calls.
+- Portuguese, English and Spanish, with English as the base language and
+  localized URLs.
+- Components with CSS Modules, a light, dark or system theme, and persistence.
+- SEO per route, structured data, sitemap, `robots.txt` and `llms.txt`.
+- Unit, component and browser tests with Vitest and Playwright.
+- Formatting, lint, types, Git hooks and CI with deploys on Vercel.
 
-## Primeiros passos
+## Languages
 
-Instale o CLI global do [Vite+](https://viteplus.dev/guide/). As versões de Node
-e Bun são definidas no [package.json](package.json) e gerenciadas pelo Vite+.
+The application is internationalized: every page ships in Portuguese (`pt`),
+English (`en`) and Spanish (`es`), with English as the base language. The
+locales come from
+[`project.inlang/settings.json`](project.inlang/settings.json), and each
+component keeps its own `i18n/{pt,en,es}.json` catalogs next to it. The
+repository itself, its code, tests and documentation, is written in English. See
+[internationalization](docs/i18n.md) for how to add a language or a message.
+
+## Getting started
+
+Install the global [Vite+](https://viteplus.dev/guide/) CLI. The Node and Bun
+versions are set in [package.json](package.json) and managed by Vite+.
 
 ```bash
 git clone git@github.com:everton-dgn/boilerplate_solidjs.git
@@ -29,54 +40,53 @@ vp install
 vp run dev
 ```
 
-Abra o endereço exibido no terminal. O `.env` versionado contém a configuração
-local; ajuste `VITE_SITE_URL` para a URL pública do projeto antes de publicar.
-Veja [ambiente, runtimes e deploy](docs/development.md) para os detalhes.
+Open the address printed in the terminal. The versioned `.env` holds the local
+configuration; set `VITE_SITE_URL` to the public URL of the project before you
+publish. See [environment, runtimes and deploy](docs/development.md) for the
+details.
 
-Para executar os testes de navegador e E2E, instale o Chromium. Repita o comando
-depois de atualizar o Playwright, porque cada versão fixa uma revisão do
-navegador, que pode mudar na atualização:
+To run the browser and E2E tests, install Chromium. Run the command again after
+updating Playwright, because each version pins a browser revision that can
+change with the update:
 
 ```bash
 vp run test:browser:install
 ```
 
-## Comandos essenciais
+## Essential commands
 
-| Comando                      | Uso                                                                               |
-| ---------------------------- | --------------------------------------------------------------------------------- |
-| `vp run dev`                 | Iniciar o servidor de desenvolvimento                                             |
-| `vp run build`               | Gerar o build de produção                                                         |
-| `vp run start`               | Conferir o build localmente                                                       |
-| `vp run validate`            | Verificar formato, lint, tipos, código morto, cobertura, tooling, release e build |
-| `vp run test:e2e`            | Testar a aplicação com as fixtures E2E                                            |
-| `vp run test:e2e:production` | Testar as rotas reais de produção                                                 |
+| Command                      | Use                                                                        |
+| ---------------------------- | -------------------------------------------------------------------------- |
+| `vp run dev`                 | Start the development server                                               |
+| `vp run build`               | Build for production                                                       |
+| `vp run start`               | Check the build locally                                                    |
+| `vp run validate`            | Check format, lint, types, dead code, coverage, tooling, release and build |
+| `vp run test:e2e`            | Test the application with the E2E fixtures                                 |
+| `vp run test:e2e:production` | Test the real production routes                                            |
 
-Use `vp run dev` e `vp run build` para executar os scripts com Bun. Vitest,
-testes de tooling e SSR de produção permanecem em Node; os testes da automação
-de release rodam em Bun. Execute as duas suítes E2E em sequência, pois
-compartilham porta e artefatos de build. A
-[referência de desenvolvimento](docs/development.md#scripts) contém os demais
-scripts e as restrições de runtime.
+Use `vp run dev` and `vp run build` to run the scripts with Bun. Vitest, the
+tooling tests and production SSR stay on Node; the release automation tests run
+on Bun. Run the two E2E suites one after the other, because they share a port
+and build artifacts. The [development reference](docs/development.md#scripts)
+has the other scripts and the runtime constraints.
 
-## Documentação
+## Documentation
 
-| Guia                                       | Conteúdo                                                   |
-| ------------------------------------------ | ---------------------------------------------------------- |
-| [Desenvolvimento](docs/development.md)     | Ambiente, scripts, runtimes, cache, CI e deploy            |
-| [Arquitetura](docs/architecture.md)        | Rotas, organização de módulos e dependências entre camadas |
-| [Internacionalização](docs/i18n.md)        | Catálogos, geração, navegação e persistência do idioma     |
-| [Componentes e estilos](docs/ui.md)        | Campos, diálogos, notificações, tema, CSS e ícones         |
-| [Segurança e CSP](docs/security.md)        | Cabeçalhos, nonce, renderização e limites da política      |
-| [Erros no servidor](docs/server-errors.md) | Chamadas de backend, saída pública e recuperação           |
-| [SEO](docs/seo.md)                         | Metadados, dados estruturados e índices do site            |
-| [Testes](docs/testing.md)                  | Ambientes, isolamento, E2E e diagnóstico de falhas         |
-| [Releases](tooling/release/README.md)      | Versões, tags, changelog e recuperação da automação        |
+| Guide                                  | Contents                                                    |
+| -------------------------------------- | ----------------------------------------------------------- |
+| [Development](docs/development.md)     | Environment, scripts, runtimes, cache, CI and deploy        |
+| [Architecture](docs/architecture.md)   | Routes, module organization and dependencies between layers |
+| [Internationalization](docs/i18n.md)   | Catalogs, generation, navigation and language persistence   |
+| [Components and styles](docs/ui.md)    | Fields, dialogs, notifications, theme, CSS and icons        |
+| [Security and CSP](docs/security.md)   | Headers, nonce, rendering and the limits of the policy      |
+| [Server errors](docs/server-errors.md) | Backend calls, public output and recovery                   |
+| [SEO](docs/seo.md)                     | Metadata, structured data and site indexes                  |
+| [Testing](docs/testing.md)             | Environments, isolation, E2E and failure diagnosis          |
+| [Releases](tooling/release/README.md)  | Versions, tags, changelog and recovering the automation     |
 
-As [convenções para agentes](AGENTS.md) ficam no arquivo de instruções do
-projeto.
+The [conventions for agents](AGENTS.md) live in the project's instructions file.
 
-## Autor
+## Author
 
 [Éverton Toffanetto](https://devinsights.dev) ·
 [LinkedIn](https://www.linkedin.com/in/everton-toffanetto) ·
