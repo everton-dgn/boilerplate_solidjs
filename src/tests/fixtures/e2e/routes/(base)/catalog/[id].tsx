@@ -10,7 +10,7 @@ export default function CatalogPage() {
   const params = useParams()
   return (
     <main>
-      <h1>Entrada {params.id}</h1>
+      <h1>Entry {params.id}</h1>
     </main>
   )
 }
