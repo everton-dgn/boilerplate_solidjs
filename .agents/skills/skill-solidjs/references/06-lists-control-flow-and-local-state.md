@@ -1,16 +1,16 @@
-# Listas, fluxo e estado local
+# Lists, control flow and local state
 
-## For e identidade
+## For and identity
 
-Contrato:
+Contract:
 
-| Modo | Item no callback | Índice | Identidade |
+| Mode | Item in the callback | Index | Identity |
 | --- | --- | --- | --- |
-| padrão/true | valor | accessor | item |
-| false | accessor | número | posição |
-| função de chave | accessor | accessor | chave |
+| default/true | value | accessor | item |
+| false | accessor | number | position |
+| key function | accessor | accessor | key |
 
-Receita:
+Recipe:
 
 ```tsx
 <For each={tasks}>{(task, index) => <p>{index() + 1}: {task.title}</p>}</For>
@@ -18,15 +18,15 @@ Receita:
 <For each={tasks} keyed={task => task.id}>{(task, index) => <p>{index() + 1}: {task().title}</p>}</For>
 ```
 
-Contrato: store array direto; signal/memo usa `each={tasks()}`. Keying fixo por instância. Padrão preserva identidade por referência/reconciliação; chave personalizada, entidade com novos objetos; posicional, slot. No keyed por referência, mutação de propriedade no objeto cru sem trocar referência não atualiza nó; use store granular ou nova referência.
+Contract: a store array directly; a signal/memo uses `each={tasks()}`. Keying is fixed per instance. The default keeps identity by reference/reconciliation; a custom key, an entity with new objects; positional, a slot. In keyed by reference, a property mutation on the raw object without changing the reference does not update the node; use a granular store or a new reference.
 
-Armadilha: não chame item padrão nem índice posicional como função; não alterne overloads com booleano dinâmico. Chave estável/única vem do domínio, nunca random/posição reordenável; `key` de React não controla componentes arbitrários. Fallback de For significa lista confirmada vazia. Primeira leitura pendente vai a Loading, sem fallback de vazio.
+Pitfall: do not call the default item nor the positional index as a function; do not switch overloads with a dynamic boolean. A stable/unique key comes from the domain, never random/a reorderable position; the React `key` does not control arbitrary components. The For fallback means a confirmed empty list. The first pending read goes to Loading, without the empty fallback.
 
-## Foco ao reordenar
+## Focus when reordering
 
-Contrato: keyed preserva nó e estado local, mas mover o nó focado perde foco em happy-dom e Chromium; se outro nó se move, foco pode permanecer. Restaure ativo no handler após flush.
+Contract: keyed keeps the node and the local state, but moving the focused node loses focus in happy-dom and Chromium; if another node moves, focus can stay. Restore the active element in the handler after flush.
 
-Receita:
+Recipe:
 
 ```tsx
 function reorder(nextRows: Row[]) {
@@ -37,45 +37,45 @@ function reorder(nextRows: Row[]) {
 }
 ```
 
-Armadilha: queueMicrotask deixa intervalo sem foco quando outro código/teste drena sincronicamente antes; sem esse flush, auto-flush ocorre antes da microtask e restauração adiada funciona. Receita síncrona funciona com action pendente em outra linha e each otimista: reordenação comum aplica no flush e não move novamente ao assentar. Cursor/seleção não foram medidos; guarde selectionStart/selectionEnd se necessário. Teste mover, inserir no início, excluir no meio e atualizar mesma chave com input/estado local.
+Pitfall: queueMicrotask leaves an interval without focus when other code/a test drains synchronously first; without that flush, the auto-flush happens before the microtask and the deferred restoration works. The synchronous recipe works with a pending action on another row and an optimistic each: an ordinary reorder applies on flush and does not move again on settle. Cursor/selection were not measured; keep selectionStart/selectionEnd if needed. Test moving, inserting at the start, deleting in the middle and updating the same key with an input/local state.
 
-## Callback estrutural, Show e Repeat
+## Structural callback, Show and Repeat
 
-Contrato: corpos de For e Show não keyed rodam uma vez por item/ramo, sob owner sem tracking. Leituras de índice ou `current().name` no topo congelam valor e dev emite `STRICT_READ_UNTRACKED` por callback, rotulado For/Show; produção fica silenciosa. JSX/memo/effect mantêm leitura viva. Match usa o mesmo caminho, sem teste próprio.
+Contract: the bodies of For and non-keyed Show run once per item/branch, under an owner without tracking. Reads of the index or `current().name` at the top freeze the value and dev emits `STRICT_READ_UNTRACKED` per callback, labeled For/Show; production stays silent. JSX/memo/effect keep the read alive. Match uses the same path, without its own test.
 
-Receita:
+Recipe:
 
 ```tsx
 <For each={rows()}>{(row, index) => <li data-index={index()}>{row.id}</li>}</For>
 <Show when={user()}>{current => <p>{current().name}</p>}</Show>
 ```
 
-Contrato: Show não keyed entrega accessor estreitado e conserva nó ao trocar objeto; keyed entrega valor e recria ramo quando identidade muda, afetando cleanup/estado/custo. Switch escolhe primeiro Match truthy; defina prioridades e fallback. Match também distingue chave/accessor. Ternários simples continuam úteis, sem converter toda condição de atributo em Show.
+Contract: a non-keyed Show delivers a narrowed accessor and keeps the node when the object changes; keyed delivers a value and recreates the branch when the identity changes, affecting cleanup/state/cost. Switch picks the first truthy Match; define priorities and a fallback. Match also tells key/accessor apart. Simple ternaries are still useful, without turning every attribute condition into a Show.
 
-Contrato: Repeat renderiza contagem sem diff de coleção, índice numérico estável. `from` define janela `[from, from + count)`, com reuso documentado das entradas mantidas, mas janela não foi testada em runtime. Trate `items[index]` ausente e não capture folha reativa no corpo.
+Contract: Repeat renders a count without a collection diff, with a stable numeric index. `from` defines the window `[from, from + count)`, with documented reuse of the kept entries, but the window was not tested at runtime. Handle a missing `items[index]` and do not capture a reactive leaf in the body.
 
-Armadilha: lista vazia truthy não representa carregamento. Repeat atende slots/quantidade, não substitui For de entidades reordenáveis.
+Pitfall: a truthy empty list does not stand for loading. Repeat serves slots/quantity, it does not replace For for reorderable entities.
 
-## Loading, Errored e Reveal
+## Loading, Errored and Reveal
 
-Contrato: Loading delimita prontidão, Errored falhas; fallback de erro recebe accessor, reset é ação de interação, nunca render. Reveal coordena irmãos: sequential padrão, together espera grupo, natural segue prontidão individual. Collapsed só atua no sequencial; demais modos o ignoram. Não use props antigas de SuspenseList nem together booleano.
+Contract: Loading bounds readiness, Errored failures; the error fallback receives an accessor, reset is an interaction action, never render. Reveal coordinates siblings: sequential is the default, together waits for the group, natural follows individual readiness. Collapsed only acts in sequential; the other modes ignore it. Do not use the old SuspenseList props nor a boolean together.
 
-Receita: com três Loading a/b/c resolvendo c, a, b, espere:
+Recipe: with three Loadings a/b/c resolving c, a, b, expect:
 
-| Modo | Início | Após c | Após a | Após b |
+| Mode | Start | After c | After a | After b |
 | --- | --- | --- | --- | --- |
-| sem Reveal | três fallbacks | só c pronto | não medido | não medido |
-| together | três fallbacks | igual | igual | todos |
-| sequential | três fallbacks | igual | a pronto | todos |
-| sequential collapsed | fallback a, b/c vazios | igual | a pronto, fallback b, c vazio | todos |
+| no Reveal | three fallbacks | only c ready | not measured | not measured |
+| together | three fallbacks | same | same | all |
+| sequential | three fallbacks | same | a ready | all |
+| sequential collapsed | fallback a, b/c empty | same | a ready, fallback b, c empty | all |
 
-Armadilha: cauda collapsed oculta até conteúdo já pronto; together libera quando cada slot direto tem primeiro conteúdo. Reveal natural interno pode esperar grupo sequencial externo. SSR progressivo exige streaming: gerar string inteira antes de enviar elimina progressão. Teste shell, fragmentos e hidratação, não apenas HTML final.
+Pitfall: a collapsed tail hides even content that is already ready; together releases when each direct slot has its first content. An inner natural Reveal can wait for an outer sequential group. Progressive SSR requires streaming: generating the whole string before sending removes the progression. Test the shell, the fragments and hydration, not only the final HTML.
 
-## Componentes dinâmicos e lazy
+## Dynamic components and lazy
 
-Contrato: `dynamic(() => source)` de web fabrica componente de tag/componente/fonte compatível, inclusive async. Crie no corpo proprietário, callback estrutural de linha ou módulo realmente constante/global; não a cada leitura. Dynamic/DynamicProps continuam depreciados. `{ static: true }` lê uma vez sem tracking e recusa Promise; `isStatic` é avançado para bibliotecas.
+Contract: `dynamic(() => source)` from web builds a component from a tag/component/compatible source, async included. Create it in the owning body, in a structural row callback or in a truly constant/global module; not on every read. Dynamic/DynamicProps stay deprecated. `{ static: true }` reads once without tracking and refuses a Promise; `isStatic` is advanced, for libraries.
 
-Receita:
+Recipe:
 
 ```tsx
 const Tag = dynamic(() => props.level)
@@ -83,32 +83,32 @@ const Panel = lazy(() => import('./Panel'), { export: 'Panel' })
 return <Tag>{props.title}</Tag>
 ```
 
-Armadilha: lazy padrão seleciona default; nomeada usa opção export. `.then(module => ({ default: module.Panel }))` perde identidade de módulo para hidratação. Use preload para antecipar; não invente parâmetro de identidade reservado ao compilador. Namespace de módulo não equivale à exportação. Loader/compilador coerentes em cliente/SSR.
+Pitfall: the default lazy selects default; a named one uses the export option. `.then(module => ({ default: module.Panel }))` loses the module identity for hydration. Use preload to load ahead; do not make up an identity parameter reserved for the compiler. A module namespace is not equivalent to the export. Loader/compiler must be consistent on the client/SSR.
 
-Contrato: `lazy()` compartilha a Promise do import entre todas as instâncias que apontam para a mesma fábrica. Desmontar a primeira instância antes do import resolver não cancela nem corrompe essa Promise: a segunda instância ainda renderiza quando ela resolve, e a fábrica roda uma única vez.
+Contract: `lazy()` shares the import Promise between every instance that points to the same factory. Unmounting the first instance before the import resolves neither cancels nor corrupts that Promise: the second instance still renders when it resolves, and the factory runs only once.
 
-## ClientOnly e Portal
+## ClientOnly and Portal
 
-Contrato: clientOnly/web impede import no servidor; mostra fallback SSR, trocado após assentar hidratação. Import compartilhado; lazy true adia ao render, browser padrão pode iniciar na criação. Portal: ilha cliente, sem conteúdo SSR; hidratação monta após assentar. Dados iniciados nele começam no cliente e podem exigir Loading própria; dados de SSR precisam nascer acima da ilha.
+Contract: clientOnly/web prevents the import on the server; it shows an SSR fallback, swapped after hydration settles. The import is shared; lazy true defers to render, the default browser can start at creation. Portal: a client island, without SSR content; hydration mounts it after settling. Data started in it begins on the client and can require its own Loading; SSR data must be born above the island.
 
-Receita: use clientOnly para módulo que acessa browser já no import. Deixe mount padrão de Portal quando document.body não puder ser avaliado no SSR.
+Recipe: use clientOnly for a module that touches the browser already on import. Leave the default Portal mount when document.body cannot be evaluated in the SSR.
 
-Portal conserva o contexto e a propagação delegada da árvore lógica. O descarte remove só seus nós, preservando o conteúdo anterior do alvo; observado no Chromium cliente.
+Portal keeps the context and the delegated propagation of the logical tree. Disposal removes only its nodes, keeping the previous content of the target; observed in the Chromium client.
 
-Armadilha: if depois do import não evita efeito de módulo. Portal não lança necessariamente no servidor. Ler props.children em when de Show constrói árvore extra e Portal duplicado; use `<Show when={condition()}>{props.children}</Show>`. Na construção medida, descarte limpou ambas as instâncias sem vazamento. Portal em happy-dom, hidratação, ShadowRoot e foco não foram testados; contexto/limpeza cliente não provam esses casos.
+Pitfall: an if after the import does not avoid a module side effect. Portal does not necessarily throw on the server. Reading props.children in the when of a Show builds an extra tree and a duplicated Portal; use `<Show when={condition()}>{props.children}</Show>`. In the measured construction, disposal cleaned up both instances without a leak. Portal in happy-dom, hydration, ShadowRoot and focus were not tested; client context/cleanup do not prove those cases.
 
-## Estado visual por identidade
+## Visual state by identity
 
-Contrato: seleção, foco, medidas e arraste têm dono/ciclo próprios. Leia campos de negócio da fonte recebida e mantenha estado visual em store comum por ID, juntando na leitura. Sobreposição otimista termina com transação. Não precisa detectar família interna da store.
+Contract: selection, focus, measurements and drag have their own owner/cycle. Read business fields from the received source and keep visual state in a plain store by ID, joining them on read. The optimistic overlay ends with the transaction. There is no need to detect the internal family of the store.
 
-Receita: receba props de leitura e callbacks específicos com entrada/falha, sem setter inteiro. Função reativa exige Accessor; For por ID preserva linha com novos objetos. Prefixe chave do dicionário para impedir que `__proto__` seja interpretado como protótipo; valide IDs e unicidade mesmo assim.
+Recipe: receive read props and specific callbacks with input/failure, without a whole setter. A reactive function requires an Accessor; a For by ID keeps the row with new objects. Prefix the dictionary key to prevent `__proto__` from being read as the prototype; validate IDs and uniqueness anyway.
 
-Armadilha: readonly restringe TS, sem congelamento/sandbox/validação. Não faça cast de store para draft nem introspecção de `$REFRESH`/`_firewall`. Copiar coleção inteira para outra store pode desconectar a sobreposição; guardar seleção na optimistic faz sua vida depender da transação. Estado separado não resolve conflitos entre clientes nem ordem de confirmação distribuída.
+Pitfall: readonly restricts TS, without freezing/sandbox/validation. Do not cast a store to a draft nor introspect `$REFRESH`/`_firewall`. Copying the whole collection into another store can disconnect the overlay; keeping the selection in the optimistic store makes its life depend on the transaction. Separate state does not solve conflicts between clients nor the order of distributed confirmation.
 
-## Exclusão, sessão e integração otimista
+## Deletion, session and optimistic integration
 
-Filtrar ou paginar não prova exclusão de uma entidade. A duração da seleção por ID é independente da presença da linha e da transação otimista.
+Filtering or paginating does not prove the deletion of an entity. The lifetime of the selection by ID is independent from the presence of the row and from the optimistic transaction.
 
-Receita: teste título otimista/rollback mantendo seleção, novos objetos do mesmo ID e reordenação por registro. Para estado visual imediato, escreva e faça flush antes de chamar action, no mesmo handler. Adiar action atrasa prévia otimista.
+Recipe: test an optimistic title/rollback keeping the selection, new objects with the same ID and reordering by record. For immediate visual state, write and flush before calling the action, in the same handler. Deferring the action delays the optimistic preview.
 
-Armadilha: signal/store comum escrito no mesmo tick da chamada aguarda assentamento; actions sobrepostas que revalidam a mesma fonte podem assentar juntas. Escrita independente num tick posterior publicou durante espera. Arraste: compare dados/instâncias DOM por ID; a base anterior tinha relato de duplicação visual sob sobreposição, corrigido na base verificada ([R02](17-known-risks.md#r02-item-visualmente-duplicado-entre-listas-filtradas)). Não descarte dados válidos, use chave aleatória ou reescreva backend para ocultar defeito visual.
+Pitfall: a plain signal/store written in the same tick as the call waits for the settle; overlapping actions that revalidate the same source can settle together. An independent write in a later tick published during the wait. Drag: compare data/DOM instances by ID; the previous base had a report of visual duplication under the overlay, fixed on the verified base ([R02](17-known-risks.md#r02-item-visually-duplicated-between-filtered-lists)). Do not drop valid data, use a random key or rewrite the backend to hide a visual defect.

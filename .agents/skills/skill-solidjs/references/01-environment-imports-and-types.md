@@ -1,32 +1,32 @@
-# Ambiente, imports e tipos
+# Environment, imports and types
 
-## Pacotes e compatibilidade
+## Packages and compatibility
 
-Core, renderer, plugin e compilador precisam resolver para um conjunto compatível. Confira as versões resolvidas e os peers ao mudar esse conjunto; a faixa do manifesto não prova a resolução instalada.
+Core, renderer, plugin and compiler must resolve to a compatible set. Check the resolved versions and the peers when changing that set; the range in the manifest does not prove the installed resolution.
 
-Receita: fixe versões exatas e lockfile ao atualizar; confira a resolução do plugin com o `why` do gerenciador do projeto (`vp why @solidjs/compiler`, `bun why @solidjs/compiler` ou `pnpm why @solidjs/compiler -r`). Monorepo com vários pacotes Solid, em cliente/SSR/Vitest:
+Recipe: pin exact versions and the lockfile when updating; check the plugin resolution with the `why` of the project package manager (`vp why @solidjs/compiler`, `bun why @solidjs/compiler` or `pnpm why @solidjs/compiler -r`). A monorepo with several Solid packages, in client/SSR/Vitest:
 
 ```ts
 resolve: { dedupe: ['solid-js', '@solidjs/web', '@solidjs/router', '@solidjs/signals'] }
 ```
 
-Armadilha: motores independentes não rastreiam signals entre si, sem erro. Confira que `solid-js`, `@solidjs/web` e `@solidjs/signals` resolvem cada um para um único diretório real, que nenhum pacote do conjunto está declarado por dist-tag e que `@solidjs/router` não é da linha 0.x ou 1.x. `--force`, overrides e peers relaxados não provam compatibilidade. Não atualize dependências a cada tarefa.
+Pitfall: independent engines do not track each other's signals, without an error. Check that `solid-js`, `@solidjs/web` and `@solidjs/signals` each resolve to a single real folder, that no package of the set is declared by dist-tag and that `@solidjs/router` is not from the 0.x or 1.x line. `--force`, overrides and relaxed peers do not prove compatibility. Do not update dependencies on every task.
 
-## Tags, plugin e compilador
+## Tags, plugin and compiler
 
-Contrato: em 2026-09-29, `latest` de `solid-js` e router escolhe Solid 1; `next` escolhe a linha 2. `latest` de web, signals, compiler e babel-plugin está atrás do core; `next` do vite-plugin é mais antigo que `latest`. Atualize plugin/compilador juntos: o compilador da base verificada rejeita `componentNames` (opção desconhecida) e o vite-plugin instalado junto dela já passa `sourceNames`; plugin antigo com compilador novo quebra dev.
+Contract: on 2026-09-29, `latest` of `solid-js` and router picks Solid 1; `next` picks line 2. `latest` of web, signals, compiler and babel-plugin is behind the core; `next` of vite-plugin is older than `latest`. Update plugin/compiler together: the compiler of the verified base rejects `componentNames` (unknown option) and the vite-plugin installed with it already passes `sourceNames`; an old plugin with a new compiler breaks dev.
 
-Receita: tags: `npm view <pacote> dist-tags`; offline, lockfile/manifesto instalado, tags não verificadas. Após atualização, teste dev e produção. Backend padrão native; compiler babel isola JSX, mas demais transformações exigem @solidjs/compiler.
+Recipe: tags: `npm view <package> dist-tags`; offline, the installed lockfile/manifest, tags not verified. After an update, test dev and production. The default backend is native; the babel compiler isolates JSX, but the other transforms require @solidjs/compiler.
 
-Armadilha: tag ou primeiro pacote no diretório do layout isolado do gerenciador (`node_modules/.bun` no Bun, `.pnpm` no pnpm), que pode guardar várias versões lado a lado, pode escolher outra RC transitiva; Babel não elimina o compilador nativo.
+Pitfall: a tag or the first package in the folder of the isolated layout of the package manager (`node_modules/.bun` in Bun, `.pnpm` in pnpm), which can keep several versions side by side, can pick another transitive RC; Babel does not remove the native compiler.
 
-O core da base verificada ainda importa `ROOT_ERROR_HOOK`, `configureClientErrors` e `isStatic` de `@solidjs/signals`; uma cópia transitiva antiga sem esses exports causa `MISSING_EXPORT`. Confira com o `why` do gerenciador (`vp why solid-js` e `vp why @solidjs/signals`, ou o equivalente) antes de contornar o erro com aliases. A faixa `^` do [manifesto do core](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/solid/package.json) não garante alinhamento no lockfile.
+The core of the verified base still imports `ROOT_ERROR_HOOK`, `configureClientErrors` and `isStatic` from `@solidjs/signals`; an old transitive copy without those exports causes `MISSING_EXPORT`. Check with the `why` of the package manager (`vp why solid-js` and `vp why @solidjs/signals`, or the equivalent) before working around the error with aliases. The `^` range of the [core manifest](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/solid/package.json) does not guarantee alignment in the lockfile.
 
-Eventos delegados também dependem desse alinhamento: na base verificada, o renderer usa `node._$$click`; um compilador antigo que emita `node.$$click` produz handlers que nunca disparam, sem erro de build. Ao investigar, compare a propriedade emitida no JSX compilado com a chave lida pelo renderer instalado.
+Delegated events also depend on that alignment: on the verified base, the renderer uses `node._$$click`; an old compiler that emits `node.$$click` produces handlers that never fire, without a build error. When investigating, compare the property emitted in the compiled JSX with the key read by the installed renderer.
 
-## Origem das APIs e dos tipos
+## Origin of the APIs and types
 
-Contrato: stores/core; renderer e tipos DOM/web. Element do core é renderizável, distinto do DOM. Use import type.
+Contract: stores/core; renderer and DOM/web types. The core Element is renderable, distinct from the DOM one. Use import type.
 
 ```tsx
 import { createEffect, createMemo, createSignal, createStore, For, Loading, merge } from 'solid-js'
@@ -35,17 +35,17 @@ import { dynamic, hydrate, Portal, render } from '@solidjs/web'
 import type { ComponentProps, JSX, ValidComponent } from '@solidjs/web'
 ```
 
-Receita: alias SolidElement distingue DOM. Marcadores `server-only`/`client-only` fazem o build recusar imports na direção errada.
+Recipe: a SolidElement alias tells it apart from the DOM. The `server-only`/`client-only` markers make the build refuse imports in the wrong direction.
 
-Armadilha: `solid-js/store`, `solid-js/web` e `solid-js/types/*` não são entradas desta base. Mapa público: `.`, `./refresh`, `./attribution`, `./internal` e `./package.json`, mas `internal`, `dist`, `src` e imports diretos de `@solidjs/signals` não são APIs de aplicação. `mergeProps` de web é interno ao compilador; use `merge`. Marcadores de ambiente não autorizam acesso no servidor.
+Pitfall: `solid-js/store`, `solid-js/web` and `solid-js/types/*` are not entries of this base. Public map: `.`, `./refresh`, `./attribution`, `./internal` and `./package.json`, but `internal`, `dist`, `src` and direct imports of `@solidjs/signals` are not application APIs. `mergeProps` from web is internal to the compiler; use `merge`. Environment markers do not authorize access on the server.
 
-O antigo patch mode (`patchDriver`, `wrapPatchMode`, `registerPatch`, `registerRowOps`, `registerSlotPatch`, `patchableRaw`) foi removido do compilador e do runtime nesta base, sem substituto público equivalente.
+The old patch mode (`patchDriver`, `wrapPatchMode`, `registerPatch`, `registerRowOps`, `registerSlotPatch`, `patchableRaw`) was removed from the compiler and the runtime on this base, without an equivalent public replacement.
 
-## Configuração e builds
+## Configuration and builds
 
-TSX web compilado usa `jsx: 'preserve'` e `jsxImportSource: '@solidjs/web'`, com `@solidjs/vite-plugin`:
+Compiled web TSX uses `jsx: 'preserve'` and `jsxImportSource: '@solidjs/web'`, with `@solidjs/vite-plugin`:
 
-Receita:
+Recipe:
 
 ```ts
 import { defineConfig } from 'vite'
@@ -53,23 +53,23 @@ import solid from '@solidjs/vite-plugin'
 export default defineConfig({ plugins: [solid()] })
 ```
 
-Contrato: export conditions variam por worker, browser, deno e node, com prioridade `development`, depois `observe`, depois default, inclusive fora desses ambientes. `resolve.conditions: ['development']` ou `['observe']` seleciona o tier. Produção usa o ramo `default`, sem `development` ou `observe`; não existe condição chamada `production` ([build de produção](../../skill-solidjs-testing/references/vitest-config.md#build-de-produção)). Web repete isso inclusive em `server-functions` e `frames`; as 15 entradas da base verificada resolvem arquivos existentes (a base anterior tinha 14; entrou `./performance-tracks`, cujo ramo `node` só tem `default`). Node sem `browser` usa servidor. Configure Vitest cliente; não force browser no SSR.
+Contract: export conditions vary by worker, browser, deno and node, with the priority `development`, then `observe`, then default, even outside those environments. `resolve.conditions: ['development']` or `['observe']` selects the tier. Production uses the `default` branch, without `development` or `observe`; there is no condition called `production` ([production build](../../skill-solidjs-testing/references/vitest-config.md#production-build)). Web repeats that even in `server-functions` and `frames`; the 15 entries of the verified base resolve to existing files (the previous base had 14; `./performance-tracks` came in, and its `node` branch only has `default`). Node without `browser` uses the server. Configure Vitest as a client; do not force browser in the SSR.
 
-Armadilha: plugin básico não instala roteador/servidor/deploy. Preserve adapters; evite vite-plugin-solid/babel-preset-solid. `react-jsx` com `@solidjs/h` pertence a outra renderização. Vite não executa tsc; cheque tipos e produção (otimizações, diagnósticos e sanitização diferem). Bibliotecas: emita/teste declarações num consumidor; `skipLibCheck`, stubs ou TS antigo não validam integração.
+Pitfall: the basic plugin installs no router/server/deploy. Keep the adapters; avoid vite-plugin-solid/babel-preset-solid. `react-jsx` with `@solidjs/h` belongs to another rendering. Vite does not run tsc; check types and production (optimizations, diagnostics and sanitization differ). Libraries: emit/test declarations in a consumer; `skipLibCheck`, stubs or an old TS do not validate the integration.
 
-## Templates válidos
+## Valid templates
 
-Contrato: nativo/Babel usam validate true; reestruturação HTML que invalida caminhada posicional falha no build.
+Contract: native/Babel use validate true; an HTML restructuring that breaks the positional walk fails in the build.
 
-Receita: inclua tbody entre table e tr no código-fonte.
+Recipe: include tbody between table and tr in the source code.
 
-Armadilha: `<tr>` diretamente em `<table>` produz "HTML fornecido está malformado" (`HTML provided is malformed`). Desligar validate transfere risco ao runtime.
+Pitfall: `<tr>` directly in `<table>` produces `HTML provided is malformed`. Turning off validate moves the risk to the runtime.
 
-## Componentes e atributos nativos
+## Components and native attributes
 
-Contrato: `Component<P>` não acrescenta children; `ParentComponent<P>` aceita children opcionais; `VoidComponent<P>` os proíbe; `FlowComponent<P, C>` declara children/render prop. Declare children obrigatório explicitamente. Array readonly de domínio, array de stores e children são distintos.
+Contract: `Component<P>` does not add children; `ParentComponent<P>` accepts optional children; `VoidComponent<P>` forbids them; `FlowComponent<P, C>` declares children/render prop. Declare required children explicitly. A readonly domain array, an array of stores and children are distinct.
 
-Receita:
+Recipe:
 
 ```tsx
 type Props = ComponentProps<'button'> & { variant?: string }
@@ -79,22 +79,22 @@ function Button(props: Props) {
 }
 ```
 
-Armadilha: redefinir class/disabled/children perde contrato nativo. Para atributo controlado pelo wrapper, declare `Omit<ComponentProps<...>, 'atributo'>` e sua precedência no JSX. Não vaze props de domínio no HTML. Genéricos: prefira função declarada; arrow TSX pode exigir `<T,>`.
+Pitfall: redefining class/disabled/children loses the native contract. For an attribute controlled by the wrapper, declare `Omit<ComponentProps<...>, 'attribute'>` and its precedence in the JSX. Do not leak domain props into the HTML. Generics: prefer a declared function; a TSX arrow can require `<T,>`.
 
-## Narrowing, signals e callbacks
+## Narrowing, signals and callbacks
 
-Contrato: TS trata cada chamada reativa como nova. Use callback estreitado de `Show` ou capture dentro do escopo rastreado; `if (user()) user().name` não garante narrowing.
+Contract: TS treats each reactive call as new. Use the narrowed callback of `Show` or capture inside the tracked scope; `if (user()) user().name` does not guarantee narrowing.
 
-Receita: inicialize de verdade quando possível; explicite `createSignal<Item[]>([])`. `createSignal<T>()` admite ausência e, quando T inclui `undefined`, o setter pode ser chamado sem argumento para limpar. Preserve essa sobrecarga em wrappers. Valor recebe `Exclude<T, Function>`; propague esse limite em primitivas genéricas. Funções armazenadas exigem camada de função na criação e no setter. Fonte async entrega `Accessor<T>` resolvido pelo grafo, não `Promise<T>`.
+Recipe: initialize for real when possible; make `createSignal<Item[]>([])` explicit. `createSignal<T>()` admits absence and, when T includes `undefined`, the setter can be called without an argument to clear it. Keep that overload in wrappers. A value receives `Exclude<T, Function>`; propagate that limit in generic primitives. Stored functions require a function layer at creation and in the setter. An async source delivers an `Accessor<T>` resolved by the graph, not a `Promise<T>`.
 
-Armadilha: `Setter<T>` aceita valor ou atualizador e devolve o valor escrito; não equivale a `(value: T) => void`. Retorno implícito: apply recebe cleanup inválido; store pode substituir raiz. Tsc estrito recusa ambos, inclusive `push`/atribuição primitiva na store, que o runtime ignora. Use chaves. MemoOptions no tipo da base verificada: `id`, `name`, `equals`, `unobserved`, `lazy`, `transparent`, `sync` e `loadingValue` (o JSDoc de `createMemo` lista só os seis primeiros); a augmentação de hidratação do `solid-js` acrescenta `ssrSource` (`'server' | 'hybrid' | 'client'`) e `deferStream`, que `HydrationMemoOptions<T>` repete. `_plumbing` é interno.
+Pitfall: `Setter<T>` accepts a value or an updater and returns the written value; it is not equivalent to `(value: T) => void`. Implicit return: the apply receives an invalid cleanup; the store can replace the root. Strict tsc refuses both, including `push`/primitive assignment in the store, which the runtime ignores. Use braces. MemoOptions in the type of the verified base: `id`, `name`, `equals`, `unobserved`, `lazy`, `transparent`, `sync` and `loadingValue` (the JSDoc of `createMemo` lists only the first six); the hydration augmentation of `solid-js` adds `ssrSource` (`'server' | 'hybrid' | 'client'`) and `deferStream`, which `HydrationMemoOptions<T>` repeats. `_plumbing` is internal.
 
-Contrato: TS aceita async em posição apenas `() => void`, como `onCleanup`. Apply de effect e `onSettled` retornam `void | (() => void)` e recusam async/retorno implícito sob tsc estrito. Aceitação não prova cleanup síncrono. Evite !/casts/cópias de props no setup para silenciar tipos.
+Contract: TS accepts async in a position that is only `() => void`, such as `onCleanup`. The effect apply and `onSettled` return `void | (() => void)` and refuse async/implicit return under strict tsc. Acceptance does not prove a synchronous cleanup. Avoid !/casts/copies of props in the setup to silence types.
 
-## Eventos, erros e fronteiras de confiança
+## Events, errors and trust boundaries
 
-Contrato: use `JSX.EventHandler<T, E>` ou `InputEventHandler`, `ChangeEventHandler`, `FocusEventHandler`, importando JSX do renderer. `JSX.InputEventHandler<HTMLInputElement, InputEvent>` detecta elemento/evento incompatível melhor que cast de `Event`. Fallback de `Errored` recebe `ErrorAccessor`: leia `err()`. `JSX.Element` exclui funções; inclui elemento renderizado, arrays, string, number, boolean, null e undefined; o elemento renderizado recusa objetos com `call`, `apply` ou `bind`.
+Contract: use `JSX.EventHandler<T, E>` or `InputEventHandler`, `ChangeEventHandler`, `FocusEventHandler`, importing JSX from the renderer. `JSX.InputEventHandler<HTMLInputElement, InputEvent>` catches an incompatible element/event better than a cast of `Event`. The `Errored` fallback receives an `ErrorAccessor`: read `err()`. `JSX.Element` excludes functions; it includes a rendered element, arrays, string, number, boolean, null and undefined; the rendered element refuses objects with `call`, `apply` or `bind`.
 
-Receita: invoque a função que devolve JSX explicitamente ou use um componente dinâmico, sem inserir referência crua.
+Recipe: invoke the function that returns JSX explicitly or use a dynamic component, without inserting a raw reference.
 
-Erro capturado fora do grafo não chega automaticamente a `Errored`.
+An error caught outside the graph does not reach `Errored` automatically.

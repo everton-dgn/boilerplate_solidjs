@@ -1,23 +1,23 @@
-# Stores e projections
+# Stores and projections
 
-## Formas públicas
+## Public forms
 
-Contrato: `createStore(value, options?)` retorna store gravável e setter. `createStore(fn, seed, options?)` deriva estrutura gravável; fn aceita Promise/AsyncIterable e retorna `[Refreshable<Store<T>>, StoreSetter<T>]`. `createProjection(fn, seed, options?)` retorna só `Refreshable<Store<T>>`. Objetos/arrays reativos não são accessors. Seed fornece a estrutura inicial do draft, sem garantir campos antes da primeira resposta. No pacote instalado, seu tipo é `NoFn<T> | Store<NoFn<T>>`. A forma sem draft aceita `() => T | Promise<T> | AsyncIterable<T>`, restringe `T` por `NoArray<T>` e permite omitir o seed (`seed?: null`). Promise pendente lança `NotReadyError`; resolução publica granularmente e descarta resposta obsoleta.
+Contract: `createStore(value, options?)` returns a writable store and a setter. `createStore(fn, seed, options?)` derives a writable structure; fn accepts a Promise/AsyncIterable and returns `[Refreshable<Store<T>>, StoreSetter<T>]`. `createProjection(fn, seed, options?)` returns only `Refreshable<Store<T>>`. Reactive objects/arrays are not accessors. The seed provides the initial structure of the draft, without guaranteeing fields before the first response. In the installed package, its type is `NoFn<T> | Store<NoFn<T>>`. The form without a draft accepts `() => T | Promise<T> | AsyncIterable<T>`, restricts `T` through `NoArray<T>` and allows leaving out the seed (`seed?: null`). A pending Promise throws `NotReadyError`; the resolution publishes granularly and drops a stale response.
 
-Receita:
+Recipe:
 
 ```ts
 const [state, setState] = createStore<State>({ filter: '', tasks: [] })
 const openTasks = createProjection<Task[]>(() => state.tasks.filter(task => !task.done), [])
 ```
 
-Armadilha: payload no formato exibido pede store/projection derivada; memo de fetch com store espelhada duplica sincronização. Seed não é o antigo initialValue de memo. Use store derivada quando precisar sobrescrever manualmente e projection para leitura.
+Pitfall: a payload in the displayed shape calls for a derived store/projection; a fetch memo with a mirrored store duplicates the sync. The seed is not the old initialValue of a memo. Use a derived store when you need to override manually and a projection for reading.
 
-## Setter síncrono e retorno
+## Synchronous setter and return
 
-Contrato: setter recebe apenas callback `(draft) => void | T`. Transação fecha ao retornar; callback/helper async e draft retido violam a janela. Dev acusa `ASYNC_STORE_SETTER`, padrão não tem guard. Escritas antes do primeiro await podem já ter ocorrido; posteriores somem no draft fechado. Diagnóstico não garante rollback; o caso async não tem fixture própria.
+Contract: the setter only receives a `(draft) => void | T` callback. The transaction closes on return; an async callback/helper and a retained draft break the window. Dev reports `ASYNC_STORE_SETTER`, the default build has no guard. Writes before the first await may already have happened; later ones vanish in the closed draft. The diagnostic does not guarantee a rollback; the async case has no fixture of its own.
 
-Receita:
+Recipe:
 
 ```ts
 setState(draft => {
@@ -26,15 +26,15 @@ setState(draft => {
 })
 ```
 
-Contrato: retorno envolvível substitui raiz: atribuir array em arrow sem chaves transforma toda a store no array; atribuir objeto produz diff raso e apaga chaves ausentes. Outra folha observada passa a undefined, silenciosamente nos dois builds. `push` e atribuição primitiva retornam não envolvíveis e são ignorados pelo runtime, embora tsc estrito recuse esses retornos também. Retorno deliberado, `setTasks(draft => draft.filter(item => !item.done))`, substitui raiz array.
+Contract: a wrappable return replaces the root: assigning an array in an arrow without braces turns the whole store into the array; assigning an object produces a shallow diff and erases missing keys. Another observed leaf becomes undefined, silently in both builds. `push` and primitive assignment return non-wrappable values and are ignored by the runtime, although strict tsc refuses those returns too. A deliberate return, `setTasks(draft => draft.filter(item => !item.done))`, replaces an array root.
 
-Armadilha: `setState('filter', 'x')`, path array ou objeto direto lança `TypeError: fn is not a function`; `storePath` não recupera contrato antigo. Mutações usam chaves; JS/any/cast perdem proteção. Derivador async é permitido, setter manual async não.
+Pitfall: `setState('filter', 'x')`, an array path or a direct object throws `TypeError: fn is not a function`; `storePath` does not bring back the old contract. Mutations use braces; JS/any/cast lose the protection. An async deriver is allowed, a manual async setter is not.
 
-## Reconciliação e identidade
+## Reconciliation and identity
 
-Contrato: retorno comum de objeto reconcilia raiz superficialmente; array comum segue posição/comprimento, sem matching de negócio. `reconcile(value, 'id')` usa chave; função extrai outra chave; null é posicional. Chaves estáveis e únicas. Store derivada reconcilia por chave, id padrão quando aplicável; alinhe identidade com For.
+Contract: a plain object return reconciles the root shallowly; a plain array follows position/length, without business matching. `reconcile(value, 'id')` uses a key; a function extracts another key; null is positional. Keys must be stable and unique. A derived store reconciles by key, the default id when applicable; align the identity with For.
 
-Receita:
+Recipe:
 
 ```ts
 function receiveTasks(tasks: Task[]) {
@@ -42,23 +42,23 @@ function receiveTasks(tasks: Task[]) {
 }
 ```
 
-Contrato: encolher três itens para um remove índices excedentes: length 1, índice 2 undefined e `2 in store` false. Troca de slot objeto para array substitui filho/proxy; não mantém sua identidade anterior.
+Contract: shrinking three items to one removes the extra indexes: length 1, index 2 undefined and `2 in store` false. Switching a slot from an object to an array replaces the child/proxy; it does not keep its previous identity.
 
-Armadilha: não use objeto de opções de v1. `null` pareia slots mesmo com IDs diferentes; serve à posição física (monitor/dashboard), não a input, seleção ou foco por entidade. Chaves divergentes entre store e For trocam estado local entre linhas.
+Pitfall: do not use the v1 options object. `null` pairs slots even with different IDs; it serves a physical position (monitor/dashboard), not an input, selection or focus per entity. Diverging keys between the store and For swap local state between rows.
 
-## Identidade do proxy
+## Proxy identity
 
-Contrato: store entrega proxy distinto do original, estável ao ler/reordenar, refletindo escritas sem alterar original. `indexOf(raw)` retorna -1 e `includes(raw)` false; proxy com proxy funciona. Escrita direta na view fora do setter é ignorada sem erro, preservando store e original.
+Contract: a store delivers a proxy distinct from the original, stable when reading/reordering, reflecting writes without changing the original. `indexOf(raw)` returns -1 and `includes(raw)` false; proxy against proxy works. A direct write on the view outside the setter is ignored without an error, keeping the store and the original.
 
-Receita: compare ID ou proxy: `state.items.findIndex(item => item.id === rawItem.id)`. No draft, `delete draft.key` remove a propriedade; `draft.key = undefined` conserva a chave em Object.keys e no operador in.
+Recipe: compare by ID or proxy: `state.items.findIndex(item => item.id === rawItem.id)`. In the draft, `delete draft.key` removes the property; `draft.key = undefined` keeps the key in Object.keys and in the in operator.
 
-Armadilha: `unwrap` não é exportado. Backing interno tem símbolo não enumerável `STORE_OWNER`, invisível a snapshot, traps normais e JSON.stringify; restrito à depuração pontual. Snapshot não promete cópia nova, especialmente antes de qualquer escrita.
+Pitfall: `unwrap` is not exported. The internal backing has a non-enumerable `STORE_OWNER` symbol, invisible to snapshot, normal traps and JSON.stringify; restricted to one-off debugging. A snapshot does not promise a new copy, especially before any write.
 
-## Valores crus
+## Raw values
 
-Contrato: objetos plain, arrays e classes de usuário viram proxy. Built-ins como Map/Date, nós DOM e objetos congelados permanecem crus. Mutação no lugar pelo draft altera o cru sem notificar; reatribuição notifica. Objeto congelado mantém a referência original.
+Contract: plain objects, arrays and user classes become proxies. Built-ins such as Map/Date, DOM nodes and frozen objects stay raw. An in-place mutation through the draft changes the raw value without notifying; reassignment notifies. A frozen object keeps the original reference.
 
-Receita:
+Recipe:
 
 ```ts
 setState(draft => {
@@ -66,27 +66,27 @@ setState(draft => {
 })
 ```
 
-Armadilha: substitua Date em vez de setTime; valor muito mutável pode ter signal próprio. Set na raiz recebe proxy incompatível com seus slots nativos e `add` lança `Method Set.prototype.add called on incompatible receiver #<Object>` (receptor incompatível); Set aninhado aceita add mas não notifica, então substitua a propriedade. Traps recusam travessia/escrita de `__proto__`, `constructor` e `prototype`; tentativa pelo draft não altera Object.prototype, mas isso não dispensa validação de entrada.
+Pitfall: replace a Date instead of calling setTime; a very mutable value can have its own signal. A Set at the root receives a proxy incompatible with its native slots and `add` throws `Method Set.prototype.add called on incompatible receiver #<Object>`; a nested Set accepts add but does not notify, so replace the property. The traps refuse traversal/writes of `__proto__`, `constructor` and `prototype`; an attempt through the draft does not change Object.prototype, but that does not replace input validation.
 
-## Projections e granularidade
+## Projections and granularity
 
-Contrato: leitura de folha assina a folha; retornar só proxy pai e ler depois fora do tracking não equivale. Projection atende derivação real, sem espelhar por reflexo. Controle entradas rastreadas e evite escrita externa no draft derivado. Com `ssrSource: 'client'`, `seedLoadingValue: true` torna seed commit inicial confirmado durante pendência, evitando suspender toda a subárvore.
+Contract: reading a leaf subscribes to the leaf; returning only the parent proxy and reading later outside tracking is not equivalent. A projection serves a real derivation, without mirroring by reflex. Control the tracked inputs and avoid an external write in the derived draft. With `ssrSource: 'client'`, `seedLoadingValue: true` makes the seed the initial confirmed commit while pending, avoiding suspending the whole subtree.
 
-Receita: leia `state.user.name` dentro da derivação. Preserve `NotReadyError` para prontidão/retry/Loading, sobretudo SSR. Guarde novo valor localmente ou leia draft para decidir durante escrita.
+Recipe: read `state.user.name` inside the derivation. Keep `NotReadyError` for readiness/retry/Loading, above all in SSR. Keep the new value locally or read the draft to decide during a write.
 
-Armadilha: store comum lida antes do flush entrega valor anterior. Derivada entrega o recém-escrito; na base anterior, após `latest` na mesma propriedade, passava a entregar o anterior nas escritas seguintes ([R09](17-known-risks.md#r09-leitura-logo-após-escrita-numa-store-derivada-muda-depois-de-um-latest)). Assentado/assinantes ficam corretos; evite decidir por essa leitura. Catch genérico que converte pending em vazio quebra o grafo. Projection complexa para filtro de três itens pode custar mais que ajudar.
+Pitfall: a plain store read before the flush delivers the previous value. A derived one delivers the freshly written value; on the previous base, after a `latest` on the same property, it started delivering the previous value on the following writes ([R09](17-known-risks.md#r09-a-read-right-after-a-write-in-a-derived-store-changes-after-a-latest)). The settled value/subscribers stay correct; avoid deciding based on that read. A generic catch that turns pending into empty breaks the graph. A complex projection to filter three items can cost more than it helps.
 
-## Seleção por chave
+## Selection by key
 
-Contrato: projection por ID notifica só chaves alteradas. Em 50 linhas, seleção de 1 para 7 produziu:
+Contract: a projection by ID only notifies the changed keys. With 50 rows, a selection from 1 to 7 produced:
 
-| Estratégia | Derivações | Computes/applies de effect |
+| Strategy | Derivations | Effect computes/applies |
 | --- | --- | --- |
-| comparação em cada effect | 0 | 50/50 |
-| memo por linha | 50 | 2/2 |
-| projection por ID | 1 | 2/2 |
+| comparison in each effect | 0 | 50/50 |
+| memo per row | 50 | 2/2 |
+| projection by ID | 1 | 2/2 |
 
-Receita:
+Recipe:
 
 ```ts
 const [selectedId, setSelectedId] = createSignal(1)
@@ -94,32 +94,32 @@ const selected = createProjection<Record<number, true>>(() => ({ [selectedId()]:
 const isSelected = (rowId: number) => selected[rowId] === true
 ```
 
-Armadilha: crie sob owner e leia só a chave da linha. A forma draft, apagando anterior e marcando nova, teve o mesmo resultado. Em lista pequena, comparação direta é mais simples. `createSelector` não é exportado.
+Pitfall: create it under an owner and read only the key of the row. The draft form, deleting the previous one and marking the new one, had the same result. In a small list, a direct comparison is simpler. `createSelector` is not exported.
 
-## Store otimista
+## Optimistic store
 
-Contrato: `createOptimisticStore(value, options?)` e forma derivada `(fn, seed, options?)` são próprias, não wrapper de createStore. Derivador recebe draft e aceita Promise/AsyncIterable. Chave padrão é id; declare outra quando o domínio exigir. Escrita em action aparece imediatamente como tentativa e reverte ou reconcilia com resultado quando assenta.
+Contract: `createOptimisticStore(value, options?)` and the derived form `(fn, seed, options?)` are their own primitives, not a wrapper of createStore. The deriver receives a draft and accepts a Promise/AsyncIterable. The default key is id; declare another one when the domain requires it. A write in an action shows up immediately as an attempt and reverts or reconciles with the result when it settles.
 
-Receita: leia pelo draft recebido no derivador, não pela store externa fechada no escopo. Mantenha seleção/arraste em store comum separada, juntando com dados recebidos na leitura.
+Recipe: read through the draft received in the deriver, not through the external store closed over in the scope. Keep selection/drag in a separate plain store, joining it with the received data on read.
 
-Armadilha: ler store externa pode reintroduzir dependência que a derivação já fornece. Espelhamento desnecessário pode perder dependência da sobreposição otimista; ciclo visual não é o da mutação remota.
+Pitfall: reading the external store can reintroduce a dependency that the derivation already provides. Unneeded mirroring can lose the dependency of the optimistic overlay; the visual cycle is not the one of the remote mutation.
 
-## Snapshot e deep
+## Snapshot and deep
 
-Contrato: `snapshot(store)` lê view plain sem tracking; deep rastreia profundamente e entrega plain. Snapshot pode devolver original antes de escrita, repetir referência e só depois devolver cópia desconectada. Pode representar a view otimista ainda não confirmada.
+Contract: `snapshot(store)` reads a plain view without tracking; deep tracks deeply and delivers plain values. A snapshot can return the original before a write, repeat the reference and only later return a disconnected copy. It can represent the optimistic view not yet confirmed.
 
-Receita: trate snapshot como somente leitura; use deep apenas para reagir ao conjunto inteiro.
+Recipe: treat a snapshot as read-only; use deep only to react to the whole set.
 
-Armadilha: mutar snapshot antes da divergência pode alterar store por baixo. Não conte com identidade estável, cópia universal, JSON seguro ou remoção de segredos; Map/Date preservados exigem cuidado. Snapshot no compute não assina folhas profundas.
+Pitfall: mutating a snapshot before the divergence can change the store underneath. Do not count on a stable identity, a universal copy, safe JSON or removal of secrets; preserved Map/Date require care. A snapshot in the compute does not subscribe to deep leaves.
 
 ## Shallow
 
-Contrato: `shallow: true` mantém níveis inferiores plain; substitua registro para publicar. Um objeto ingerido fica raw de modo persistente, sem ser simultaneamente profundo noutra store. Proxies já existentes são pulados na marcação e mantêm reatividade na store de origem.
+Contract: `shallow: true` keeps the lower levels plain; replace the record to publish. An ingested object stays raw persistently, without being deep in another store at the same time. Existing proxies are skipped when marking and keep their reactivity in the origin store.
 
-Receita: use em coleção grande/ingestão imutável após medir; polling com objetos novos pode pedir For keyed por ID.
+Recipe: use it in a large collection/immutable ingestion after measuring; polling with new objects can call for a For keyed by ID.
 
-Armadilha: mutar folha não rastreada é silencioso. Não reaproveite objeto entre shallow e profunda esperando ambos os comportamentos nem suponha conversão barata de proxies. Misturar proxy de store com objeto cru já registrado como profundo na mesma ingestão não foi medido e fica sem garantia.
+Pitfall: mutating an untracked leaf is silent. Do not reuse an object between shallow and deep expecting both behaviors nor assume a cheap conversion of proxies. Mixing a store proxy with a raw object already registered as deep in the same ingestion was not measured and has no guarantee.
 
-## API pública e comandos de domínio
+## Public API and domain commands
 
-`storePath` não é export público do core; uma declaração residual do servidor não o torna acessível. Use o setter por draft. `merge` e `omit` criam views de props e não recuperam o setter por caminho.
+`storePath` is not a public export of the core; a leftover declaration on the server does not make it accessible. Use the setter through the draft. `merge` and `omit` create props views and do not bring back the setter by path.

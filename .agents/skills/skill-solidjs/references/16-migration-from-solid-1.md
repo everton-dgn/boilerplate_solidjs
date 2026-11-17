@@ -1,77 +1,77 @@
-# Migração do Solid 1 e divergências
+# Migration from Solid 1 and divergences
 
-Base: [revisão verificada](../SKILL.md), reverificada em 2026-09-29. Entra só em tarefa de migração ou quando um padrão antigo aparece no código; a coluna de legado não faz parte da API do Solid 2 e as receitas da skill usam só o contrato v2.
+Base: [verified revision](../SKILL.md), reverified on 2026-09-29. It only comes in for a migration task or when an old pattern shows up in the code; the legacy column is not part of the Solid 2 API and the recipes of the skill only use the v2 contract.
 
-Contrato: API depreciada pode seguir exportada por compatibilidade sem ser recomendada. API presente só no motor interno, em tipos ou em comentários não ganha export público por isso. Se o pedido é corrigir um bug em Solid 1, informe o limite e use a documentação da versão instalada; migração de major é outra tarefa.
+Contract: a deprecated API can stay exported for compatibility without being recommended. An API present only in the internal engine, in types or in comments does not get a public export because of that. If the request is to fix a bug in Solid 1, state the limit and use the documentation of the installed version; a major migration is another task.
 
-## APIs do Solid 1 ausentes na base
+## Solid 1 APIs missing from the base
 
-A tabela de correções 1.x → 2.0 da skill oficial (`node_modules/solid-js/skills/solid-2.0/SKILL.md`, ou a `CHEATSHEET.md` do pacote quando a pasta `skills/` não existir) cobre os substitutos diretos, como `Index`, `onMount`, `createSelector`, `createResource`, `createComputed`, `startTransition`, os subcaminhos `solid-js/web` e `solid-js/store`, `produce`, `classList` e `attr:`/`bool:`. As tabelas abaixo guardam os nomes que ela não cobre e as linhas cuja observação acrescenta um cuidado ausente da tabela oficial. Os cuidados dos substitutos diretos ficam nas referências de cada tema, e a tabela oficial omite estas duas ressalvas:
+The 1.x → 2.0 correction table of the official skill (`node_modules/solid-js/skills/solid-2.0/SKILL.md`, or the `CHEATSHEET.md` of the package when the `skills/` folder does not exist) covers the direct replacements, such as `Index`, `onMount`, `createSelector`, `createResource`, `createComputed`, `startTransition`, the `solid-js/web` and `solid-js/store` subpaths, `produce`, `classList` and `attr:`/`bool:`. The tables below keep the names it does not cover and the rows whose note adds a precaution missing from the official table. The precautions of the direct replacements are in the references of each subject, and the official table leaves out these two caveats:
 
-- `mutate` de `createResource` não tem export nem linha na tabela oficial, que troca só `loading`, `error` e `refetch`. Escolha o substituto pela durabilidade que o código esperava: escrita por `createOptimistic` ou `createOptimisticStore` dentro de uma `action` reverte no settle, e o valor durável vem do `refresh` da fonte ([sobreposição e estado durável](10-actions-optimism-and-confirmation.md#sobreposição-e-estado-durável)); o setter de uma derivação gravável, `createSignal(fn)` ou `createStore(fn, seed)`, vale até a fonte reexecutar ([derivação gravável](02-reactivity-and-ownership.md#derivação-gravável-e-função-armazenada)).
-- `classList` trocado por `class` em objeto ou array junta numa só prop o que eram duas. Ao passar de `class="base" classList={{ ativo: x() }}` para `class={['base', { ativo: x() }]}`, confira a composição e a precedência no DOM quando o mesmo token aparece em mais de uma entrada, sem presumir qual vence; se o objeto vem de um signal mutado sem trocar a referência, esse signal precisa de `equals: false` para reexecutar o binding ([classes e estilos](07-dom-events-and-refs.md#classes-e-estilos)).
+- The `mutate` of `createResource` has neither an export nor a row in the official table, which only swaps `loading`, `error` and `refetch`. Choose the replacement by the durability the code expected: a write through `createOptimistic` or `createOptimisticStore` inside an `action` reverts on settle, and the durable value comes from the `refresh` of the source ([overlay and durable state](10-actions-optimism-and-confirmation.md#overlay-and-durable-state)); the setter of a writable derivation, `createSignal(fn)` or `createStore(fn, seed)`, holds until the source reruns ([writable derivation](02-reactivity-and-ownership.md#writable-derivation-and-stored-function)).
+- `classList` replaced by `class` with an object or array joins in a single prop what used to be two. When going from `class="base" classList={{ active: x() }}` to `class={['base', { active: x() }]}`, check the composition and the precedence in the DOM when the same token shows up in more than one entry, without assuming which one wins; if the object comes from a signal mutated without changing the reference, that signal needs `equals: false` to rerun the binding ([classes and styles](07-dom-events-and-refs.md#classes-and-styles)).
 
-Nenhum destes nomes é exportado por `solid-js` na base verificada, nos builds dev e default; os substitutos da coluna Solid 2 existem.
+None of these names is exported by `solid-js` on the verified base, in the dev and default builds; the replacements of the Solid 2 column exist.
 
-| Solid 1 | Solid 2 | Observação |
+| Solid 1 | Solid 2 | Note |
 | --- | --- | --- |
-| `Suspense`, `SuspenseList` | `Loading`, `Reveal` | Contratos próprios de prontidão e de ordem/colapso, não apelidos |
-| `ErrorBoundary` | `Errored` | Erro do fallback é accessor |
-| `mergeProps` | `merge` | `@solidjs/web` exporta `mergeProps` só como helper interno do compilador |
-| `splitProps` | `omit` | Filtra chaves; não devolve a mesma tupla |
-| `on` | Compute de `createEffect` | Dependências explícitas no compute; o `defer` do `on` vira a opção `defer` do effect |
-| `batch` | Batching automático por microtask; `flush` só para ler estado assentado | Não troque todo `batch` por `flush` |
-| `createDeferred` | Removido; o batching já coalesce por microtask | Não recriar por alias |
-| `isRefreshing` | `refresh(target)` devolve Promise; `yield refresh(target)` numa action reexecuta a fonte e espera o assentamento | Não expõe fase a cálculo puro; combine com `affects(target)` ou flag otimista |
-| `setStore("a", 0, "b", v)`, `setStore(path, reconcile(...))` | `setStore(d => { d.a[0].b = v })` | Setter por caminho e com objeto lançam `TypeError`: `StoreSetter` só aceita função |
-| `createEffect(fn)` | `createEffect(compute, apply)` | No cliente, `createEffect(fn)` lança antes do compute (`MISSING_EFFECT_FN` em dev; `TypeError` sem código no default); `createRenderEffect(fn)` roda o compute e depois falha com `TypeError`, escalando para `REACTIVITY_HALTED` (o teste precisa isolar/resetar o motor). No build de servidor os dois executam o compute uma vez sem erro: SSR e testes com `environment: 'node'` não acusam o padrão |
+| `Suspense`, `SuspenseList` | `Loading`, `Reveal` | Their own contracts of readiness and of order/collapse, not aliases |
+| `ErrorBoundary` | `Errored` | The fallback error is an accessor |
+| `mergeProps` | `merge` | `@solidjs/web` exports `mergeProps` only as an internal helper of the compiler |
+| `splitProps` | `omit` | Filters keys; it does not return the same tuple |
+| `on` | Compute of `createEffect` | Explicit dependencies in the compute; the `defer` of `on` becomes the `defer` option of the effect |
+| `batch` | Automatic batching per microtask; `flush` only to read settled state | Do not swap every `batch` for `flush` |
+| `createDeferred` | Removed; batching already coalesces per microtask | Do not recreate it through an alias |
+| `isRefreshing` | `refresh(target)` returns a Promise; `yield refresh(target)` in an action reruns the source and waits for the settle | It does not expose the phase to a pure computation; combine it with `affects(target)` or an optimistic flag |
+| `setStore("a", 0, "b", v)`, `setStore(path, reconcile(...))` | `setStore(d => { d.a[0].b = v })` | A setter by path and with an object throw `TypeError`: `StoreSetter` only accepts a function |
+| `createEffect(fn)` | `createEffect(compute, apply)` | On the client, `createEffect(fn)` throws before the compute (`MISSING_EFFECT_FN` in dev; a `TypeError` without a code in default); `createRenderEffect(fn)` runs the compute and then fails with a `TypeError`, escalating to `REACTIVITY_HALTED` (the test must isolate/reset the engine). In the server build both run the compute once without an error: SSR and tests with `environment: 'node'` do not flag the pattern |
 
-Numa migração, procure no projeto imports desses nomes, subcaminhos como `solid-js/web` e `solid-js/store`, setter de store por caminho, effect de um argumento e exports antigos do router. Router: [mapa próprio](14-routing-and-architecture.md#mapa-de-migração-do-router).
+In a migration, look in the project for imports of those names, subpaths such as `solid-js/web` and `solid-js/store`, a store setter by path, a one-argument effect and old router exports. Router: [its own map](14-routing-and-architecture.md#router-migration-map).
 
-## Mapa de migração
+## Migration map
 
-Armadilha: não faça substituição global. Import pode ser mecânico, mas lifecycle, stores, efeitos e transições mudam de contrato. Alinhe dependências, renderer e compilador; depois migre por feature com testes de regressão. `merge` deixa um `undefined` explícito sobrescrever o default.
+Pitfall: do not do a global replacement. An import can be mechanical, but lifecycle, stores, effects and transitions change contracts. Align dependencies, renderer and compiler; then migrate per feature with regression tests. `merge` lets an explicit `undefined` override the default.
 
-| Padrão anterior | Direção no Solid 2 | Cuidado |
+| Previous pattern | Direction in Solid 2 | Precaution |
 | --- | --- | --- |
-| `solid-js/h`, `/html`, `/universal` | `@solidjs/h`, `@solidjs/html`, `@solidjs/universal` | `solid-js` só exporta `.`, `./refresh`, `./attribution`, `./internal` (mais `./internal/container-trace` no pacote instalado) e `./package.json`; instale só o renderer real |
-| `jsxImportSource: "solid-js"` | `"@solidjs/web"` no DOM compilado | Não misturar com hyperscript |
-| `indexArray` | `mapArray` com keying posicional | Contrato de item e índice muda |
-| `unwrap` | `snapshot` | View plain e leitura não rastreada |
-| `createMutable` / `modifyMutable` | Store com escrita por draft; `@solid-primitives/mutable` para legado | Não mutar proxy livremente |
-| `createDynamic` / `<Dynamic>` | Fábrica `dynamic` | `Dynamic` existe, depreciado |
-| `use:` | Fábrica de ref + lifecycle proprietário | Ref callback sozinho não recebe cleanup |
-| `on:` / `oncapture:` | Removidos; evento camelCase delegado (`onClick`) ou `addEventListener` manual | Para `capture`, `passive` ou `once`, registre no ciclo de vida (ou via factory de ref) e remova no `onCleanup` |
-| `getListener` | `getObserver` | Owner não é observador |
-| `equalFn` | `isEqual` | Conferir assinatura |
-| `renderToStringAsync` | `await` do resultado de `renderToStream` | Não consumir o stream duas vezes |
-| `Context.Provider` | O próprio Context como provider | Reexaminar defaults e ausência de provider |
-| `<Title>` de `@solidjs/meta` | `useHead` de `@solidjs/web` | Tags de `<head>` |
-| `sharedConfig.count` | Sem equivalente público | Módulos de hidratação vêm pré-carregados e IDs vivem em owners; não mexer |
-| JSX `tabIndex` | `tabindex` (minúsculo) | Em `<dialog>` o tipo é `tabindex?: never` |
+| `solid-js/h`, `/html`, `/universal` | `@solidjs/h`, `@solidjs/html`, `@solidjs/universal` | `solid-js` only exports `.`, `./refresh`, `./attribution`, `./internal` (plus `./internal/container-trace` in the installed package) and `./package.json`; install only the real renderer |
+| `jsxImportSource: "solid-js"` | `"@solidjs/web"` in compiled DOM | Do not mix it with hyperscript |
+| `indexArray` | `mapArray` with positional keying | The item and index contract changes |
+| `unwrap` | `snapshot` | Plain view and untracked read |
+| `createMutable` / `modifyMutable` | A store with writes through a draft; `@solid-primitives/mutable` for legacy | Do not mutate the proxy freely |
+| `createDynamic` / `<Dynamic>` | The `dynamic` factory | `Dynamic` exists, deprecated |
+| `use:` | A ref factory + an owning lifecycle | A ref callback alone does not get a cleanup |
+| `on:` / `oncapture:` | Removed; a delegated camelCase event (`onClick`) or a manual `addEventListener` | For `capture`, `passive` or `once`, register it in the lifecycle (or through a ref factory) and remove it in `onCleanup` |
+| `getListener` | `getObserver` | An owner is not an observer |
+| `equalFn` | `isEqual` | Check the signature |
+| `renderToStringAsync` | `await` of the result of `renderToStream` | Do not consume the stream twice |
+| `Context.Provider` | The Context itself as the provider | Reexamine defaults and the absence of a provider |
+| `<Title>` from `@solidjs/meta` | `useHead` from `@solidjs/web` | `<head>` tags |
+| `sharedConfig.count` | No public equivalent | Hydration modules come preloaded and IDs live in owners; do not touch it |
+| JSX `tabIndex` | `tabindex` (lowercase) | In `<dialog>` the type is `tabindex?: never` |
 
-`createDeferred`, `enableScheduling`, `writeSignal` e `resetErrorBoundaries` não devem ser recriados por alias. Para `from`/observable, async iterables e effects são direções possíveis, mas um Observable externo nem sempre é AsyncIterable: adapte o protocolo e possua o cancelamento.
+`createDeferred`, `enableScheduling`, `writeSignal` and `resetErrorBoundaries` must not be recreated through an alias. For `from`/observable, async iterables and effects are possible directions, but an external Observable is not always an AsyncIterable: adapt the protocol and own the cancellation.
 
-## Divergências encontradas na própria documentação
+## Divergences found in the documentation itself
 
-- D01 `storePath`: na base verificada (`ee49b3e`), MIGRATION, CHEATSHEET e RFC de stores ainda o mostravam; a `CHEATSHEET.md` de pacotes posteriores já não o mostra. O core continua sem exportá-lo. Escreva setters com draft; não importe de `@solidjs/signals` nem de caminho interno.
-- D02 `createTrackedEffect`: apresentado como efeito de fase única avançado; o JSDoc o marca depreciado para código novo. Use `createEffect` split e `onSettled`; uso existente é compatibilidade a substituir, não receita.
-- D03 Portal no servidor: a cheatsheet descreve um erro antigo; o renderer define Portal como ilha client-only montada após assentar. Não acesse `document` em props avaliadas no servidor nem assuma conteúdo de Portal no HTML.
-- D04 callback de `For`: um exemplo do RFC usa item como accessor no modo padrão. Padrão: item direto e índice accessor; posicional: item accessor e índice número; chave personalizada: ambos accessors.
-- D05 inicializadores: comentários antigos citam `initialValue`; o segundo argumento de `createMemo` é `MemoOptions` (`name`, `equals`), não valor inicial. Seed de store derivada é outro conceito. Tipos e overloads da versão resolvida prevalecem sobre a prosa e a memória do agente.
-- D06 versões do compilador: versão em `package.json` de branch não prova publicação. Confirme registro, peers e lockfile antes de instalar.
-- D07 `ComponentProps` e `ValidComponent`: o core tem formas restritas a componentes que não resolvem `ComponentProps<"button">`. Em UI DOM, importe de `@solidjs/web`.
+- D01 `storePath`: on the verified base (`ee49b3e`), MIGRATION, CHEATSHEET and the stores RFC still showed it; the `CHEATSHEET.md` of later packages no longer shows it. The core still does not export it. Write setters with a draft; do not import it from `@solidjs/signals` nor from an internal path.
+- D02 `createTrackedEffect`: presented as an advanced single-phase effect; the JSDoc marks it deprecated for new code. Use a split `createEffect` and `onSettled`; existing use is compatibility to be replaced, not a recipe.
+- D03 Portal on the server: the cheatsheet describes an old error; the renderer defines Portal as a client-only island mounted after settling. Do not touch `document` in props evaluated on the server nor assume Portal content in the HTML.
+- D04 `For` callback: an RFC example uses the item as an accessor in the default mode. Default: a direct item and an accessor index; positional: an accessor item and a number index; custom key: both accessors.
+- D05 initializers: old comments cite `initialValue`; the second argument of `createMemo` is `MemoOptions` (`name`, `equals`), not an initial value. The seed of a derived store is another concept. The types and overloads of the resolved version win over the prose and the memory of the agent.
+- D06 compiler versions: a version in the `package.json` of a branch does not prove a release. Confirm the registry, peers and lockfile before installing.
+- D07 `ComponentProps` and `ValidComponent`: the core has forms restricted to components that do not resolve `ComponentProps<"button">`. In DOM UI, import them from `@solidjs/web`.
 
-## Mudanças entre prévias e processo seguro
+## Changes between previews and a safe process
 
-Não trate duas RCs como iguais: cada prévia pode alterar diagnóstico, exports, stores, streaming, erros e integrações. Ao migrar de beta ou RC anterior, revise lazy com export nomeado, opções de `dynamic`, `onError` de servidor e setters assíncronos. Lazy nomeado: `lazy(() => import(...), { export: "Nome" })`; um wrapper que produz `{ default: modulo.Nome }` em runtime pode quebrar a identificação síncrona da hidratação. O terceiro argumento (`moduleUrl`) é contexto de integração.
+Do not treat two RCs as equal: each preview can change diagnostics, exports, stores, streaming, errors and integrations. When migrating from an earlier beta or RC, review lazy with a named export, the options of `dynamic`, the server `onError` and async setters. A named lazy: `lazy(() => import(...), { export: "Name" })`; a wrapper that produces `{ default: module.Name }` at runtime can break the synchronous identification of hydration. The third argument (`moduleUrl`) is integration context.
 
-Processo: congele uma base com testes, liste imports removidos, migre uma feature representativa com async e formulário, verifique DOM cliente e SSR, então amplie. Não desative todos os diagnósticos na transição; cada exceção temporária tem motivo, escopo e teste.
+Process: freeze a base with tests, list the removed imports, migrate a representative feature with async and a form, check client DOM and SSR, then widen. Do not disable every diagnostic during the transition; each temporary exception has a reason, a scope and a test.
 
-Armadilha: issue fechada não prova correção no pacote instalado; a semântica de `Loading.on` mudou na base verificada ([R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold)); uma resposta antiga pode descrever hook planejado que a base verificada já tem; um gate encerrado por sinal pode parecer sucesso. Nada disso autoriza importar campo privado ou aplicar patch de comentário.
+Pitfall: a closed issue does not prove a fix in the installed package; the semantics of `Loading.on` changed on the verified base ([R03](17-known-risks.md#r03-on-and-a-boundary-created-during-a-hold)); an old answer can describe a planned hook that the verified base already has; a gate ended by a signal can look like success. None of that authorizes importing a private field or applying a comment patch.
 
-## APIs que induzem a erro
+## APIs that mislead
 
-`storePath` e `markRaw` não são exports públicos desta base. Para valor cru, confira `snapshot` e seus limites; `deep` faz leitura rastreada, não o oposto. Não importe `$PROXY`, `$TRACK`, `sharedConfig` ou campos de hidratação para substituir APIs removidas.
+`storePath` and `markRaw` are not public exports of this base. For a raw value, check `snapshot` and its limits; `deep` does a tracked read, not the opposite. Do not import `$PROXY`, `$TRACK`, `sharedConfig` or hydration fields to replace removed APIs.
 
-`resetErrorHalt` serve ao [harness de testes](../../skill-solidjs-testing/references/mount-dispose-diagnostics.md#halt-reativo); não é recuperação de erro da aplicação.
+`resetErrorHalt` serves the [test harness](../../skill-solidjs-testing/references/mount-dispose-diagnostics.md#reactive-halt); it is not error recovery for the application.

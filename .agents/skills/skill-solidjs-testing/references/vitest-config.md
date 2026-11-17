@@ -1,29 +1,29 @@
-# Configuração do Vitest para Solid 2
+# Vitest configuration for Solid 2
 
-A base verificada está nos [manifestos vinculados pela skill](../SKILL.md). Depois de atualizar dependências, rode os canários antes de confiar nesta página.
+The verified base is in the [manifests linked by the skill](../SKILL.md). After updating dependencies, run the canaries before trusting this page.
 
-## Postura decidida por projeto
+## Posture decided per project
 
-O `@solidjs/vite-plugin` decide a postura no hook `config`, a partir do `test.environment` declarado no próprio projeto. Projetos que transformam TSX ou exercitam o runtime Solid precisam da sua instância de `solid()`. Um projeto Node de módulos sem TSX nem grafo pode dispensá-la.
+`@solidjs/vite-plugin` decides the posture in the `config` hook, from the `test.environment` declared in the project itself. Projects that transform TSX or exercise the Solid runtime need their own `solid()` instance. A Node project of modules without TSX or a graph can skip it.
 
-| Projeto | Postura | Use para |
+| Project | Posture | Use for |
 | --- | --- | --- |
-| Sem `environment`, com `extends: true` | cliente em Node, sem DOM | signals, memos, effects, stores, actions |
-| `environment: 'happy-dom'` (ou `'jsdom'`) | cliente; jest-dom injetado se instalado | componentes, páginas com router em memória |
-| `browser.enabled` com Chromium | cliente | eventos reais, foco, layout, números no DOM |
-| `environment: 'node'` | servidor (`server.dev.js`) | `renderToString`, `renderToStream`, módulos de servidor |
-| Sem `environment` e sem `extends` | herda a configuração da raiz; com `solid()` e sem ambiente explícito herdado, cliente em Node, sem DOM | grafo cliente, após conferir as opções herdadas; o plugin não define `test.environment` |
+| No `environment`, with `extends: true` | client on Node, without DOM | signals, memos, effects, stores, actions |
+| `environment: 'happy-dom'` (or `'jsdom'`) | client; jest-dom injected if installed | components, pages with an in-memory router |
+| `browser.enabled` with Chromium | client | real events, focus, layout, numbers in the DOM |
+| `environment: 'node'` | server (`server.dev.js`) | `renderToString`, `renderToStream`, server modules |
+| No `environment` and no `extends` | inherits the root configuration; with `solid()` and no inherited explicit environment, client on Node, without DOM | client graph, after checking the inherited options; the plugin does not set `test.environment` |
 
-Armadilhas de postura errada:
+Pitfalls of the wrong posture:
 
-- Primitive num projeto `node`: o memo não recalcula (2 em vez de 4), o effect nunca aplica e o setter avisa `SERVER_WRITE`.
-- Projeto `node` sem o plugin não transforma TSX. Ele continua certo para módulos de servidor sem TSX nem grafo reativo.
-- `renderToString` num projeto DOM devolve `undefined` e registra `renderToString is not supported in the browser`.
-- Projeto inline com `extends: false` não herda `resolve`, `alias`, `define` nem `plugins` da raiz: aliases como `@/` falham até repetir a config. Sem `extends`, o Vitest herda a raiz e mescla os arrays; não registre o mesmo plugin ou setup na raiz e no projeto.
+- A primitive in a `node` project: the memo does not recompute (2 instead of 4), the effect never applies and the setter warns `SERVER_WRITE`.
+- A `node` project without the plugin does not transform TSX. It is still right for server modules without TSX or a reactive graph.
+- `renderToString` in a DOM project returns `undefined` and logs `renderToString is not supported in the browser`.
+- An inline project with `extends: false` does not inherit `resolve`, `alias`, `define` or `plugins` from the root: aliases such as `@/` fail until the config is repeated. Without `extends`, Vitest inherits the root and merges the arrays; do not register the same plugin or setup in the root and in the project.
 
-## Configuração de referência
+## Reference configuration
 
-Mescle com a configuração do projeto; não substitua o `vite.config.ts`.
+Merge it with the configuration of the project; do not replace `vite.config.ts`.
 
 ```ts
 // vitest.config.ts
@@ -65,15 +65,15 @@ export default defineConfig({
 })
 ```
 
-Em pacote symlinkado ou monorepo, confira que `solid-js`, `@solidjs/web` e `@solidjs/signals` resolvem para uma cópia só; use `resolve.dedupe` quando o canário indicar `sameOwnerApi: false`.
+In a symlinked package or a monorepo, check that `solid-js`, `@solidjs/web` and `@solidjs/signals` resolve to a single copy; use `resolve.dedupe` when the canary shows `sameOwnerApi: false`.
 
-## Contagem por projeto
+## Count per project
 
-`passWithNoTests: false` só reprova quando nenhum projeto coleta arquivo; um projeto com `include` errado coleta zero e o run passa calado. Confira a contagem com `vitest list --json` agrupando por `projectName`, ou rode `vitest run --project <nome>` no CI, que sai com 1 quando o projeto está vazio.
+`passWithNoTests: false` only fails when no project collects a file; a project with a wrong `include` collects zero and the run passes silently. Check the count with `vitest list --json` grouped by `projectName`, or run `vitest run --project <name>` in CI, which exits with 1 when the project is empty.
 
-## Canário de postura
+## Posture canary
 
-Ao criar ou alterar a configuração, ou investigar um teste que usa o build errado, confira postura, build e instância única. Reutilize o canário do projeto, se houver; na falta dele, esta receita fornece a identificação:
+When creating or changing the configuration, or investigating a test that uses the wrong build, check posture, build and single instance. Reuse the canary of the project, if there is one; without it, this recipe provides the identification:
 
 ```ts
 // support/runtime-identity.ts
@@ -91,17 +91,17 @@ export const readRuntimeIdentity = (): RuntimeIdentity => ({
 })
 ```
 
-| Projeto | `isServer` | `dev` | `sameOwnerApi` | `hasDocument` |
+| Project | `isServer` | `dev` | `sameOwnerApi` | `hasDocument` |
 | --- | --- | --- | --- | --- |
 | client-graph | `false` | `true` | `true` | `false` |
-| dom e browser | `false` | `true` | `true` | `true` |
+| dom and browser | `false` | `true` | `true` | `true` |
 | server | `true` | `true` | `true` | `false` |
 
-`sameOwnerApi: false` indica duas instâncias do motor: os signals de uma não são vistos pela outra.
+`sameOwnerApi: false` means two engine instances: the signals of one are not seen by the other.
 
-## Build de produção
+## Production build
 
-Uma execução com `NODE_ENV=test` só exercita o build dev, inclusive com `solid({ dev: false })`. Para o build de produção, faça uma segunda execução com `NODE_ENV=production` e `solid({ dev: false })`. Não use `NODE_ENV=production` com o plugin padrão: os builds se misturam e `DEV` fica `undefined` mesmo rodando código dev.
+A run with `NODE_ENV=test` only exercises the dev build, even with `solid({ dev: false })`. For the production build, do a second run with `NODE_ENV=production` and `solid({ dev: false })`. Do not use `NODE_ENV=production` with the default plugin: the builds get mixed and `DEV` stays `undefined` even when running dev code.
 
 ```ts
 // vitest.production.config.ts
@@ -116,17 +116,17 @@ export default defineConfig({
 })
 ```
 
-Em produção somem os avisos de desenvolvimento, então a ausência deles nessa execução não prova nada. Um halt continua chamando `console.error('[REACTIVITY_HALTED]', causa)`.
+In production the development warnings go away, so their absence in that run proves nothing. A halt still calls `console.error('[REACTIVITY_HALTED]', cause)`.
 
-## Imports em projeto Vite+
+## Imports in a Vite+ project
 
-O Vite+ reexporta o Vitest; a configuração fica no bloco `test` do `vite.config.ts`.
+Vite+ reexports Vitest; the configuration stays in the `test` block of `vite.config.ts`.
 
 | Vitest | Vite+ |
 | --- | --- |
 | `vitest` | `vite-plus/test` |
-| `defineConfig` de `vitest/config` | `defineConfig` de `vite-plus` |
+| `defineConfig` from `vitest/config` | `defineConfig` from `vite-plus` |
 | `@vitest/browser-playwright` | `vite-plus/test/browser-playwright` |
 | `vitest/browser` | `vite-plus/test/browser/context` |
 
-Extensões de tipo com `declare module 'vitest'` continuam apontando para `vitest`.
+Type extensions with `declare module 'vitest'` keep pointing to `vitest`.

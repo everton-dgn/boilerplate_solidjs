@@ -100,7 +100,7 @@ function createTasksModel(api: TasksApi) {
     try {
       const result = await start()
       setFailure(null)
-      setNotice(result === "confirmed" ? "" : "A alteração foi salva, mas a lista não pôde ser atualizada.")
+      setNotice(result === "confirmed" ? "" : "The change was saved, but the list could not be updated.")
       return true
     } catch {
       setNotice("")
@@ -116,15 +116,15 @@ function createTasksModel(api: TasksApi) {
 
     if (text.length === 0 || text.length > 120) {
       setNotice("")
-      setFailure("Informe um título com até 120 caracteres.")
+      setFailure("Enter a title with up to 120 characters.")
       return Promise.resolve(false)
     }
 
     const entry: NewTask = { id: crypto.randomUUID(), title: text }
     return run({
       keys: [FORM_KEY, taskKey(entry.id)],
-      refusalMessage: "Aguarde: a tarefa anterior ainda está sendo salva.",
-      failureMessage: "Não foi possível salvar a tarefa. O texto digitado foi mantido.",
+      refusalMessage: "Wait: the previous task is still being saved.",
+      failureMessage: "The task could not be saved. The typed text was kept.",
       start: () => saveNew(entry)
     })
   }
@@ -132,8 +132,8 @@ function createTasksModel(api: TasksApi) {
   function complete(id: string): Promise<boolean> {
     return run({
       keys: [taskKey(id)],
-      refusalMessage: "Aguarde: esta tarefa ainda está sendo salva.",
-      failureMessage: "Não foi possível concluir a tarefa. Tente novamente.",
+      refusalMessage: "Wait: this task is still being saved.",
+      failureMessage: "The task could not be completed. Try again.",
       start: () => completeTask(id)
     })
   }
@@ -161,7 +161,7 @@ function TaskList(props: ListProps) {
       <For
         each={props.model.tasks}
         keyed={task => task.id}
-        fallback={<li>Nenhuma tarefa cadastrada.</li>}
+        fallback={<li>No tasks yet.</li>}
       >
         {task => (
           <li
@@ -174,7 +174,7 @@ function TaskList(props: ListProps) {
               disabled={task().completed || props.model.saving(task().id)}
               onClick={() => { void props.model.complete(task().id) }}
             >
-              {task().completed ? "Concluída" : "Concluir"}
+              {task().completed ? "Completed" : "Complete"}
             </button>
           </li>
         )}
@@ -202,9 +202,9 @@ export function Tasks(props: Props) {
   }
 
   return (
-    <section aria-label="Tarefas">
+    <section aria-label="Tasks">
       <form onSubmit={submit} aria-busy={model.creating() ? "true" : "false"}>
-        <label for={fieldId}>Nova tarefa</label>
+        <label for={fieldId}>New task</label>
         <input
           id={fieldId}
           name="title"
@@ -213,7 +213,7 @@ export function Tasks(props: Props) {
           required
           onInput={event => setTitle(event.currentTarget.value)}
         />
-        <button type="submit" disabled={model.creating()}>Adicionar</button>
+        <button type="submit" disabled={model.creating()}>Add</button>
       </form>
 
       <p role="status">{model.notice()}</p>
@@ -223,11 +223,11 @@ export function Tasks(props: Props) {
 
       <Errored fallback={(_error, retry) => (
         <div role="alert">
-          <p>Não foi possível carregar as tarefas.</p>
-          <button type="button" onClick={() => retry()}>Tentar novamente</button>
+          <p>The tasks could not be loaded.</p>
+          <button type="button" onClick={() => retry()}>Try again</button>
         </div>
       )}>
-        <Loading fallback={<p role="status">Carregando tarefas...</p>}>
+        <Loading fallback={<p role="status">Loading tasks...</p>}>
           <TaskList model={model} />
         </Loading>
       </Errored>

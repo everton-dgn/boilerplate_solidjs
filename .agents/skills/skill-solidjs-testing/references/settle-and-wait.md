@@ -1,30 +1,30 @@
-# Assentamento e espera
+# Settling and waiting
 
-O agendador publica escritas por `queueMicrotask(flush)`.
+The scheduler publishes writes through `queueMicrotask(flush)`.
 
-## Tabela de assentamento
+## Settling table
 
-| Situação | Como assentar |
+| Situation | How to settle |
 | --- | --- |
-| Depois de `render()` | O DOM inicial já está pronto |
-| `element.click()` ou setter fora de flush | `await Promise.resolve()` ou `flush()` |
-| Leitura logo depois do setter | Vê o valor anterior até `flush()` |
-| `createRoot` com memo e effect | Memo calcula na criação; apply do effect espera `flush()` |
-| Memo assíncrono sob owner | `await resolve(() => memo())` |
-| Conteúdo sob `Loading` ou rota nova | `vi.waitFor`, `expect.poll` ou `expect.element` no browser mode |
-| `await userEvent.click()` no Chromium | O DOM já está assentado no retorno |
-| Dentro de action, `onSettled` ou apply de effect | `flush()` lança ou vira no-op com diagnóstico |
+| After `render()` | The initial DOM is already ready |
+| `element.click()` or a setter outside flush | `await Promise.resolve()` or `flush()` |
+| Read right after the setter | Sees the previous value until `flush()` |
+| `createRoot` with a memo and an effect | The memo computes on creation; the effect apply waits for `flush()` |
+| Async memo under an owner | `await resolve(() => memo())` |
+| Content under `Loading` or a new route | `vi.waitFor`, `expect.poll` or `expect.element` in browser mode |
+| `await userEvent.click()` in Chromium | The DOM is already settled on return |
+| Inside an action, `onSettled` or an effect apply | `flush()` throws or becomes a no-op with a diagnostic |
 
-`flush()` não resolve rede nem Promise. Para respostas fora de ordem, controle cada operação com `Promise.withResolvers()`, confirme que A e B começaram e libere B antes de A.
+`flush()` resolves neither network nor Promises. For out-of-order responses, control each operation with `Promise.withResolvers()`, confirm that A and B started and release B before A.
 
-## Loading, lazy e isPending
+## Loading, lazy and isPending
 
-Para testar pending durante recarga, resolva a primeira carga antes de trocar a entrada. Observe o pending e o conteúdo antigo durante a segunda espera, depois o novo valor. A primeira carga sem dado depende de `Loading`; não a confunda com esse cenário de recarga.
+To test pending during a reload, resolve the first load before changing the input. Observe the pending state and the old content during the second wait, then the new value. The first load without data depends on `Loading`; do not confuse it with this reload scenario.
 
-`lazy()` compartilha o import entre instâncias da mesma fábrica. Ao testar cancelamento, desmontar uma delas antes do import resolver não deve impedir a outra de renderizar.
+`lazy()` shares the import between instances of the same factory. When testing cancellation, unmounting one of them before the import resolves must not keep the other from rendering.
 
 ## Fake timers
 
-- Preserve `queueMicrotask` real. Com `toFake: ['queueMicrotask']`, o DOM fica parado até `vi.runAllTicks()` ou `flush()`.
-- Timer que escreve signal: `await vi.advanceTimersByTimeAsync(ms)` entrega o DOM atualizado; `vi.advanceTimersByTime(ms)` executa o callback e deixa a publicação para a microtask.
-- `until(fn, { timeout })` só rejeita por timeout depois de avançar o relógio.
+- Keep the real `queueMicrotask`. With `toFake: ['queueMicrotask']`, the DOM stays still until `vi.runAllTicks()` or `flush()`.
+- A timer that writes a signal: `await vi.advanceTimersByTimeAsync(ms)` delivers the updated DOM; `vi.advanceTimersByTime(ms)` runs the callback and leaves the publication to the microtask.
+- `until(fn, { timeout })` only rejects by timeout after the clock is advanced.

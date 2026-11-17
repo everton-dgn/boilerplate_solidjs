@@ -1,24 +1,24 @@
-# Roteamento, integrações e arquitetura
+# Routing, integrations and architecture
 
-Base: [revisão verificada](../SKILL.md), com o `@solidjs/router` instalado junto dela, reverificada em 2026-09-29. Versão diferente exige nova prova.
+Base: [verified revision](../SKILL.md), with the `@solidjs/router` installed with it, reverified on 2026-09-29. A different version requires a new proof.
 
-## Compatibilidade por pacote
+## Compatibility per package
 
-Contrato: core, renderer, compilador e roteador têm contratos e versões próprios; o conjunto válido é o resolvido no lockfile. O core Solid 2 incorporou server functions e partes do fluxo HTTP, mas isso não decide roteamento, cache por rota, deploy nem autenticação.
+Contract: core, renderer, compiler and router have their own contracts and versions; the valid set is the one resolved in the lockfile. The Solid 2 core took in server functions and parts of the HTTP flow, but that does not decide routing, per-route cache, deploy or authentication.
 
-Armadilha: pacote que aceita Solid 1 em `peerDependencies` não fica compatível só porque o nome contém Solid. A tag `latest` pode seguir na linha do Solid 1 enquanto um canal de prévia atende ao Solid 2; peer exato de uma RC não aceita outra RC; intervalo semver aceito não prova funcionamento (Solid Query e Kobalte exigem conferência por publicação). Confira `npm view <lib> peerDependencies` (ou `bun info <lib> peerDependencies`) antes de adotar. Uma lib pode compilar JSX e falhar em runtime por depender de `onMount`, efeito de fase única, setter por caminho ou owner antigo. Procure cópias duplicadas de `solid-js` e `@solidjs/signals`, sobretudo em workspaces e pacotes linkados. Não remova peer warnings à força nem crie aliases para caminhos internos: as saídas são versão compatível, adaptação pequena documentada, substituição ou manter a versão atual.
+Pitfall: a package that accepts Solid 1 in `peerDependencies` does not become compatible just because its name contains Solid. The `latest` tag can stay on the Solid 1 line while a preview channel serves Solid 2; an exact peer of one RC does not accept another RC; an accepted semver range does not prove it works (Solid Query and Kobalte require checking per release). Check `npm view <lib> peerDependencies` (or `bun info <lib> peerDependencies`) before adopting. A library can compile JSX and fail at runtime because it depends on `onMount`, a single-phase effect, a setter by path or an old owner. Look for duplicated copies of `solid-js` and `@solidjs/signals`, above all in workspaces and linked packages. Do not force away peer warnings nor create aliases to internal paths: the ways out are a compatible version, a small documented adaptation, a replacement or keeping the current version.
 
-## Router 2: superfície instalada
+## Router 2: installed surface
 
-Contrato: o router instalado exporta
+Contract: the installed router exports
 
-- montagem: `createRouter`, `defineRoute`, `defineRoutes`, `browserHistory`, `hashHistory`, `memoryHistory`;
-- navegação e leitura: `useNavigate`, `useLocation`, `useParams`, `useSearchParams`, `useMatch`, `useRouteMatches`, `useHref`, `useResolvedPath`, `useIsRouting`, `useLinkState`, `usePreloadRoute`, `useBeforeLeave` e `createBeforeLeave(): BeforeLeaveLifecycle` (`subscribe(listener)` devolve o cancelamento e `confirm(to, options?)` devolve boolean; é a guarda que `useBeforeLeave` instala sob demanda no router, então prefira o hook);
-- dados: `query`, `revalidate`, `formAction` (o router instalado mantém `action` como alias depreciado), `useAction` (depreciado: chame a server function ou a `action` do core), `useSubmissions` e `liveQuery` (experimental).
+- mounting: `createRouter`, `defineRoute`, `defineRoutes`, `browserHistory`, `hashHistory`, `memoryHistory`;
+- navigation and reading: `useNavigate`, `useLocation`, `useParams`, `useSearchParams`, `useMatch`, `useRouteMatches`, `useHref`, `useResolvedPath`, `useIsRouting`, `useLinkState`, `usePreloadRoute`, `useBeforeLeave` and `createBeforeLeave(): BeforeLeaveLifecycle` (`subscribe(listener)` returns the cancellation and `confirm(to, options?)` returns a boolean; it is the guard that `useBeforeLeave` installs on demand in the router, so prefer the hook);
+- data: `query`, `revalidate`, `formAction` (the installed router keeps `action` as a deprecated alias), `useAction` (deprecated: call the server function or the `action` of the core), `useSubmissions` and `liveQuery` (experimental).
 
-Não existem `Router`, `Route`, `A`, `Navigate`, `createAsync`, `createAsyncStore`, `useSubmission`, `cache`, `json`, `createMemoryHistory` nem `MemoryRouter`. O `Router` da receita é a instância retornada por `createRouter`, usada como componente num host real, com children explícitos: `render(() => <Router>{props => props.children}</Router>, host)`; `render()` recebe um `MountableElement`, não objeto de opções. `redirect`, `reload` e `respond` vêm de `@solidjs/web`. `viewTransition` e um hook como `useViewTransitionState` não existem; componha um wrapper sobre `document.startViewTransition`. O router instalado junto da base verificada também exporta `serverRouteComponent`, experimental e ausente no router da base anterior; seu contrato não foi validado nesta skill. `createResource`, `createAsync` e `createAsyncStore` também não existem em `solid-js`: leitura assíncrona passa por `query(fn, name)` lida por `createMemo`, `createProjection` ou `createOptimistic`, sob `Loading`/`Errored`.
+There is no `Router`, `Route`, `A`, `Navigate`, `createAsync`, `createAsyncStore`, `useSubmission`, `cache`, `json`, `createMemoryHistory` or `MemoryRouter`. The `Router` of the recipe is the instance returned by `createRouter`, used as a component in a real host, with explicit children: `render(() => <Router>{props => props.children}</Router>, host)`; `render()` receives a `MountableElement`, not an options object. `redirect`, `reload` and `respond` come from `@solidjs/web`. `viewTransition` and a hook such as `useViewTransitionState` do not exist; compose a wrapper over `document.startViewTransition`. The router installed with the verified base also exports `serverRouteComponent`, experimental and missing from the router of the previous base; its contract was not validated in this skill. `createResource`, `createAsync` and `createAsyncStore` do not exist in `solid-js` either: an async read goes through `query(fn, name)` read by `createMemo`, `createProjection` or `createOptimistic`, under `Loading`/`Errored`.
 
-Receita:
+Recipe:
 
 ```tsx
 import { For, Loading, createMemo } from "solid-js"
@@ -33,7 +33,7 @@ const getTodos = query(fetchTodos, "todos")
 function Todos() {
   const todos = createMemo(() => getTodos())
   return (
-    <Loading fallback={<p>Carregando</p>}>
+    <Loading fallback={<p>Loading</p>}>
       <ul><For each={todos()}>{todo => <li>{todo.title}</li>}</For></ul>
     </Loading>
   )
@@ -43,48 +43,48 @@ export const Router = createRouter({ routes: [{ path: "/", component: Todos }] }
 // render(() => <Router>{props => props.children}</Router>, container)
 ```
 
-Regras sustentadas pelo código instalado:
+Rules backed by the installed code:
 
-- `query(fn, name)` devolve função com `key` e `keyFor(...args)`; `revalidate(getTodos.key)` invalida todas as entradas, `revalidate(getTodos.keyFor(id))` só uma.
-- A `formAction` do router tem `url`, `with(...args)`, `onSubmit(hook)` e `onSettled(hook)`. `.onSubmit` executa dentro da transação otimista; escreva a sobreposição nesse hook. A action geradora de `solid-js` tem outro contrato, sem `.with`.
-- Chamada programática da action pode rejeitar mesmo depois de registrar o erro em `useSubmissions`; trate a Promise no handler. Observar o histórico não contém a rejeição.
-- Action que termina sem erro e sem metadados revalida todas as queries; com `X-Revalidate`, só as chaves declaradas; se lança, nenhuma (leitura do código, sem teste de runtime). `X-Revalidate: *` equivale a `REVALIDATE_ALL` de `@solidjs/web`; chaves nomeadas usam prefix-match; lista vazia não casa nada. Teste o cache depois da invalidação: checar só o header dá falso-verde.
-- Server function lida por `query` que viaja como GET precisa de `GET(fn)` no módulo servidor; sem ele, GET responde 405 com `Allow: POST`.
+- `query(fn, name)` returns a function with `key` and `keyFor(...args)`; `revalidate(getTodos.key)` invalidates every entry, `revalidate(getTodos.keyFor(id))` only one.
+- The `formAction` of the router has `url`, `with(...args)`, `onSubmit(hook)` and `onSettled(hook)`. `.onSubmit` runs inside the optimistic transaction; write the overlay in that hook. The generator action of `solid-js` has another contract, without `.with`.
+- A programmatic call of the action can reject even after recording the error in `useSubmissions`; handle the Promise in the handler. Observing the history does not contain the rejection.
+- An action that ends without an error and without metadata revalidates every query; with `X-Revalidate`, only the declared keys; if it throws, none (reading of the code, without a runtime test). `X-Revalidate: *` is equivalent to `REVALIDATE_ALL` of `@solidjs/web`; named keys use prefix-match; an empty list matches nothing. Test the cache after the invalidation: checking only the header gives a false green.
+- A server function read by `query` that travels as GET needs `GET(fn)` in the server module; without it, GET answers 405 with `Allow: POST`.
 
-Armadilha: em `<form action>` com action vinculada, os argumentos vão serializados no parâmetro `args` da URL. Use só valores apropriados a essa exposição e valide e autorize no servidor; vincular um id no cliente não comprova permissão.
+Pitfall: in a `<form action>` with a bound action, the arguments go serialized in the `args` parameter of the URL. Use only values suitable for that exposure and validate and authorize on the server; binding an id on the client does not prove permission.
 
-### Mapa de migração do router
+### Router migration map
 
-| Antes (Solid 1) | Router 2 instalado |
+| Before (Solid 1) | Installed Router 2 |
 | --- | --- |
-| `<Router root={App}>` com `<Route>` | `createRouter({ routes: [...] })` e `<Router>{props => ...}</Router>`; rotas como objetos, filhos em `children` |
-| `<HashRouter>`, `<MemoryRouter>` | `createRouter({ routes, history: hashHistory() })` ou `memoryHistory("/inicial")` |
-| `<A href>` com `activeClass` | `<a href>` comum; estilo por `[data-active]` e `[aria-current="page"]`; `noscroll` no JSX (única grafia tipada na base verificada, como `link`, `state` e `replace`; a base anterior tipava `noScroll`), que o router lê |
-| `<Navigate>` | `useNavigate()` no setup ou redirect no preload |
+| `<Router root={App}>` with `<Route>` | `createRouter({ routes: [...] })` and `<Router>{props => ...}</Router>`; routes as objects, children in `children` |
+| `<HashRouter>`, `<MemoryRouter>` | `createRouter({ routes, history: hashHistory() })` or `memoryHistory("/initial")` |
+| `<A href>` with `activeClass` | a plain `<a href>`; style through `[data-active]` and `[aria-current="page"]`; `noscroll` in the JSX (the only spelling typed on the verified base, like `link`, `state` and `replace`; the previous base typed `noScroll`), which the router reads |
+| `<Navigate>` | `useNavigate()` in the setup or a redirect in the preload |
 | `useCurrentMatches` | `useRouteMatches` |
-| `createAsync`, `createAsyncStore` | `createMemo`, `createProjection`, `createOptimistic` ou `createOptimisticStore` lendo a `query` |
+| `createAsync`, `createAsyncStore` | `createMemo`, `createProjection`, `createOptimistic` or `createOptimisticStore` reading the `query` |
 | `cache` | `query` |
-| `useSubmission` | otimismo por `.onSubmit(...)` e histórico por `useSubmissions(...).at(-1)` |
-| `json(data, init)` | `respond(data, init)` de `@solidjs/web` |
-| `redirect`, `reload` do router | os mesmos de `@solidjs/web` |
+| `useSubmission` | optimism through `.onSubmit(...)` and history through `useSubmissions(...).at(-1)` |
+| `json(data, init)` | `respond(data, init)` from `@solidjs/web` |
+| `redirect`, `reload` of the router | the same ones from `@solidjs/web` |
 
-## Armadilhas do router instalado
+## Pitfalls of the installed router
 
-- `useLocation`, `useParams` e `useNavigate` resolvem o contexto do `<Router>` na chamada e lançam sem ele. Chame no corpo do componente, sob o provider, e guarde o valor; handler ou getter tardio pode rodar fora do contexto.
-- Trailing slash é ignorado na comparação de rota ativa: `<a href="/admin/">` recebe `[aria-current="page"]` e `[data-active]` em `/admin`, `/admin/` e descendentes como `/admin/users`.
-- `useBeforeLeave` expõe um único evento por navegação: os listeners compartilham `defaultPrevented` e cada um lê o estado deixado pelos anteriores. Só o listener mais interno chama `e.preventDefault()`; os demais leem `e.defaultPrevented`.
-- Se o router já administra carregamento, cache e cancelamento de uma consulta, não ponha outra camada de cache por componente; estado puramente local não vai ao roteador. Não importe `query` ou route loader de outro pacote porque um tutorial usa.
+- `useLocation`, `useParams` and `useNavigate` resolve the `<Router>` context on the call and throw without it. Call them in the body of the component, under the provider, and keep the value; a handler or a late getter can run outside the context.
+- A trailing slash is ignored in the active route comparison: `<a href="/admin/">` gets `[aria-current="page"]` and `[data-active]` on `/admin`, `/admin/` and descendants such as `/admin/users`.
+- `useBeforeLeave` exposes a single event per navigation: the listeners share `defaultPrevented` and each one reads the state left by the previous ones. Every listener whose route has unsaved changes calls `e.preventDefault()`, whatever its depth. Before it opens a confirmation, a dirty listener reads `e.defaultPrevented` and skips its prompt when an earlier listener already prevented the navigation. A `retry(true)` skips every remaining guard, so one confirmation must cover the unsaved changes of all dirty routes. Relying only on the innermost listener lets the navigation discard the edits of an outer route when the inner one is clean.
+- If the router already manages the loading, cache and cancellation of a query, do not add another cache layer per component; purely local state does not go to the router. Do not import `query` or a route loader from another package because a tutorial uses it.
 
-## Leitura granular, identidade e ingestão
+## Granular reading, identity and ingestion
 
-Contrato: leia as folhas que o componente precisa. Na base verificada de `@solidjs/web`, `style={state.style}` e `class={row.classes}` com expressão não inline passam por `readShallow`: mudar uma chave do objeto já reativa o binding. Trocar a identidade segue como caminho mais barato para mudanças grandes.
+Contract: read the leaves the component needs. On the verified base of `@solidjs/web`, `style={state.style}` and `class={row.classes}` with a non-inline expression go through `readShallow`: changing one key of the object already rerenders the binding. Changing the identity stays the cheapest path for large changes.
 
-Armadilha: `deep` na store inteira, seletor que percorre milhares de registros por tecla ou snapshot para espalhar tudo eliminam a granularidade; desestruturar no corpo para "otimizar" remove atualizações; envolver tudo em `createMemo` custa nós. Comparar cada linha de uma lista grande contra um signal de seleção cria fan-out amplo; um mapa derivado por chave ou uma projection reduz invalidações, mas só com problema medido, e teste a fidelidade da seleção depois.
+Pitfall: `deep` on the whole store, a selector that walks thousands of records per keystroke or a snapshot to spread everything remove the granularity; destructuring in the body to "optimize" removes updates; wrapping everything in `createMemo` costs nodes. Comparing each row of a large list against a selection signal creates a wide fan-out; a map derived by key or a projection reduces invalidations, but only with a measured problem, and test the fidelity of the selection afterwards.
 
-Use IDs estáveis para reconciliar; escolha `reconcile`/keyed para manter identidade sem esconder mudanças de campos. `shallow` serve à ingestão imutável e a coleções grandes, não é default. Não converta entidades em proxies e de volta a JSON repetidamente; valide na entrada, mapeie para domínio e devolva do servidor só o necessário.
+Use stable IDs to reconcile; choose `reconcile`/keyed to keep identity without hiding field changes. `shallow` serves immutable ingestion and large collections, it is not the default. Do not convert entities into proxies and back to JSON repeatedly; validate at the input, map to the domain and return from the server only what is needed.
 
-Armadilha: em monorepo, cópias independentes de `solid-js` quebram reatividade cruzada sem erro visível (um `effect` de uma cópia não rastreia `signal` da outra). Declare `solid-js`, `solid-js/*` e `@solidjs/web` como `external` no build de pacote interno; dentro do Vite, prefira `resolve.dedupe` ([ambiente](01-environment-imports-and-types.md)).
+Pitfall: in a monorepo, independent copies of `solid-js` break cross reactivity without a visible error (an `effect` of one copy does not track a `signal` of the other). Declare `solid-js`, `solid-js/*` and `@solidjs/web` as `external` in the build of an internal package; inside Vite, prefer `resolve.dedupe` ([environment](01-environment-imports-and-types.md)).
 
-## Diagnósticos de custo
+## Cost diagnostics
 
-`SSR_BOUNDARY_WATERFALL` no servidor aponta esperas em série dentro de um `Loading` (até a base anterior, `ASYNC_WATERFALL` cobria os dois lados; agora é só cliente); `HOT_SCOPE_FANOUT` no cliente agrega escopos quentes pela causa raiz. `markFlight(promise, startedAt)`, de `solid-js/attribution`, registra o início de um fetch. Uso e limites em [diagnósticos](15-diagnostics-checklists-and-recipes.md#diagnósticos-de-custo).
+`SSR_BOUNDARY_WATERFALL` on the server points to serial waits inside a `Loading` (up to the previous base, `ASYNC_WATERFALL` covered both sides; now it is client only); `HOT_SCOPE_FANOUT` on the client aggregates hot scopes by root cause. `markFlight(promise, startedAt)`, from `solid-js/attribution`, records the start of a fetch. Use and limits in [diagnostics](15-diagnostics-checklists-and-recipes.md#cost-diagnostics).

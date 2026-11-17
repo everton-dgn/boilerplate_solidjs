@@ -2,7 +2,7 @@ import type { Task } from "./task-types"
 
 export class InvalidTasksResponse extends Error {
   constructor() {
-    super("A resposta de tarefas é inválida")
+    super("The tasks response is invalid")
     this.name = "InvalidTasksResponse"
   }
 }

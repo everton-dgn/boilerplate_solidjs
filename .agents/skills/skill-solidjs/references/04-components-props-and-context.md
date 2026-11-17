@@ -1,29 +1,29 @@
-# Componentes, props e contexto
+# Components, props and context
 
-## Props e ponto de chamada
+## Props and the call site
 
-Contrato: componente executa uma vez/instância. Remontagem/identidade nova cria outra; investigue construção repetida. Pai passa valor; filho lê props no JSX/accessor/memo. Compilador gera getter do atributo. Cópia/desestruturação no parâmetro/setup/callback estrutural congela, salvo contrato estático.
+Contract: a component runs once per instance. A remount/new identity creates another one; investigate repeated construction. The parent passes a value; the child reads props in the JSX/accessor/memo. The compiler generates a getter for the attribute. A copy/destructuring in the parameter/setup/structural callback freezes the value, except for a static contract.
 
-Receita:
+Recipe:
 
 ```tsx
 type CounterProps = { value: number }
 function Counter(props: CounterProps) {
   return <output data-double={props.value * 2}>{props.value}</output>
 }
-// No componente proprietário de count:
+// In the component that owns count:
 <Counter value={count()} />
 ```
 
-Armadilha: `value={count}` é erro de tipo. Escapando por cast/any/JS, texto ainda atualiza porque renderer insere função como conteúdo dinâmico, mas multiplicação dá NaN. Getter só por contrato. `{ ...props }` fora do JSX copia valores; não preserva reatividade.
+Pitfall: `value={count}` is a type error. Escaping through a cast/any/JS, the text still updates because the renderer inserts a function as dynamic content, but the multiplication gives NaN. A getter only by contract. `{ ...props }` outside the JSX copies values; it does not keep reactivity.
 
-Contrato: último atributo JSX vence, incluindo spread. Coloque spread antes dos atributos controlados e exclua props internas com `omit`. Handler direto de nativo é escolhido na montagem; ternário externo fica preso ao handler inicial. Decida dentro de callback estável. Spread de elemento ou de componente encaminhado ao botão reaplica handler novo.
+Contract: the last JSX attribute wins, spread included. Put the spread before the controlled attributes and exclude internal props with `omit`. A direct handler of a native element is chosen at mount; an outer ternary stays stuck to the initial handler. Decide inside a stable callback. A spread on an element or on a component forwarded to the button reapplies the new handler.
 
-## Defaults, merge e omit
+## Defaults, merge and omit
 
-Contrato: `merge` e `omit` criam views, sem copiar valores. `merge` deixa undefined explícito de fonte posterior sobrescrever default, inclusive após atualização; fonte com getter acompanha signal, objeto com valor já lido fica congelado. `omit(props, 'variant', 'size')` devolve uma view, não tupla de splitProps; também aceita predicado.
+Contract: `merge` and `omit` create views, without copying values. `merge` lets an explicit undefined from a later source override the default, even after an update; a source with a getter follows the signal, an object with an already read value stays frozen. `omit(props, 'variant', 'size')` returns a view, not a splitProps tuple; it also accepts a predicate.
 
-Receita:
+Recipe:
 
 ```tsx
 const title = () => props.title ?? 'Panel'
@@ -31,23 +31,23 @@ const nativeProps = omit(props, 'title')
 return <section {...nativeProps} aria-label={title()}>{props.children}</section>
 ```
 
-Armadilha: use `??` quando default deve sobreviver a undefined. Use merge quando undefined deve vencer. Prefira nomes explícitos no omit para conjuntos pequenos; filtro dinâmico dificulta entender o encaminhamento.
+Pitfall: use `??` when the default must survive undefined. Use merge when undefined must win. Prefer explicit names in omit for small sets; a dynamic filter makes the forwarding hard to follow.
 
-## Children e construção
+## Children and construction
 
-Contrato: `props.children` direto atende renderização comum. Para normalizar/reusar, crie `children(() => props.children)` uma vez sob owner: resolve preguiçosamente e memoriza; `toArray()` lê o mesmo resultado. Ler getter de children várias vezes pode construir filhos várias vezes. Reutilizar accessor evita repetição nessas leituras, sem prometer identidade eterna após mudança ou remount.
+Contract: `props.children` directly covers ordinary rendering. To normalize/reuse, create `children(() => props.children)` once under an owner: it resolves lazily and memoizes; `toArray()` reads the same result. Reading the children getter several times can build the children several times. Reusing the accessor avoids repetition in those reads, without promising an eternal identity after a change or remount.
 
-Receita: mantenha resultado em leituras reativas e use JSX com `<Component ... />`. Diferencie conteúdo de render prop, tipando argumentos para distinguir accessor de valor. `createComponent` fica para integração. Memo compartilhado continua pertencendo à raiz que o criou.
+Recipe: keep the result in reactive reads and use JSX with `<Component ... />`. Tell content apart from a render prop, typing the arguments to distinguish an accessor from a value. `createComponent` is for integration. A shared memo still belongs to the root that created it.
 
-Armadilha: guardar resultado de children numa constante não reativa o congela. Chamar componente manualmente pode alterar criação/ownership. Não execute indiscriminadamente qualquer função recebida como child. Ler children no when de Show pode construir árvore extra, inclusive Portal.
+Pitfall: keeping the children result in a non-reactive constant freezes it. Calling a component manually can change creation/ownership. Do not run indiscriminately every function received as a child. Reading children in the when of a Show can build an extra tree, Portal included.
 
-## Contexto
+## Context
 
-`useContext` exige owner: sem ele, lança `NoOwnerError`, mesmo que o contexto tenha default. A classe não é exportada.
+`useContext` requires an owner: without one, it throws `NoOwnerError`, even if the context has a default. The class is not exported.
 
-Contrato: o contexto é o provider, sem `.Provider`; `Context<T>` estende `ContextProviderComponent<T>`. Sem default, `useContext` retorna T e lança quando falta provider. O erro tem `constructor.name === 'ContextNotFoundError'`, mas a classe não é exportada. Ausência legítima usa `createContext<T | null>(null)` e guard de null.
+Contract: the context is the provider, without `.Provider`; `Context<T>` extends `ContextProviderComponent<T>`. Without a default, `useContext` returns T and throws when the provider is missing. The error has `constructor.name === 'ContextNotFoundError'`, but the class is not exported. A legitimate absence uses `createContext<T | null>(null)` and a null guard.
 
-Receita:
+Recipe:
 
 ```tsx
 type Preferences = { theme: Accessor<'light' | 'dark'>; toggle: () => void }
@@ -62,8 +62,8 @@ const PreferencesProvider: ParentComponent = props => {
 }
 ```
 
-Armadilha: não importe a classe para instanceof; se precisar distinguir a ausência de provider, trate somente `ContextNotFoundError` por `constructor.name` e propague os demais erros. Contexto opcional usa default `null`; `NoOwnerError` continua sendo erro de ciclo de vida. Não há `createContextProvider`/`createOptionalContextProvider` públicos; são helpers de outras libs. Default fake não deve esconder provider obrigatório. Estado pertence à instância do provider ou request SSR. Objeto com accessors/stores/ações permanece estável.
+Pitfall: do not import the class for instanceof; if you need to tell the absence of a provider apart, handle only `ContextNotFoundError` by `constructor.name` and propagate the other errors. An optional context uses a `null` default; `NoOwnerError` is still a lifecycle error. There are no public `createContextProvider`/`createOptionalContextProvider`; they are helpers of other libraries. A fake default must not hide a mandatory provider. State belongs to the provider instance or to the SSR request. An object with accessors/stores/actions stays stable.
 
-## Estado próprio
+## Own state
 
-Estado visual de uma lista não deve depender da duração da sobreposição otimista. Mantenha seleção e medidas por ID conforme o [contrato de estado visual](06-lists-control-flow-and-local-state.md#estado-visual-por-identidade).
+The visual state of a list must not depend on how long the optimistic overlay lasts. Keep selection and measurements by ID according to the [visual state contract](06-lists-control-flow-and-local-state.md#visual-state-by-identity).

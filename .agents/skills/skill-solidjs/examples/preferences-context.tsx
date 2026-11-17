@@ -37,7 +37,7 @@ export function ThemeSelector() {
       aria-pressed={preferences.theme() === "dark" ? "true" : "false"}
       onClick={preferences.toggleTheme}
     >
-      Tema escuro
+      Dark theme
     </button>
   )
 }

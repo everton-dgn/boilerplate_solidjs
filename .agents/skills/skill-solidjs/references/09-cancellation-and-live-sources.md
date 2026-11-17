@@ -1,16 +1,16 @@
-# Cancelamento e fontes vivas
+# Cancellation and live sources
 
-Base: [revisão verificada](../SKILL.md), reverificada em 2026-09-29.
+Base: [verified revision](../SKILL.md), reverified on 2026-09-29.
 
-## Responsabilidade e limpeza
+## Responsibility and cleanup
 
-Use fonte async do grafo para dados renderizados; effect split para integração imperativa. O apply precisa devolver cleanup síncrono. Draft de setter retido depois da execução perde escritas; não o capture em timer ou Promise. Draft de projection ou store derivada vale até a próxima execução da derivação ([R10](17-known-risks.md#r10-escrita-tardia-pelo-draft-de-uma-projection-é-descartada-sem-aviso)). Reentrada de action após `await` tem [contrato próprio](10-actions-optimism-and-confirmation.md#geradores-e-reentrada).
+Use an async source of the graph for rendered data; a split effect for imperative integration. The apply must return a synchronous cleanup. A setter draft kept after the run loses writes; do not capture it in a timer or Promise. The draft of a projection or derived store holds until the next run of the derivation ([R10](17-known-risks.md#r10-a-late-write-through-the-draft-of-a-projection-is-dropped-without-a-warning)). Action reentry after `await` has its [own contract](10-actions-optimism-and-confirmation.md#generators-and-reentry).
 
-## Operação imperativa
+## Imperative operation
 
-Contrato: compute captura entradas que reiniciam trabalho, inclusive transporte substituível. Apply inicia tarefa e retorna cancelador imediatamente; AbortController por execução e guarda bloqueiam resposta antiga mesmo sem abort cooperativo. Confira vigência novamente entre resolver/aplicar. Utilitário discrimina conclusão/cancelamento/falha unknown; cancelamento não é sucesso. Falha de callback segue à plataforma por microtask.
+Contract: the compute captures the inputs that restart the work, replaceable transport included. The apply starts the task and returns a canceler right away; an AbortController per run and a guard block an old response even without cooperative abort. Check validity again between resolving and applying. The utility tells completion/cancellation/unknown failure apart; cancellation is not success. A callback failure goes to the platform through a microtask.
 
-Receita:
+Recipe:
 ```ts
 createEffect(
   () => ({ id: id(), read: transport() }),
@@ -26,32 +26,32 @@ createEffect(
 )
 ```
 
-Armadilha: callbacks devem ser síncronos; tipo void aceita async. Cadeia observa rejeição acidental, sem cancelar efeito iniciado. Tarefa que ignora abort pode manter Promise pendente até terminar. Braço error do effect trata compute/dependências, não rejeição posterior do apply. Separe cancelado/recuperável/inesperado, sem catch vazio; mensagem pública e observação seguem política de dados sensíveis. Cancelar não desfaz banco/serviço. Ignorar ImageBitmap tardio não o fecha: descarte recurso explicitamente.
+Pitfall: callbacks must be synchronous; the void type accepts async. The chain observes an accidental rejection, without canceling an effect already started. A task that ignores abort can keep the Promise pending until it ends. The error arm of the effect handles the compute/dependencies, not a later rejection of the apply. Separate canceled/recoverable/unexpected, without an empty catch; the public message and the observation follow the sensitive data policy. Canceling does not undo a database/service. Ignoring a late ImageBitmap does not close it: dispose of the resource explicitly.
 
-## Corridas e recursos adiados
+## Races and deferred resources
 
-Contrato: teste A substituída por B, B concluída antes de A, A rejeitando cancelada e descarte antes da resolução; só B aplica. Cubra início síncrono falho, aplicação falha e cleanup duplo. Fonte própria fecha no finally: teste saída antes do próximo valor, rejeição e fim normal. Criar iterador pode preceder corpo/pulls; server functions vinculam trabalho adiado suportado ao contexto da chamada.
+Contract: test A replaced by B, B finished before A, A rejecting while canceled and disposal before the resolution; only B applies. Cover a failed synchronous start, a failed application and a double cleanup. An own source closes in the finally: test leaving before the next value, a rejection and a normal end. Creating an iterator can come before the body/pulls; server functions bind supported deferred work to the context of the call.
 
-Armadilha: perder leitor não reverte servidor. Teste requests concorrentes com fontes lentas/locals distintos, sem request global nem Response/Headers/cache compartilhado de sessão. Testes de ordenação/cancelamento cooperativo do utilitário não provam descarte de owner Solid.
+Pitfall: losing the reader does not revert the server. Test concurrent requests with slow sources/distinct locals, without a global request nor a shared Response/Headers/session cache. Ordering/cooperative cancellation tests of the utility do not prove the disposal of a Solid owner.
 
-## Origem e CORS
+## Origin and CORS
 
-Chamada de outra origem só passa quando `csrf.origin` nomeia o `Origin` da página; `Sec-Fetch-Site: none` e requisição cross-site sem `Origin` são recusadas antes do matcher: veja [configuração e origem](13-server-functions-and-security.md#configuração-e-origem). Aceitação num cliente HTTP fora do navegador não prova o fluxo com preflight e credenciais.
+A call from another origin only passes when `csrf.origin` names the `Origin` of the page; `Sec-Fetch-Site: none` and a cross-site request without `Origin` are refused before the matcher: see [configuration and origin](13-server-functions-and-security.md#configuration-and-origin). Acceptance in an HTTP client outside the browser does not prove the flow with preflight and credentials.
 
-## Hooks e invocação
+## Hooks and invocation
 
-Contrato: provideEvent executa callback exatamente uma vez; zero/duas é inválido, sem retry no provedor. wrapInvocation não chamável é recusado, incluindo null/false improvisados. Siga assinatura pública e teste HTTP/SSR direto.
+Contract: provideEvent runs the callback exactly once; zero/two is invalid, without a retry in the provider. A non-callable wrapInvocation is refused, makeshift null/false included. Follow the public signature and test HTTP/direct SSR.
 
-Armadilha: dois requests podem executar duas vezes; idempotência de criação/reserva/pagamento pertence ao domínio/persistência.
+Pitfall: two requests can run twice; idempotency of creation/reservation/payment belongs to the domain/persistence.
 
-## Estado live
+## Live state
 
-Contrato: live entrega estados sucessivos da mesma consulta e reemite estado atual a cada invocação. Compõe com GET sem implicá-lo: live(GET(fn)). Perda de conexão pode reinvocar com backoff; estado deve ser reconstruível da fonte autoritativa, sem persistir o mesmo grafo servidor. Na base verificada, a chamada abre `<endpoint>/live/<id>` e recebe `text/event-stream` com heartbeat; ao reinvocar, o cliente envia `Last-Event-ID` com o digest do último valor JSON-safe recebido e o servidor omite o primeiro valor reemitido quando o digest é igual. A base anterior não tinha esse transporte nem essa deduplicação.
+Contract: live delivers successive states of the same query and reemits the current state on each invocation. It composes with GET without implying it: live(GET(fn)). A lost connection can reinvoke with backoff; the state must be rebuildable from the authoritative source, without persisting the same server graph. On the verified base, the call opens `<endpoint>/live/<id>` and receives `text/event-stream` with a heartbeat; on reinvocation, the client sends `Last-Event-ID` with the digest of the last JSON-safe value received and the server leaves out the first reemitted value when the digest is equal. The previous base had neither that transport nor that deduplication.
 
-Armadilha: o event stream do transporte não torna live um canal SSE/WebSocket genérico nem persistência durável; `Last-Event-ID` só evita reenviar estado idêntico e não é cursor de eventos. Identifique adapter/teste recuperação. Eventos de entrega única, histórico, auditoria ou incremento precisam de cursor/sequência/dedupe/reconexão próprios; snapshot não é evento.
+Pitfall: the event stream of the transport does not make live a generic SSE/WebSocket channel nor durable persistence; `Last-Event-ID` only avoids resending an identical state and is not an event cursor. Identify the adapter/test the recovery. Single-delivery events, history, audit or increments need their own cursor/sequence/dedupe/reconnection; a snapshot is not an event.
 
-## Coleta após gravação
+## Collection after a write
 
-Contrato: collectFlightData participa de POST com script/header single-flight/coletor registrado, após transformResult, em retorno ou Response/envelope lançado como controle. Erro comum lançado não coleta. foldFlightData retorna logo em Response com corpo próprio. Falha de coleta não desfaz gravação confirmada. Separe domínio/invalidação/dados adicionais, preserve Set-Cookie separado e use adapter, sem remontar protocolo privado.
+Contract: collectFlightData takes part in a POST with a single-flight script/header/registered collector, after transformResult, in a return or a Response/envelope thrown as a control. A plain thrown error does not collect. foldFlightData returns right away on a Response with its own body. A collection failure does not undo a confirmed write. Separate domain/invalidation/additional data, keep Set-Cookie separate and use the adapter, without reassembling a private protocol.
 
-Armadilha: configurar hook/chamar direto não prova coleta HTTP. Catch da coleta loga erro original via console.error inclusive em produção, fora da proteção da invocação. Normalize dentro da coleta e represente fatia indisponível conforme adapter; não devolva erro bruto nem substitua console global. Esse caminho não prova vazamento de aplicação concreta. Reconciliação não deve reenviar mutação confirmada.
+Pitfall: configuring a hook/calling directly does not prove the HTTP collection. The catch of the collection logs the original error through console.error even in production, outside the protection of the invocation. Normalize inside the collection and represent an unavailable slice according to the adapter; do not return a raw error nor replace the global console. That path does not prove a leak in a concrete application. Reconciliation must not resend a confirmed mutation.

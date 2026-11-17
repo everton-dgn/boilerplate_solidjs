@@ -1,32 +1,32 @@
-# Exemplos SolidJS 2
+# SolidJS 2 examples
 
-Exemplos adaptáveis à base registrada no [frontmatter da skill](../SKILL.md).
+Examples adaptable to the base recorded in the [frontmatter of the skill](../SKILL.md).
 
-## Exemplos pequenos
+## Small examples
 
-- [Contador](counter.tsx): derivação e effect em duas fases.
-- [Contexto](preferences-context.tsx): provider do Solid 2 com estado por instância.
-- [Ref observada](observed-ref.tsx): setup sob owner e cleanup retornado de `onSettled`.
+- [Counter](counter.tsx): derivation and a two-phase effect.
+- [Context](preferences-context.tsx): a Solid 2 provider with per-instance state.
+- [Observed ref](observed-ref.tsx): setup under an owner and a cleanup returned from `onSettled`.
 
-## Tarefas com otimismo
+## Tasks with optimism
 
-[Tarefas](tasks.tsx) recebe a API por prop. Ela é capturada com `untrack` e precisa permanecer estável por instância; trocar backend ou contexto de usuário exige remontar o modelo.
+[Tasks](tasks.tsx) receives the API through a prop. It is captured with `untrack` and must stay stable per instance; changing the backend or the user context requires remounting the model.
 
-Os [tipos](task-types.ts) e o [parser](task-validation.ts) fazem parte do exemplo. O adapter chama o parser na entrada. `api.create` deve aceitar a ID de correlação enviada, e `api.list` deve devolvê-la após a confirmação, para preservar a identidade da linha.
+The [types](task-types.ts) and the [parser](task-validation.ts) are part of the example. The adapter calls the parser at the input. `api.create` must accept the correlation ID sent, and `api.list` must return it after the confirmation, to keep the identity of the row.
 
-- Formulário e rascunho ficam fora de `Loading` e `Errored`, permanecendo editáveis durante carga e falha.
-- Um `Set` comum reserva `form` e `task:<id>` antes da action. O guard é local à instância; a flag otimista por chave alimenta `disabled` e `aria-busy`.
-- Mensagens comuns são escritas após a Promise da action. Escrevê-las no mesmo tick da chamada as reteria até o assentamento.
-- Gravação confirmada com refresh falho informa que salvou, limpa o rascunho salvo e mantém o erro da lista. Falha da gravação preserva o campo e desfaz a linha otimista.
+- The form and the draft stay outside `Loading` and `Errored`, remaining editable during loading and failure.
+- A plain `Set` reserves `form` and `task:<id>` before the action. The guard is local to the instance; the optimistic flag per key feeds `disabled` and `aria-busy`.
+- Plain messages are written after the Promise of the action. Writing them in the same tick as the call would hold them until the settle.
+- A confirmed write with a failed refresh says that it saved, clears the saved draft and keeps the error of the list. A write failure keeps the field and undoes the optimistic row.
 
-Cada envio cria uma nova ID. Se o servidor gravou antes de a resposta falhar, uma nova tentativa precisa reutilizar a ID ou ser deduplicada pelo backend. A API deste exemplo não cancela requests; desmontar a tela não garante interromper o transporte.
+Each submission creates a new ID. If the server wrote before the response failed, a new attempt must reuse the ID or be deduplicated by the backend. The API of this example does not cancel requests; unmounting the screen does not guarantee stopping the transport.
 
-## Integrações
+## Integrations
 
-[Lista com estado local](list-with-local-state.tsx) mantém seleção por ID separada dos registros otimistas. A seleção dura enquanto o pai existir; filtro e paginação não a apagam.
+[List with local state](list-with-local-state.tsx) keeps the selection by ID separate from the optimistic records. The selection lasts while the parent exists; filtering and pagination do not erase it.
 
-[Operação cancelável](cancellable-operation.ts) impede aplicação tardia e notifica o `AbortSignal`; uma operação que ignora abort pode continuar e devolver recurso que ainda precisa de descarte.
+[Cancellable operation](cancellable-operation.ts) prevents a late application and notifies the `AbortSignal`; an operation that ignores abort can keep going and return a resource that still needs disposal.
 
-[Sincronização externa](external-sync.ts) chama essa operação no apply de um effect. Seu accessor precisa ler todas as entradas reativas no compute. `apply` e `fail` são síncronos; a cadeia observa rejeições acidentais, mas não desfaz efeitos já iniciados.
+[External sync](external-sync.ts) calls that operation in the apply of an effect. Its accessor must read every reactive input in the compute. `apply` and `fail` are synchronous; the chain observes accidental rejections, but does not undo effects already started.
 
-Para regressões desses contratos, consulte a [seleção de cenários](regression-matrix.md).
+For regressions of these contracts, see the [scenario selection](regression-matrix.md).

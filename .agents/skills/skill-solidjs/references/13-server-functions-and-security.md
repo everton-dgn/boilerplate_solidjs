@@ -1,40 +1,40 @@
-# Server functions e segurança
+# Server functions and security
 
-Base: [revisão verificada](../SKILL.md), reverificada em 2026-09-29.
+Base: [verified revision](../SKILL.md), reverified on 2026-09-29.
 
-## Compilação e corpo registrado
+## Compilation and registered body
 
-Contrato: use server exige transformação cliente/servidor, manifesto, bootstrap e handler HTTP, sem criar backend em site estático. Use adapter e @solidjs/web/server-functions; entradas client/server são para integrações, sem remontar protocolo. Filtro padrão do plugin é `src/**/*.{jsx,tsx,tsrx,ts,js,mjs,cjs}`; inclua fixtures. Build verde fora do filtro pode manter corpo servidor no cliente.
+Contract: use server requires a client/server transform, a manifest, a bootstrap and an HTTP handler, without creating a backend in a static site. Use the adapter and @solidjs/web/server-functions; the client/server entries are for integrations, without reassembling the protocol. The default filter of the plugin is `src/**/*.{jsx,tsx,tsrx,ts,js,mjs,cjs}`; include fixtures. A green build outside the filter can keep the server body in the client.
 
-Armadilha: `validated(schema, async (...) => { "use server" })` pode registrar função interna e envolver só a referência cliente. HTTP equivalente ignorou wrapper, com zero validações; sem build completo. Valide/autorize no corpo registrado. Em módulo use server, wrapper exportado pode ser registro: confira output. Exporte só funções; constantes/schemas/sentinelas não foram testados e ficam em outro módulo.
+Pitfall: `validated(schema, async (...) => { "use server" })` can register the inner function and wrap only the client reference. An equivalent HTTP call ignored the wrapper, with zero validations; without a full build. Validate/authorize in the registered body. In a use server module, an exported wrapper can be the registration: check the output. Export only functions; constants/schemas/sentinels were not tested and stay in another module.
 
-Receita: confira referência cliente, ausência de marcador sintético do corpo em bundle/chunks/sourcemaps públicos, registro servidor e HTTP real. Use marcador sintético, nunca segredo ou credencial real. Marcador ausente não prova remoção de módulo importado, mesmo com import estático usado só dentro da função; inspecione bundle próprio.
+Recipe: check the client reference, the absence of a synthetic marker of the body in public bundles/chunks/sourcemaps, the server registration and real HTTP. Use a synthetic marker, never a real secret or credential. An absent marker does not prove the removal of an imported module, even with a static import used only inside the function; inspect your own bundle.
 
-## Validação e autorização
+## Validation and authorization
 
-Validação e autorização pertencem ao corpo efetivamente registrado, inclusive para chamada HTTP forjada. O decoder remove recursivamente `__proto__`, `constructor` e `prototype` de objetos e entradas Map/Set, mas não valida domínio ou permissão. Um wrapper que protege só a referência cliente não protege o endpoint.
+Validation and authorization belong to the effectively registered body, also for a forged HTTP call. The decoder recursively removes `__proto__`, `constructor` and `prototype` from objects and Map/Set entries, but does not validate domain or permission. A wrapper that protects only the client reference does not protect the endpoint.
 
-## Métodos, limites e metadados
+## Methods, limits and metadata
 
-Contrato: padrão POST, GET(fn) declara leitura. Handler aceita POST sempre; GET/HEAD só em declaradas GET, HEAD sem corpo com status/headers equivalentes; demais métodos 405. GET em função comum: Allow: POST. GET/HEAD declarados dispensam gate de origem por padrão e podem ser invocados de outra origem com cookies do ambiente; csrf.protectDeclaredReads true reativa proteção quando deploy não depende de cache compartilhado por origem. Autenticação/autorização/cache continuam obrigatórios.
+Contract: POST by default, GET(fn) declares a read. The handler always accepts POST; GET/HEAD only on declared GETs, HEAD without a body with equivalent status/headers; other methods 405. GET on an ordinary function: Allow: POST. Declared GET/HEAD skip the origin gate by default and can be invoked from another origin with the cookies of the environment; csrf.protectDeclaredReads true turns the protection back on when the deploy does not rely on a cache shared by origin. Authentication/authorization/cache stay mandatory.
 
-Contrato: bodySizeLimit padrão 1 MiB recusa excesso com 413 antes de decodificar; maxArguments padrão 1000 recusa com 400. withMeta anexa metadata; getServerFunctionMetadata/isServerFunction servem à inspeção, não autorização. Propriedades antigas .GET/.withOptions não são API atual.
+Contract: bodySizeLimit, 1 MiB by default, refuses the excess with 413 before decoding; maxArguments, 1000 by default, refuses with 400. withMeta attaches metadata; getServerFunctionMetadata/isServerFunction serve inspection, not authorization. The old .GET/.withOptions properties are not the current API.
 
-Armadilha: GET não muta; query string não leva segredo/token/dado sensível registrado/cacheado. Limites não validam domínio; leitura autenticada exige isolamento.
+Pitfall: GET does not mutate; a query string does not carry a secret/token/sensitive data that gets logged/cached. Limits do not validate the domain; an authenticated read requires isolation.
 
-## Configuração e origem
+## Configuration and origin
 
-Contrato: configureServerFunctionsServer aceita endpoint padrão /_server alinhado ao cliente/base path; csrf ligado por padrão; secret usado no flash no-JS; wrapInvocation envolvendo HTTP e chamada direta SSR; provideEvent ligado a provideRequestEvent de @solidjs/web/storage ou equivalente; handleNoJS, cujo null desliga convenção; bodySizeLimit/maxArguments. Csrf false só se outra camada confiável protege endpoint. handleServerFunctionRequest aceita por request createEvent, provideEvent, wrapInvocation, onError, transformResult, handleNoJS, csrf, codec e limites. Wrapper por request cobre só invocação endereçada; chamadas aninhadas exigem política global.
+Contract: configureServerFunctionsServer accepts the default endpoint /_server aligned with the client/base path; csrf on by default; a secret used in the no-JS flash; wrapInvocation wrapping HTTP and the direct SSR call; provideEvent linked to provideRequestEvent from @solidjs/web/storage or an equivalent; handleNoJS, whose null turns off the convention; bodySizeLimit/maxArguments. Csrf false only if another trusted layer protects the endpoint. handleServerFunctionRequest accepts per request createEvent, provideEvent, wrapInvocation, onError, transformResult, handleNoJS, csrf, codec and limits. A per-request wrapper only covers the addressed invocation; nested calls require a global policy.
 
-Armadilha: no @solidjs/web da base verificada, com Sec-Fetch-Site, same-origin libera e none recusa sempre; same-site/cross-site recusam sem Origin ou sem csrf.origin configurado e, fora isso, seguem o matcher string/array/função (só true literal admite). Origin admitido de outra origem recebe CORS: Access-Control-Allow-Origin ecoando Origin, Vary: Origin, headers do protocolo expostos e preflight OPTIONS 204; Access-Control-Allow-Credentials só com csrf.allowCredentials true, e cookie cross-site ainda exige SameSite=None; Secure. Sem Sec-Fetch-Site entram Origin/Referer e o mesmo matcher; sem metadado nenhum, só allowRequestsWithoutOriginCheck libera. Aceitação num cliente HTTP fora do navegador não prova preflight e credenciais; não remova proteção para contornar 403. Provedor executa uma vez por invocação, sem garantir idempotência entre requests. Detalhes de transporte ficam em 09-cancellation-and-live-sources.md.
+Pitfall: in the @solidjs/web of the verified base, with Sec-Fetch-Site, same-origin passes and none always refuses; same-site/cross-site refuse without an Origin or without a configured csrf.origin and, otherwise, follow the string/array/function matcher (only a literal true admits). An admitted Origin from another origin gets CORS: Access-Control-Allow-Origin echoing the Origin, Vary: Origin, exposed protocol headers and an OPTIONS 204 preflight; Access-Control-Allow-Credentials only with csrf.allowCredentials true, and a cross-site cookie still requires SameSite=None; Secure. Without Sec-Fetch-Site, Origin/Referer and the same matcher come in; without any metadata, only allowRequestsWithoutOriginCheck lets it through. Acceptance in an HTTP client outside the browser does not prove preflight and credentials; do not remove the protection to get around a 403. The provider runs once per invocation, without guaranteeing idempotency between requests. Transport details are in 09-cancellation-and-live-sources.md.
 
-Armadilha: configure um provedor de evento explícito: `configureServerFunctionsServer({ provideEvent: (event, fn) => provideRequestEvent(event, fn) })`. Sem `provideEvent`, o runtime cai para o `AsyncLocalStorage` global que `provideRequestEvent` instala na primeira chamada; a chamada só lança `No request event provider` se nenhum dos dois existir ainda, e o resultado depende da ordem das requisições no processo. `createEvent` é opção por requisição de `handleServerFunctionRequest`; passado a `configureServerFunctionsServer`, é aceito sem erro e ignorado, e `locals` fica vazio.
+Pitfall: configure an explicit event provider: `configureServerFunctionsServer({ provideEvent: (event, fn) => provideRequestEvent(event, fn) })`. Without `provideEvent`, the runtime falls back to the global `AsyncLocalStorage` that `provideRequestEvent` installs on its first call; the call only throws `No request event provider` if neither of them exists yet, and the result depends on the order of the requests in the process. `createEvent` is a per-request option of `handleServerFunctionRequest`; passed to `configureServerFunctionsServer`, it is accepted without an error and ignored, and `locals` stays empty.
 
-## Cache e redirect seguro
+## Cache and safe redirect
 
-Contrato: handler responde Cache-Control no-store salvo política própria em respond com headers ou Response. Publicidade só para leitura independente de sessão; dados de usuário pedem private, no-store em todos os ramos, inclusive 401/redirect. Redirect copia destino para Location sem validar.
+Contract: the handler answers Cache-Control no-store unless there is an own policy in respond with headers or a Response. Public caching only for a read independent of the session; user data calls for private, no-store on every branch, 401/redirect included. Redirect copies the target to Location without validating it.
 
-Receita:
+Recipe:
 ```ts
 type NextTarget = { next: string | null; origin: string }
 function safeNextPath({ next, origin }: NextTarget): string {
@@ -53,15 +53,15 @@ function redirectAfterLogin(request: Request): Response {
 }
 ```
 
-Armadilha: prefixo / aceita //evil.example e /\evil.example. Mesma origem aceita /a/..//evil.example, mas pathname normalizado //evil.example vira host externo em Location. Rejeite https externo/javascript/data. Tipagem não isola cache.
+Pitfall: a / prefix accepts //evil.example and /\evil.example. Same origin accepts /a/..//evil.example, but the normalized pathname //evil.example becomes an external host in Location. Reject external https/javascript/data. Typing does not isolate the cache.
 
-## Política cliente e cancelamento
+## Client policy and cancellation
 
-Contrato: configureServerFunctionsClient.prepareRequest é hook único; componha políticas. Método ausente/alterado é recusado antes do fetch; só method é verificado. Preserve init/signal; trocar body é permitido. Invoke aceita só signal/keepalive/priority.
+Contract: configureServerFunctionsClient.prepareRequest is a single hook; compose policies. A missing/changed method is refused before the fetch; only method is checked. Keep init/signal; replacing the body is allowed. Invoke only accepts signal/keepalive/priority.
 
-No build de produção com o runtime padrão, o `@solidjs/vite-plugin` envolve `configureServerFunctionsClient`, importada da raiz ou de `/client`, e põe o header `X-Server-Function-Build` em `init.headers` das chamadas não GET antes do hook do app. O hook precisa preservar esse header; o servidor responde 409 a outro build e o client rejeita com `unknownFunction: true`. Fonte: `dist` do plugin instalado, sem sonda própria.
+In the production build with the default runtime, `@solidjs/vite-plugin` wraps `configureServerFunctionsClient`, imported from the root or from `/client`, and puts the `X-Server-Function-Build` header in the `init.headers` of non-GET calls before the hook of the app. The hook must keep that header; the server answers 409 to another build and the client rejects with `unknownFunction: true`. Source: the `dist` of the installed plugin, without a probe of its own.
 
-Receita:
+Recipe:
 ```ts
 configureServerFunctionsClient({
   prepareRequest: init => {
@@ -70,46 +70,46 @@ configureServerFunctionsClient({
     return { ...init, headers }
   }
 })
-// Chamada com cancelamento:
+// Call with cancellation:
 invoke(save, { signal: controller.signal, keepalive: true, priority: "high" }, input)
 ```
 
-Armadilha: `headers` aceita objeto, pares ou `Headers`; spread de objeto não preserva todas essas formas. Init sem signal passa no guard se method correto, perdendo cancelamento. Invoke com method/headers/body/timeout lança indicando GET/prepareRequest/argumentos. Timeout usa AbortSignal composto quando suportado; retry/dedupe são da camada de dados. Abort rejeita/cancela transporte sem desfazer backend; repetição não idempotente exige contrato.
+Pitfall: `headers` accepts an object, pairs or `Headers`; an object spread does not keep all of those forms. An init without a signal passes the guard if the method is right, losing cancellation. Invoke with method/headers/body/timeout throws pointing to GET/prepareRequest/arguments. A timeout uses a composed AbortSignal when supported; retry/dedupe belong to the data layer. Abort rejects/cancels the transport without undoing the backend; a non-idempotent repetition requires a contract.
 
-## Codecs e framing
+## Codecs and framing
 
-Contrato: transporte usa HTTP natural quando aplicável e JSON no restante. Date, Map, Set, arrays tipados e ciclos exigem opt-in correspondente. enableRichArguments de @solidjs/web/server-functions/rich-args habilita escrita do codec de argumentos; resultados têm contrato próprio independente desse opt-in. Plugins usam createPlugin/OpaqueReference da instância de serialização do runtime.
+Contract: the transport uses natural HTTP when applicable and JSON for the rest. Date, Map, Set, typed arrays and cycles require the matching opt-in. enableRichArguments from @solidjs/web/server-functions/rich-args enables writing the arguments codec; results have their own contract independent from that opt-in. Plugins use createPlugin/OpaqueReference of the serialization instance of the runtime.
 
-Armadilha: seroval separado pode incompatibilizar protocolo sem erro de tipo. Serialization/frames são integração avançada; opt-in não valida payload. Runtime remove Content-Length, Content-Encoding e Transfer-Encoding declarados pela função, tanto HTTP quanto envelope de stream, pois framing pertence ao transporte.
+Pitfall: a separate seroval can make the protocol incompatible without a type error. Serialization/frames are an advanced integration; an opt-in does not validate the payload. The runtime removes Content-Length, Content-Encoding and Transfer-Encoding declared by the function, both in HTTP and in the stream envelope, because framing belongs to the transport.
 
-## Respostas e endereço natural
+## Responses and natural address
 
-Contrato: endereço programático difere do natural de form action, separando serializado/HTTP no cache. Respond combina valor/metadados; redirect/reload sinalizam navegação/revalidação ao adapter, sem refazer todo memo por chave textual.
+Contract: the programmatic address differs from the natural one of a form action, separating serialized/HTTP in the cache. Respond combines a value/metadata; redirect/reload signal navigation/revalidation to the adapter, without redoing every memo by textual key.
 
-Contrato: no caminho com script medido, redirect retornado dá 200 sem Location, com X-Server-Function-Redirect no formato `<status> <url-absoluta>`; endereço natural dá 302. Reload dá 200 com X-Revalidate. Return/throw de respond status 400 preservam status/corpo, mas só throw marca X-Server-Function-Error true e rejeição RPC. decodeRedirectHeaderValue aceita absoluto http(s) e status reconhecido; javascript/data/inválido ou header ausente retornam undefined, tratado como sem redirect. Não monte endpoint/headers internos na UI.
+Contract: on the measured path with a script, a returned redirect gives 200 without Location, with X-Server-Function-Redirect in the format `<status> <absolute-url>`; the natural address gives 302. Reload gives 200 with X-Revalidate. Return/throw of respond with status 400 keep status/body, but only throw marks X-Server-Function-Error true and an RPC rejection. decodeRedirectHeaderValue accepts an absolute http(s) URL and a recognized status; javascript/data/invalid or a missing header return undefined, treated as no redirect. Do not assemble internal endpoints/headers in the UI.
 
-Armadilha: domínio esperado é público/tipado. Return/throw mudam rejeição; sem Location programática ainda pode haver redirect.
+Pitfall: the expected domain result is public/typed. Return/throw change the rejection; without a programmatic Location there can still be a redirect.
 
-## Formulário sem JavaScript
+## Form without JavaScript
 
-Contrato: documental. fn.url é endereço natural usado em form action. Browser form POST recebe createNoJSHandler por padrão; handleNoJS global/por request substitui, e createNoJSHandler({base}) estende a convenção a toda chamada sem script. Resultado fica em cookie flash de uso único por 60 segundos, cifrado AES-GCM, limite 4 KB. Acima disso descarta eco dos campos e truncated indica resumo. decodeFlashCookie retorna Promise<FlashSubmission | undefined>, exige await.
+Contract: documented. fn.url is the natural address used in a form action. A browser form POST gets createNoJSHandler by default; a global/per-request handleNoJS replaces it, and createNoJSHandler({base}) extends the convention to every call without a script. The result stays in a single-use flash cookie for 60 seconds, AES-GCM encrypted, with a 4 KB limit. Above that it drops the echo of the fields and truncated signals a summary. decodeFlashCookie returns Promise<FlashSubmission | undefined>, which requires await.
 
-Armadilha: sem await, flash parece vazio. Secret igual entre instâncias post/render; ausente usa segredo do plugin por build, sem ambos redireciona sem resultado. Alta entropia fora do Git. Formulário/router repopula campos/erros; RPC onSubmit não implementa progressive enhancement. Teste browser sem JS e instâncias com segredo igual/diferente.
+Pitfall: without await, the flash looks empty. The secret must be equal between post/render instances; when missing it uses the per-build secret of the plugin, and without both it redirects without a result. High entropy, outside Git. The form/router repopulates fields/errors; an RPC onSubmit does not implement progressive enhancement. Test a browser without JS and instances with an equal/different secret.
 
-Contrato: o parser do corpo distingue quatro casos: corpo vazio sem tag de formato (zero argumentos), tag válida, tag desconhecida (recusada com `TypeError` citando descompasso de versão) e POST de formulário sem tag, que segue o ramo de navegação sem JavaScript quando `Sec-Fetch-Mode` é `navigate` ou está ausente e é recusado com 400 para qualquer outro valor, como `cors`.
+Contract: the body parser tells four cases apart: an empty body without a format tag (zero arguments), a valid tag, an unknown tag (refused with a `TypeError` citing a version mismatch) and a form POST without a tag, which follows the no-JavaScript navigation branch when `Sec-Fetch-Mode` is `navigate` or missing and is refused with 400 for any other value, such as `cors`.
 
-## Erros e logs
+## Errors and logs
 
-Contrato: erro comum lançado por HTTP é sanitizado com DEV desligado, salvo hook explícito ou markSafeError. Condição development liga DEV e entrada padrão desliga; NODE_ENV sozinho não prova artefato. setServerFunctionsDev(true) liga modo e permite mensagem/stack originais; nunca habilite em produção e teste isoladamente, pois muda estado compartilhado. Falha direta SSR reporta/relança original ao chamador; Responses/envelopes de controle têm outro contrato.
+Contract: a plain error thrown over HTTP is sanitized with DEV off, except for an explicit hook or markSafeError. The development condition turns DEV on and the default entry turns it off; NODE_ENV alone does not prove the artifact. setServerFunctionsDev(true) turns the mode on and allows the original message/stack; never enable it in production and test it in isolation, because it changes shared state. A direct SSR failure reports/rethrows the original to the caller; control Responses/envelopes have another contract.
 
-Armadilha: sanitizeServerError só atua no throw. Throw de Error comum chega como Internal Server Error; return Error atravessa com message/cause/propriedades, inclusive não enumeráveis cujo descriptor tem value. Instância de classe não Error volta pela mesma referência, sem filtrar conteúdo. Travessia só usa chaves string, não Symbol; getters só são lidos quando enumeráveis ou descriptor tem value. Isso não saneia SDK/domínio. MarkSafeError usa Symbol.for("solid.SafeError") e deve marcar só erro público, nunca tornar seguro retorno bruto.
+Pitfall: sanitizeServerError only acts on a throw. A throw of a plain Error arrives as Internal Server Error; return Error goes through with message/cause/properties, non-enumerable ones whose descriptor has a value included. An instance of a non-Error class comes back by the same reference, without filtering content. The traversal only uses string keys, not Symbol; getters are only read when enumerable or when the descriptor has a value. That does not sanitize an SDK/domain. MarkSafeError uses Symbol.for("solid.SafeError") and must only mark a public error, never make a raw return safe.
 
-Contrato: onError servidor pode mapear valor destinado ao cliente sem sanitização adicional. Não retorne/logue original; proteja operação e validação de saída antes do transporte, selecionando campos públicos e criando erros novos. Não revele existência de recurso privado. Não habilite logs com tokens/cookies/payload por conveniência.
+Contract: the server onError can map a value meant for the client without additional sanitization. Do not return/log the original; protect the operation and the output validation before the transport, selecting public fields and creating new errors. Do not reveal the existence of a private resource. Do not enable logs with tokens/cookies/payload for convenience.
 
-## Server components experimentais
+## Experimental server components
 
-Contrato: prévia fora da estabilidade 2.0. Adoção explícita: tarefa de UI não autoriza arquitetura/transporte/deploy experimental. Server function pode retornar componente consumido por dynamic. Argumentos vão ao servidor; props do componente retornado são slots/ligações cliente e não refazem consulta sozinhas. $key é identidade do protocolo de slots, não key universal de lista nem índice substituto. asyncArg aceita Promise/AsyncIterable em prop de slot preservando tipo resolvido T, e continua experimental.
+Contract: a preview outside the 2.0 stability. Explicit adoption: a UI task does not authorize an experimental architecture/transport/deploy. A server function can return a component consumed by dynamic. Arguments go to the server; the props of the returned component are client slots/bindings and do not redo the query by themselves. $key is the identity of the slot protocol, not a universal list key nor a replacement index. asyncArg accepts a Promise/AsyncIterable in a slot prop keeping the resolved type T, and stays experimental.
 
-Receita: `serverFunctions: { components: true }`, ou components "external" com ligação documental pelo host. Reutiliza endpoint/compilação/segurança RPC. Start SSR gerado chama installServerComponents de @solidjs/web/frames antes de hydrate; entrada autoral chama uma vez e servidor recebe plugin de render de frames.
+Recipe: `serverFunctions: { components: true }`, or components "external" with a documented binding by the host. It reuses the RPC endpoint/compilation/security. The generated SSR start calls installServerComponents from @solidjs/web/frames before hydrate; an authored entry calls it once and the server receives the frames render plugin.
 
-Armadilha: sideEffects false em @solidjs/web permite remover import sem chamada. Sem use client/convenções Next.js inventadas. Alinhe cliente/servidor/codec; teste produção/HMR e manifesto completo. Markup/props podem vazar dados. O router instalado junto da base verificada exporta `serverRouteComponent` pela raiz (o router da base anterior não o tinha); seu contrato não foi validado nesta skill. UI/formulários comuns podem usar componentes cliente/async/SSR/RPC.
+Pitfall: sideEffects false in @solidjs/web allows removing an import without a call. No use client/made-up Next.js conventions. Align client/server/codec; test production/HMR and the full manifest. Markup/props can leak data. The router installed with the verified base exports `serverRouteComponent` from the root (the router of the previous base did not have it); its contract was not validated in this skill. Ordinary UI/forms can use client/async/SSR/RPC components.

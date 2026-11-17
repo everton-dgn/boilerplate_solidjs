@@ -1,24 +1,24 @@
-# Reatividade e ownership
+# Reactivity and ownership
 
-## Fonte, derivação, owner e observador
+## Source, derivation, owner and observer
 
-Contrato: fonte guarda/produz estado; derivação calcula; owner controla vida/contexto/limpeza; observador rastreia. Owner não implica tracking, e `untrack` mantém o owner. Componente monta uma vez; JSX, memos e compute rastreiam. Callbacks estruturais também não reexecutam a cada atualização.
+Contract: a source keeps/produces state; a derivation computes; an owner controls life/context/cleanup; an observer tracks. An owner does not imply tracking, and `untrack` keeps the owner. A component mounts once; JSX, memos and computes track. Structural callbacks do not rerun on every update either.
 
-Receita: leia `props.name` no JSX ou em accessor/memo. Use memo para cálculo relevante, compartilhado, igualdade ou fonte async, sem encapsular toda concatenação trivial. Getter de objeto preserva leitura se o consumidor o acessar sob tracking. Confira quem rastreia, onde escreve, quem descarta e o que espera (confirmado, pending, rede ou DOM).
+Recipe: read `props.name` in the JSX or in an accessor/memo. Use a memo for a relevant or shared computation, equality or an async source, without wrapping every trivial concatenation. An object getter keeps the read if the consumer accesses it under tracking. Check who tracks, where it writes, who disposes and what it waits for (confirmed, pending, network or DOM).
 
-Armadilha: copiar/desestruturar props no setup congela o valor. Leitura em evento não assina; criar memos/effects por evento repete primitivas fora do lifecycle.
+Pitfall: copying/destructuring props in the setup freezes the value. A read in an event does not subscribe; creating memos/effects per event repeats primitives outside the lifecycle.
 
-## Escolha da primitiva
+## Choosing the primitive
 
-Contrato: `createSignal(value)` guarda estado independente; `createMemo(fn)` deriva leitura; `createSignal(fn)` permite sobrescrita temporária; store permite escrita por propriedade; projection deriva estrutura sem setter; optimistic guarda tentativa transitória; effect sincroniza sistema externo. Seleção granular pode usar projection por ID.
+Contract: `createSignal(value)` keeps independent state; `createMemo(fn)` derives a read; `createSignal(fn)` allows a temporary override; a store allows a write per property; a projection derives a structure without a setter; optimistic keeps a transient attempt; an effect syncs an external system. Granular selection can use a projection by ID.
 
-Armadilha: mantenha essas primitivas sob o owner apropriado. `Accessor<T>` é `() => T`; `SourceAccessor<T>` também identifica a fonte, necessária para `refresh`. Encapsular numa função qualquer perde essa identidade. Setter retorna o valor escrito: apply com arrow sem chaves pode recebê-lo como cleanup inválido. Evite signal espelhado para derivação.
+Pitfall: keep these primitives under the right owner. `Accessor<T>` is `() => T`; `SourceAccessor<T>` also identifies the source, which `refresh` needs. Wrapping it in an arbitrary function loses that identity. The setter returns the written value: an apply with an arrow without braces can receive it as an invalid cleanup. Avoid a mirrored signal for a derivation.
 
-## Escritas e pureza
+## Writes and purity
 
-Contrato: setters, actions e `refresh` pertencem a handlers, passos de action, apply de effect ou `onSettled`, fora dos corpos de construção/computação. Em dev, signal externo ou local escrito no corpo de root, `untrack` desse corpo, compute de memo, componente, children de contexto ou setter de store na raiz lança `REACTIVE_WRITE_IN_OWNED_SCOPE`. Guard não para effect independente. O topo de `render` também é construção no runtime, sem caso próprio.
+Contract: setters, actions and `refresh` belong to handlers, action steps, an effect apply or `onSettled`, outside the build/compute bodies. In dev, an external or local signal written in the body of a root, in the `untrack` of that body, in a memo compute, in a component, in context children or a store setter at the root throws `REACTIVE_WRITE_IN_OWNED_SCOPE`. A guard does not stop an independent effect. The top of `render` is also construction in the runtime, without a case of its own.
 
-Receita:
+Recipe:
 
 ```ts
 createRoot(() => {
@@ -28,17 +28,17 @@ createRoot(() => {
 })
 ```
 
-Contrato: apply, `onSettled` e código após o retorno de `createRoot` podem escrever. `ownedWrite: true` existe só em `SignalOptions`, permite escrita até em compute de memo e deve ficar restrito à infraestrutura; `StoreOptions` contém `name` e `shallow`, sem essa exceção.
+Contract: the apply, `onSettled` and code after `createRoot` returns can write. `ownedWrite: true` only exists in `SignalOptions`, allows a write even in a memo compute and must stay restricted to infrastructure; `StoreOptions` holds `name` and `shallow`, without that exception.
 
-O guard depende do motor resolvido: no cliente dev, escrita no root lança; no padrão, passa silenciosamente; no servidor, registra `SERVER_WRITE`. Misturar core e motor de builds diferentes pode deixar `DEV` indefinido com guard ativo, ou expor core dev sem o guard. A condição de exportação `test` não equivale ao modo test do Vitest; confira a [postura do runner](../../skill-solidjs-testing/references/vitest-config.md#canário-de-postura).
+The guard depends on the resolved engine: in the dev client, a write in the root throws; in the default build, it passes silently; on the server, it logs `SERVER_WRITE`. Mixing a core and an engine from different builds can leave `DEV` undefined with the guard on, or expose a dev core without the guard. The `test` export condition is not equivalent to the Vitest test mode; check the [runner posture](../../skill-solidjs-testing/references/vitest-config.md#posture-canary).
 
-Armadilha: silêncio e `DEV` indefinido não provam conformidade. `untrack(accessor)` equivale a `untrack(() => accessor())` e não autoriza escrita.
+Pitfall: silence and an undefined `DEV` do not prove compliance. `untrack(accessor)` is equivalent to `untrack(() => accessor())` and does not authorize a write.
 
-## Microtasks e flush
+## Microtasks and flush
 
-Contrato: escritas síncronas agrupam e publicam no flush. No handler, ler logo após setter retorna o valor anterior. Atualizadores compõem; `flush()` drena e `flush(fn)` também devolve o retorno de `fn`, como `42`. `batch` não é exportado.
+Contract: synchronous writes are grouped and publish on flush. In a handler, reading right after the setter returns the previous value. Updaters compose; `flush()` drains and `flush(fn)` also returns the result of `fn`, such as `42`. `batch` is not exported.
 
-Receita:
+Recipe:
 
 ```ts
 function incrementTwice() {
@@ -47,13 +47,13 @@ function incrementTwice() {
 }
 ```
 
-Armadilha: guarde o próximo valor localmente para decisões imediatas. Não faça flush por tecla, para liberar action ou no apply. Timer não prova assentamento de grafo/action/rede; espere observável.
+Pitfall: keep the next value locally for immediate decisions. Do not flush per keystroke, to release an action or in the apply. A timer does not prove that the graph/action/network settled; wait for an observable.
 
-## Escrita retida numa transição
+## Write held in a transition
 
-Contrato: render effect lendo fonte async tornada pendente pela escrita retém o commit até a resposta. Bindings JSX usam render effect; prova usa primitiva direta, sem JSX. Nos dois builds, após flush, handler lê confirmado, `latest(source)` lê valor em voo, `isPending(() => data())` é true e effects que só leem o signal também esperam. Resposta superada não publica: para IDs 1, 2, 3, com 3 resolvendo antes de 2, só `1:one` e `3:three` aparecem.
+Contract: a render effect reading an async source made pending by the write holds the commit until the response. JSX bindings use a render effect; the proof uses the primitive directly, without JSX. In both builds, after flush, the handler reads the confirmed value, `latest(source)` reads the in-flight value, `isPending(() => data())` is true and effects that only read the signal also wait. A superseded response does not publish: for IDs 1, 2, 3, with 3 resolving before 2, only `1:one` and `3:three` show up.
 
-Receita:
+Recipe:
 
 ```ts
 function select(nextId: number) {
@@ -62,21 +62,21 @@ function select(nextId: number) {
 }
 ```
 
-Armadilha: `report(id())` ainda usa o confirmado durante retenção. `latest` não confirma chegada e lança `NotReadyError` se a fonte nunca resolveu; depois da resposta entrega o valor. Se apenas `createEffect` lê o async, a escrita não fica retida: effects de ID publicam cada passo e só o leitor async espera, sem par rasgado `2:one`.
+Pitfall: `report(id())` still uses the confirmed value during the hold. `latest` does not confirm arrival and throws `NotReadyError` if the source never resolved; after the response it delivers the value. If only `createEffect` reads the async source, the write is not held: ID effects publish each step and only the async reader waits, without a torn `2:one` pair.
 
-## Dependências condicionais
+## Conditional dependencies
 
-Contrato: `createMemo(() => useA() ? a() : b())` assina as leituras daquela passagem. B inativo não recomputa; ao alternar, A deixa de disparar; ao voltar, lê A atualizado, inclusive escritas feitas enquanto inativo.
+Contract: `createMemo(() => useA() ? a() : b())` subscribes to the reads of that pass. An inactive B does not recompute; on a switch, A stops triggering; on the way back, it reads the updated A, including writes made while it was inactive.
 
-Receita: leia cada entrada dentro do ramo que realmente precisa dela e mantenha observador externo ao medir recomputações.
+Recipe: read each input inside the branch that really needs it and keep an external observer when measuring recomputations.
 
-Armadilha: ler A e B antes do ternário assina ambos. Medição cobre passagens síncronas sem erro, não remoção de dependências em suspensão/falha. Contagem não prova performance/Show/DOM/SSR.
+Pitfall: reading A and B before the ternary subscribes to both. The measurement covers synchronous passes without errors, not the removal of dependencies in suspension/failure. A count does not prove performance/Show/DOM/SSR.
 
-## Derivação gravável e função armazenada
+## Writable derivation and stored function
 
-Contrato: `createSignal(() => props.value)` cria derivação gravável. Escrita manual vale até mudar a origem: `source() * 2`, sobrescrito por 99, volta a 4 quando source vira 2. Para fotografia inicial, calcule uma vez com `untrack` quando necessário. Derivação evita I/O imperativo, inscrição e escrita externa.
+Contract: `createSignal(() => props.value)` creates a writable derivation. A manual write holds until the origin changes: `source() * 2`, overwritten with 99, goes back to 4 when source becomes 2. For an initial snapshot, compute it once with `untrack` when needed. A derivation avoids imperative I/O, subscriptions and external writes.
 
-Receita:
+Recipe:
 
 ```ts
 const initial = () => 'initial'
@@ -84,25 +84,25 @@ const [execute, setExecute] = createSignal<() => string>(() => initial)
 function replace() { setExecute(() => () => 'next') }
 ```
 
-Contrato: `execute()` retorna a função e `execute()()` a executa. Segundo argumento derivado é options, não initialValue posicional. `{ loadingValue: 7 }` oferece provisório sem declarar prontidão; sem ele, Promise pendente lança `NotReadyError` e deve ser lida sob Loading. `createSignal(() => pendingPromise, 7)` falha no tipo com TS2769.
+Contract: `execute()` returns the function and `execute()()` runs it. The second argument of a derivation is options, not a positional initialValue. `{ loadingValue: 7 }` offers a provisional value without declaring readiness; without it, a pending Promise throws `NotReadyError` and must be read under Loading. `createSignal(() => pendingPromise, 7)` fails in the type with TS2769.
 
-Armadilha: `createSignal(() => window.innerWidth, { ssrSource: 'client' })` ativa o gate cliente; primeiro argumento literal ignora `ssrSource`, pois não há compute a adiar. Sem loadingValue, servidor permanece em `NotReadyError` até assentar hidratação; use Loading ou provisório não nulo apropriado. Essa função inicial não é inicializador único de React.
+Pitfall: `createSignal(() => window.innerWidth, { ssrSource: 'client' })` turns on the client gate; a literal first argument ignores `ssrSource`, because there is no compute to defer. Without loadingValue, the server stays in `NotReadyError` until hydration settles; use Loading or a suitable non-null provisional value. That initial function is not a one-time React initializer.
 
-## Memo, igualdade e lazy
+## Memo, equality and lazy
 
-Contrato: `createMemo(compute, options?)` recebe opções no segundo argumento. Compute pode receber valor anterior, ausente inicialmente sem provisório. `loadingValue` define provisório explícito; não acrescente undefined para disfarçar leitura fora de Loading. `equals` não roda no commit inicial; a partir da segunda execução compara valores concretos anterior/novo. Não detecte primeira execução por `previous === undefined` no comparador; por exemplo signal 0 atualizado para 1 compara `(0, 1)`.
+Contract: `createMemo(compute, options?)` receives options in the second argument. The compute can receive the previous value, absent at first without a provisional value. `loadingValue` defines an explicit provisional value; do not add undefined to disguise a read outside Loading. `equals` does not run on the initial commit; from the second run on it compares the concrete previous/new values. Do not detect the first run through `previous === undefined` in the comparator; for example, signal 0 updated to 1 compares `(0, 1)`.
 
-Receita: ponha memo antes do effect para cortar applies iguais, pois effects não têm `equals`. Use nomes estáveis em `createSignal`, `createMemo` e `createEffect`; `name` aparece em attribution/`whyDidRun` e pilha de escrita em dev/observe.
+Recipe: put a memo before the effect to cut equal applies, because effects have no `equals`. Use stable names in `createSignal`, `createMemo` and `createEffect`; `name` shows up in attribution/`whyDidRun` and in the write stack in dev/observe.
 
-Contrato: memo lazy adia até a primeira leitura e perde a computação ao perder o último assinante; leitura posterior recalcula do zero. Não lazy vive até descartar owner. Consumidor em outra raiz não transfere ownership. O caso lazy após descartar criadora com consumidor vivo noutra raiz segue sem fixture/não verificado. Cache exige chave/escopo/expiração; derivação tolera reexecução/descarte/supersessão.
+Contract: a lazy memo defers until the first read and loses the computation when it loses its last subscriber; a later read recomputes from scratch. A non-lazy one lives until its owner is disposed. A consumer in another root does not transfer ownership. The lazy case after disposing the creator with a live consumer in another root still has no fixture/is not verified. A cache requires a key/scope/expiration; a derivation tolerates rerun/disposal/supersession.
 
-Armadilha: igualdade ignorando campos congela UI; equals false pode aumentar trabalho. Lazy não é cache permanente nem local para efeito único. `sync: true` declara compute exclusivamente síncrono; os tipos dizem que Promise/AsyncIterable ficam crus e classificam esse uso como indefinido, sem nova prova de runtime.
+Pitfall: equality that ignores fields freezes the UI; equals false can increase work. Lazy is not a permanent cache nor a place for a one-time effect. `sync: true` declares an exclusively synchronous compute; the types say that a Promise/AsyncIterable stays raw and classify that use as undefined, without a new runtime proof.
 
-## Leituras assíncronas
+## Async reads
 
-Contrato: memo aceita Promise/AsyncIterable e seu accessor representa valor resolvido. Só leituras anteriores ao primeiro await rastreiam; leitura posterior vê valor atual mas não reexecuta o memo quando muda. Outra dependência pode disparar releitura atualizada. Depois da base anterior, o dev passou a avisar `UNTRACKED_READ_AFTER_AWAIT` nessa leitura; o build padrão não avisa.
+Contract: a memo accepts a Promise/AsyncIterable and its accessor stands for the resolved value. Only reads before the first await track; a later read sees the current value but does not rerun the memo when it changes. Another dependency can trigger an updated reread. After the previous base, dev started warning `UNTRACKED_READ_AFTER_AWAIT` on that read; the default build does not warn.
 
-Receita:
+Recipe:
 
 ```ts
 const summary = createMemo(async () => {
@@ -113,33 +113,33 @@ const summary = createMemo(async () => {
 })
 ```
 
-Armadilha: primeira leitura de fonte async ainda pendente após await gera em dev "Leitura de fonte assíncrona não resolvida após await" (trecho literal: ``Read of an unresolved async source after an `await` ``); no padrão deixa o dependente preso. `isPending` é false em todos os caminhos abaixo, portanto não detecta a trava. `await accessor()` não estabelece tracking; `.loading` de `createResource` não pertence a esse contrato.
+Pitfall: the first read of an async source still pending after await emits in dev ``Read of an unresolved async source after an `await` ``; in the default build it leaves the dependent stuck. `isPending` is false on every path below, so it does not detect the lock. `await accessor()` does not establish tracking; the `.loading` of `createResource` does not belong to this contract.
 
-| Leitor | Desenvolvimento | Padrão |
+| Reader | Development | Default |
 | --- | --- | --- |
-| effect sem error | console.error, pula rodada, sem halt | não publica nem acusa |
-| effect com error | erro no braço error | não publica nem acusa |
-| render effect sob boundary | fallback, irmão da fonte resolvida publica | ambos deixam de publicar |
-| render effect sem boundary | halt, rejeição não tratada, todas as raízes param | ambos deixam de publicar, sem halt |
+| effect without error | console.error, skips the round, no halt | neither publishes nor reports |
+| effect with error | error in the error arm | neither publishes nor reports |
+| render effect under a boundary | fallback, the sibling of the resolved source publishes | both stop publishing |
+| render effect without a boundary | halt, unhandled rejection, every root stops | both stop publishing, no halt |
 
-Contrato: `Errored` usa `createErrorBoundary` com fallback. Leia entradas antes do await, inclusive ao iniciar requisições independentes em paralelo.
+Contract: `Errored` uses `createErrorBoundary` with a fallback. Read the inputs before the await, also when starting independent requests in parallel.
 
-## Ownership e descarte
+## Ownership and disposal
 
-Contrato: root fornece disposer e, sob outro owner, é filho descartado com o pai. Guardá-lo globalmente não o desvincula. A assinatura aceita options com `id` e `transparent`, sem `detachedOwner`. Infraestrutura independente usa `runWithOwner(null, () => createRoot(...))` e assume descarte próprio.
+Contract: a root provides a disposer and, under another owner, is a child disposed with the parent. Keeping it globally does not unlink it. The signature accepts options with `id` and `transparent`, without `detachedOwner`. Independent infrastructure uses `runWithOwner(null, () => createRoot(...))` and takes on its own disposal.
 
-Receita: crie recursos sob dono que viva o tempo necessário. Após await, não presuma owner ambiente; reentrada não cria tracking. Confirme vigência antes de reutilizar owner. Servidor compartilhado: não ponha usuário/sessão/tokens/cache privado em signals de módulo.
+Recipe: create resources under an owner that lives as long as needed. After await, do not assume an ambient owner; reentry does not create tracking. Confirm it is still current before reusing an owner. Shared server: do not put user/session/tokens/private cache in module signals.
 
-Armadilha: throw no callback de criação antes de devolver disposer não descarta automaticamente a raiz parcial nem executa seu onCleanup. Não adquira recurso antes de trecho que pode lançar. Owner descartado reutilizado pode vazar e gerar erro estrutural.
+Pitfall: a throw in the creation callback before returning the disposer does not dispose the partial root automatically nor run its onCleanup. Do not acquire a resource before a passage that can throw. A reused disposed owner can leak and cause a structural error.
 
-## Ordem de cleanup e hidratação
+## Cleanup order and hydration
 
-Contrato: no mesmo owner, cleanup é LIFO na base verificada (na base anterior era FIFO). Owners filhos, inclusive roots e memos, descartam antes dos cleanups do pai. Componente ganha root próprio em dev, mas compartilha owner do pai no padrão: pai registra antes/depois do filho e resulta em `child, parent-after, parent-before` em dev, contra `parent-after, child, parent-before` no padrão. Cleanup que descarta a própria raiz ou lança roda uma vez; a reentrada duplicada não foi reproduzida em nenhuma das duas bases.
+Contract: in the same owner, cleanup is LIFO on the verified base (on the previous base it was FIFO). Child owners, including roots and memos, are disposed before the cleanups of the parent. A component gets its own root in dev, but shares the owner of the parent in the default build: a parent that registers before/after the child results in `child, parent-after, parent-before` in dev, against `parent-after, child, parent-before` in the default build. A cleanup that disposes its own root or throws runs once; the duplicated reentry was not reproduced on either base.
 
-Receita: cleanups independem dessa ordem. Se a dependência for obrigatória, libere explicitamente o outro recurso ou use root filho, que descarta antes do pai nos dois builds. Registrar primeiro o cleanup do pai não resolve.
+Recipe: cleanups do not depend on that order. If the dependency is mandatory, release the other resource explicitly or use a child root, which is disposed before the parent in both builds. Registering the parent cleanup first does not solve it.
 
-Armadilha: `untrack` não isola contexto de hidratação. Escrita seguida de leitura no setup pode entrar no snapshot e provocar replay estrutural; não combine `ownedWrite` e releitura imediata para fabricar seed de outra fonte.
+Pitfall: `untrack` does not isolate the hydration context. A write followed by a read in the setup can enter the snapshot and cause a structural replay; do not combine `ownedWrite` and an immediate reread to fabricate a seed from another source.
 
-## APIs retiradas
+## Removed APIs
 
-Consulte o [mapa de migração](16-migration-from-solid-1.md#apis-do-solid-1-ausentes-na-base). Imports do motor ou aliases não recuperam o contrato público antigo.
+See the [migration map](16-migration-from-solid-1.md#solid-1-apis-missing-from-the-base). Engine imports or aliases do not bring back the old public contract.

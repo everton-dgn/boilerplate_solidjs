@@ -28,12 +28,12 @@ export function Counter(props: Props) {
   }
 
   return (
-    <section aria-label="Contador">
-      <p>Valor: <output>{value()}</output></p>
-      <p>Dobro: {doubled()}</p>
-      <button type="button" onClick={increment}>Incrementar</button>
-      <button type="button" onClick={incrementTwice}>Incrementar duas vezes</button>
-      <button type="button" onClick={() => setValue(0)}>Zerar</button>
+    <section aria-label="Counter">
+      <p>Value: <output>{value()}</output></p>
+      <p>Double: {doubled()}</p>
+      <button type="button" onClick={increment}>Increment</button>
+      <button type="button" onClick={incrementTwice}>Increment twice</button>
+      <button type="button" onClick={() => setValue(0)}>Reset</button>
     </section>
   )
 }

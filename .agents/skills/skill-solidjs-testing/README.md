@@ -1,9 +1,9 @@
-# Skill de testes de SolidJS 2
+# SolidJS 2 testing skill
 
-[SKILL.md](SKILL.md) encaminha por contrato e ambiente de teste. As referências cobrem a seleção do build pelo plugin, assentamento, descarte, diagnósticos, isolamento do motor, cache de rotas e limites de SSR/hidratação.
+[SKILL.md](SKILL.md) routes by contract and test environment. The references cover the build selection by the plugin, settling, dispose, diagnostics, engine isolation, route cache and the limits of SSR/hydration.
 
-Instale ao lado da [skill-solidjs](../skill-solidjs/SKILL.md), que contém os contratos da API. Neste repositório, a fonte fica em `.agents/skills/` e `.claude/skills/` aponta para ela por symlink.
+Install it next to [skill-solidjs](../skill-solidjs/SKILL.md), which holds the API contracts. In this repository, the source is in `.agents/skills/` and `.claude/skills/` points to it through a symlink.
 
-Reutilize os helpers do projeto. As receitas de montagem, captura e identificação do runtime são alternativas para quando falta esse suporte; não exigem uma segunda infraestrutura.
+Reuse the helpers of the project. The recipes for mounting, capturing and identifying the runtime are alternatives for when that support is missing; they do not require a second infrastructure.
 
-Os testes usados na verificação não acompanham a skill.
+The tests used in the verification do not ship with the skill.
