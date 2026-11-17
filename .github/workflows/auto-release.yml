@@ -32,8 +32,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Único job que instala dependências e importa o Vite+, sem permissão de
-  # escrita. Entrega os arquivos formatados como artifact aos jobs seguintes.
+  # The only job that installs dependencies and imports Vite+, without write
+  # permission. It hands the formatted files to the next jobs as an artifact.
   plan:
     if: >-
       (github.event_name == 'workflow_run' &&
@@ -77,8 +77,8 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # Os jobs com escrita não instalam nem importam pacotes: o script usa só Git,
-  # gh e módulos nativos e confere o artifact contra o plano recalculado.
+  # The write jobs neither install nor import packages: the script only uses Git,
+  # gh and native modules and checks the artifact against the recomputed plan.
   prepare:
     needs: plan
     if: needs.plan.outputs.release == 'true'
@@ -119,7 +119,7 @@ jobs:
           RELEASE_PLAN_FILE: ${{ runner.temp }}/release-plan/release-plan.json
         run: bun --no-install tooling/release/automatic-release.ts
 
-  # O merge exige contents: write; ler o PR basta para conferir sua identidade.
+  # The merge requires contents: write; reading the PR is enough to check its identity.
   publish:
     needs: prepare
     if: needs.prepare.outputs.publish == 'true'

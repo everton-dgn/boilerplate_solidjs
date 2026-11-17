@@ -7,7 +7,7 @@ export async function observeSettlement({
   try {
     await task
   } catch {
-    // Quem chama observa a rejeição original.
+    // The caller observes the original rejection.
   } finally {
     settle()
   }

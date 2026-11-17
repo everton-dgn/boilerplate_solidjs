@@ -18,16 +18,16 @@ function run(request: Request): Promise<Response> {
   )
 }
 
-// O paraglideMiddleware também consulta shouldRedirect, sempre com
-// effectiveRequestUrl; a chamada só com a requisição é a do middleware.
+// paraglideMiddleware also reads shouldRedirect, always with effectiveRequestUrl;
+// the call with the request only is the one of the middleware.
 const OWN_DECISION = { request: expect.any(Request) as unknown }
 const MIDDLEWARE_DECISION = {
   request: expect.any(Request) as unknown,
   effectiveRequestUrl: expect.any(URL) as unknown
 }
 
-describe('decisão de redirect do idioma', () => {
-  it('não calcula o redirect para server functions', async () => {
+describe('locale redirect decision', () => {
+  it('does not compute the redirect for server functions', async () => {
     await run(
       new Request(`${ORIGIN}${endpoint}/save`, {
         method: 'POST',
@@ -35,12 +35,12 @@ describe('decisão de redirect do idioma', () => {
       })
     )
 
-    // Controle positivo: o spy observa as chamadas do paraglideMiddleware.
+    // Positive control: the spy watches the paraglideMiddleware calls.
     expect(shouldRedirect).toHaveBeenCalledWith(MIDDLEWARE_DECISION)
     expect(shouldRedirect).not.toHaveBeenCalledWith(OWN_DECISION)
   })
 
-  it('calcula o redirect para páginas', async () => {
+  it('computes the redirect for pages', async () => {
     await run(new Request(`${ORIGIN}/pt/docs`))
 
     expect(shouldRedirect).toHaveBeenCalledWith(OWN_DECISION)

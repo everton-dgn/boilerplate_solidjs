@@ -11,14 +11,14 @@ import { createOutdatedPageGuard } from '../index.ts'
 
 type Navigate = ReturnType<typeof useNavigate>
 
-// Arquivo próprio: o Vitest isola o módulo por arquivo, e nenhum outro caso
-// marca a página antes deste.
-describe('guard de página ainda atual', () => {
-  it('mantém a navegação no client enquanto nada marcou a página', async () => {
+// Its own file: Vitest isolates the module per file, and no other case marks the
+// page before this one.
+describe('guard of a page that is still current', () => {
+  it('keeps the navigation on the client while nothing has marked the page', async () => {
     const assign = vi
       .spyOn(globalThis.location, 'assign')
       .mockImplementation(() => {
-        /* Permanece no documento do teste. */
+        /* Stays in the test document. */
       })
     let navigate: Navigate | undefined
     function Page() {

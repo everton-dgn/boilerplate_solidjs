@@ -33,8 +33,8 @@ function textResponse({ status, body, headers }: TextOptions): Response {
   )
 }
 
-// O adaptador roda fora do contexto de idioma do paraglide; o idioma da
-// mensagem vem da requisição original, na ordem do localizeRequest.
+// The adapter runs outside the paraglide locale context; the locale of the
+// message comes from the original request, in the order of localizeRequest.
 export function publicResponse({ status, request }: PublicOptions): Response {
   return textResponse({
     status,
@@ -74,8 +74,8 @@ export function notAcceptable(request: Request): Promise<Response> {
   })
 }
 
-// Só o Markdown publicado com sucesso anuncia o índice; o append preserva os
-// valores de Link herdados do render.
+// Only the successfully published Markdown announces the index; the append keeps
+// the Link values inherited from the render.
 export function markdownHeaders(response: Response): Headers {
   const headers = new Headers(response.headers)
   for (const name of ['content-length', 'content-encoding', 'etag']) {

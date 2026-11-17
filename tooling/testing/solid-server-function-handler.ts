@@ -1,4 +1,5 @@
-// O módulo real vem do @solidjs/vite-plugin, ausente no projeto node de testes.
-// O valor espelha o padrão do plugin sem `serverFunctions.endpoint` nem `base`
-// customizados; o E2E confere o endpoint real no build de produção.
+// The real module comes from @solidjs/vite-plugin, missing in the node test
+// project. The value mirrors the plugin default without a custom
+// `serverFunctions.endpoint` or `base`; the E2E checks the real endpoint in the
+// production build.
 export const endpoint = '/_server'

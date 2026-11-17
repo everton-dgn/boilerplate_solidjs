@@ -10,9 +10,9 @@ type MarkdownFiles = {
 const MARKDOWN_EXTENSION = '.md'
 const HTML_ALIAS_EXTENSION = '.md.html'
 
-// Inventário independente do registro do prerender: tudo o que a camada
-// estática serviria como `.md`, inclusive cópias de `public/`. Caminhos saem
-// decodificados, como o Nitro registra as rotas.
+// Inventory independent from the prerender registry: everything that the static
+// layer would serve as `.md`, copies of `public/` included. Paths come out
+// decoded, as Nitro registers the routes.
 export async function findMarkdownFiles(
   publicDir: string
 ): Promise<MarkdownFiles> {

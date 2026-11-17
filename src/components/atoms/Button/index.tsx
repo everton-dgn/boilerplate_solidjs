@@ -14,8 +14,8 @@ type ButtonVariant =
 type ButtonSize = 'default' | 'xs' | 'sm' | 'lg' | 'icon'
 
 type ButtonProps = Omit<ComponentProps<'button'>, 'class'> & {
-  // WHY: atalho intencional do kit para botão só com texto. Não remova por
-  // duplicar `children` nem por falta de consumidor (docs/ui.md#botões).
+  // WHY: intentional shortcut of the kit for a text-only button. Do not remove it
+  // for duplicating `children` or for lacking a consumer (docs/ui.md#buttons).
   label?: string
   variant?: ButtonVariant
   size?: ButtonSize

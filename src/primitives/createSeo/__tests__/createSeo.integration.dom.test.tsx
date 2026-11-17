@@ -28,13 +28,13 @@ function expectGlobalTags(): void {
   ]).toStrictEqual([1, 1, 1, 1])
 }
 
-describe('seo de rota e dados próprios no mesmo Router', () => {
-  it('atualiza e descarta owners independentes durante navegação e noindex', async () => {
+describe('route SEO and own data in the same Router', () => {
+  it('updates and disposes independent owners during navigation and noindex', async () => {
     await vi.waitUntil(() => readScripts().length === 0, POLL)
-    const history = memoryHistory('/publica')
+    const history = memoryHistory('/public')
     const [data, setData] = createSignal<Product | undefined>({
       '@type': 'Product',
-      name: 'Inicial'
+      name: 'Initial'
     })
     const [isVisible, setIsVisible] = createSignal(true)
     const [isMounted, setIsMounted] = createSignal(true)
@@ -46,7 +46,7 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
 
     function Page() {
       createSeo({
-        structuredData: () => ({ '@type': 'Product', name: 'Fixo' })
+        structuredData: () => ({ '@type': 'Product', name: 'Fixed' })
       })
       return (
         <Show when={isVisible()}>
@@ -58,13 +58,13 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
     const Router = createRouter({
       history,
       routes: [
-        { path: '/publica', component: Page },
+        { path: '/public', component: Page },
         {
           path: '/restrita',
           info: { seo: { noindex: true } },
           component: Page
         },
-        { path: '/vazia', component: () => null }
+        { path: '/empty', component: () => null }
       ]
     })
 
@@ -85,14 +85,14 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
     await vi.waitUntil(() => readScripts().length === ALL_SCRIPTS, POLL)
     expectGlobalTags()
 
-    setData({ '@type': 'Product', name: 'Atualizado' })
+    setData({ '@type': 'Product', name: 'Updated' })
     await vi.waitUntil(
-      () => hasScript('Atualizado') && readScripts().length === ALL_SCRIPTS,
+      () => hasScript('Updated') && readScripts().length === ALL_SCRIPTS,
       POLL
     )
     setData(undefined)
     await vi.waitUntil(() => readScripts().length === DATA_SCRIPTS, POLL)
-    setData({ '@type': 'Product', name: 'Retomado' })
+    setData({ '@type': 'Product', name: 'Resumed' })
     await vi.waitUntil(() => readScripts().length === ALL_SCRIPTS, POLL)
 
     history.set({ value: '/restrita', scroll: false })
@@ -105,34 +105,34 @@ describe('seo de rota e dados próprios no mesmo Router', () => {
         .querySelector('meta[name="robots"]')
         ?.getAttribute('content')
     ).toBe('noindex')
-    expect([hasScript('Fixo'), hasScript('Retomado')]).toStrictEqual([
+    expect([hasScript('Fixed'), hasScript('Resumed')]).toStrictEqual([
       true,
       true
     ])
 
     setIsVisible(false)
     await vi.waitUntil(() => readScripts().length === 1, POLL)
-    expect(readScripts()[0]).toContain('Fixo')
+    expect(readScripts()[0]).toContain('Fixed')
     setIsVisible(true)
     await vi.waitUntil(() => readScripts().length === DATA_SCRIPTS, POLL)
 
-    history.set({ value: '/publica', scroll: false })
+    history.set({ value: '/public', scroll: false })
     await vi.waitUntil(
       () =>
-        readCanonical() === `${SITE.url}/en/publica` &&
+        readCanonical() === `${SITE.url}/en/public` &&
         readScripts().length === ALL_SCRIPTS,
       POLL
     )
     expectGlobalTags()
 
-    history.set({ value: '/vazia', scroll: false })
+    history.set({ value: '/empty', scroll: false })
     await vi.waitUntil(
       () =>
-        readCanonical() === `${SITE.url}/en/vazia` &&
+        readCanonical() === `${SITE.url}/en/empty` &&
         readScripts().length === 1,
       POLL
     )
-    expect([hasScript('Retomado'), hasScript('Fixo')]).toStrictEqual([
+    expect([hasScript('Resumed'), hasScript('Fixed')]).toStrictEqual([
       false,
       false
     ])

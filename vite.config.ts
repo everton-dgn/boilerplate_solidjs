@@ -9,8 +9,8 @@ import { SECURITY_HEADERS } from './src/middleware/securityHeaders/constants.ts'
 import { fmt } from './tooling/fmt.ts'
 import { lint } from './tooling/lint.ts'
 
-// As entradas explícitas mantêm o cache do lint de CSS independente do
-// rastreamento das leituras feitas pelo runtime em cada sistema operacional.
+// The explicit inputs keep the CSS lint cache independent from the tracking of
+// the reads made by the runtime on each operating system.
 const CSS_CACHE_INPUTS = [
   'src/**/*.css',
   'tooling/css/**',
@@ -19,9 +19,9 @@ const CSS_CACHE_INPUTS = [
   'bun.lock',
   'bunfig.toml'
 ]
-// O lint e o check dependem da tarefa lint-css, que cuida do CSS. As entradas
-// explícitas cobrem as declarações que o lint e o formatador ignoram, as
-// configurações do TS e as dependências instaladas.
+// The lint and the check depend on the lint-css task, which handles the CSS. The
+// explicit inputs cover the declarations that the lint and the formatter ignore,
+// the TS configurations and the installed dependencies.
 const PROJECT_CHECK_INPUTS = [
   { auto: true },
   'src/**',
@@ -40,10 +40,10 @@ const STATIC_FILE_HEADERS = {
   'cross-origin-resource-policy':
     SECURITY_HEADERS['cross-origin-resource-policy']
 }
-// O Nitro compila as routeRules com o preMerge do h3, que recusa sobreposição
-// parcial: um /**.md cruzaria os diretórios abaixo e a compilação voltaria ao
-// modo simples com aviso. Os .md publicados ficam sob o prefixo de idioma do
-// urlPatterns em project.inlang/paraglide.config.ts.
+// Nitro compiles the routeRules with the h3 preMerge, which refuses a partial
+// overlap: a /**.md would cross the folders below and the compilation would fall
+// back to the simple mode with a warning. The published .md files stay under the
+// locale prefix of urlPatterns in project.inlang/paraglide.config.ts.
 const STATIC_FILE_PATHS = [
   '/assets/**',
   '/images/**',
@@ -61,9 +61,9 @@ const TOOLING_TEST_CONCURRENCY = env.CI
   ? ` --test-concurrency=${TOOLING_CI_TEST_WORKERS}`
   : ''
 
-// Os plugins do Vite só são importados quando o Vite roda de fato. vp lint,
-// fmt, check, staged e o tooling do editor leem a config sem pagar esse custo
-// nem receber os logs de inicialização do Nitro no stdout.
+// The Vite plugins are only imported when Vite actually runs. vp lint, fmt,
+// check, staged and the editor tooling read the config without paying that cost
+// or getting the Nitro startup logs in stdout.
 const loadComponentModules = async () => {
   const [solidModule, routing, iconsModule, loaders, i18n] = await Promise.all([
     import('@solidjs/vite-plugin'),
@@ -118,8 +118,8 @@ const appPlugins = (mode: string) =>
       import('./tooling/markdownPrerender/index.ts'),
       import('./tooling/publicationArtifacts/helpers/createPublicationBuild/index.ts')
     ])
-    // O Nitro compartilha esta lista de plugins entre os ambientes do build, e
-    // o mesmo closure chega ao SSR e ao módulo que grava o manifesto.
+    // Nitro shares this plugin list between the build environments, and the same
+    // closure reaches the SSR and the module that writes the manifest.
     const { buildId, plugin: publicationBuild } = createPublicationBuild()
     return [
       publicationBuild,
@@ -142,15 +142,15 @@ const appPlugins = (mode: string) =>
           ? { dir: 'src/tests/fixtures/e2e/routes', httpMethods: true }
           : { types: 'src/@types/routes.d.ts', httpMethods: true }
       ),
-      // A função da Vercel usa o Node de engines.node. O SSR mantém Node até
-      // Bun preservar os contratos de Response e do log de falhas.
+      // The Vercel function uses the Node of engines.node. The SSR keeps Node until
+      // Bun keeps the contracts of Response and of the failure log.
       nitro({
         serverEntry: false,
         preset: 'vercel',
         modules: [markdownPrerender({ buildId })],
-        // Sem fallthrough, um arquivo ausente em /images/ recebe o 404 no-store
-        // do Nitro em vez da página SSR com o cache imutável. O Nitro já
-        // registra assim o assetsDir do Vite, que serve /assets/.
+        // Without fallthrough, a file missing in /images/ gets the no-store 404 of
+        // Nitro instead of the SSR page with the immutable cache. Nitro already
+        // registers the Vite assetsDir, which serves /assets/, this way.
         publicAssets: [
           {
             baseURL: '/images',
@@ -159,8 +159,8 @@ const appPlugins = (mode: string) =>
             maxAge: 31_536_000
           }
         ],
-        // Os estáticos saem do CDN sem passar pelo middleware. Os mesmos
-        // valores chegam às respostas da função, que o middleware já grava.
+        // The static files leave the CDN without going through the middleware. The
+        // same values reach the function responses, which the middleware already writes.
         routeRules: Object.fromEntries(
           STATIC_FILE_PATHS.map(path => [
             path,
@@ -181,7 +181,7 @@ function loadTestEnvFile(): void {
   }
 }
 
-// oxlint-disable-next-line eslint/max-lines-per-function -- A configuração declarativa do Vite fica reunida neste callback.
+// oxlint-disable-next-line eslint/max-lines-per-function -- The declarative Vite configuration stays together in this callback.
 export default defineConfig(({ mode }) => {
   const localEnv = loadEnv(mode, import.meta.dirname, ['HOST', 'PORT'])
   const server = {
@@ -193,8 +193,8 @@ export default defineConfig(({ mode }) => {
     loadTestEnvFile()
   }
 
-  // O Vitest grava test.env no process.env dos workers, onde um valor ausente
-  // viraria a string "undefined".
+  // Vitest writes test.env into the process.env of the workers, where a missing
+  // value would become the string "undefined".
   const testEnv = Object.fromEntries(
     Object.entries({
       BASE_URL_TEST: env.BASE_URL_TEST,
@@ -230,9 +230,9 @@ export default defineConfig(({ mode }) => {
         'dead-code-project': {
           command:
             'knip-bun --config tooling/knip.ts && knip-bun --config tooling/knip.ts --strict',
-          // Os plugins do Knip leem as configurações da raiz, dos hooks e dos
-          // workflows; como no lint de CSS, o rastreamento automático das
-          // leituras do Bun varia por sistema operacional.
+          // The Knip plugins read the configurations of the root, the hooks and the
+          // workflows; as in the CSS lint, the automatic tracking of the Bun reads
+          // varies by operating system.
           cache: {
             env: ['NODE_ENV'],
             input: [
@@ -261,14 +261,13 @@ export default defineConfig(({ mode }) => {
           dependsOn: ['lint-css'],
           cache: { env: ['NODE_ENV'], input: PROJECT_CHECK_INPUTS }
         },
-        // Os tipos da aplicação saem do vp check, com typeCheck no lint. O
-        // rastreamento automático não vê as leituras do tsc nativo, então as
-        // entradas ficam explícitas. De src entram só as extensões que o tsc lê;
-        // CSS, imagens e fontes chegam por declarações de módulo. O bun.lock
-        // representa os tipos instalados, mas guarda só o caminho dos patches,
-        // então o conteúdo deles entra à parte. Com noEmit, o tsc só grava o
-        // .tsbuildinfo em .tsbuild/, que é cache próprio dele, então nada precisa
-        // ser restaurado.
+        // The application types come from vp check, with typeCheck in the lint.
+        // The automatic tracking does not see the reads of the native tsc, so the
+        // inputs stay explicit. From src only the extensions that tsc reads enter;
+        // CSS, images and fonts come through module declarations. bun.lock stands
+        // for the installed types, but only keeps the path of the patches, so their
+        // content enters separately. With noEmit, tsc only writes .tsbuildinfo in
+        // .tsbuild/, which is its own cache, so nothing needs to be restored.
         'typecheck-node': {
           command: 'tsc --project tsconfig.node.json',
           cache: {
@@ -277,8 +276,8 @@ export default defineConfig(({ mode }) => {
               'tsconfig.node.json',
               'vite.config.ts',
               'tooling/**/*.ts',
-              // O tooling importa módulos de src, e o tsconfig inclui a
-              // configuração do Paraglide, que importa o settings.json.
+              // The tooling imports modules of src, and the tsconfig includes the
+              // Paraglide configuration, which imports settings.json.
               'src/**/*.ts',
               'src/**/*.tsx',
               'src/**/*.json',
@@ -291,18 +290,18 @@ export default defineConfig(({ mode }) => {
             output: []
           }
         },
-        // Os testes criam repositórios e fixtures em diretórios temporários que
-        // o cache não rastreia; cada execução precisa rodar de verdade.
+        // The tests create repositories and fixtures in temporary folders that the
+        // cache does not track; each run must really run.
         'test-tooling': {
           command: `node --test${TOOLING_TEST_CONCURRENCY} --test-timeout=60000 'tooling/__tests__/*.test.ts' 'tooling/!(release)/**/__tests__/*.test.ts'`,
           cache: false
         }
       }
     },
-    // O plugin do Solid apaga o manifesto do client que ele mesmo liga, então
-    // nada de .vite/ chega ao estático publicado. Só o build E2E, que não é
-    // publicado, mantém o manifesto para o Hydration.preload achar o chunk da
-    // rota.
+    // The Solid plugin deletes the client manifest that it turns on itself, so
+    // nothing of .vite/ reaches the published static output. Only the E2E build,
+    // which is not published, keeps the manifest so that Hydration.preload finds
+    // the route chunk.
     build: {
       manifest: mode === 'e2e',
       rolldownOptions: {
@@ -311,17 +310,17 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
-    // O Lightning CSS transpila nesting, light-dark() e prefixos para os
-    // navegadores do Baseline padrão do Vite. O nome das classes dos CSS Modules
-    // vem só do conteúdo: o [hash] padrão inclui a query, e o ?inline usado pelo
-    // plugin do Solid no SSR de desenvolvimento geraria outras classes
+    // Lightning CSS transpiles nesting, light-dark() and prefixes for the browsers
+    // of the default Vite Baseline. The class names of the CSS Modules come only
+    // from the content: the default [hash] includes the query, and the ?inline used
+    // by the Solid plugin in the development SSR would generate other classes
     // (vitejs/vite#23735).
     css: {
       transformer: 'lightningcss',
       lightningcss: { cssModules: { pattern: '[content-hash]_[local]' } }
     },
     resolve: { tsconfigPaths: true },
-    // Repassa ao terminal os erros e avisos do navegador durante o vp dev.
+    // Forwards the browser errors and warnings to the terminal during vp dev.
     server: { ...server, forwardConsole: true },
     preview: server,
     plugins: mode === 'test' ? [] : appPlugins(mode),
@@ -363,8 +362,8 @@ export default defineConfig(({ mode }) => {
       reporters: env.GITHUB_ACTIONS
         ? ['default', 'github-actions']
         : ['verbose'],
-      // Os projetos herdam as opções acima (extends padrão do Vitest) e
-      // declaram só o que muda: ambiente, include, plugins e aliases.
+      // The projects inherit the options above (default Vitest extends) and only
+      // declare what changes: environment, include, plugins and aliases.
       projects: [
         {
           resolve: {
@@ -412,7 +411,7 @@ export default defineConfig(({ mode }) => {
                 mode: 'retain-on-failure',
                 tracesDir: './test-results/browser-traces'
               },
-              // Os runners do GitHub têm Chrome; execuções locais usam o Chromium do Playwright.
+              // The GitHub runners have Chrome; local runs use the Playwright Chromium.
               provider: playwright({
                 contextOptions: { locale: 'en-US' },
                 launchOptions: env.CI ? { channel: 'chrome' } : {}

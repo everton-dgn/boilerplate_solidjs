@@ -1,6 +1,6 @@
 import type { Locale } from '@paraglide/runtime.js'
 
-// Autônimos não são traduzidos: cada idioma aparece no próprio nome.
+// Autonyms are not translated: each locale shows up in its own name.
 export const LOCALE_NAMES: Readonly<Record<Locale, string>> = {
   pt: 'Português',
   en: 'English',

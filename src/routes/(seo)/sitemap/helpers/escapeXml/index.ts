@@ -1,5 +1,5 @@
-// Caminhos hierárquicos saem de URL.href percent-encodados, mas caminhos
-// opacos (data:, mailto:) preservam <, > e ", então o XML escapa os cinco.
+// Hierarchical paths come out of URL.href percent-encoded, but opaque paths
+// (data:, mailto:) keep <, > and ", so the XML escapes all five.
 export function escapeXml(value: string): string {
   return value
     .replaceAll('&', '&amp;')

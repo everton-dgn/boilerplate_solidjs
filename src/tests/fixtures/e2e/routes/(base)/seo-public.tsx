@@ -3,17 +3,17 @@ import type { RouteDefinition } from '@solidjs/router'
 export const route = {
   info: {
     seo: {
-      title: 'Guia público',
-      description: 'Conteúdo público do guia.'
+      title: 'Public guide',
+      description: 'Public content of the guide.'
     },
-    llms: { section: 'Guias' }
+    llms: { section: 'Guides' }
   }
 } satisfies RouteDefinition
 
 export default function PublicGuide() {
   return (
     <main>
-      <h1>Guia público</h1>
+      <h1>Public guide</h1>
     </main>
   )
 }

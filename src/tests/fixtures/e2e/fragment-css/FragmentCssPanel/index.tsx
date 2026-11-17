@@ -1,7 +1,7 @@
 import S from './styles.module.css'
 
-// Componente carregado por lazy(): a CSS própria vira um arquivo separado no
-// build, que o runtime anuncia no fragmento em streaming.
+// Component loaded by lazy(): its own CSS becomes a separate file in the build,
+// which the runtime announces in the streamed fragment.
 export default function FragmentCssPanel() {
-  return <p class={S.fragment_css_panel}>Painel com CSS própria</p>
+  return <p class={S.fragment_css_panel}>Panel with its own CSS</p>
 }

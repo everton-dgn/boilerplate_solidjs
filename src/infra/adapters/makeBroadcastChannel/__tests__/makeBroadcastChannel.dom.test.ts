@@ -6,12 +6,12 @@ const CHANNEL_NAME = 'test-channel'
 
 let channel: ReturnType<typeof stubBroadcastChannel>
 
-describe('canal genérico entre abas', () => {
+describe('generic channel between tabs', () => {
   beforeEach(() => {
     channel = stubBroadcastChannel()
   })
 
-  it('entrega a mensagem recebida sem interpretar o conteúdo', () => {
+  it('delivers the received message without interpreting the content', () => {
     const receive = vi.fn<() => void>()
     const connection = makeBroadcastChannel({ name: CHANNEL_NAME, receive })
     onTestFinished(connection.dispose)
@@ -19,7 +19,7 @@ describe('canal genérico entre abas', () => {
     expect(receive).toHaveBeenCalledExactlyOnceWith({ any: 1 })
   })
 
-  it('publica a mensagem no canal', () => {
+  it('publishes the message on the channel', () => {
     const connection = makeBroadcastChannel<{ value: string }>({
       name: CHANNEL_NAME,
       receive: vi.fn<() => void>()
@@ -31,7 +31,7 @@ describe('canal genérico entre abas', () => {
     })
   })
 
-  it('opera sem BroadcastChannel disponível', () => {
+  it('works without an available BroadcastChannel', () => {
     vi.stubGlobal('BroadcastChannel', null)
     const connection = makeBroadcastChannel({
       name: CHANNEL_NAME,
@@ -41,7 +41,7 @@ describe('canal genérico entre abas', () => {
     expect(() => connection.dispose()).not.toThrow()
   })
 
-  it('fecha o canal uma única vez após falha ao publicar', () => {
+  it('closes the channel only once after a publish failure', () => {
     channel.postMessage.mockImplementation(() => {
       throw new Error('closed')
     })
@@ -56,7 +56,7 @@ describe('canal genérico entre abas', () => {
     expect(receive).not.toHaveBeenCalled()
   })
 
-  it('remove o listener e fecha o canal ao descartar', () => {
+  it('removes the listener and closes the channel on disposal', () => {
     const receive = vi.fn<() => void>()
     const connection = makeBroadcastChannel({ name: CHANNEL_NAME, receive })
     connection.dispose()

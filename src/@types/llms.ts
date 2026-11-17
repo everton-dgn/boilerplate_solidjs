@@ -3,7 +3,7 @@ type LlmsRouteOptions = {
   optional?: boolean
 }
 
-// `true` inclui a página preservando seção e marcação opcional herdadas (sem
-// herança, a seção padrão); `false` a exclui, inclusive quando o layout a
-// incluiu; o objeto inclui e sobrescreve só os campos declarados.
+// `true` includes the page, keeping the inherited section and optional mark
+// (without inheritance, the default section); `false` excludes it, even when the
+// layout included it; the object includes it and overrides only the declared fields.
 export type LlmsRouteInfo = boolean | LlmsRouteOptions

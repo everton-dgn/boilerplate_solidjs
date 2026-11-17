@@ -11,7 +11,7 @@ const MARKER = 'data-hydration-ended'
 const HOME_TITLE = 'SolidJS Boilerplate for web applications'
 const ABOUT_TITLE = 'About SolidJS Boilerplate'
 const THEME_BUTTON = 'Select theme'
-// A ordem dos atributos não faz parte do contrato do plugin.
+// The order of the attributes is not part of the plugin contract.
 const ENTRY_SCRIPT =
   /<script\b(?=[^>]*\btype="module")(?=[^>]*\basync\b)[^>]*>/u
 

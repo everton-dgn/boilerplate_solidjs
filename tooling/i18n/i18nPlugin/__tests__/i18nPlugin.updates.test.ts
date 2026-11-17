@@ -40,7 +40,7 @@ type PartsOptions = { file: string; content: string }
 
 const SETTLE_MS = 1500
 const HTTP_ERROR = 500
-// Mantém as duas partes dentro da janela de agrupamento dos catálogos.
+// Keeps both parts inside the grouping window of the catalogs.
 const WRITE_PAUSE_MS = 20
 
 async function exists(file: string): Promise<boolean> {
@@ -52,8 +52,8 @@ async function exists(file: string): Promise<boolean> {
   }
 }
 
-// Trunca, grava o começo e só depois o restante, como um editor que salva
-// em mais de uma escrita.
+// Empties the file, writes the start and only then the rest, like an editor that
+// saves in more than one write.
 async function writeInParts({ file, content }: PartsOptions): Promise<void> {
   const middle = content.indexOf(',')
   const handle = await open(file, 'w')
@@ -84,8 +84,8 @@ describe('i18n dev updates', () => {
 
     await writeMessages({ root: server.root, messages: MESSAGES })
     await waitFor(async () => (await server.status()) !== HTTP_ERROR)
-    // Os agregados voltam ao conteúdo anterior e não geram HMR; o reload da
-    // preparação remove o overlay do erro que ela publicou.
+    // The aggregates go back to the previous content and generate no HMR; the
+    // reload of the preparation removes the overlay of the error it published.
     assert.ok(server.payloads().includes('full-reload'))
   })
 
@@ -102,7 +102,7 @@ describe('i18n dev updates', () => {
       contains({ root: server.root, ...catalog, file: catalog.output })
     )
     const before = await Promise.all([stat(aggregate), stat(output)])
-    // Agregados, saída e eventos repetidos não podem gerar outra rodada.
+    // Aggregates, output and repeated events cannot generate another round.
     await delay(SETTLE_MS)
     const after = await Promise.all([stat(aggregate), stat(output)])
     assert.deepEqual(
@@ -221,7 +221,7 @@ describe('i18n dev updates', () => {
       )
     }
 
-    // Os três idiomas aparecem e somem de uma vez, como numa troca de branch.
+    // The three locales show up and go away at once, as in a branch switch.
     await rename(staging, path.join(consumer, 'i18n'))
     await waitFor(() => exists(output))
     await rename(path.join(consumer, 'i18n'), staging)
@@ -299,15 +299,15 @@ describe('i18n dev directory discovery', () => {
     }
     const watch = fs.watch.bind(fs)
     let renames = 0
-    // O chokidar lê o diretório novo e só depois o observa; a troca de nome
-    // entre os dois passos não gera evento de arquivo.
+    // chokidar reads the new folder and only then watches it; a rename between the
+    // two steps generates no file event.
     context.mock.method(fs, 'watch', (...args: Parameters<typeof fs.watch>) => {
       const [target] = args
       if (
         renames === 0 &&
         String(target).endsWith(path.join('src', 'routes', 'About'))
       ) {
-        // oxlint-disable-next-line node/no-sync -- A troca precisa ocorrer antes de o watch existir.
+        // oxlint-disable-next-line node/no-sync -- The rename must happen before the watch exists.
         fs.renameSync(
           path.join(consumer, 'staging'),
           path.join(consumer, 'i18n')

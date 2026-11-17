@@ -130,7 +130,7 @@ describe('markdown conversion filters', () => {
       url: 'https://example.com/en/page',
       signal: new AbortController().signal
     })
-    // O mdream achata tags além do limite de profundidade e preserva o texto.
+    // mdream flattens tags past the depth limit and keeps the text.
     expect(markdown).toBe('Link')
     expect(markdown).not.toContain('icon.png')
   })

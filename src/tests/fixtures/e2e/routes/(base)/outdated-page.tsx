@@ -37,25 +37,25 @@ function RenderedNote(props: NoteProps) {
 
 export const route = {
   info: {
-    seo: { title: 'Página desatualizada', noindex: true },
+    seo: { title: 'Outdated page', noindex: true },
     llms: { optional: true }
   }
 } satisfies RouteDefinition
 
 export default function OutdatedPage() {
   const [params] = useSearchParams()
-  const [status, setStatus] = createSignal('Nada enviado')
+  const [status, setStatus] = createSignal('Nothing sent')
   const [isLocalReadRequested, setIsLocalReadRequested] = createSignal(false)
   const [isRootReadRequested, setIsRootReadRequested] = createSignal(false)
   const [draft, setDraft] = createSignal('')
 
-  // Guard de rascunho no padrão do router: só pergunta com !defaultPrevented,
-  // por isso a página também registra a checagem no guard de versão.
+  // Draft guard in the router pattern: it only asks with !defaultPrevented, which
+  // is why the page also registers the check in the version guard.
   onSettled(() => registerUnsavedChanges(() => draft() !== ''))
   useBeforeLeave(event => {
     if (event.defaultPrevented || draft() === '') return
     event.preventDefault()
-    setStatus('Saída bloqueada')
+    setStatus('Leave blocked')
   })
 
   async function send(): Promise<void> {
@@ -64,48 +64,48 @@ export default function OutdatedPage() {
       setStatus(note.message)
     } catch (error) {
       setStatus(
-        isUnknownFunction(error) ? 'Função desconhecida' : 'Falha no envio'
+        isUnknownFunction(error) ? 'Unknown function' : 'Submission failed'
       )
     }
   }
 
   return (
     <main>
-      <h1>Página desatualizada</h1>
+      <h1>Outdated page</h1>
       <label>
-        Rascunho
+        Draft
         <textarea
           name="draft"
           value={draft()}
           onInput={event => setDraft(event.currentTarget.value)}
         />
       </label>
-      <LocalizedLink href="/about">Ir para Sobre</LocalizedLink>
-      {/* O CSS de Sobre já vem no documento; o do UI kit, não. */}
-      <LocalizedLink href="/ui-kit">Ir para UI kit</LocalizedLink>
+      <LocalizedLink href="/about">Go to About</LocalizedLink>
+      {/* The About CSS already comes in the document; the UI kit one does not. */}
+      <LocalizedLink href="/ui-kit">Go to UI kit</LocalizedLink>
       <p>{status()}</p>
       <button type="button" onClick={send}>
-        Enviar nota
+        Send note
       </button>
       <button type="button" onClick={() => setIsLocalReadRequested(true)}>
-        Ler nota
+        Read note
       </button>
       <button type="button" onClick={() => setIsRootReadRequested(true)}>
-        Ler nota sem limite local
+        Read note without a local boundary
       </button>
-      {/* A memo nasce e é lida dentro do Errored local, que contém a rejeição
-          sem desmontar o Provider: um aviso indevido ficaria visível ao lado
-          do fallback. */}
+      {/* The memo is created and read inside the local Errored, which contains the
+          rejection without unmounting the Provider: an unwanted notice would show
+          next to the fallback. */}
       <Show when={isLocalReadRequested()}>
-        <Errored fallback={<p>Leitura recusada</p>}>
-          <Loading fallback={<p>Carregando nota...</p>}>
+        <Errored fallback={<p>Read refused</p>}>
+          <Loading fallback={<p>Loading note...</p>}>
             <RenderedNote id={String(params.id)} />
           </Loading>
         </Errored>
       </Show>
-      {/* Sem limite local, a rejeição chega ao Errored raiz. */}
+      {/* Without a local boundary, the rejection reaches the root Errored. */}
       <Show when={isRootReadRequested()}>
-        <Loading fallback={<p>Carregando nota...</p>}>
+        <Loading fallback={<p>Loading note...</p>}>
           <RenderedNote id={String(params.id)} />
         </Loading>
       </Show>

@@ -88,7 +88,7 @@ test('back and forward across locale history entries reload the selected documen
   await expect(
     page.getByRole('button', { name: 'Selecionar tema' })
   ).toBeEnabled()
-  // Simula entradas de uma integração anterior no histórico do mesmo documento.
+  // Simulates entries of an earlier integration in the history of the same document.
   await page.evaluate(() => {
     globalThis.history.pushState(
       { marker: 'es' },
@@ -115,9 +115,9 @@ test('SSR query redirect decided before the shell preserves HTTP status and Loca
   request
 }) => {
   const url = '/pt/i18n-redirect?initial=1'
-  // Na primeira requisição do processo à rota, o redirect sai depois do shell,
-  // provavelmente pela carga dos módulos; esse caminho é o do LateRedirect.
-  // Nas seguintes, ele resolve antes do envio do shell.
+  // On the first request of the process to the route, the redirect goes out after
+  // the shell, probably because of the module loading; that path is the one of
+  // LateRedirect. On the following ones, it resolves before the shell is sent.
   await request.get(url, { maxRedirects: 0 })
   const response = await request.get(url, { maxRedirects: 0 })
   expect(response.status()).toBe(REDIRECT)

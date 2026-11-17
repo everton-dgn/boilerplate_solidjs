@@ -130,8 +130,8 @@ function waitForAbort(signal: AbortSignal): Promise<void> {
   return aborted.promise
 }
 
-// A resposta do adaptador sai antes de a cadeia interna assentar; a vaga só é
-// liberada depois dela, então a ausência de log não passa por adiantamento.
+// The adapter response leaves before the inner chain settles; the slot is only
+// released after it, so the missing log is not a matter of timing.
 async function expectReleasedPublication(): Promise<void> {
   await vi.waitFor(() =>
     expect(getPublicationMetrics()).toMatchObject({

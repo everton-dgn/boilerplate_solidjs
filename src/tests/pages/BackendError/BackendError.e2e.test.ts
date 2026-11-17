@@ -16,8 +16,8 @@ const HTTP_OK = 200
 const HTTP_FOUND = 302
 const HTTP_INTERNAL_SERVER_ERROR = 500
 const ATTEMPTS_AFTER_RETRY = 2
-// A mensagem pública segue o idioma da requisição; o navegador, com pt-BR, abre
-// a página e chama as server functions em pt.
+// The public message follows the locale of the request; the browser, with pt-BR,
+// opens the page and calls the server functions in pt.
 const PUBLIC_MESSAGE = 'Não foi possível concluir a solicitação.'
 type ServerResponse = {
   body: string
@@ -27,8 +27,8 @@ type ServerResponse = {
 
 async function captureServerFunctions(page: Page): Promise<ServerResponse[]> {
   const responses: ServerResponse[] = []
-  // O decoder cancela o stream HTTP ao receber a exceção. Capturamos o corpo
-  // real antes de entregá-lo ao browser, sem substituir dados ou status.
+  // The decoder cancels the HTTP stream when it receives the exception. We capture
+  // the real body before handing it to the browser, without replacing data or status.
   await page.route('**/_server/**', async route => {
     const response = await route.fetch()
     responses.push({
@@ -48,7 +48,7 @@ const SCENARIOS = [
   { phase: 'ssr', javaScriptEnabled: false }
 ] as const
 
-test('o bundle cliente não inclui a implementação do servidor', async () => {
+test('the client bundle does not include the server implementation', async () => {
   const directory = new URL(
     '../../../../.vercel/output/static/',
     import.meta.url
@@ -64,7 +64,7 @@ test('o bundle cliente não inclui a implementação do servidor', async () => {
   }
 })
 
-test('um redirect lançado por server function no SSR continua redirecionando', async ({
+test('a redirect thrown by a server function in the SSR still redirects', async ({
   page,
   request
 }) => {
@@ -75,20 +75,20 @@ test('um redirect lançado por server function no SSR continua redirecionando', 
   await expect(page).toHaveURL(/\/pt\?from=control-signal$/u)
 })
 
-test('um envelope devolvido por server function no SSR entrega o valor', async ({
+test('an envelope returned by a server function in the SSR delivers the value', async ({
   request
 }) => {
   const response = await request.get('/control-signal?kind=envelope-return')
   expect(response.status()).toBe(HTTP_OK)
-  // O parágrafo renderizado, não só o valor serializado para a hidratação.
-  expect(await response.text()).toMatch(/<p[^>]*>Envelope retornado<\/p>/u)
+  // The rendered paragraph, not only the value serialized for the hydration.
+  expect(await response.text()).toMatch(/<p[^>]*>Returned envelope<\/p>/u)
 })
 
-// Regressão do @solidjs/router (https://github.com/solidjs/solid-router/issues/633):
-// query() não copia mais os headers de corpo do envelope, como o content-type,
-// para a página.
+// @solidjs/router regression (https://github.com/solidjs/solid-router/issues/633):
+// query() no longer copies the body headers of the envelope, such as content-type,
+// to the page.
 for (const kind of ['envelope-return', 'envelope-throw']) {
-  test(`o documento com ${kind} por query no SSR continua HTML`, async ({
+  test(`the document with ${kind} through query in the SSR is still HTML`, async ({
     request
   }) => {
     const response = await request.get(
@@ -98,10 +98,10 @@ for (const kind of ['envelope-return', 'envelope-throw']) {
   })
 }
 
-// O hook recebe o envelope lançado como controle; o router então lança o valor
-// do envelope no render, que vira falha de render com ou sem o hook. O teste
-// confere a resposta bruta, fora do navegador.
-test('um envelope lançado por server function no SSR vira falha de render sem expor o valor', async ({
+// The hook receives the thrown envelope as a control; the router then throws the
+// value of the envelope in the render, which becomes a render failure with or
+// without the hook. The test checks the raw response, outside the browser.
+test('an envelope thrown by a server function in the SSR becomes a render failure without exposing the value', async ({
   request
 }) => {
   const id = `throw:${crypto.randomUUID()}`
@@ -114,16 +114,16 @@ test('um envelope lançado por server function no SSR vira falha de render sem e
   expect(document).not.toContain(marker)
   expect(response.headers()['content-language']).toBe('en')
   expect(document).toContain('Something went wrong!')
-  // Controle positivo: a server function leu o marcador antes de lançar.
+  // Positive control: the server function read the marker before throwing.
   const after = await readBackendState({ request, id })
   expect(after.attempts).toBe(1)
 })
 
 for (const { phase, javaScriptEnabled } of SCENARIOS) {
-  test.describe(`erro de backend: ${phase}, JavaScript ${javaScriptEnabled ? 'ativo' : 'desativado'}`, () => {
+  test.describe(`backend error: ${phase}, JavaScript ${javaScriptEnabled ? 'enabled' : 'disabled'}`, () => {
     test.use({ javaScriptEnabled })
 
-    test('recarrega a página com falha e após o backend voltar', async ({
+    test('reloads the page with a failure and after the backend comes back', async ({
       page,
       request,
       pageErrors
@@ -140,8 +140,8 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
         phase === 'ssr' ? HTTP_INTERNAL_SERVER_ERROR : HTTP_OK
       )
       if (phase === 'action') {
-        await expect(page.getByText('Pronto para consultar')).toBeVisible()
-        await page.getByRole('button', { name: 'Consultar backend' }).click()
+        await expect(page.getByText('Ready to read')).toBeVisible()
+        await page.getByRole('button', { name: 'Query backend' }).click()
       }
 
       await expect(
@@ -149,7 +149,7 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       ).toBeVisible()
       await expect(page.locator('header')).toHaveCount(0)
 
-      // Uma navegação completa precisa funcionar sem hidratação nem invalidação de query.
+      // A full navigation must work without hydration or query invalidation.
       const retryResponse = page.waitForResponse(candidate =>
         candidate.request().isNavigationRequest()
       )
@@ -164,8 +164,8 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       )
       await expect(page).toHaveURL(pageUrl)
       if (phase === 'action') {
-        await expect(page.getByText('Pronto para consultar')).toBeVisible()
-        await page.getByRole('button', { name: 'Consultar backend' }).click()
+        await expect(page.getByText('Ready to read')).toBeVisible()
+        await page.getByRole('button', { name: 'Query backend' }).click()
       }
       await expect
         .poll(async () => {
@@ -177,10 +177,10 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
         page.getByRole('heading', { name: 'Algo deu errado!' })
       ).toBeVisible()
 
-      // A exceção pública pode se repetir ao hidratar o fallback, no payload
-      // inicial e no stream. Ao atualizar o runtime, reproduza
-      // com Emulation.setCPUThrottlingRate em 20x e remova esta exceção se o
-      // erro não chegar mais ao navegador.
+      // The public exception can repeat when hydrating the fallback, in the
+      // initial payload and in the stream. When upgrading the runtime, reproduce it
+      // with Emulation.setCPUThrottlingRate at 20x and remove this exception if the
+      // error no longer reaches the browser.
       const rendersOnServer = phase !== 'action'
       expect(
         pageErrors.filter(
@@ -198,11 +198,11 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
       expect(await recoveredReload.text()).not.toContain(privateMarker)
       expect(recoveredReload.status()).toBe(HTTP_OK)
       if (phase === 'action') {
-        await expect(page.getByText('Pronto para consultar')).toBeVisible()
-        await page.getByRole('button', { name: 'Consultar backend' }).click()
+        await expect(page.getByText('Ready to read')).toBeVisible()
+        await page.getByRole('button', { name: 'Query backend' }).click()
       }
       await expect(
-        page.getByText('Backend recuperado', { exact: true })
+        page.getByText('Backend recovered', { exact: true })
       ).toBeVisible()
       await expect(page.locator('[data-error-variant="runtime"]')).toHaveCount(
         0
@@ -218,13 +218,13 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
 
 for (const phase of ['ssr', 'stream', 'action']) {
   for (const failure of ['http', 'throw', 'result', 'public', 'success']) {
-    test(`confidencialidade: ${phase}, ${failure}`, async ({
+    test(`confidentiality: ${phase}, ${failure}`, async ({
       page,
       request,
       pageErrors
     }) => {
-      // No streaming, o backend segura /data até o teste ver o fallback. Uma
-      // resposta anterior ao shell embutiria o conteúdo no documento.
+      // In streaming, the backend holds /data until the test sees the fallback. A
+      // response before the shell would embed the content in the document.
       const isStream = phase === 'stream'
       const id = `${failure}:${crypto.randomUUID()}${isStream ? ':gated' : ''}`
       const { marker } = await readBackendState({ request, id })
@@ -235,12 +235,12 @@ for (const phase of ['ssr', 'stream', 'action']) {
       )
       if (isStream) {
         await expect(
-          page.getByText('Carregando dados...', { exact: true })
+          page.getByText('Loading data...', { exact: true })
         ).toBeVisible()
         await waitForGate({ request, id })
         await releaseFixtureGate({ request, id })
       }
-      // Lido só depois da liberação: o corpo termina quando /data responde.
+      // Read only after the release: the body ends when /data answers.
       const document = await response?.text()
       expect(document).not.toContain(marker)
       expect(JSON.stringify(response?.headers())).not.toContain(marker)
@@ -249,13 +249,13 @@ for (const phase of ['ssr', 'stream', 'action']) {
           ? HTTP_INTERNAL_SERVER_ERROR
           : HTTP_OK
       )
-      if (isStream) expect(document).toContain('Carregando dados...')
+      if (isStream) expect(document).toContain('Loading data...')
       if (phase === 'action') {
-        await page.getByRole('button', { name: 'Consultar backend' }).click()
+        await page.getByRole('button', { name: 'Query backend' }).click()
       }
       const content =
         failure === 'success'
-          ? page.getByText('Backend recuperado', { exact: true })
+          ? page.getByText('Backend recovered', { exact: true })
           : page.getByRole('heading', { name: 'Algo deu errado!' })
       await expect(content).toBeVisible()
       expect(await page.content()).not.toContain(marker)
@@ -267,7 +267,7 @@ for (const phase of ['ssr', 'stream', 'action']) {
       }
       expect(JSON.stringify(serverResponses)).not.toContain(marker)
       expect(pageErrors.join(' ')).not.toContain(marker)
-      // A hidratação tolera somente a repetição da mensagem pública fixa.
+      // The hydration only tolerates the repetition of the fixed public message.
       expect(
         pageErrors.filter(
           message => phase === 'action' || message !== PUBLIC_MESSAGE

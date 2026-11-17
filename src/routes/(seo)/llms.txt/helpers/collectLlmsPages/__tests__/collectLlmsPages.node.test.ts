@@ -5,8 +5,8 @@ import { collectLlmsPages } from '../index.ts'
 
 type ReadRouteModule = NonNullable<StaticRoute['$$route']>['require']
 
-describe('coleta das páginas selecionadas para o llms.txt', () => {
-  it('herda campos do layout e prefere o índice filho na mesma URL', () => {
+describe('collection of the pages selected for llms.txt', () => {
+  it('inherits fields from the layout and prefers the child index at the same URL', () => {
     const preload = vi.fn<() => void>()
     const pages = collectLlmsPages([
       {
@@ -18,10 +18,10 @@ describe('coleta das páginas selecionadas para o llms.txt', () => {
               preload,
               info: {
                 seo: {
-                  title: 'Documentação',
-                  description: 'Guias do projeto.'
+                  title: 'Documentation',
+                  description: 'Project guides.'
                 },
-                llms: { section: 'Guias' }
+                llms: { section: 'Guides' }
               }
             }
           })
@@ -33,13 +33,13 @@ describe('coleta das páginas selecionadas para o llms.txt', () => {
             $$route: {
               require: () => ({
                 route: {
-                  info: { seo: { title: 'Visão geral' }, llms: true }
+                  info: { seo: { title: 'Overview' }, llms: true }
                 }
               })
             }
           },
           {
-            path: '/guia',
+            path: '/guide',
             page: true,
             $$route: {
               require: () => ({
@@ -54,23 +54,23 @@ describe('coleta das páginas selecionadas para o llms.txt', () => {
     expect(pages).toStrictEqual([
       {
         path: '/docs',
-        title: 'Visão geral',
-        description: 'Guias do projeto.',
-        section: 'Guias',
+        title: 'Overview',
+        description: 'Project guides.',
+        section: 'Guides',
         isOptional: false
       },
       {
-        path: '/docs/guia',
-        title: 'Documentação',
-        description: 'Guias do projeto.',
-        section: 'Guias',
+        path: '/docs/guide',
+        title: 'Documentation',
+        description: 'Project guides.',
+        section: 'Guides',
         isOptional: true
       }
     ])
     expect(preload).not.toHaveBeenCalled()
   })
 
-  it('exclui páginas sem a flag, APIs e ramos dinâmicos e usa SITE como fallback', () => {
+  it('excludes pages without the flag, APIs and dynamic branches and uses SITE as the fallback', () => {
     const readDynamicRoute = vi.fn<ReadRouteModule>()
     const pages = collectLlmsPages([
       {
@@ -105,8 +105,8 @@ describe('coleta das páginas selecionadas para o llms.txt', () => {
   })
 })
 
-describe('herança da seleção de llms.txt na cadeia de rotas', () => {
-  it('exclui noindex herdado e llms: false, e aceita a reativação na rota filha', () => {
+describe('inheritance of the llms.txt selection along the route chain', () => {
+  it('excludes an inherited noindex and llms: false, and accepts turning it back on in the child route', () => {
     const pages = collectLlmsPages([
       {
         path: '/account',
@@ -153,26 +153,26 @@ describe('herança da seleção de llms.txt na cadeia de rotas', () => {
     ])
   })
 
-  it('reativa com true preservando a seção herdada e inclui com objeto vazio herdando tudo', () => {
+  it('turns it back on with true keeping the inherited section, and includes with an empty object inheriting everything', () => {
     const pages = collectLlmsPages([
       {
-        path: '/guias',
+        path: '/guides',
         page: true,
         $$route: {
           require: () => ({
-            route: { info: { llms: { section: 'Guias', optional: true } } }
+            route: { info: { llms: { section: 'Guides', optional: true } } }
           })
         },
         children: [
           {
-            path: '/rascunho',
+            path: '/draft',
             page: true,
             $$route: {
               require: () => ({ route: { info: { llms: false } } })
             },
             children: [
               {
-                path: '/publicado',
+                path: '/published',
                 page: true,
                 $$route: {
                   require: () => ({ route: { info: { llms: true } } })
@@ -181,7 +181,7 @@ describe('herança da seleção de llms.txt na cadeia de rotas', () => {
             ]
           },
           {
-            path: '/herdado',
+            path: '/inherited',
             page: true,
             $$route: { require: () => ({ route: { info: { llms: {} } } }) }
           }
@@ -192,34 +192,34 @@ describe('herança da seleção de llms.txt na cadeia de rotas', () => {
     expect(
       pages.map(page => [page.path, page.section, page.isOptional])
     ).toStrictEqual([
-      ['/guias', 'Guias', true],
-      ['/guias/rascunho/publicado', 'Guias', true],
-      ['/guias/herdado', 'Guias', true]
+      ['/guides', 'Guides', true],
+      ['/guides/draft/published', 'Guides', true],
+      ['/guides/inherited', 'Guides', true]
     ])
   })
 
-  it('sobrescreve na filha só a seção e a marcação opcional declaradas', () => {
+  it('overrides in the child only the declared section and optional mark', () => {
     const pages = collectLlmsPages([
       {
-        path: '/guias',
+        path: '/guides',
         page: true,
         $$route: {
           require: () => ({
-            route: { info: { llms: { section: 'Guias', optional: true } } }
+            route: { info: { llms: { section: 'Guides', optional: true } } }
           })
         },
         children: [
           {
-            path: '/referencia',
+            path: '/reference',
             page: true,
             $$route: {
               require: () => ({
-                route: { info: { llms: { section: 'Referência' } } }
+                route: { info: { llms: { section: 'Reference' } } }
               })
             }
           },
           {
-            path: '/essencial',
+            path: '/essential',
             page: true,
             $$route: {
               require: () => ({
@@ -234,13 +234,13 @@ describe('herança da seleção de llms.txt na cadeia de rotas', () => {
     expect(
       pages.map(page => [page.path, page.section, page.isOptional])
     ).toStrictEqual([
-      ['/guias', 'Guias', true],
-      ['/guias/referencia', 'Referência', true],
-      ['/guias/essencial', 'Guias', false]
+      ['/guides', 'Guides', true],
+      ['/guides/reference', 'Reference', true],
+      ['/guides/essential', 'Guides', false]
     ])
   })
 
-  it('aplica o noindex do índice filho após resolver a URL compartilhada', () => {
+  it('applies the noindex of the child index after resolving the shared URL', () => {
     const pages = collectLlmsPages([
       {
         path: '/docs',
@@ -264,7 +264,7 @@ describe('herança da seleção de llms.txt na cadeia de rotas', () => {
     expect(pages.map(page => page.path)).toStrictEqual(['/docs/guide'])
   })
 
-  it('exclui a URL compartilhada quando o índice filho declara llms: false', () => {
+  it('excludes the shared URL when the child index declares llms: false', () => {
     const pages = collectLlmsPages([
       {
         path: '/docs',

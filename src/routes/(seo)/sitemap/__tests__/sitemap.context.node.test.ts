@@ -13,7 +13,7 @@ import {
 
 type Handler = (event: APIEvent) => Promise<Response>
 
-describe('contexto compartilhado dos handlers de sitemap', () => {
+describe('shared context of the sitemap handlers', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
@@ -24,7 +24,7 @@ describe('contexto compartilhado dos handlers de sitemap', () => {
     { isProduction: true, expectedCollections: 1 },
     { isProduction: false, expectedCollections: 4 }
   ])(
-    'compartilha em produção e atualiza em desenvolvimento: $isProduction',
+    'shares in production and refreshes in development: $isProduction',
     async ({ isProduction, expectedCollections }) => {
       vi.resetModules()
       vi.stubEnv('PROD', isProduction)
@@ -57,7 +57,7 @@ describe('contexto compartilhado dos handlers de sitemap', () => {
     }
   )
 
-  it('não percorre rotas nem aceita o inventário fora do prerender', async () => {
+  it('neither walks routes nor accepts the inventory outside the prerender', async () => {
     vi.resetModules()
     vi.stubEnv('PROD', true)
     vi.stubEnv(PUBLICATION_PHASE_ENV, '')
@@ -94,7 +94,7 @@ describe('contexto compartilhado dos handlers de sitemap', () => {
     expect(collect).not.toHaveBeenCalled()
   })
 
-  it('responde o inventário só no prerender, sem chamar fontes', async () => {
+  it('answers the inventory only in the prerender, without calling sources', async () => {
     vi.resetModules()
     vi.stubEnv('PROD', true)
     vi.stubEnv(PUBLICATION_PHASE_ENV, PUBLICATION_PRERENDER_PHASE)

@@ -93,7 +93,7 @@ async function writePublic({ publicDir, route }: PublicFile): Promise<void> {
   await writeFile(file, XML)
 }
 
-// Prerender completo: inventário, XML aprovado e arquivos no diretório público.
+// Full prerender: inventory, approved XML and files in the public folder.
 async function publish(
   overrides: Partial<SitemapInventory> = {}
 ): Promise<Published> {
@@ -124,7 +124,7 @@ function readManifest({ serverDir }: Pick<Paths, 'serverDir'>) {
   )
 }
 
-it('publica partes e raiz estática sem fonte em array nem particionada', async () => {
+it('publishes parts and a static root without an array or partitioned source', async () => {
   const published = await publish()
   assert.deepEqual(
     [...published.queue],
@@ -162,7 +162,7 @@ for (const dynamic of [
   { hasArraySources: true, identities: { urls: ['u'], entries: [] } },
   { hasPartitionSources: true }
 ]) {
-  it(`mantém a raiz na função com ${Object.keys(dynamic)[0]}`, async () => {
+  it(`keeps the root in the function with ${Object.keys(dynamic)[0]}`, async () => {
     const { queue } = await publish(dynamic)
     assert.deepEqual(
       [...queue],
@@ -171,12 +171,12 @@ for (const dynamic of [
   })
 }
 
-it('não publica raiz nem partes sem páginas', async () => {
+it('publishes neither the root nor parts without pages', async () => {
   const { queue } = await publish({ pagePartCount: 0 })
   assert.equal(queue.size, 0)
 })
 
-it('não grava o inventário e recusa formas inválidas', () => {
+it('does not write the inventory and refuses invalid shapes', () => {
   const route: PrerenderRoute = {
     route: SITEMAP_INVENTORY_PATH,
     contents: inventory()
@@ -207,7 +207,7 @@ it('não grava o inventário e recusa formas inválidas', () => {
   }
 })
 
-it('reprova o build quando o SSR carrega outro identificador', () => {
+it('fails the build when the SSR carries another identifier', () => {
   for (const [contents, message] of [
     [inventory({ buildId: 'other-build' }), 'another build'],
     [inventory({ buildId: '' }), 'Invalid sitemap inventory']
@@ -224,7 +224,7 @@ it('reprova o build quando o SSR carrega outro identificador', () => {
   }
 })
 
-it('reprova o build sem SSR identificado', () => {
+it('fails the build without an identified SSR', () => {
   const contents = JSON.stringify({
     version: 1,
     siteUrl: SITE_URL,
@@ -243,7 +243,7 @@ it('reprova o build sem SSR identificado', () => {
   assert.equal(route.error?.message, 'Invalid sitemap inventory')
 })
 
-it('gera identificador distinto por build e o entrega ao SSR pelo define', () => {
+it('generates a distinct identifier per build and hands it to the SSR through define', () => {
   const first = createPublicationBuild()
   const second = createPublicationBuild()
   assert.notEqual(first.buildId, second.buildId)
@@ -252,7 +252,7 @@ it('gera identificador distinto por build e o entrega ao SSR pelo define', () =>
   })
 })
 
-it('falha no build quando as identidades excedem o orçamento', () => {
+it('fails in the build when the identities exceed the budget', () => {
   const route: PrerenderRoute = {
     route: SITEMAP_INVENTORY_PATH,
     contents: inventory({
@@ -273,7 +273,7 @@ it('falha no build quando as identidades excedem o orçamento', () => {
   assert.equal(queue.size, 0)
 })
 
-it('recusa XML no caminho, tipo, tamanho ou formato errados', async () => {
+it('refuses XML with the wrong path, type, size or format', async () => {
   const { publication, queue } = await publish()
   const part = '/sitemaps/pages/1.xml'
   const cases: [PrerenderRoute, RegExp][] = [
@@ -288,7 +288,7 @@ it('recusa XML no caminho, tipo, tamanho ou formato errados', async () => {
   }
 })
 
-it('não interfere em rotas fora do inventário', async () => {
+it('does not interfere with routes outside the inventory', async () => {
   const { publication, queue } = await publish({ pagePartCount: 1 })
   const route = xmlRoute('/sitemaps/array.xml')
   const original = { ...route }
@@ -296,7 +296,7 @@ it('não interfere em rotas fora do inventário', async () => {
   assert.deepEqual(route, original)
 })
 
-it('falha sem inventário, sem reconstruir nada', async () => {
+it('fails without an inventory, without rebuilding anything', async () => {
   const { publicDir } = await paths()
   await assert.rejects(
     publicationArtifacts({ buildId: BUILD_ID }).assertPublished({
@@ -307,7 +307,7 @@ it('falha sem inventário, sem reconstruir nada', async () => {
   )
 })
 
-it('confronta o diretório publicado com os bytes aprovados', async () => {
+it('checks the published folder against the approved bytes', async () => {
   const published = await publish()
   const { publication, publicDir } = published
   const prerenderedRoutes = registered(published)
@@ -325,7 +325,7 @@ it('confronta o diretório publicado com os bytes aprovados', async () => {
   await assert.doesNotReject(assertOutput)
 })
 
-it('recusa arquivo do diretório público que sombreia a raiz dinâmica', async () => {
+it('refuses a file of the public folder that shadows the dynamic root', async () => {
   const published = await publish({ hasPartitionSources: true })
   await writePublic({ publicDir: published.publicDir, route: '/sitemap.xml' })
   await assert.rejects(
@@ -337,7 +337,7 @@ it('recusa arquivo do diretório público que sombreia a raiz dinâmica', async 
   )
 })
 
-it('recusa link simbólico entre as partes', async () => {
+it('refuses a symbolic link among the parts', async () => {
   const published = await publish({ pagePartCount: 1 })
   const { publicDir } = published
   await symlink(
@@ -353,7 +353,7 @@ it('recusa link simbólico entre as partes', async () => {
   )
 })
 
-it('exige o registro do Nitro além do arquivo', async () => {
+it('requires the Nitro registry besides the file', async () => {
   const published = await publish()
   await assert.rejects(
     published.publication.assertPublished({
@@ -364,7 +364,7 @@ it('exige o registro do Nitro além do arquivo', async () => {
   )
 })
 
-it('aprova conteúdo arbitrário pelo digest e aplica o teto quando pedido', async () => {
+it('approves arbitrary content by the digest and applies the limit when asked', async () => {
   const { publication, publicDir, queue } = await publish({ pagePartCount: 0 })
   const route: PrerenderRoute = { route: '/llms.txt', contents: '# Site' }
   publication.approve({ route, maxBytes: '# Site'.length })
@@ -381,7 +381,7 @@ it('aprova conteúdo arbitrário pelo digest e aplica o teto quando pedido', asy
   assert.match(oversized.error?.message ?? '', /above the 1 byte budget/u)
 })
 
-it('referencia as identidades pelo hash e não deixa temporários', async () => {
+it('references the identities by hash and leaves no temporary files', async () => {
   const identities = { urls: ['https://example.com/en/a'], entries: [] }
   const published = await publish({ hasArraySources: true, identities })
   await published.publication.assertPublished({
@@ -404,7 +404,7 @@ it('referencia as identidades pelo hash e não deixa temporários', async () => 
   assert.match(text, /"sha256":"[a-f0-9]{64}"/u)
 })
 
-it('falha no build quando o manifesto excede o orçamento', async () => {
+it('fails in the build when the manifest exceeds the budget', async () => {
   const { serverDir } = await paths()
   const digest = { size: 1, hash: 'a'.repeat(SHA256_LENGTH) }
   const inventoryData = v.parse(InventorySchema, JSON.parse(inventory()))
@@ -423,13 +423,13 @@ it('falha no build quando o manifesto excede o orçamento', async () => {
   await assert.rejects(readManifest({ serverDir }), { code: 'ENOENT' })
 })
 
-it('não grava artefatos da função sem a conferência do diretório público', async () => {
+it('does not write the function artifacts without the public folder check', async () => {
   const published = await publish()
   await published.publication.writeServer(published.serverDir)
   await assert.rejects(readManifest(published), { code: 'ENOENT' })
 })
 
-it('a instância do prerender não tem artefatos para gravar', async () => {
+it('the prerender instance has no artifacts to write', async () => {
   const { serverDir } = await paths()
   await publicationArtifacts({ buildId: BUILD_ID }).writeServer(serverDir)
   await assert.rejects(readManifest({ serverDir }), { code: 'ENOENT' })

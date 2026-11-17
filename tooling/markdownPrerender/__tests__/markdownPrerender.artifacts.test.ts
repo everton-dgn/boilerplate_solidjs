@@ -15,7 +15,7 @@ import {
 } from './fixtures.ts'
 import type { PrerenderResult } from './types.ts'
 
-it('falha o build quando um .md listado não foi gravado', async () => {
+it('fails the build when a listed .md was not written', async () => {
   const { handlers } = await setup()
   prerenderList({ handlers, paths: ['/en/about.md', '/pt/index.md'] })
   await assert.rejects(
@@ -24,7 +24,7 @@ it('falha o build quando um .md listado não foi gravado', async () => {
   )
 })
 
-it('aceita os .md gravados com o caminho decodificado pelo Nitro', async () => {
+it('accepts the .md files written with the path decoded by Nitro', async () => {
   const target = await setup()
   assert.ok(target.handlers['prerender:done'])
   await assert.doesNotReject(async () =>
@@ -36,7 +36,7 @@ it('aceita os .md gravados com o caminho decodificado pelo Nitro', async () => {
   )
 })
 
-it('deixa o failOnError do Nitro relatar as rotas com erro', async () => {
+it('lets the Nitro failOnError report the routes with an error', async () => {
   const { prerender, handlers } = await setup()
   prerenderList({ handlers, paths: ['/en/about.md'] })
   const result: PrerenderResult = {
@@ -50,7 +50,7 @@ it('deixa o failOnError do Nitro relatar as rotas com erro', async () => {
   })
 })
 
-it('marca erro no .md cujo artefato não é Markdown gravado no próprio caminho', async () => {
+it('marks an error on the .md whose artifact is not Markdown written at its own path', async () => {
   const { handlers } = await setup()
   prerenderList({ handlers, paths: ['/en/about.md'] })
   const html = '<!doctype html><html><body>Redirect</body></html>'
@@ -67,7 +67,7 @@ it('marca erro no .md cujo artefato não é Markdown gravado no próprio caminho
   }
 })
 
-it('preserva o erro HTTP registrado pelo Nitro', async () => {
+it('keeps the HTTP error registered by Nitro', async () => {
   const { handlers } = await setup()
   const error = { message: '[500] Server Error', status: 500 }
   const route: PrerenderRoute = { route: '/en/about.md', error }
@@ -75,7 +75,7 @@ it('preserva o erro HTTP registrado pelo Nitro', async () => {
   assert.equal(route.error, error)
 })
 
-it('recusa .md fora da lista, .md.html, links simbólicos e arquivos ausentes no diretório publicado', async () => {
+it('refuses a .md outside the list, .md.html, symbolic links and missing files in the published folder', async () => {
   const cases: [string, (publicDir: string) => Promise<void>][] = [
     [
       '/en/extra.md (not in the static Markdown list)',
@@ -117,7 +117,7 @@ it('recusa .md fora da lista, .md.html, links simbólicos e arquivos ausentes no
   }
 })
 
-it('recusa um .md gravado pelo prerender fora da lista ou com outro nome de arquivo', async () => {
+it('refuses a .md written by the prerender outside the list or with another file name', async () => {
   const { handlers } = await setup()
   prerenderList({ handlers, paths: ['/en/about.md'] })
   await assert.rejects(
@@ -136,7 +136,7 @@ it('recusa um .md gravado pelo prerender fora da lista ou com outro nome de arqu
   })
 })
 
-it('recusa .md publicado vazio, corrompido ou trocado depois da validação', async () => {
+it('refuses an empty, corrupted or swapped published .md after the validation', async () => {
   const approved = { '/en/a.md': '# Page A', '/en/b.md': '# Page B' }
   const cases: [string, Record<string, Uint8Array | string>][] = [
     ['/en/a.md', { '/en/a.md': '' }],
@@ -172,7 +172,7 @@ it('recusa .md publicado vazio, corrompido ou trocado depois da validação', as
   }
 })
 
-it('recusa .md registrado que não passou pela validação do prerender', async () => {
+it('refuses a registered .md that did not go through the prerender validation', async () => {
   const { handlers, publicDir } = await setup()
   prerenderList({ handlers, paths: ['/en/about.md'] })
   await mkdir(path.join(publicDir, 'en'))

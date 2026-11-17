@@ -4,8 +4,8 @@ import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { Input } from '../index.tsx'
 
-describe('campo de entrada', () => {
-  it('preserva ref, atributos nativos e o vínculo com a mensagem de erro', () => {
+describe('input field', () => {
+  it('keeps the ref, the native attributes and the link to the error message', () => {
     const ref = vi.fn<(element: HTMLInputElement) => void>()
     const onInput = vi.fn<() => void>()
     const host = renderComponent(() => (
@@ -42,7 +42,7 @@ describe('campo de entrada', () => {
     expect(onInput).toHaveBeenCalledOnce()
   })
 
-  it('preserva o que o usuário digitou ou marcou sem controle quando a variante muda', () => {
+  it('keeps what the user typed or checked without control when the variant changes', () => {
     const [isInvalid, setIsInvalid] = createSignal(false)
     const variant = () => (isInvalid() ? 'destructive' : 'default')
     const host = renderComponent(() => (
@@ -63,7 +63,7 @@ describe('campo de entrada', () => {
     expect(checkbox).not.toBeChecked()
   })
 
-  it('atualiza valor, disabled e estado de erro sem recriar o campo', async () => {
+  it('updates the value, disabled and the error state without recreating the field', async () => {
     const [isInvalid, setIsInvalid] = createSignal(true)
     const [value, setValue] = createSignal('first')
     const host = renderComponent(() => (

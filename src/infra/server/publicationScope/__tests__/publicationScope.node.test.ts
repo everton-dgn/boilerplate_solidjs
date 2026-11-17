@@ -9,7 +9,7 @@ async function ignoreRejection(operation: Promise<unknown>): Promise<void> {
   try {
     await operation
   } catch {
-    // Este chamador desacoplado observa a falha sem encerrar a publicação.
+    // This decoupled caller observes the failure without ending the publication.
   }
 }
 
@@ -89,10 +89,10 @@ describe('publication backend ownership', () => {
   })
 
   it.each([
-    { name: 'o motivo do cancelamento', isCancellation: true },
-    { name: 'outro erro', isCancellation: false }
+    { name: 'the cancellation reason', isCancellation: true },
+    { name: 'another error', isCancellation: false }
   ])(
-    'registra a falha da leitura abortada só quando ela não é cancelamento: $name',
+    'logs the failure of the aborted read only when it is not a cancellation: $name',
     async ({ isCancellation }) => {
       vi.stubEnv('DEV', false)
       const log = vi.spyOn(console, 'error').mockReturnValue()

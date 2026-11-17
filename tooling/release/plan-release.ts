@@ -20,8 +20,8 @@ type Source = {
   content: string
 }
 
-// Roda no job sem permissão de escrita: só aqui o Vite+ é instalado e
-// importado. Os jobs com escrita recebem o resultado como artifact.
+// Runs in the job without write permission: only here is Vite+ installed and
+// imported. The write jobs receive the result as an artifact.
 async function formatted({ path, content }: Source): Promise<string> {
   const result = await format(path, content, fmt)
   if (result.errors.length > 0) throw new Error(`Cannot format ${path}.`)
@@ -42,7 +42,7 @@ if (expected) {
       content: expected.changelog
     })
   })
-  // A mesma validação dos jobs com escrita falha aqui, antes de qualquer upload.
+  // The same validation of the write jobs fails here, before any upload.
   assertPlanArtifact({ artifact, ctx, expected })
   await writeFile(
     requiredEnv('RELEASE_PLAN_FILE'),

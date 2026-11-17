@@ -14,8 +14,8 @@ type Diagnostic = {
 const root = path.resolve(import.meta.dirname, '../..')
 const diagnostics: Diagnostic[] = []
 
-// O glob do Stylelint pula dotfiles, node_modules e o .stylelintignore; a
-// varredura própria mantém todo CSS de src na verificação de nome.
+// The Stylelint glob skips dotfiles, node_modules and .stylelintignore; the own
+// scan keeps every CSS file of src in the name check.
 const entries = await readdir(path.join(root, 'src'), {
   recursive: true,
   withFileTypes: true

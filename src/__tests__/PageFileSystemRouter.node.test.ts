@@ -1,7 +1,7 @@
 import { buildRouteTree, PageFileSystemRouter } from 'filesystem-routing'
 
-describe('roteamento por arquivo', () => {
-  it('descobre páginas dinâmicas sem registrar componentes colocalizados', async () => {
+describe('file-based routing', () => {
+  it('finds dynamic pages without registering colocated components', async () => {
     const router = new PageFileSystemRouter({
       dir: `${import.meta.dirname}/../tests/fixtures/routes`,
       extensions: ['ts', 'tsx']
@@ -13,7 +13,7 @@ describe('roteamento por arquivo', () => {
     expect(routes[0]).toMatchObject({ page: true })
   })
 
-  it('registra a página inicial e o fallback e remove o agrupamento da URL', async () => {
+  it('registers the home page and the fallback and removes the grouping from the URL', async () => {
     const router = new PageFileSystemRouter({
       dir: `${import.meta.dirname}/../routes`,
       extensions: ['js', 'jsx', 'ts', 'tsx']

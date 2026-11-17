@@ -23,8 +23,9 @@ type Containment = {
 }
 type Failure = { error: unknown; request: Request }
 
-// O render abandonado rejeita com o próprio motivo do sinal. Só esse valor é
-// cancelamento: outro erro é falha real, mesmo com o sinal abortado.
+// The abandoned render rejects with the reason of the signal itself. Only that
+// value is a cancellation: another error is a real failure, even with the signal
+// aborted.
 function isCancellation({ error, request }: Failure): boolean {
   const { signal } = request
   return signal.aborted && Object.is(error, signal.reason)
@@ -39,16 +40,16 @@ function publicTextFailure(): Response {
   )
 }
 
-// Força o status: um render descartado pode ter iniciado a resposta.
+// Forces the status: a disposed render may have started the response.
 async function renderErrorPage(render: Render): Promise<Response> {
   const event = getRequestEvent()
   if (!event) return publicTextFailure()
   event.locals.serverFailure = createPublicError()
-  // O render lê o nonce do evento; a CSP da página de erro usa o mesmo valor.
+  // The render reads the nonce from the event; the CSP of the error page uses the same value.
   requestNonce()
   try {
     const page = await render()
-    // Com o status forçado, um redirect de idioma sairia com Location e sem corpo.
+    // With the forced status, a locale redirect would go out with Location and without a body.
     if (!isHtmlResponse(page)) {
       await page.body?.cancel()
       return publicTextFailure()
@@ -60,7 +61,7 @@ async function renderErrorPage(render: Render): Promise<Response> {
       })
     )
   } catch (error) {
-    // O render lê o sinal do evento, e a falha original já foi registrada.
+    // The render reads the signal from the event, and the original failure was already logged.
     if (!isCancellation({ error, request: event.request })) {
       logServerFailure({ source: 'error-page', error })
     }
@@ -78,8 +79,8 @@ async function containedResponse({
     try {
       return applySecurityHeaders(error)
     } catch {
-      // Headers que não aceitam gravação nem cópia (status fora de 200 a 599
-      // ou objeto hostil) tornam o controle uma falha.
+      // Headers that accept neither a write nor a copy (a status outside 200 to
+      // 599 or a hostile object) make the control a failure.
     }
   }
   if (isCancellation({ error, request })) return publicTextFailure()
@@ -89,12 +90,12 @@ async function containedResponse({
     : publicTextFailure()
 }
 
-// Contém falhas antes que o host registre o erro original. Não cobre o corpo após a Response.
+// Contains failures before the host logs the original error. Does not cover the body after the Response.
 export function containFailures(chain: Middleware[]): ChainEntry {
   const run = composeMiddleware(chain)
   return async (request, next) => {
-    // O plugin só aceita uma chamada ao render por requisição. Se a cadeia já
-    // renderizou a página antes de falhar, a página de erro não é possível.
+    // The plugin only accepts one render call per request. If the chain already
+    // rendered the page before failing, the error page is not possible.
     let isRendered = false
     const render: Render = override => {
       isRendered = true

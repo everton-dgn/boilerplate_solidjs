@@ -5,10 +5,10 @@ test.use({ locale: 'pt-BR' })
 const MOBILE_WIDTH = 375
 const DESKTOP_WIDTH = 1280
 
-test.describe('layout responsivo', () => {
+test.describe('responsive layout', () => {
   for (const width of [MOBILE_WIDTH, DESKTOP_WIDTH]) {
     for (const colorScheme of ['light', 'dark'] as const) {
-      test(`${width}px no tema ${colorScheme}`, async ({
+      test(`${width}px in the ${colorScheme} theme`, async ({
         page,
         pageErrors
       }) => {
@@ -46,10 +46,10 @@ test.describe('layout responsivo', () => {
   }
 })
 
-test.describe('navegação renderizada no servidor', () => {
+test.describe('server-rendered navigation', () => {
   test.use({ javaScriptEnabled: false })
 
-  test('mostra o indicador da página atual sem hidratação', async ({
+  test('shows the current page indicator without hydration', async ({
     page
   }) => {
     await page.goto('/pt')

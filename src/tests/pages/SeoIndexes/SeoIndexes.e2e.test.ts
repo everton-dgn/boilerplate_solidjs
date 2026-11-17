@@ -4,15 +4,15 @@ import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
 const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
-// Entradas publicadas pela fonte de `blog/[slug]`.
+// Entries published by the source of `blog/[slug]`.
 const BLOG_ENTRIES = 2
 const HOME_TITLE = 'SolidJS Boilerplate | Web applications with SSR'
 const SITE_DESCRIPTION =
   'A foundation for web applications with SolidJS, TypeScript and Vite+, with server-side rendering and light and dark themes.'
 
-test.describe('índices gerados do manifesto de rotas', () => {
+test.describe('indexes generated from the route manifest', () => {
   for (const method of ['GET', 'HEAD']) {
-    test(`recusa ${method} de partição existente sem sufixo XML`, async ({
+    test(`refuses ${method} of an existing partition without the XML suffix`, async ({
       request
     }) => {
       const canonical = await request.fetch('/sitemaps/catalog/a.xml', {
@@ -30,7 +30,7 @@ test.describe('índices gerados do manifesto de rotas', () => {
     })
   }
 
-  test('gera sitemap, robots e llms.txt a partir do manifesto de rotas', async ({
+  test('generates sitemap, robots and llms.txt from the route manifest', async ({
     request
   }) => {
     const siteUrl = readSiteOrigin()
@@ -59,7 +59,7 @@ test.describe('índices gerados do manifesto de rotas', () => {
     const missingPart = await request.get('/sitemaps/catalog/removed.xml')
     expect(missingPart.status()).toBe(HTTP_NOT_FOUND)
     expect(missingPart.headers()['cache-control']).toBe('no-store')
-    // Partes estáticas fora do manifesto seguem como 404, sem cache negativo.
+    // Static parts outside the manifest stay 404, without a negative cache.
     const missingPage = await request.get('/sitemaps/pages/9999.xml')
     expect(missingPage.status()).toBe(HTTP_NOT_FOUND)
     expect(missingPage.headers()['cache-control']).toBe('no-store')
@@ -75,14 +75,14 @@ test.describe('índices gerados do manifesto de rotas', () => {
       `<url><loc>${siteUrl}/pt/seo-article</loc><lastmod>2026-09-21</lastmod><xhtml:link`
     )
     expect(xml).toContain(`<url><loc>${siteUrl}/pt</loc><xhtml:link`)
-    // Fonte de `blog/[slug]`: barra final normalizada e data inválida omitida.
+    // Source of `blog/[slug]`: normalized trailing slash and the invalid date left out.
     expect(xml).toContain(
-      `<url><loc>${siteUrl}/pt/blog/primeiro-post</loc><lastmod>2026-09-10</lastmod><xhtml:link`
+      `<url><loc>${siteUrl}/pt/blog/first-post</loc><lastmod>2026-09-10</lastmod><xhtml:link`
     )
     expect(xml).toContain(
-      `<url><loc>${siteUrl}/pt/blog/segundo-post</loc><xhtml:link`
+      `<url><loc>${siteUrl}/pt/blog/second-post</loc><xhtml:link`
     )
-    expect(xml).not.toContain('ontem')
+    expect(xml).not.toContain('yesterday')
     expect(xml).not.toContain('/private')
     expect(xml).not.toContain('/seo-noindex')
     expect(xml).not.toContain('404')
@@ -112,13 +112,13 @@ test.describe('índices gerados do manifesto de rotas', () => {
       `- [${HOME_TITLE}](${siteUrl}/en/index.md): ${SITE_DESCRIPTION}\n`
     )
     expect(markdown).toContain(
-      `## Guias\n\n- [Guia público](${siteUrl}/en/seo-public): Conteúdo público do guia.\n`
+      `## Guides\n\n- [Public guide](${siteUrl}/en/seo-public): Public content of the guide.\n`
     )
     expect(markdown).toContain(
-      `## Optional\n\n- [Dados do backend](${siteUrl}/en/backend-error): Página de testes para os estados de resposta do backend.\n`
+      `## Optional\n\n- [Backend data](${siteUrl}/en/backend-error): Test page for the backend response states.\n`
     )
     expect(markdown.indexOf('## Optional')).toBeGreaterThan(
-      markdown.indexOf('## Guias')
+      markdown.indexOf('## Guides')
     )
     const sitemapUrls = [...xml.matchAll(/<loc>(?<url>[^<]+)<\/loc>/gu)].map(
       match => match.groups?.url
@@ -133,7 +133,7 @@ test.describe('índices gerados do manifesto de rotas', () => {
       [`${siteUrl}/en/contact`, `${siteUrl}/en/contact.md`],
       [`${siteUrl}/en/privacy`, `${siteUrl}/en/privacy.md`]
     ])
-    // Páginas indexáveis sem `route.info.llms`: só no sitemap.
+    // Indexable pages without `route.info.llms`: only in the sitemap.
     const sitemapOnly = new Set([
       `${siteUrl}/en/seo-sitemap-only`,
       `${siteUrl}/en/seo-article`,
@@ -155,8 +155,8 @@ test.describe('índices gerados do manifesto de rotas', () => {
         `${siteUrl}/llms-full.txt`
       ])
     )
-    // Uma entrada da fonte com caminho errado só apareceria no Search Console.
-    // As URLs usam a origem pública; o servidor de teste responde pelo caminho.
+    // A source entry with a wrong path would only show up in Search Console. The
+    // URLs use the public origin; the test server answers by the path.
     const blogPaths = sitemapUrls
       .map(url => String(url).slice(siteUrl.length))
       .filter(path => path.startsWith('/pt/blog/'))

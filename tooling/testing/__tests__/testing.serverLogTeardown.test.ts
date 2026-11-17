@@ -13,7 +13,7 @@ const OMITTED = '[server-error] Unexpected failure; private details omitted\n'
 
 async function logFile(context: TestContext): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), 'server-log-teardown-'))
-  // Sandbox criado pelo próprio teste: a remoção direta é o descarte correto.
+  // Sandbox created by the test itself: direct removal is the right disposal.
   context.after(() => rm(directory, { recursive: true, force: true }))
   const previous = {
     SERVER_LOG_FILE: env.SERVER_LOG_FILE,
@@ -21,7 +21,7 @@ async function logFile(context: TestContext): Promise<string> {
   }
   context.after(() => {
     for (const [name, value] of Object.entries(previous)) {
-      // Atribuir undefined ao env grava o texto "undefined".
+      // Assigning undefined to env writes the text "undefined".
       if (value === undefined) Reflect.deleteProperty(env, name)
       else env[name] = value
     }
@@ -32,21 +32,21 @@ async function logFile(context: TestContext): Promise<string> {
   return file
 }
 
-test('aceita o log do preview sem marcadores privados', async context => {
+test('accepts the preview log without private markers', async context => {
   const file = await logFile(context)
   await writeFile(file, `${STARTUP}${OMITTED}PRIVATE details\n`)
 
   await checkServerLog()
 })
 
-test('recusa um log sem a inicialização do preview', async context => {
+test('refuses a log without the preview startup', async context => {
   const file = await logFile(context)
   await writeFile(file, OMITTED)
 
   await assert.rejects(checkServerLog(), /does not show the preview startup/u)
 })
 
-test('recusa marcadores privados de qualquer suíte, inclusive coloridos', async context => {
+test('refuses private markers of any suite, colored ones included', async context => {
   const file = await logFile(context)
   for (const marker of [
     `PRIVATE_BACKEND_${crypto.randomUUID()}`,
@@ -60,7 +60,7 @@ test('recusa marcadores privados de qualquer suíte, inclusive coloridos', async
   }
 })
 
-test('recusa a execução sem o arquivo de log configurado', async context => {
+test('refuses the run without the configured log file', async context => {
   await logFile(context)
   Reflect.deleteProperty(env, 'SERVER_LOG_FILE')
 

@@ -11,7 +11,7 @@ import { readBackend } from '../../../backend-error/readBackend/index.ts'
 import { waitFixtureGate } from '../../../backend/waitFixtureGate/index.ts'
 
 const HTTP_REDIRECT = 307
-// A identidade persiste entre requisições para exercitar a deduplicação do hook.
+// The identity persists between requests to exercise the deduplication of the hook.
 const SHARED_ERROR = new Error('Reused fixture failure')
 
 type FragmentProps = { id: string; label: string; scenario: string }

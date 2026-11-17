@@ -4,15 +4,16 @@ import { isServer } from '@solidjs/web'
 import { delocalizePathname } from '@/i18n/urls/index.ts'
 
 const RELOAD_STORAGE_KEY = 'outdated-page-reload'
-// Uma falha que volta logo depois da recarga indica um build novo também
-// quebrado. A janela corta o laço sem impedir a recuperação de outro deploy.
+// A failure that comes back right after the reload points to a new build that is
+// also broken. The window breaks the loop without blocking the recovery from
+// another deploy.
 const RELOAD_WINDOW_MS = 30_000
 
 type UnsavedChangesCheck = () => boolean
 type RemoveUnsavedChanges = () => void
 
-// O estado só muda no navegador: os detectores rodam a partir do entry-client,
-// e as páginas registram as checagens dentro de onSettled.
+// The state only changes in the browser: the detectors run from entry-client,
+// and the pages register the checks inside onSettled.
 const chunkFailures = new WeakSet<object>()
 const unsavedChangesChecks = new Set<UnsavedChangesCheck>()
 let isOutdated = false
@@ -35,8 +36,8 @@ export function markPageOutdated(): void {
   isOutdated = true
 }
 
-// Recebe o payload do vite:preloadError, que é o mesmo erro rejeitado pelo
-// import e entregue ao Errored.
+// Receives the vite:preloadError payload, which is the same error rejected by
+// the import and delivered to Errored.
 export function recordChunkFailure(error: unknown): void {
   isOutdated = true
   if (typeof error === 'object' && error !== null) chunkFailures.add(error)
@@ -50,8 +51,8 @@ export function isVersionError(error: unknown): boolean {
   )
 }
 
-// Sem sessionStorage não há como provar que a recarga anterior não falhou do
-// mesmo jeito; nesse caso a página de erro continua com a recarga manual.
+// Without sessionStorage there is no way to prove that the previous reload did
+// not fail the same way; in that case the error page keeps the manual reload.
 export function claimOutdatedPageReload(): boolean {
   if (isOffline()) return false
   try {
@@ -69,12 +70,12 @@ export function registerUnsavedChanges(
 ): RemoveUnsavedChanges {
   if (isServer) {
     return () => {
-      // Nenhuma checagem é registrada no servidor.
+      // No check is registered on the server.
     }
   }
 
-  // Uma entrada por registro: a mesma checagem registrada por duas telas não
-  // perde a proteção quando uma delas desmonta.
+  // One entry per registration: the same check registered by two screens does
+  // not lose the protection when one of them unmounts.
   const entry: UnsavedChangesCheck = () => check()
   unsavedChangesChecks.add(entry)
   return () => {
@@ -86,12 +87,12 @@ export function createOutdatedPageGuard(): void {
   if (isServer) return
   useBeforeLeave(event => {
     if (event.defaultPrevented || typeof event.to === 'number') return
-    // Este guard é inscrito antes das rotas e o preventDefault é compartilhado:
-    // sem a checagem, o guard de rascunho da página nunca chegaria a perguntar.
+    // This guard is subscribed before the routes and preventDefault is shared:
+    // without the check, the draft guard of the page would never get to ask.
     if (!isOutdated || isOffline() || hasUnsavedChanges()) return
     const target = new URL(event.to, globalThis.location.href)
-    // Query e hash seguem no client: um campo ligado à URL recarregaria a
-    // página a cada tecla.
+    // Query and hash stay on the client: a field bound to the URL would reload
+    // the page on every key.
     if (
       target.origin !== globalThis.location.origin ||
       delocalizePathname(target.pathname) ===

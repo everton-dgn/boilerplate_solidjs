@@ -9,8 +9,8 @@ type RequestJsonOptions<T> = {
   init?: RequestInit
 }
 
-// Um backend lento ou um corpo sem fim não podem prender a server function
-// nem a memória do servidor. Os limites valem também quando init traz signal.
+// A slow backend or an endless body must not hold the server function or the
+// server memory. The limits also apply when init carries a signal.
 const TIMEOUT_MS = 10_000
 const MAX_BODY_BYTES = 1_000_000
 
@@ -28,7 +28,7 @@ async function readBoundedText(response: Response): Promise<string> {
   const decoder = new TextDecoder()
   let text = ''
   let received = 0
-  // Lançar dentro do laço encerra o iterador e cancela o stream de origem.
+  // Throwing inside the loop ends the iterator and cancels the source stream.
   for await (const chunk of response.body) {
     received += chunk.byteLength
     if (received > MAX_BODY_BYTES) {
@@ -50,7 +50,7 @@ export function requestJson<T>({
         ...init,
         signal: requestSignal(init)
       })
-      // Não leia nem anexe o corpo de falhas HTTP ao erro.
+      // Do not read or attach the body of HTTP failures to the error.
       if (!response.ok) {
         await response.body?.cancel()
         throw new Error('Backend request failed')

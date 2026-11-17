@@ -58,7 +58,7 @@ async function validateHead({ ctx, release, head }: HeadCheck): Promise<void> {
     throw new Error('Release commit must preserve file modes and types.')
   }
   for (const expected of release.files) {
-    // A saída do git show já vem aparada pelo comando; normalize só a quebra de linha final.
+    // The git show output already comes trimmed by the command; normalize only the final line break.
     if (
       (await git('show', `${head}:${expected.path}`)) !==
       expected.content.trimEnd()
@@ -77,8 +77,8 @@ async function closePullRequest({ ctx, pr }: PullRequestTarget): Promise<void> {
   await postpone(`Closed obsolete release pull request #${pr.number}.`)
 }
 
-// Fecha PRs de release abertos cuja origem ficou para trás na main. A branch
-// permanece para inspeção; um PR de origem mais nova nunca é tocado.
+// Closes open release PRs whose source fell behind on main. The branch stays for
+// inspection; a PR from a newer source is never touched.
 async function closeObsoletePullRequests({
   ctx,
   branch

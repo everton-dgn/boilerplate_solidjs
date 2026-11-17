@@ -25,11 +25,11 @@ export function Input(props: InputProps) {
   )
   const initialValue = untrack(() => props.defaultValue)
   const initialChecked = untrack(() => props.defaultChecked)
-  // Preserva a ausência das propriedades nativas (um checkbox sem value envia "on").
-  // No servidor, o @solidjs/web descarta value/checked quando o default vem
-  // junto, então só o valor efetivo vai ao HTML inicial. No cliente,
-  // value/checked sem controle seriam regravados por cima da edição sempre que
-  // outra prop do campo mudasse.
+  // Keeps the native properties missing (a checkbox without value sends "on").
+  // On the server, @solidjs/web drops value/checked when the default comes along,
+  // so only the effective value goes into the initial HTML. On the client,
+  // uncontrolled value/checked would be written again over the edit whenever
+  // another prop of the field changed.
   const fieldState = (): InputFieldState => {
     const value = isServer ? (props.value ?? initialValue) : props.value
     const checked = isServer ? (props.checked ?? initialChecked) : props.checked

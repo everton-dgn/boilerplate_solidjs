@@ -11,8 +11,8 @@ type TextareaProps = Omit<ComponentProps<'textarea'>, 'class'> & {
 export function Textarea(props: TextareaProps) {
   const rest = omit(props, 'variant', 'class', 'defaultValue', 'value')
   const initialValue = untrack(() => props.defaultValue)
-  // No cliente, um value sem controle seria regravado por cima da edição
-  // sempre que outra prop do campo mudasse.
+  // On the client, an uncontrolled value would be written again over the edit
+  // whenever another prop of the field changed.
   const fieldState = (): Pick<TextareaProps, 'value'> =>
     props.value === undefined ? {} : { value: props.value }
   return (

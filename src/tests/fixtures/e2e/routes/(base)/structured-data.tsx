@@ -7,22 +7,22 @@ import { UNSAFE_JSON_LD_TEXT } from '@/tests/fixtures/structured-data.ts'
 export const route = {
   info: {
     seo: {
-      title: 'Perguntas frequentes',
+      title: 'Frequently asked questions',
       description: UNSAFE_JSON_LD_TEXT
     },
-    llms: { section: 'Referência' }
+    llms: { section: 'Reference' }
   }
 } satisfies RouteDefinition
 
 export default function FaqPage() {
-  // Tipos concretos evitam inferir os nós aninhados contra toda a união de Thing.
+  // Concrete types avoid inferring the nested nodes against the whole Thing union.
   const answer: Answer = {
     '@type': 'Answer',
     text: UNSAFE_JSON_LD_TEXT
   }
   const question: Question = {
     '@type': 'Question',
-    name: 'O que é o boilerplate?',
+    name: 'What is the boilerplate?',
     acceptedAnswer: answer
   }
   createSeo({
@@ -34,7 +34,7 @@ export default function FaqPage() {
 
   return (
     <main>
-      <h1>Perguntas frequentes</h1>
+      <h1>Frequently asked questions</h1>
     </main>
   )
 }

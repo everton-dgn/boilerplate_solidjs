@@ -16,8 +16,8 @@ const LOCAL_ORIGIN = 'https://local.invalid'
 
 export function isAbsoluteHref(href: string): boolean {
   if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(href)) return true
-  // O parser de URL descarta TAB e lê '\' como '/': '/\host' e '/<TAB>/host'
-  // apontam para outro host.
+  // The URL parser drops TAB and reads '\' as '/': '/\host' and '/<TAB>/host'
+  // point to another host.
   return (
     href.startsWith('/') && new URL(href, LOCAL_ORIGIN).origin !== LOCAL_ORIGIN
   )

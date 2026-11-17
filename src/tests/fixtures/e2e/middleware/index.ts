@@ -14,16 +14,17 @@ type FailureRequest = { request: Request; phase: 'before' | 'after' }
 
 const PREFIX = '/outside-error'
 
-// Carrega o marcador do backend sintético para as fixtures de erro fora de
-// server functions. O valor fica só em locals, que o runtime não serializa.
-// O header informa ao teste, sem o marcador, se a fixture recebeu o dado.
+// Loads the marker of the synthetic backend for the error fixtures outside server
+// functions. The value stays only in locals, which the runtime does not
+// serialize. The header tells the test, without the marker, whether the fixture
+// received the data.
 async function fixtureMarker(request: Request, next: Next) {
   const url = new URL(request.url)
   const pathname = delocalizePathname(url.pathname)
   const id = url.searchParams.get('id')
   const event = getRequestEvent()
-  // Falhas de middleware podem ser pedidas em qualquer caminho, inclusive
-  // rotas de API e o endpoint de server functions.
+  // Middleware failures can be requested on any path, API routes and the server
+  // function endpoint included.
   const middlewareCase =
     url.searchParams.get('case')?.startsWith('middleware-') === true
   if (event && id && (pathname === PREFIX || middlewareCase)) {
@@ -51,8 +52,8 @@ function failureRequested({ request, phase }: FailureRequest): boolean {
   return url.searchParams.get('case') === `middleware-${phase}`
 }
 
-// A resposta desta falha é a da contenção, sem os headers da fixture; o
-// controle positivo vai ao backend sintético antes do lançamento.
+// The response of this failure is the one of the containment, without the
+// fixture headers; the positive control goes to the synthetic backend before the throw.
 async function throwFixtureFailure(request: Request): Promise<never> {
   const id = new URL(request.url).searchParams.get('id') ?? ''
   const marker = readFixtureMarker()
@@ -65,7 +66,7 @@ async function throwFixtureFailure(request: Request): Promise<never> {
   throw fixtureError(marker)
 }
 
-// Exceção de middleware antes de next(): nenhuma resposta foi produzida.
+// Middleware exception before next(): no response was produced.
 async function fixtureFailureBefore(request: Request, next: Next) {
   if (failureRequested({ request, phase: 'before' })) {
     await throwFixtureFailure(request)
@@ -73,7 +74,7 @@ async function fixtureFailureBefore(request: Request, next: Next) {
   return next()
 }
 
-// Exceção de middleware depois de next(): a resposta já foi produzida.
+// Middleware exception after next(): the response was already produced.
 async function fixtureFailureAfter(request: Request, next: Next) {
   const response = await next()
   if (failureRequested({ request, phase: 'after' })) {
@@ -82,8 +83,8 @@ async function fixtureFailureAfter(request: Request, next: Next) {
   return response
 }
 
-// A fábrica da produção põe as falhas injetadas na frente da cadeia real,
-// dentro da mesma contenção.
+// The production factory puts the injected failures in front of the real chain,
+// inside the same containment.
 export default createMiddleware([
   fixtureMarker,
   fixtureFailureBefore,

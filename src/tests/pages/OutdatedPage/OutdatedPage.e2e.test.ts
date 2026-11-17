@@ -8,14 +8,14 @@ test.use({ locale: 'pt-BR' })
 
 const HTTP_NOT_FOUND = 404
 const HTTP_CONFLICT = 409
-const FIXTURE_TITLE = 'Página desatualizada'
+const FIXTURE_TITLE = 'Outdated page'
 const NOTICE_TITLE = 'O envio não foi concluído'
 const FALLBACK_NOTICE_TITLE = 'Parte da página não carregou'
 const ERROR_PAGE_FLAG = 'e2e-error-page'
-const DRAFT = 'Texto ainda não salvo'
+const DRAFT = 'Text not saved yet'
 
 type Destination = { link: string; url: RegExp; title: string }
-// O guard troca de documento com assign; o Errored raiz, com reload.
+// The guard switches documents with assign; the root Errored, with reload.
 type NavigationType = 'navigate' | 'reload'
 type NavigationEntry = { name: string; type: string }
 type DestinationCheck = {
@@ -31,19 +31,19 @@ type Refusal = {
 }
 
 const ABOUT: Destination = {
-  link: 'Ir para Sobre',
+  link: 'Go to About',
   url: /\/pt\/about$/u,
   title: 'Sobre o SolidJS Boilerplate'
 }
-// O CSS de Sobre já vem no documento da fixture; o do UI kit, não.
+// The About CSS already comes in the fixture document; the UI kit one does not.
 const UI_KIT: Destination = {
-  link: 'Ir para UI kit',
+  link: 'Go to UI kit',
   url: /\/pt\/ui-kit$/u,
   title: 'UI fixture'
 }
 
-// A flag sobrevive à troca de documento na mesma aba, então registra também
-// uma página de erro que piscou antes da recarga.
+// The flag survives the document switch in the same tab, so it also records an
+// error page that flashed before the reload.
 async function watchErrorPage(page: Page): Promise<() => Promise<boolean>> {
   await page.addInitScript(flag => {
     new MutationObserver(() => {
@@ -77,8 +77,9 @@ function countDocumentRequests(page: Page): DocumentCounter {
   return () => count
 }
 
-// Simula o deploy que apagou os assets do build da aba: os que a aba ainda não
-// pediu respondem 404 até o próximo documento, que já é do build novo.
+// Simulates the deploy that deleted the build assets of the tab: the ones the tab
+// has not requested yet answer 404 until the next document, which is already
+// from the new build.
 async function blockNewAssets({ page, extension }: AssetBlock): Promise<void> {
   let isBlocking = true
   await page.route('**/*', route => {
@@ -135,7 +136,7 @@ async function expectDestinationDocument({
 const REFUSALS: Refusal[] = [
   {
     status: HTTP_CONFLICT,
-    // O carimbo de outro build é o que uma aba antiga envia depois do deploy.
+    // The stamp of another build is what an old tab sends after the deploy.
     rewrite: async route =>
       route.continue({
         headers: {
@@ -148,20 +149,20 @@ const REFUSALS: Refusal[] = [
     status: HTTP_NOT_FOUND,
     rewrite: route => {
       const url = new URL(route.request().url())
-      url.pathname = url.pathname.replace(/[^/]+$/u, 'funcao-removida')
+      url.pathname = url.pathname.replace(/[^/]+$/u, 'removed-function')
       return route.continue({ url: url.href })
     }
   }
 ]
 
-test('passar sobre um link sem o chunk não recarrega, respeita o rascunho e depois abre o destino', async ({
+test('hovering a link without the chunk does not reload, respects the draft and then opens the target', async ({
   page
 }) => {
   const wasErrorPageShown = await watchErrorPage(page)
   await openFixture(page)
   const documents = countDocumentRequests(page)
   await blockNewAssets({ page, extension: /\.js$/u })
-  await page.getByLabel('Rascunho').fill(DRAFT)
+  await page.getByLabel('Draft').fill(DRAFT)
 
   const missingChunk = page.waitForResponse(
     response =>
@@ -170,17 +171,17 @@ test('passar sobre um link sem o chunk não recarrega, respeita o rascunho e dep
   )
   await page.getByRole('link', { name: ABOUT.link }).hover()
   await missingChunk
-  await expect(page.getByLabel('Rascunho')).toHaveValue(DRAFT)
+  await expect(page.getByLabel('Draft')).toHaveValue(DRAFT)
   expect(documents()).toBe(0)
 
-  // Com o rascunho registrado, o guard de versão cede ao guard da página.
+  // With the draft registered, the version guard yields to the guard of the page.
   await page.getByRole('link', { name: ABOUT.link }).click()
-  await expect(page.getByText('Saída bloqueada')).toBeVisible()
-  await expect(page.getByLabel('Rascunho')).toHaveValue(DRAFT)
+  await expect(page.getByText('Leave blocked')).toBeVisible()
+  await expect(page.getByLabel('Draft')).toHaveValue(DRAFT)
   expect(page.url()).toMatch(/\/pt\/outdated-page$/u)
   expect(documents()).toBe(0)
 
-  await page.getByLabel('Rascunho').fill('')
+  await page.getByLabel('Draft').fill('')
   await page.getByRole('link', { name: ABOUT.link }).click()
   await expectDestinationDocument({
     page,
@@ -195,9 +196,9 @@ for (const { name, extension, destination } of [
   { name: 'JS', extension: /\.js$/u, destination: ABOUT },
   { name: 'CSS', extension: /\.css$/u, destination: UI_KIT }
 ]) {
-  // O evento sintético não move o ponteiro nem dá foco: a navegação começa
-  // sem preload, como num toque mais rápido que a resposta 404.
-  test(`um clique sem preload e sem o ${name} do destino abre o destino por documento`, async ({
+  // The synthetic event neither moves the pointer nor gives focus: the navigation
+  // starts without a preload, like a tap faster than the 404 response.
+  test(`a click without a preload and without the ${name} of the target opens the target through a document`, async ({
     page
   }) => {
     const wasErrorPageShown = await watchErrorPage(page)
@@ -218,7 +219,7 @@ for (const { name, extension, destination } of [
 }
 
 for (const { status, rewrite } of REFUSALS) {
-  test(`o envio recusado com ${status} mostra o aviso sem executar a função`, async ({
+  test(`the submission refused with ${status} shows the notice without running the function`, async ({
     page,
     request
   }) => {
@@ -233,16 +234,16 @@ for (const { status, rewrite } of REFUSALS) {
         new URL(response.url()).pathname.startsWith('/_server/') &&
         response.status() === status
     )
-    await page.getByRole('button', { name: 'Enviar nota' }).click()
+    await page.getByRole('button', { name: 'Send note' }).click()
     await refusal
-    await expect(page.getByText('Função desconhecida')).toBeVisible()
+    await expect(page.getByText('Unknown function')).toBeVisible()
     await expect(
       page.getByRole('region', { name: NOTICE_TITLE })
     ).toContainText('A página pode estar desatualizada.')
     const backend = await readBackendState({ request, id })
     expect(backend.attempts).toBe(0)
 
-    // A recusa marca a aba: a próxima troca de página já sai por documento.
+    // The refusal marks the tab: the next page change already goes through a document.
     await page.getByRole('link', { name: ABOUT.link }).click()
     await expectDestinationDocument({
       page,
@@ -253,7 +254,7 @@ for (const { status, rewrite } of REFUSALS) {
   })
 }
 
-test('a leitura recusada dentro do limite local avisa sem recarregar e preserva o rascunho', async ({
+test('the read refused inside the local boundary warns without reloading and keeps the draft', async ({
   page
 }) => {
   await openFixture(
@@ -261,14 +262,14 @@ test('a leitura recusada dentro do limite local avisa sem recarregar e preserva 
     `?id=${encodeURIComponent(`success:${crypto.randomUUID()}`)}`
   )
   const documents = countDocumentRequests(page)
-  await page.getByLabel('Rascunho').fill(DRAFT)
+  await page.getByLabel('Draft').fill(DRAFT)
   await refuseReads(page)
-  await page.getByRole('button', { name: 'Ler nota', exact: true }).click()
-  await expect(page.getByText('Leitura recusada')).toBeVisible()
+  await page.getByRole('button', { name: 'Read note', exact: true }).click()
+  await expect(page.getByText('Read refused')).toBeVisible()
   const notice = page.getByRole('region', { name: FALLBACK_NOTICE_TITLE })
   await expect(notice).toContainText('Recarregue para continuar.')
   await expect(page.getByRole('region', { name: NOTICE_TITLE })).toHaveCount(0)
-  await expect(page.getByLabel('Rascunho')).toHaveValue(DRAFT)
+  await expect(page.getByLabel('Draft')).toHaveValue(DRAFT)
   expect(documents()).toBe(0)
 
   await notice.getByRole('button', { name: 'Recarregar página' }).click()
@@ -280,7 +281,7 @@ test('a leitura recusada dentro do limite local avisa sem recarregar e preserva 
   expect(reloaded?.type).toBe('reload')
 })
 
-test('a leitura recusada sem limite local recarrega uma vez e mostra a página de erro se voltar', async ({
+test('the read refused without a local boundary reloads once and shows the error page if it comes back', async ({
   page
 }) => {
   const wasErrorPageShown = await watchErrorPage(page)
@@ -291,7 +292,9 @@ test('a leitura recusada sem limite local recarrega uma vez e mostra a página d
   const documents = countDocumentRequests(page)
   await refuseReads(page)
 
-  await page.getByRole('button', { name: 'Ler nota sem limite local' }).click()
+  await page
+    .getByRole('button', { name: 'Read note without a local boundary' })
+    .click()
   await expect.poll(documents).toBe(1)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     FIXTURE_TITLE
@@ -301,14 +304,16 @@ test('a leitura recusada sem limite local recarrega uma vez e mostra a página d
   expect(reloaded?.type).toBe('reload')
   expect(await wasErrorPageShown()).toBe(false)
 
-  // A recusa repetida dentro da janela da trava indica um build novo também
-  // quebrado: a página de erro aparece em vez de outra recarga.
-  await page.getByRole('button', { name: 'Ler nota sem limite local' }).click()
+  // A repeated refusal within the lock window points to a new build that is also
+  // broken: the error page shows up instead of another reload.
+  await page
+    .getByRole('button', { name: 'Read note without a local boundary' })
+    .click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Algo deu errado!'
   )
   expect(documents()).toBe(1)
-  // O Errored raiz desmonta o aviso: a página de erro aparece sozinha.
+  // The root Errored unmounts the notice: the error page shows up alone.
   await expect(
     page.getByRole('region', { name: FALLBACK_NOTICE_TITLE })
   ).toHaveCount(0)

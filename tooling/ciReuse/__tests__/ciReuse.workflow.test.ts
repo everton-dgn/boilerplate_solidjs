@@ -8,13 +8,13 @@ import { test } from 'node:test'
 import { promisify } from 'node:util'
 
 const exec = promisify(execFile)
-// Hooks do Git exportam GIT_DIR e afins; os repositórios temporários não podem herdá-los.
+// Git hooks export GIT_DIR and the like; the temporary repositories cannot inherit them.
 const ISOLATED_ENV = Object.fromEntries(
   Object.entries(env).filter(([key]) => !key.startsWith('GIT_'))
 )
-// Identidade por comando: nenhum teste grava configuração de Git.
+// Identity per command: no test writes Git configuration.
 const IDENTITY = ['-c', 'user.email=ci@example.com', '-c', 'user.name=CI']
-const EVIDENCE_TEST = 'a evidência descreve o merge sintético testado'
+const EVIDENCE_TEST = 'the evidence describes the tested synthetic merge'
 const WORKFLOW = await readFile(
   new URL('../../../.github/workflows/ci.yml', import.meta.url),
   'utf8'
@@ -28,7 +28,7 @@ const RUN_INDENT_OFFSET = 2
 const NOT_FOUND = -1
 const SHA_LENGTH = 40
 const LAST_INDEX = -1
-// pull e build no E2E de produção, deploy no job de deploy.
+// pull and build in the production E2E, deploy in the deploy job.
 const VERCEL_COMMAND_COUNT = 3
 
 type ScriptOptions = {
@@ -42,7 +42,7 @@ type GateCase = {
 
 function stepScript(name: string): string {
   const start = LINES.findIndex(line => line.trim() === `- name: ${name}`)
-  assert.ok(start !== NOT_FOUND, `Passo ausente: ${name}`)
+  assert.ok(start !== NOT_FOUND, `Missing step: ${name}`)
   const next = LINES.findIndex(
     (line, index) => index > start && line.trim().startsWith('- name: ')
   )
@@ -51,7 +51,7 @@ function stepScript(name: string): string {
   )
   assert.ok(
     run > start && (next === NOT_FOUND || run < next),
-    `Passo sem run: ${name}`
+    `Step without run: ${name}`
   )
   const indent = (LINES[run] ?? '').indexOf('run:')
   const body: string[] = []
@@ -64,7 +64,7 @@ function stepScript(name: string): string {
 
 function jobBlock(id: string): string {
   const start = LINES.indexOf(`  ${id}:`)
-  assert.ok(start !== NOT_FOUND, `Job ausente: ${id}`)
+  assert.ok(start !== NOT_FOUND, `Missing job: ${id}`)
   const end = LINES.findIndex(
     (line, index) => index > start && /^ {2}\S/u.test(line)
   )
@@ -73,7 +73,7 @@ function jobBlock(id: string): string {
 
 async function runScript({ script, variables }: ScriptOptions) {
   try {
-    // Fora de qualquer repositório: um script sem cd não alcança o checkout.
+    // Outside any repository: a script without cd does not reach the checkout.
     await exec('bash', ['-e', '-c', script], {
       cwd: tmpdir(),
       env: { ...ISOLATED_ENV, ...variables }
@@ -99,7 +99,7 @@ const allSkipped = {
 }
 const pullRequest = { PROOF_RESULT: 'skipped', REUSE: '', RUN_QUALITY: '' }
 
-test('o gate aceita jobs pulados somente com prova válida', async () => {
+test('the gate accepts skipped jobs only with a valid proof', async () => {
   const script = stepScript('Require all validation jobs')
   const cases: GateCase[] = [
     { variables: { ...pullRequest, ...allPassed }, isAccepted: true },
@@ -169,7 +169,7 @@ test('o gate aceita jobs pulados somente com prova válida', async () => {
   }
 })
 
-test('o grafo mantém produção independente e os jobs reutilizáveis atrás do proof', () => {
+test('the graph keeps production independent and the reusable jobs behind the proof', () => {
   assert.doesNotMatch(jobBlock('e2e-production'), /needs:/u)
   assert.match(jobBlock('e2e-production'), /name: E2E \(production\)/u)
   for (const [id, name] of [
@@ -204,8 +204,8 @@ test('o grafo mantém produção independente e os jobs reutilizáveis atrás do
   )
   const deploy = jobBlock('deploy')
   assert.ok(deploy.includes('    needs: check\n'))
-  // Sem função de status, o success() implícito pula o deploy quando a prova
-  // dispensa jobs. A checagem estática não emula o scheduler do GitHub.
+  // Without a status function, the implicit success() skips the deploy when the
+  // proof skips jobs. The static check does not emulate the GitHub scheduler.
   const condition = (
     /^ {4}if:(?<value>.*(?:\n {6}.*)*)/mu.exec(deploy)?.groups?.value ?? ''
   ).replaceAll(/\s+/gu, ' ')
@@ -219,7 +219,7 @@ test('o grafo mantém produção independente e os jobs reutilizáveis atrás do
   }
 })
 
-test('o workflow publica a evidência e as chaves lidas pelo proof', () => {
+test('the workflow publishes the evidence and the keys read by the proof', () => {
   const quality = jobBlock('quality')
   assert.ok(
     quality.includes(`name: ci-reuse-evidence-\${{ github.run_attempt }}`)
@@ -268,7 +268,7 @@ test(EVIDENCE_TEST, async context => {
   assert.deepEqual(evidence, { version: 2, tested_sha: tested })
 })
 
-test('pull, build e deploy usam uma única versão fixa do Vercel CLI', () => {
+test('pull, build and deploy use a single pinned version of the Vercel CLI', () => {
   assert.doesNotMatch(WORKFLOW, /vercel@latest|registry\.npmjs\.org/u)
   const pins = [
     ...WORKFLOW.matchAll(/^ {2}VERCEL_CLI_VERSION: '(?<version>.+)'$/gmu)
@@ -285,7 +285,7 @@ test('pull, build e deploy usam uma única versão fixa do Vercel CLI', () => {
   )
 })
 
-test('o token da Vercel chega só aos passos do Vercel CLI', () => {
+test('the Vercel token only reaches the Vercel CLI steps', () => {
   const steps = WORKFLOW.split(/\n(?= {6}- name: )/u)
   const withToken = steps
     .filter(step => step.includes('secrets.VERCEL_TOKEN'))
@@ -306,7 +306,7 @@ test('o token da Vercel chega só aos passos do Vercel CLI', () => {
   )
 })
 
-test('só proof e deploy preparam as ferramentas sem instalar dependências', () => {
+test('only proof and deploy prepare the tools without installing dependencies', () => {
   assert.match(
     SETUP_ACTION,
     /install-dependencies:\n {4}description: .+\n {4}required: false\n {4}default: 'true'/u
@@ -330,7 +330,7 @@ test('só proof e deploy preparam as ferramentas sem instalar dependências', ()
   )
 })
 
-test('só o Quality grava os caches da ação setup-project', () => {
+test('only Quality writes the caches of the setup-project action', () => {
   assert.match(
     SETUP_ACTION,
     /cache-save:\n {4}description: .+\n {4}required: false\n {4}default: 'false'/u
@@ -339,7 +339,7 @@ test('só o Quality grava os caches da ação setup-project', () => {
   assert.equal(WORKFLOW.split('cache-save:').length - 1, 1)
 })
 
-test('o deploy confere o head da main sob o lock antes de publicar', () => {
+test('the deploy checks the main head under the lock before publishing', () => {
   const deploy = jobBlock('deploy')
   const steps = deploy.split('\n      - name: ').slice(1)
   const [guard, ...rest] = steps
@@ -361,7 +361,7 @@ test('o deploy confere o head da main sob o lock antes de publicar', () => {
   assert.ok(rest.at(LAST_INDEX)?.includes('deploy --prebuilt --prod --yes'))
 })
 
-test('a guarda publica só o head atual e falha em erro de API', async context => {
+test('the guard publishes only the current head and fails on an API error', async context => {
   const directory = await mkdtemp(path.join(tmpdir(), 'ci-deploy-guard-'))
   context.after(() => rm(directory, { recursive: true, force: true }))
   await writeFile(
@@ -414,7 +414,7 @@ test('a guarda publica só o head atual e falha em erro de API', async context =
   }
 })
 
-test('os testes ignoram GIT_DIR e GIT_WORK_TREE herdados de hooks', async context => {
+test('the tests ignore GIT_DIR and GIT_WORK_TREE inherited from hooks', async context => {
   const directory = await mkdtemp(path.join(tmpdir(), 'ci-reuse-hostile-git-'))
   context.after(() => rm(directory, { recursive: true, force: true }))
   const victim = path.join(directory, 'victim')
@@ -443,7 +443,7 @@ test('os testes ignoram GIT_DIR e GIT_WORK_TREE herdados de hooks', async contex
   await git('-C', victim, 'worktree', 'add', '-q', '-b', 'feat/x', worktree)
   const gitDir = await git('-C', worktree, 'rev-parse', '--absolute-git-dir')
   const before = await snapshot()
-  // Com NODE_TEST_CONTEXT herdado, o runner aninhado só avisa e sai com 0.
+  // With an inherited NODE_TEST_CONTEXT, the nested runner only warns and exits with 0.
   const { NODE_TEST_CONTEXT: _runner, ...childEnv } = ISOLATED_ENV
   const child = await exec(
     execPath,

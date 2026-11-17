@@ -2,10 +2,10 @@ import { respond } from '@solidjs/web'
 
 type EnvelopeData = { message: string }
 
-// Envelope devolvido numa chamada direta durante o SSR. O wrapper reconstrói
-// a resposta a partir dos dados verificados; o hook não participa.
+// Envelope returned in a direct call during the SSR. The wrapper rebuilds the
+// response from the checked data; the hook does not take part.
 export async function returnEnvelope(): Promise<EnvelopeData> {
   'use server'
   await Promise.resolve()
-  return respond({ message: 'Envelope retornado' }, { status: 202 })
+  return respond({ message: 'Returned envelope' }, { status: 202 })
 }

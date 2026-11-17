@@ -28,7 +28,7 @@ export const testRules: LintRules = {
   'vitest/padding-around-after-all-blocks': 'error',
   'vitest/padding-around-test-blocks': 'error',
   'vitest/prefer-called-exactly-once-with': 'error',
-  // prefer-called-times contradiz esta regra: as duas juntas proibiriam as duas formas.
+  // prefer-called-times contradicts this rule: together they would forbid both forms.
   'vitest/prefer-called-once': 'error',
   'vitest/prefer-called-with': 'error',
   'vitest/prefer-comparison-matcher': 'error',
@@ -40,8 +40,8 @@ export const testRules: LintRules = {
   'vitest/prefer-hooks-in-order': 'error',
   'vitest/prefer-hooks-on-top': 'error',
   'vitest/prefer-import-in-mock': 'error',
-  // Sem prefixos permitidos, o autofix passa só a primeira letra da sigla
-  // para minúscula (HTML vira hTML).
+  // Without allowed prefixes, the autofix lowercases only the first letter of the
+  // acronym (HTML becomes hTML).
   'vitest/prefer-lowercase-title': [
     'error',
     {

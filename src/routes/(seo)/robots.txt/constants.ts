@@ -2,9 +2,10 @@ import { endpoint } from 'virtual:solid-server-function-handler'
 
 import type { RobotsGroup } from './types.ts'
 
-// Robôs que coletam conteúdo para treinar modelos. Ficam liberados os
-// buscadores e os agentes que leem páginas a pedido do usuário (ChatGPT-User,
-// Claude-User, OAI-SearchBot, PerplexityBot), que são o público do llms.txt.
+// Robots that collect content to train models. Search engines and the agents that
+// read pages at the request of the user (ChatGPT-User, Claude-User,
+// OAI-SearchBot, PerplexityBot) stay allowed, because they are the audience of
+// llms.txt.
 const AI_TRAINING_BOTS: readonly string[] = [
   'GPTBot',
   'ClaudeBot',
@@ -16,7 +17,7 @@ const AI_TRAINING_BOTS: readonly string[] = [
   'Bytespider'
 ]
 
-// O endpoint das server functions não é uma página para rastrear.
+// The server function endpoint is not a page to crawl.
 export const ROBOTS_GROUPS: readonly RobotsGroup[] = [
   { userAgents: ['*'], allow: ['/'], disallow: [endpoint] },
   { userAgents: AI_TRAINING_BOTS, disallow: ['/'] }

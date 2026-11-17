@@ -24,9 +24,9 @@ type VersionedContext = {
   version: string
 }
 
-// Contrato entre o job de leitura, que formata os arquivos com o Vite+, e os
-// jobs com escrita, que só usam Git, gh e módulos nativos. Versão, tag e notas
-// saem do plano recalculado e do changelog conferido.
+// Contract between the read job, which formats the files with Vite+, and the write
+// jobs, which only use Git, gh and native modules. Version, tag and notes come
+// from the recomputed plan and the checked changelog.
 type PlanArtifact = FormattedFiles & {
   format: number
   source: string
@@ -78,8 +78,8 @@ export async function readPlanArtifact(file: string): Promise<unknown> {
   return JSON.parse(content)
 }
 
-// O job com escrita não formata nada: confere que o artifact só difere do
-// plano recalculado em espaços e que o package.json muda apenas a versão.
+// The write job formats nothing: it checks that the artifact only differs from
+// the recomputed plan in whitespace and that package.json only changes the version.
 export function assertPlanArtifact({
   artifact,
   ctx,

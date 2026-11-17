@@ -55,7 +55,7 @@ const manifest = {
 const options = { manifest, sources: [], siteUrl, signal, matchRoute }
 const encoder = new TextEncoder()
 
-describe('fontes em array com partes estáticas', () => {
+describe('array sources with static parts', () => {
   beforeEach(() => {
     vi.stubEnv('DEV', false)
     vi.spyOn(console, 'error').mockReturnValue()
@@ -64,7 +64,7 @@ describe('fontes em array com partes estáticas', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it.each(['/blog/static', '/about'])(
-    'descarta a duplicata estática %s sem publicar os metadados da fonte em array',
+    'drops the static duplicate %s without publishing the metadata of the array source',
     async staticPath => {
       const context = {
         ...options,
@@ -105,38 +105,42 @@ describe('fontes em array com partes estáticas', () => {
     { values: [] },
     { values: [{ path: '/blog/static' }] },
     { values: [{ path: '/about' }] }
-  ])('omite a parte de array sem entradas próprias', async ({ values }) => {
-    const readArraySource = vi.fn<() => SitemapEntry[]>(() => values)
-    const pages = [...entries, { path: '/about' }]
-    const byteBudget = Math.max(
-      ...pages.map(
-        entry =>
-          encoder.encode(buildSitemap({ entries: [entry], siteUrl })).byteLength
+  ])(
+    'leaves out the array part without entries of its own',
+    async ({ values }) => {
+      const readArraySource = vi.fn<() => SitemapEntry[]>(() => values)
+      const pages = [...entries, { path: '/about' }]
+      const byteBudget = Math.max(
+        ...pages.map(
+          entry =>
+            encoder.encode(buildSitemap({ entries: [entry], siteUrl }))
+              .byteLength
+        )
       )
-    )
-    const context = {
-      ...options,
-      byteBudget,
-      manifest: { ...manifest, entries: pages, sources: [readArraySource] }
+      const context = {
+        ...options,
+        byteBudget,
+        manifest: { ...manifest, entries: pages, sources: [readArraySource] }
+      }
+      const root = await buildSitemapIndexResponse(context)
+      expect(root.status).toBe(HTTP_OK)
+      const xml = await root.text()
+      expect(xml).toContain('<sitemapindex')
+      expect(xml).not.toContain('/sitemaps/array.xml')
+      expect(readArraySource).toHaveBeenCalledOnce()
+      const part = await buildSitemapPartResponse({
+        ...context,
+        kind: 'array',
+        part: 'array'
+      })
+      expect({
+        status: part.status,
+        cacheControl: part.headers.get('cache-control')
+      }).toStrictEqual({ status: HTTP_NOT_FOUND, cacheControl: 'no-store' })
     }
-    const root = await buildSitemapIndexResponse(context)
-    expect(root.status).toBe(HTTP_OK)
-    const xml = await root.text()
-    expect(xml).toContain('<sitemapindex')
-    expect(xml).not.toContain('/sitemaps/array.xml')
-    expect(readArraySource).toHaveBeenCalledOnce()
-    const part = await buildSitemapPartResponse({
-      ...context,
-      kind: 'array',
-      part: 'array'
-    })
-    expect({
-      status: part.status,
-      cacheControl: part.headers.get('cache-control')
-    }).toStrictEqual({ status: HTTP_NOT_FOUND, cacheControl: 'no-store' })
-  })
+  )
 
-  it('serializa a resposta de array.xml uma única vez', async () => {
+  it('serializes the array.xml response only once', async () => {
     vi.mocked(buildSitemap).mockClear()
     const part = await buildSitemapPartResponse({
       ...options,
@@ -148,7 +152,7 @@ describe('fontes em array com partes estáticas', () => {
     expect(buildSitemap).toHaveBeenCalledOnce()
   })
 
-  it('publica índice quando estáticos e fonte em array cabem separados, mas a união excede bytes', async () => {
+  it('publishes an index when the static pages and the array source fit separately, but the union exceeds the bytes', async () => {
     const readArraySource = vi.fn<() => SitemapEntry[]>(() => [arrayEntry])
     const byteBudget = Math.max(
       ...[entries, [arrayEntry]].map(
@@ -180,7 +184,7 @@ describe('fontes em array com partes estáticas', () => {
   })
 
   it(
-    'publica índice quando só a união excede a contagem',
+    'publishes an index when only the union exceeds the count',
     { timeout: 30_000 },
     async () => {
       const count = Math.floor(SITEMAP_URL_LIMIT / locales.length)

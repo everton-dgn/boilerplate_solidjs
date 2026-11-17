@@ -150,7 +150,7 @@ describe('markdown aliases and runtime publication', () => {
     }
   )
 
-  // Sem prefixo de idioma, /pt.md segue o redirect dos caminhos sem idioma.
+  // Without a locale prefix, /pt.md follows the redirect of the paths without a locale.
   it('does not publish the home through /pt.md', async () => {
     const next = vi.fn<() => Promise<Response>>(() => html())
     const response = await markdownContent(event({ path: '/pt.md' }), next)

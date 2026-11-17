@@ -33,13 +33,13 @@ async function addSourcePartitions({
     run: signal => source.listPartitions({ limit: limit + 1, signal })
   })
   if (!Array.isArray(ids) || ids.length > limit) {
-    throw new Error('Índice acima do limite de URLs')
+    throw new Error('Index over the URL limit')
   }
   if (
     new Set(ids).size !== ids.length ||
     ids.some(id => typeof id !== 'string' || !SOURCE_ID_PATTERN.test(id))
   ) {
-    throw new Error('Partições inválidas')
+    throw new Error('Invalid partitions')
   }
   for (const id of ids) {
     builder.add(
@@ -58,8 +58,8 @@ export async function planIndex(read: ReadOptions): Promise<IndexPlan> {
   }
   const arrayEntries = (await readArrayPart(read)) ?? []
   if (arrayEntries.length > 0) {
-    // O índice só lista a parte em array que cabe no orçamento; a rota
-    // array.xml faz a mesma verificação ao montar a resposta.
+    // The index only lists the array part that fits the budget; the array.xml
+    // route does the same check when building the response.
     validateLocations({ entries: arrayEntries, siteUrl })
     buildSitemap({ entries: arrayEntries, siteUrl, byteBudget })
     builder.add(new URL('/sitemaps/array.xml', siteUrl).href)

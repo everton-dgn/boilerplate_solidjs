@@ -1,7 +1,7 @@
 import { getRequestEvent, isServer } from '@solidjs/web'
 
-// Sentinela distinta do marcador. No cliente o marcador nunca existe, então
-// uma re-renderização lança com a sentinela em vez de um dado privado.
+// Sentinel distinct from the marker. On the client the marker never exists, so a
+// re-render throws with the sentinel instead of private data.
 const MISSING = 'FIXTURE_MARKER_MISSING'
 
 export function readFixtureMarker(): string {

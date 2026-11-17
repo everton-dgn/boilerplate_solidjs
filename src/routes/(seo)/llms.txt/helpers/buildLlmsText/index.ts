@@ -13,8 +13,8 @@ type FormatLinkOptions = {
   siteUrl: string
 }
 
-// Nome reservado pelo formato: uma seção comum com esse nome se funde ao
-// bucket opcional, que sai sempre por último.
+// Name reserved by the format: a common section with that name merges into the
+// optional bucket, which always goes last.
 const OPTIONAL_SECTION = 'Optional'
 
 function escapeMarkdownText(text: string): string {
@@ -24,7 +24,7 @@ function escapeMarkdownText(text: string): string {
     .replaceAll(/[\\[\]`]/gu, String.raw`\$&`)
 }
 
-// No rótulo, `<...>` ainda poderia virar autolink dentro do link.
+// In the label, `<...>` could still become an autolink inside the link.
 function escapeLinkLabel(text: string): string {
   return escapeMarkdownText(text).replaceAll(/[<>]/gu, String.raw`\$&`)
 }

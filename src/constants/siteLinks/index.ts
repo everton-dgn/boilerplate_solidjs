@@ -3,7 +3,7 @@ import { m } from '@paraglide/messages.js'
 import type { SiteLink } from '@/@types/site-page.ts'
 import { SITE } from '@/constants/site/index.ts'
 
-// Caminhos sem idioma: o LocalizedLink de cada consumidor aplica o prefixo.
+// Paths without a locale: the LocalizedLink of each consumer applies the prefix.
 export const SITE_LINKS = {
   get pages(): SiteLink[] {
     return [

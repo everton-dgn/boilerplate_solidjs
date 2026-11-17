@@ -7,13 +7,13 @@ const DELAY_MS = 100
 const recovered = new Set<string>()
 const attempts = new Map<string, number>()
 const markers = new Map<string, string>()
-// Gates seguram a resposta de /gate, e a de /data quando o id termina em
-// :gated, até o teste liberar o id, para que uma falha ou um dado assíncrono
-// cheguem depois do shell sem depender de temporizador.
+// Gates hold the response of /gate, and the one of /data when the id ends in
+// :gated, until the test releases the id, so that a failure or async data arrive
+// after the shell without relying on a timer.
 const gates = new Map<string, PromiseWithResolvers<boolean>>()
 const gateStates = new Map<string, 'waiting' | 'released'>()
-// Marca se alguma chamada ao gate veio de uma fixture que ia lançar com o
-// marcador real. Chamadas do cliente, sem marcador, não apagam a marca.
+// Marks whether any gate call came from a fixture about to throw with the real
+// marker. Client calls, without the marker, do not clear the mark.
 const realThrows = new Set<string>()
 
 function gateFor(id: string): PromiseWithResolvers<boolean> {
@@ -105,7 +105,7 @@ const server = createServer((request, response) => {
           ? {
               message: ['throw', 'result', 'outside'].includes(scenario ?? '')
                 ? marker
-                : 'Backend recuperado',
+                : 'Backend recovered',
               internalContext: `CONTEXT_${marker}`
             }
           : {

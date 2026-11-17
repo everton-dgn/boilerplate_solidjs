@@ -22,8 +22,8 @@ function isModuleRef(value: unknown): value is ModuleRef {
   )
 }
 
-// Páginas ($component) e handlers HTTP ($GET, $POST…) são entradas: só o
-// manifesto do filesystem-routing os importa.
+// Pages ($component) and HTTP handlers ($GET, $POST…) are entries: only the
+// filesystem-routing manifest imports them.
 function routeSources(route: RouteManifestEntry): string[] {
   return Object.entries(route).flatMap(([key, value]) =>
     key.startsWith('$') && isModuleRef(value) ? [value.src] : []
@@ -36,7 +36,7 @@ async function discoverRouteModules({
 }: DiscoverRouteModulesOptions) {
   const router = new PageFileSystemRouter({
     dir: `${import.meta.dirname}/../${directory}`,
-    // O fileRoutes do vite.config.ts usa esta mesma lista padrão.
+    // The fileRoutes of vite.config.ts uses this same default list.
     extensions: DEFAULT_EXTENSIONS,
     httpMethods: true
   })
@@ -51,25 +51,25 @@ async function discoverRouteModules({
 }
 
 const config = {
-  // O env.ts é lido pelo @solidjs/vite-plugin (opção env) para gerar os
-  // módulos virtual:solid-env, então nada o importa diretamente.
+  // env.ts is read by @solidjs/vite-plugin (env option) to generate the
+  // virtual:solid-env modules, so nothing imports it directly.
   entry: [
-    // Entradas autorais do SSR, carregadas pelo @solidjs/vite-plugin por convenção.
-    // O plugin do Knip só lê solid() importado estaticamente, e o vite.config.ts
-    // o carrega com import(); por isso estas entradas, o middleware e o
-    // serverSetup ficam aqui (webpro-nl/knip#2147).
+    // Authored SSR entries, loaded by @solidjs/vite-plugin by convention. The
+    // Knip plugin only reads a statically imported solid(), and vite.config.ts
+    // loads it with import(); that is why these entries, the middleware and
+    // serverSetup stay here (webpro-nl/knip#2147).
     'src/entry-server.tsx!',
     'src/entry-client.tsx!',
-    // O runtime gerado carrega o polyfill de URLPattern do pacote Paraglide
-    // quando a API nativa falta.
+    // The generated runtime loads the URLPattern polyfill of the Paraglide
+    // package when the native API is missing.
     'paraglide/runtime.js!',
     'src/middleware/index.ts!',
     'src/infra/server/configureServerErrors/index.ts!',
-    // API de transporte do boilerplate; o consumidor atual está na fixture E2E.
+    // Transport API of the boilerplate; the current consumer is in the E2E fixture.
     'src/infra/server/requestJson/index.ts!',
-    // API pública de configuração e métricas; fixtures exercitam os consumidores.
+    // Public configuration and metrics API; fixtures exercise the consumers.
     'src/infra/server/publication/index.ts!',
-    // Componentes e APIs públicas reutilizáveis, exercitados pelas fixtures.
+    // Reusable public components and APIs, exercised by the fixtures.
     'src/components/atoms/Input/index.tsx!',
     'src/components/atoms/Textarea/index.tsx!',
     'src/components/molecules/Dialog/index.tsx!',
@@ -78,7 +78,7 @@ const config = {
     'src/i18n/localizedRedirect/index.ts!',
     'src/primitives/createOutdatedPageGuard/index.ts!',
     'env.ts!',
-    // Cadeia de middleware do build E2E, escolhida por modo no vite.config.ts.
+    // Middleware chain of the E2E build, chosen by mode in vite.config.ts.
     'src/tests/fixtures/e2e/middleware/index.ts'
   ],
   project: [
@@ -88,19 +88,20 @@ const config = {
     '!src/**/__tests__/**!',
     '!src/**/*.test.{ts,tsx}!'
   ],
-  // A config fica fora do caminho padrão e roda por tooling/css/check.ts.
+  // The config stays outside the default path and runs through tooling/css/check.ts.
   stylelint: {
     config: ['tooling/css/stylelint.config.mjs']
   },
-  // O plugin trata todo arquivo de src/routes como entrada e esconderia
-  // helpers colocalizados sem uso; discoverRouteModules seleciona só as rotas.
+  // The plugin treats every file of src/routes as an entry and would hide unused
+  // colocated helpers; discoverRouteModules selects only the routes.
   'filesystem-routing': false,
-  // O Kingfisher é externo. O vp do script start vem de uma devDependency, que
-  // o modo production (ativado pelo --strict) não considera; o '!' restringe o
-  // ignore a esse modo, porque na execução padrão ele viraria hint de redundância.
+  // Kingfisher is external. The vp of the start script comes from a
+  // devDependency, which production mode (turned on by --strict) does not
+  // consider; the '!' limits the ignore to that mode, because in the default run
+  // it would become a redundancy hint.
   ignoreBinaries: ['kingfisher', 'vp!'],
-  // A regressão resolve srvx pela árvore do Nitro para testar o adapter real,
-  // sem fixar uma segunda cópia como dependência direta do projeto.
+  // The regression resolves srvx through the Nitro tree to test the real adapter,
+  // without pinning a second copy as a direct dependency of the project.
   ignoreIssues: {
     'src/middleware/securityHeaders/__tests__/securityHeaders.node.test.ts': [
       'unlisted'

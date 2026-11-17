@@ -5,13 +5,13 @@ import { EXCLUDED_ELEMENTS, MAX_HTML_BYTES } from '../../constants.ts'
 
 type ConvertOptions = { response: Response; url: string; signal: AbortSignal }
 
-// Com espaço ou controle antes do esquema, o mdream resolve o valor pela origem
-// pública.
+// With a space or a control character before the scheme, mdream resolves the
+// value against the public origin.
 const UNSAFE_URL = /^(?:javascript|vbscript|data):/iu
-// O `#` isolado é o destino neutro aplicado aos esquemas inseguros.
+// The lone `#` is the neutral target applied to unsafe schemes.
 const FRAGMENT_URL = /^#./u
 
-// Nessas regiões o mdream emite o link como HTML e já descarta esses esquemas.
+// In these regions mdream emits the link as HTML and already drops those schemes.
 const RAW_HTML_REGIONS = new Set([
   'address',
   'dd',
@@ -21,10 +21,10 @@ const RAW_HTML_REGIONS = new Set([
   'summary'
 ])
 
-// Contêineres em que remover a imagem não deixa marca na saída. As ênfases só
-// entram porque o patch do mdream move o espaço para fora do delimitador. Em
-// qualquer outro ancestral, a remoção pode esvaziar um link ou levar HTML bruto
-// ao início da linha.
+// Containers in which removing the image leaves no mark in the output. The
+// emphases only enter because the mdream patch moves the space out of the
+// delimiter. In any other ancestor, the removal can empty a link or bring raw HTML
+// to the start of the line.
 const PLAIN_CONTAINERS = new Set([
   'article',
   'aside',
@@ -74,15 +74,15 @@ function isInsidePlainContainers({ parent }: ElementNode): boolean {
   return PLAIN_CONTAINERS.has(parent.name) && isInsidePlainContainers(parent)
 }
 
-// O mdream compartilha um objeto congelado entre elementos sem atributos. Ele
-// mantém relativo um destino só de fragmento, que no llms-full.txt apontaria
-// para o próprio agregado; o plugin o resolve pela página de origem.
+// mdream shares a frozen object between elements without attributes. It keeps a
+// fragment-only target relative, which in llms-full.txt would point to the
+// aggregate itself; the plugin resolves it against the source page.
 const createCleanupPlugin = (url: string) =>
   createPlugin({
     processAttributes(node) {
       const { name, attributes } = node
-      // Reduzido a texto, o link faria o mdream emitir um título interno como
-      // HTML bruto no início da linha, onde o texto escapado volta a ser tag.
+      // Reduced to text, the link would make mdream emit an inner heading as raw
+      // HTML at the start of the line, where the escaped text turns back into a tag.
       if (
         name === 'a' &&
         UNSAFE_URL.test(attributes.href ?? '') &&
@@ -111,7 +111,7 @@ export async function convertHtml({
   signal
 }: ConvertOptions): Promise<string> {
   signal.throwIfAborted()
-  // O SSR assíncrono pode já ter o HTML completo; isto limita o acúmulo adicional.
+  // The async SSR may already have the whole HTML; this bounds the extra build-up.
   const reader = response.body?.getReader()
   if (!reader) throw new Error('Markdown response has no body')
   const chunks: Uint8Array[] = []
@@ -122,7 +122,7 @@ export async function convertHtml({
       try {
         await reader.cancel()
       } catch {
-        // Um cancelamento que falha ainda encerra a posse deste reader.
+        // A cancellation that fails still ends the ownership of this reader.
       }
     })()
     return cancellation

@@ -10,8 +10,8 @@ type StaticOutputOptions = {
   approved: ReadonlyMap<string, ArtifactDigest>
 }
 
-// Confere os bytes publicados de cada `.md` esperado contra os aprovados no
-// prerender, inclusive os que ficam fora do llms-full.txt.
+// Checks the published bytes of each expected `.md` against the ones approved in
+// the prerender, including the ones left out of llms-full.txt.
 async function findChangedFiles({
   publicDir,
   expected,
@@ -32,9 +32,9 @@ async function findChangedFiles({
   return problems
 }
 
-// O diretório publicado é um oráculo distinto do registro do Nitro: pega
-// cópias de `public/`, aliases `.md.html`, arquivos que não foram gravados e
-// conteúdo trocado depois da validação.
+// The published folder is an oracle distinct from the Nitro registry: it catches
+// copies of `public/`, `.md.html` aliases, files that were not written and content
+// swapped after the validation.
 export async function assertStaticOutput(
   options: StaticOutputOptions
 ): Promise<void> {

@@ -1,6 +1,6 @@
 import type { Locale } from '@paraglide/runtime.js'
 
-// BCP 47 para HTML e JSON-LD. Open Graph usa os mesmos códigos com '_'.
+// BCP 47 for HTML and JSON-LD. Open Graph uses the same codes with '_'.
 export const LOCALE_TAGS = {
   pt: 'pt-BR',
   en: 'en-US',

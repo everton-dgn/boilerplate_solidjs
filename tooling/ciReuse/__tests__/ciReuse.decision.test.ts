@@ -39,8 +39,8 @@ const DEPENDENCY_KEY = `vite-plus-Linux-x64-bun-${HASH}`
 const VALIDATION_PREFIX = `ci-validation-v2-Linux-X64-node-24.22.0-bun-1.4.3-${HASH}-`
 const MAIN_REF = 'refs/heads/main'
 const exec = promisify(execFile)
-// Hooks do Git exportam GIT_DIR e afins, e a configuração do usuário pode mudar
-// o diff; os repositórios temporários não herdam nenhum dos dois.
+// Git hooks export GIT_DIR and the like, and the user configuration can change
+// the diff; the temporary repositories inherit neither.
 const GIT_ENV = {
   ...Object.fromEntries(
     Object.entries(env).filter(([key]) => !key.startsWith('GIT_'))
@@ -228,11 +228,11 @@ function gitOutput(world: World, args: string[]): string {
   if (command === `rev-list --parents -n 1 ${MERGE}`) return world.parents
   if (command === `rev-parse ${MERGE}^{tree}`) return TREE
   if (command === `show ${MERGE}:package.json`) return MANIFEST
-  // O comando exato prende a base do merge e a lista sem detecção de renames.
+  // The exact command pins the merge base and the list without rename detection.
   if (command === `diff --no-renames --name-only -z ${BASE} ${MERGE} --`) {
     return world.files.join('\0')
   }
-  throw new Error(`Git inesperado: ${command}`)
+  throw new Error(`Unexpected Git: ${command}`)
 }
 
 function ports(world: World): Ports {
@@ -242,9 +242,9 @@ function ports(world: World): Ports {
       world.calls.push(apiPath)
       const route = table.get(apiPath)
       if (!route) {
-        return Promise.reject(new Error(`Rota inesperada: ${apiPath}`))
+        return Promise.reject(new Error(`Unexpected route: ${apiPath}`))
       }
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Respostas sintéticas do GitHub.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Synthetic GitHub responses.
       return Promise.resolve(route() as T)
     },
     git: args => Promise.resolve(gitOutput(world, args)),
@@ -276,22 +276,22 @@ async function assertFull({ world, reason }: FullOptions) {
 }
 
 function fail(): never {
-  throw new Error('não deveria ser chamado')
+  throw new Error('should not be called')
 }
 
-test('reutiliza quando a evidência e os jobs confirmam a mesma árvore', async () => {
+test('reuses when the evidence and the jobs confirm the same tree', async () => {
   const world = createWorld()
   const decision = await decide(world)
   assert.deepEqual(decision, {
     shouldReuse: true,
     shouldRunQuality: false,
-    reason: `Árvore ${TREE} validada pelo PR #${PR}.`,
+    reason: `Tree ${TREE} validated by PR #${PR}.`,
     sourceRunUrl: `https://github.com/${REPOSITORY}/actions/runs/${RUN_ID}/attempts/${ATTEMPT}`
   })
   assert.ok(world.calls.includes(`${ROOT}/git/commits/${TESTED}`))
 })
 
-test('mantém o Quality quando lockfile, manifest ou bunfig mudam', async () => {
+test('keeps Quality when the lockfile, manifest or bunfig change', async () => {
   for (const file of ['bun.lock', 'package.json', 'bunfig.toml']) {
     const world = createWorld()
     world.files = ['src/App.tsx', file]
@@ -302,7 +302,7 @@ test('mantém o Quality quando lockfile, manifest ou bunfig mudam', async () => 
   }
 })
 
-test('mantém o Quality sem cache aplicável da main', async () => {
+test('keeps Quality without an applicable main cache', async () => {
   const foreign = createWorld()
   foreign.validationCaches = [
     { key: `${VALIDATION_PREFIX}1-1`, ref: 'refs/pull/1/merge' }
@@ -315,7 +315,7 @@ test('mantém o Quality sem cache aplicável da main', async () => {
   ]
   const missingDependency = createWorld()
   missingDependency.dependencyCaches = []
-  // O filtro key da API compara por prefixo e também devolve chaves mais longas.
+  // The key filter of the API compares by prefix and also returns longer keys.
   const longerDependency = createWorld()
   longerDependency.dependencyCaches = [
     { key: `${DEPENDENCY_KEY}-1`, ref: MAIN_REF }
@@ -339,7 +339,7 @@ test('mantém o Quality sem cache aplicável da main', async () => {
   assert.equal(decision.shouldRunQuality, true)
 })
 
-test('roda tudo quando o merge altera o workflow, ações ou o verificador', async () => {
+test('runs everything when the merge changes the workflow, actions or the verifier', async () => {
   for (const file of [
     '.github/workflows/ci.yml',
     '.github/actions/setup-project/action.yml',
@@ -347,18 +347,18 @@ test('roda tudo quando o merge altera o workflow, ações ou o verificador', asy
   ]) {
     const world = createWorld()
     world.files = [file]
-    await assertFull({ world, reason: /altera/u })
+    await assertFull({ world, reason: /changes/u })
     assert.deepEqual(world.calls, [])
   }
 })
 
-test('rejeita commit que não é merge de dois parents', async () => {
+test('rejects a commit that is not a merge of two parents', async () => {
   const world = createWorld()
   world.parents = `${MERGE} ${BASE}`
-  await assertFull({ world, reason: /dois parents/u })
+  await assertFull({ world, reason: /two parents/u })
 })
 
-test('rejeita PR ausente, ambíguo, de fork ou com outra base', async () => {
+test('rejects a missing, ambiguous, fork or other-base PR', async () => {
   const builds: PullBuild[] = [
     () => [],
     pr => [pr, { ...pr, number: PR + 1 }],
@@ -375,7 +375,7 @@ test('rejeita PR ausente, ambíguo, de fork ou com outra base', async () => {
   }
 })
 
-test('rejeita run ausente, duplicado, falho ou de outro workflow', async () => {
+test('rejects a missing, duplicated, failed or other-workflow run', async () => {
   const changes: Partial<RunFixture>[] = [
     { conclusion: 'failure' },
     { path: '.github/workflows/other.yml' },
@@ -388,18 +388,18 @@ test('rejeita run ausente, duplicado, falho ou de outro workflow', async () => {
   for (const change of changes) {
     const world = createWorld()
     world.runs = [{ ...workflowRun(), ...change }]
-    await assertFull({ world, reason: /run do PR/u })
+    await assertFull({ world, reason: /PR run/u })
   }
   const empty = createWorld()
   empty.runs = []
   empty.runCount = 0
-  await assertFull({ world: empty, reason: /exatamente um run/u })
+  await assertFull({ world: empty, reason: /exactly one CI run/u })
   const duplicated = createWorld()
   duplicated.runCount = 2
-  await assertFull({ world: duplicated, reason: /exatamente um run/u })
+  await assertFull({ world: duplicated, reason: /exactly one CI run/u })
 })
 
-test('exige os três jobs reutilizados na tentativa fixada', async () => {
+test('requires the three reused jobs in the pinned attempt', async () => {
   const variants: JobsVariant[] = [
     jobs => jobs.filter(item => item.name !== 'Tooling'),
     jobs =>
@@ -420,13 +420,13 @@ test('exige os três jobs reutilizados na tentativa fixada', async () => {
   }
   const truncated = createWorld()
   truncated.jobCount = PAGE_SIZE
-  await assertFull({ world: truncated, reason: /incompleta/u })
+  await assertFull({ world: truncated, reason: /incomplete/u })
 })
 
-test('rejeita PR antigo sem evidência e evidência de outro run', async () => {
+test('rejects an old PR without evidence and evidence from another run', async () => {
   const missing = createWorld()
   missing.artifacts = []
-  await assertFull({ world: missing, reason: /não tem a evidência/u })
+  await assertFull({ world: missing, reason: /does not have the evidence/u })
 
   const changes: Partial<ArtifactFixture>[] = [
     { expired: true },
@@ -437,11 +437,11 @@ test('rejeita PR antigo sem evidência e evidência de outro run', async () => {
   for (const change of changes) {
     const world = createWorld()
     world.artifacts = [{ ...artifact(), ...change }]
-    await assertFull({ world, reason: /não pertence/u })
+    await assertFull({ world, reason: /does not belong/u })
   }
 })
 
-test('rejeita evidência de outra versão ou sem SHA testado', async () => {
+test('rejects evidence from another version or without the tested SHA', async () => {
   const changes: Record<string, unknown>[] = [
     { version: 1 },
     { tested_sha: 'nope' },
@@ -450,11 +450,11 @@ test('rejeita evidência de outra versão ou sem SHA testado', async () => {
   for (const change of changes) {
     const world = createWorld()
     world.evidence = { ...world.evidence, ...change }
-    await assertFull({ world, reason: /[Ee]vidência/u })
+    await assertFull({ world, reason: /[Ee]vidence/u })
   }
 })
 
-test('confere o commit sintético pela API do GitHub', async () => {
+test('checks the synthetic commit through the GitHub API', async () => {
   const commits: CommitFixture[] = [
     { tree: { sha: OTHER }, parents: [{ sha: BASE }, { sha: HEAD }] },
     { tree: { sha: TREE }, parents: [{ sha: OTHER }, { sha: HEAD }] }
@@ -462,14 +462,14 @@ test('confere o commit sintético pela API do GitHub', async () => {
   for (const commit of commits) {
     const world = createWorld()
     world.tested = commit
-    await assertFull({ world, reason: /commit testado/u })
+    await assertFull({ world, reason: /commit tested/u })
   }
 })
 
-test('qualquer falha de API ou de leitura resulta em CI completo', async () => {
+test('any API or read failure results in a full CI', async () => {
   const world = createWorld()
   world.evidence = { ...world.evidence, tested_sha: OTHER }
-  await assertFull({ world, reason: /Rota inesperada/u })
+  await assertFull({ world, reason: /Unexpected route/u })
 
   const invalid = await decideReuse({
     repository: 'invalid',
@@ -480,8 +480,8 @@ test('qualquer falha de API ou de leitura resulta em CI completo', async () => {
   assert.equal(invalid.shouldReuse, false)
 })
 
-// O workflow dispensa estes jobs com a prova aprovada; decideReuse precisa
-// exigir exatamente os mesmos nomes no run do PR.
+// The workflow skips these jobs with the approved proof; decideReuse must require
+// exactly the same names in the PR run.
 function reusableJobNames(): string[] {
   return WORKFLOW.split(/^ {2}(?=[\w-]+:$)/mu).flatMap(block => {
     const name = /^ {4}name: (?<name>.+)$/mu.exec(block)?.groups?.name
@@ -490,7 +490,7 @@ function reusableJobNames(): string[] {
   })
 }
 
-test('exige no run do PR exatamente os jobs que o ci.yml dispensa', async () => {
+test('requires in the PR run exactly the jobs that ci.yml skips', async () => {
   const names = reusableJobNames()
   assert.ok(names.length > 0)
   const world = createWorld()
@@ -506,9 +506,9 @@ test('exige no run do PR exatamente os jobs que o ci.yml dispensa', async () => 
   }
 })
 
-test('um rename de .github/ para fora da pasta força o CI completo no Git real', async context => {
+test('a rename from .github/ out of the folder forces the full CI in real Git', async context => {
   const directory = await mkdtemp(path.join(tmpdir(), 'ci-reuse-rename-'))
-  // Sandbox criado pelo próprio teste: a remoção direta é o descarte correto.
+  // Sandbox created by the test itself: direct removal is the right disposal.
   context.after(() => rm(directory, { recursive: true, force: true }))
   async function git(...args: string[]) {
     const result = await exec('git', [...IDENTITY, '-C', directory, ...args], {
@@ -541,7 +541,7 @@ test('um rename de .github/ para fora da pasta força o CI completo no Git real'
     ports: {
       api<T>(apiPath: string): Promise<T> {
         calls.push(apiPath)
-        return Promise.reject(new Error('API inesperada'))
+        return Promise.reject(new Error('Unexpected API'))
       },
       git: args => git(...args),
       readBlob: fail,
@@ -549,6 +549,6 @@ test('um rename de .github/ para fora da pasta força o CI completo no Git real'
     }
   })
   assert.equal(decision.shouldReuse, false)
-  assert.equal(decision.reason, 'O merge altera .github/workflows/ci.yml.')
+  assert.equal(decision.reason, 'The merge changes .github/workflows/ci.yml.')
   assert.deepEqual(calls, [])
 })

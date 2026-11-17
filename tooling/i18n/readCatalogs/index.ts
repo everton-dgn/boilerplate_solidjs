@@ -32,8 +32,8 @@ type ClaimOptions = {
 type CatalogFileOptions = { root: string; file: string }
 type BudgetOptions = { bytes: number; maxBytes: number; file: string }
 
-// O glob da leitura e o filtro do watcher descrevem o mesmo conjunto: os
-// agregados em .paraglide/ e a saída em paraglide/ nunca são catálogos.
+// The read glob and the watcher filter describe the same set: the aggregates in
+// .paraglide/ and the output in paraglide/ are never catalogs.
 const CATALOG_GLOB = 'src/**/i18n/*.json'
 const CATALOG_EXCLUDES = ['src/tests/**', 'src/**/__tests__/**']
 const CATALOG_PATH = /^src\/(?:[^/]+\/)*i18n\/[^/]+\.json$/u
@@ -79,8 +79,8 @@ const CatalogSchema = v.pipe(
   v.minEntries(1, 'Empty catalog')
 )
 
-// JSON.parse aceita silenciosamente propriedades repetidas. Os tokens de
-// string são consumidos inteiros, inclusive escapes, antes de procurar ':'.
+// JSON.parse silently accepts repeated properties. The string tokens are consumed
+// whole, escapes included, before looking for ':'.
 function assertUniqueProperties({ file, source }: ParseOptions): void {
   const scopes: Set<string>[] = []
   const tokens = source.match(/"(?:\\.|[^"\\])*"|[{}:[\],]/gu) ?? []
@@ -144,7 +144,7 @@ async function validateMessages({
   )
   for (const bundle of parsed.bundles) {
     if (!bundle.id) throw new Error(`[i18n] Message without ID in ${directory}`)
-    // O parser retorna tabelas separadas; o SDK recebe cada mensagem com suas variantes.
+    // The parser returns separate tables; the SDK receives each message with its variants.
     const messages = (messagesByBundle.get(bundle.id) ?? []).map(message => ({
       locale: message.locale,
       id: message.locale,
@@ -227,7 +227,7 @@ export async function readCatalogs({
       assertBudget({ bytes: totalBytes + size, maxBytes, file })
       const content = await readFile(location)
       totalBytes += content.byteLength
-      // O arquivo pode crescer entre o stat e a leitura.
+      // The file can grow between the stat and the read.
       assertBudget({ bytes: totalBytes, maxBytes, file })
       const catalog = parseCatalog({ file, source: content.toString('utf8') })
       current[locale] = catalog

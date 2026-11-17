@@ -63,8 +63,8 @@ export async function markdownContent(
     const response = await render()
     return isPublished ? appendVary({ response, field: 'Accept' }) : response
   }
-  // Sem representação Markdown, o render segue em streaming, sem ocupar vaga
-  // nem prazo da publicação.
+  // Without a Markdown representation, the render keeps streaming, without taking
+  // a slot or the deadline of the publication.
   if (!isDirect && isHtmlOnly({ request: original, url, isPublished })) {
     return render()
   }

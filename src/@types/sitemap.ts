@@ -9,23 +9,23 @@ type SitemapPartitionReadOptions = {
   signal: AbortSignal
 }
 
-// Uma URL do sitemap: caminho absoluto do site (`/blog/post`) e, quando a
-// página tem data de alteração confiável, `lastmod` em W3C Datetime
-// (`2026-09-21` ou `2026-09-21T10:00:00Z`). Fora desse formato, a data é
-// omitida.
+// A sitemap URL: absolute site path (`/blog/post`) and, when the page has a
+// reliable modification date, `lastmod` in W3C Datetime (`2026-09-21` or
+// `2026-09-21T10:00:00Z`). Outside that format, the date is left out.
 export type SitemapEntry = {
   path: string
   lastmod?: string
 }
 
-// Fonte das URLs de uma rota com parâmetros, declarada em
-// `route.info.sitemap`. O módulo da rota entra no bundle do cliente, então
-// banco e SDK entram por server function. Roda a cada request do sitemap, em
-// sequência com as demais fontes em array, e nunca no build; cache de dados,
-// quando necessário, fica dentro da fonte. O sinal aborta no prazo das fontes,
-// na desconexão do cliente e ao fim da leitura: repasse-o à leitura para que
-// ela seja cancelada, e não só deixe de ser esperada. A Promise precisa cobrir
-// todo o trabalho iniciado: a vaga de publicação só volta quando ela assenta.
+// Source of the URLs of a route with parameters, declared in
+// `route.info.sitemap`. The route module goes into the client bundle, so the
+// database and the SDK come in through a server function. It runs on every
+// sitemap request, in sequence with the other array sources, and never in the
+// build; a data cache, when needed, stays inside the source. The signal aborts at
+// the deadline of the sources, when the client disconnects and at the end of the
+// read: pass it to the read so it is cancelled, instead of only no longer awaited.
+// The Promise must cover all the work it started: the publication slot only comes
+// back when it settles.
 export type SitemapRouteInfo = (
   signal: AbortSignal
 ) => readonly SitemapEntry[] | Promise<readonly SitemapEntry[]>
@@ -33,8 +33,8 @@ export type SitemapRouteInfo = (
 export type SitemapPartitionSource = {
   id: string
   routePath: string
-  // A consulta precisa respeitar `limit`; a lista só é conferida depois de
-  // materializada, o que não protege o backend.
+  // The query must respect `limit`; the list is only checked after it is built,
+  // which does not protect the backend.
   listPartitions: (
     options: SitemapPartitionListOptions
   ) => Promise<readonly string[]>

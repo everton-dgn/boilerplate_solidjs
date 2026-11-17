@@ -11,14 +11,14 @@ function makeState(): ToastState {
     onTestFinished(dispose)
     return createToastState({
       beforeRemove: () => {
-        /* Sem DOM para devolver o foco. */
+        /* No DOM to return the focus to. */
       }
     })
   })
 }
 
-describe('estado das notificações', () => {
-  it('anuncia um toast novo de texto repetido mesmo que outro volte ao texto no lote', () => {
+describe('notification state', () => {
+  it('announces a new toast with repeated text even if another one goes back to that text in the batch', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] })
     onTestFinished(() => {
       vi.useRealTimers()
@@ -33,7 +33,7 @@ describe('estado das notificações', () => {
     flush()
     expect(second).not.toBe(first)
     expect(state.polite()).toBeUndefined()
-    state.api.update({ id: first, message: 'Outro' })
+    state.api.update({ id: first, message: 'Other' })
     state.api.update({ id: first, message: 'Salvo' })
     vi.advanceTimersByTime(ANNOUNCEMENT_DELAY)
     flush()

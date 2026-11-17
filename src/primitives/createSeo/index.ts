@@ -17,12 +17,12 @@ import { localizeHref } from '@/i18n/urls/index.ts'
 
 import { buildStructuredData } from './buildStructuredData/index.ts'
 
-// `Thing` inclui enumerações como strings; aqui só entram nós de objeto.
+// `Thing` includes enumerations as strings; only object nodes come in here.
 type SchemaNode = Exclude<Thing, string>
 
 type StructuredData = SchemaNode | readonly SchemaNode[]
 
-// `Array.isArray` não estreita listas `readonly`; o guard explícito resolve.
+// `Array.isArray` does not narrow `readonly` lists; the explicit guard does.
 function isNodeList(
   data: SchemaNode | readonly SchemaNode[]
 ): data is readonly SchemaNode[] {
@@ -33,7 +33,7 @@ function withContext(data: StructuredData): object {
   if (isNodeList(data)) {
     return { '@context': 'https://schema.org', '@graph': data }
   }
-  // Evita distribuir o spread por todos os tipos de schema-dts.
+  // Avoids distributing the spread over every schema-dts type.
   const node: object = data
   return { '@context': 'https://schema.org', ...node }
 }
@@ -45,7 +45,7 @@ type CreateSeoOptions =
 const ROBOTS_INDEX = 'index, follow, max-image-preview:large'
 const ROBOTS_NOINDEX = 'noindex'
 
-// Páginas noindex omitem canonical, redes sociais e o grafo base.
+// noindex pages leave out the canonical, the social networks and the base graph.
 function publishRouteSeo(): void {
   const location = useLocation()
   const matches = useRouteMatches()
@@ -56,7 +56,7 @@ function publishRouteSeo(): void {
     resolveSiteUrl(localizeHref({ href: location.pathname }))
   )
   const image = createMemo(() => resolveSiteUrl(seo().image.path))
-  // Só `indexableTags` lê o link, e ela já exclui as páginas noindex.
+  // Only `indexableTags` reads the link, and it already excludes the noindex pages.
   const markdownHref = createMemo(() =>
     hasMarkdownOptIn(matches().map(match => match.route.info))
       ? markdownPath(localizeHref({ href: location.pathname }))

@@ -1,26 +1,26 @@
 const VAR = String.raw`var\(\s*--[a-z0-9-]+\s*\)`
 const TOKEN = String.raw`/^${VAR}(?:\s*[,/]\s*${VAR}|\s+${VAR})*$/`
-// line-height não tem token, então o font abreviado aceita a altura crua.
+// line-height has no token, so the font shorthand accepts the raw height.
 const LINE_HEIGHT = String.raw`(?:\d*\.?\d+(?:%|[a-z]+)?|normal)`
 const FONT_TOKEN = String.raw`/^${VAR}(?:\s+${VAR})*(?:\s*\/\s*(?:${LINE_HEIGHT}|${VAR})(?:\s+${VAR})*)?$/`
 const TOKEN_KEYWORDS =
   '/^(?:transparent|currentcolor|inherit|initial|unset|revert|revert-layer|none|auto)$/i'
-// O CSS aceita nomes de propriedade em maiúsculas e com prefixo de fornecedor.
+// CSS accepts property names in uppercase and with a vendor prefix.
 const property = names => String.raw`/^(?!--)(?:-[a-z]+-)?(?:${names})$/i`
-// [propriedade, famílias de token aceitas, formato do valor]
+// [property, accepted token families, value format]
 const TOKEN_PROPERTIES = [
   [property('(?:[a-z]+-)*color|fill|stroke'), ['/^--color-/']],
   [property('(?:[a-z]+-)*radius'), ['/^--radius-/']],
   [property('background'), ['/^--(?:color|gradient)-/']],
   [property('background-image'), ['/^--gradient-/']],
   [property('box-shadow'), ['/^--(?:shadow|ring)-/']],
-  // Não há token de sombra de texto: só as palavras-chave passam.
+  // There is no text shadow token: only the keywords pass.
   [property('text-shadow'), []],
   [property('font'), ['/^--font-/'], FONT_TOKEN],
   [property('font-size'), ['/^--font-size-/']],
   [property('font-weight'), ['/^--font-weight-/']],
   [property('z-index'), ['/^--z-index-/']],
-  // Uma custom property local com nome de família só repassa tokens dela.
+  // A local custom property with a family name only forwards tokens of that family.
   ...[
     'color',
     'gradient',
@@ -33,8 +33,9 @@ const TOKEN_PROPERTIES = [
   ].map(family => [`/^--${family}-/`, [`/^--${family}-/`]]),
   ['/^--font-(?!size-|weight-)/', ['/^--font-/'], FONT_TOKEN]
 ]
-// A checagem por tipo pula valores com var() que ela não resolve; a busca pelo
-// nome alcança fallbacks e custom properties. Inclui as obsoletas e as do WebKit.
+// The check by type skips values with var() that it does not resolve; the search
+// by name reaches fallbacks and custom properties. It includes the deprecated ones
+// and the WebKit ones.
 const SYSTEM_COLORS = `
   AccentColor AccentColorText ActiveText ButtonBorder ButtonFace ButtonText
   Canvas CanvasText Field FieldText GrayText Highlight HighlightText LinkText
@@ -47,9 +48,9 @@ const SYSTEM_COLORS = `
 `
   .trim()
   .split(/\s+/u)
-// Ponto, barra e # nas bordas afastam caminhos de url() e nomes de tokens.
+// Dot, slash and # at the edges keep url() paths and token names away.
 const SYSTEM_COLOR = String.raw`/(?<![\w#./-])(?:${SYSTEM_COLORS.join('|')})(?![\w.-])/i`
-// Propriedades sem cor que recebem nomes livres ou textos.
+// Properties without color that receive free names or text.
 const NAME_PROPERTIES = String.raw`animation(?:-name)?|transition(?:-property)?|will-change|grid(?:-[a-z]+)*|container(?:-name)?|counter-(?:increment|reset|set)|view-transition-(?:class|name)|font-family|content|quotes|list-style(?:-type)?|page`
 
 const config = {
@@ -120,14 +121,14 @@ const config = {
       ),
       {
         message:
-          'Use só tokens com var() nesta propriedade; exceções pedem stylelint-disable com o motivo.'
+          'Use only tokens with var() in this property; exceptions need stylelint-disable with the reason.'
       }
     ],
     'declaration-property-custom-property-allowed-list': [
       Object.fromEntries(
         TOKEN_PROPERTIES.map(([name, families]) => [name, families])
       ),
-      { message: 'A propriedade "%s" não aceita o token "%s".' }
+      { message: 'The "%s" property does not accept the "%s" token.' }
     ],
     'declaration-property-value-disallowed-list': [
       {
@@ -135,11 +136,11 @@ const config = {
           SYSTEM_COLOR
         ]
       },
-      { message: 'Cores de sistema ficam em src/theme/.' }
+      { message: 'System colors stay in src/theme/.' }
     ],
     'selector-class-pattern': [
       '^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$',
-      { message: 'Use snake_case nas classes CSS, como variant_default.' }
+      { message: 'Use snake_case in CSS classes, such as variant_default.' }
     ],
     'max-nesting-depth': 2,
     'nesting-selector-no-missing-scoping-root': true,

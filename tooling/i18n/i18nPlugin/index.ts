@@ -33,8 +33,8 @@ function catalogPreparation(): Plugin {
       await prepareMessages(root)
       if (!failure) return
       failure = undefined
-      // Agregados restaurados ao conteúdo anterior não geram compilação nem
-      // HMR, então só um reload remove o overlay do erro.
+      // Aggregates restored to the previous content generate neither a
+      // compilation nor HMR, so only a reload removes the overlay of the error.
       server?.ws.send({ type: 'full-reload' })
     } catch (error) {
       failure = error instanceof Error ? error : new Error(String(error))
@@ -66,9 +66,9 @@ function catalogPreparation(): Plugin {
     request()
     return pendingPreparation
   }
-  // O chokidar lê um diretório novo antes de observá-lo, e o que surge nesse
-  // intervalo não gera evento de arquivo. A preparação relê todos os
-  // catálogos do disco quando um diretório aparece ou some.
+  // chokidar reads a new folder before watching it, and what shows up in that
+  // interval generates no file event. The preparation reads every catalog from
+  // disk again when a folder shows up or goes away.
   const reconcile = (directory: string) => {
     if (canContainCatalogs({ root, file: directory })) request()
   }
@@ -83,8 +83,8 @@ function catalogPreparation(): Plugin {
       server = devServer
       devServer.watcher.on('addDir', reconcile)
       devServer.watcher.on('unlinkDir', reconcile)
-      // Um catálogo inválido não pode continuar sendo servido a partir da
-      // última compilação boa, inclusive num reload completo do navegador.
+      // An invalid catalog cannot keep being served from the last good
+      // compilation, not even on a full browser reload.
       devServer.middlewares.use((_request, response, next) => {
         if (!failure) {
           next()
@@ -96,9 +96,9 @@ function catalogPreparation(): Plugin {
         response.end(failure.message)
       })
     },
-    // Agregados e saída ficam fora do filtro para não disparar outra preparação.
+    // Aggregates and output stay out of the filter so they do not trigger another preparation.
     watchChange: {
-      // O plugin oficial também lê a configuração; precisa aguardar este evento.
+      // The official plugin also reads the configuration; it must wait for this event.
       sequential: true,
       handler(file) {
         const shouldPrepare =

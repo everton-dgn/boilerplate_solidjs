@@ -23,20 +23,20 @@ import { Router } from './router.ts'
 
 import './theme/globalStyles.css'
 
-// O gate precisa lançar antes do Router para alcançar o Errored raiz.
+// The gate must throw before the Router to reach the root Errored.
 function ServerFailureGate(props: ParentProps) {
   const failure = isServer ? getRequestEvent()?.locals.serverFailure : undefined
   if (failure) throw failure
   return <>{props.children}</>
 }
 
-// Um beforeunload da página pode cancelar a recarga, e o primeiro SSR depois
-// do deploy pode pegar o servidor a frio. Passado o prazo, a página de erro
-// substitui a tela vazia.
+// A beforeunload of the page can cancel the reload, and the first SSR after the
+// deploy can hit a cold server. Once the deadline passes, the error page replaces
+// the blank screen.
 const RELOAD_STALL_MS = 10_000
 
-// O router grava a URL do destino num onSettled sem owner, que pode ficar para
-// o passe seguinte da fila; o setTimeout recarrega depois que ela esvazia.
+// The router writes the target URL in an onSettled without an owner, which can be
+// left for the next pass of the queue; the setTimeout reloads after it drains.
 function ReloadWhenSettled() {
   const [isStalled, setIsStalled] = createSignal(false)
   onSettled(() => {
@@ -57,9 +57,9 @@ function ReloadWhenSettled() {
   )
 }
 
-// Um chunk ou uma server function que o deploy novo não tem não é falha da
-// página: o documento novo resolve, então a página de erro fica para a
-// recarga que não resolveu.
+// A chunk or a server function that the new deploy does not have is not a
+// failure of the page: the new document solves it, so the error page is left for
+// the reload that did not solve it.
 function renderRootFallback(error: unknown): JSX.Element {
   if (!isServer && isVersionError(error) && claimOutdatedPageReload()) {
     return <ReloadWhenSettled />
@@ -68,15 +68,15 @@ function renderRootFallback(error: unknown): JSX.Element {
 }
 
 export default function App() {
-  // Os parâmetros em rest mantêm fallback.length em zero, condição para o
-  // Errored do Solid reportar o erro no console em desenvolvimento. O erro é
-  // lido sem rastrear: um erro posterior reconstruiria o fallback, e a trava já
-  // gravada trocaria a recarga pendente pela página de erro.
+  // The rest parameters keep fallback.length at zero, the condition for Solid's
+  // Errored to report the error in the console in development. The error is read
+  // without tracking: a later error would rebuild the fallback, and the lock
+  // already written would replace the pending reload with the error page.
   return (
     <Errored fallback={(...args) => renderRootFallback(untrack(args[0]))}>
       <ServerFailureGate>
         <Provider>
-          {/* Dentro do Errored raiz: o fallback global desmonta o aviso. */}
+          {/* Inside the root Errored: the global fallback unmounts the notice. */}
           <OutdatedPageNotice />
           <Router>
             {props => {

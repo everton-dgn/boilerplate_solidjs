@@ -43,15 +43,15 @@ function evidenceReader({ repository, limits }: EvidenceOptions) {
       })
       return JSON.parse(extracted.stdout)
     } catch {
-      throw new Error('Falha ao ler a evidência do PR.')
+      throw new Error('Failed to read the PR evidence.')
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
   }
 }
 
-// O sinal encerra os subprocessos ainda em andamento quando o prazo da prova
-// acaba; o timeout de cada comando continua limitando chamadas isoladas.
+// The signal ends the subprocesses still running when the proof deadline runs
+// out; the timeout of each command still limits isolated calls.
 export function createPorts({ repository, signal }: PortsOptions): Ports {
   const limits = { signal, timeout: COMMAND_TIMEOUT_MS }
   return {
@@ -61,11 +61,11 @@ export function createPorts({ repository, signal }: PortsOptions): Ports {
           ...limits,
           maxBuffer: MAX_OUTPUT_BYTES
         })
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- decideReuse compara cada campo usado com valores esperados.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- decideReuse compares each used field with expected values.
         return JSON.parse(stdout) as T
       } catch {
-        // Não repasse a saída do gh: ela pode conter dados da requisição.
-        throw new Error(`Falha ao consultar ${apiPath.split('?')[0]}.`)
+        // Do not forward the gh output: it can contain request data.
+        throw new Error(`Failed to query ${apiPath.split('?')[0]}.`)
       }
     },
     async git(args: string[]): Promise<string> {

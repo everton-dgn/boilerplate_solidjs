@@ -15,8 +15,8 @@ type ProbeMetrics = {
 
 const NANOSECONDS_PER_MILLISECOND = 1_000_000
 const BYTES_PER_KIBIBYTE = 1024
-// O roteador empacota cada método HTTP em um módulo distinto. O monitor precisa
-// deste módulo compartilhado para GET observar o mesmo estado iniciado por POST.
+// The router bundles each HTTP method in a separate module. The monitor needs
+// this shared module so that GET observes the same state started by POST.
 const histogram = monitorEventLoopDelay({ resolution: 10 })
 
 export function readMetrics(): ProbeMetrics {

@@ -25,8 +25,8 @@ const PUBLIC_PRIMITIVE_TYPES = new Set([
   'boolean'
 ])
 
-// O contrato admite dados resolvidos. Erros, promises e streams dentro do
-// resultado poderiam falhar ou expor diagnósticos depois desta fronteira.
+// The contract allows resolved data. Errors, promises and streams inside the
+// result could fail or expose diagnostics after this boundary.
 function assertPublicData({
   value,
   path = new Set<object>(),
@@ -47,12 +47,12 @@ function assertPublicData({
   if (path.has(value)) {
     throw new Error('Server operations must return acyclic data')
   }
-  // Uma referência compartilhada já verificada não é percorrida de novo: sem
-  // essa memória o custo cresce exponencialmente com a profundidade do grafo.
+  // A shared reference already checked is not walked again: without that memory
+  // the cost grows exponentially with the depth of the graph.
   if (done.has(value)) return
   path.add(value)
-  // Reflect.ownKeys inclui chaves Symbol e propriedades não enumeráveis, que
-  // Object.values sobre os descritores deixaria passar sem inspeção.
+  // Reflect.ownKeys includes Symbol keys and non-enumerable properties, which
+  // Object.values over the descriptors would let through without inspection.
   for (const key of Reflect.ownKeys(value)) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key)
     if (descriptor?.get || descriptor?.set) {
@@ -66,13 +66,13 @@ function assertPublicData({
 }
 
 function controlResponse(value: unknown): Response | undefined {
-  // O transporte nunca devolve Response upstream. Respostas deliberadas da
-  // aplicação preservam o contrato de redirecionamento/reload do framework.
-  // Envelopes também são Response, inclusive quando não têm corpo.
+  // The transport never returns an upstream Response. Deliberate responses of the
+  // application keep the redirect/reload contract of the framework. Envelopes are
+  // Responses too, even when they have no body.
   if (isResponseEnvelope(value)) {
     assertPublicData({ value: value.value })
-    // Reconstrói o corpo a partir dos dados verificados, sem encaminhar um
-    // corpo arbitrário anexado ao envelope.
+    // Rebuilds the body from the checked data, without forwarding an arbitrary
+    // body attached to the envelope.
     const rebuilt: unknown = respond(value.value, {
       status: value.response?.status,
       headers: value.response?.headers
@@ -106,14 +106,14 @@ export function protectServerOperation({
         control =
           error instanceof NotReadyError ? error : controlResponse(error)
       } catch {
-        // A inspeção de um objeto de exceção também pode falhar.
+        // Inspecting an exception object can also fail.
       }
     }
-    // oxlint-disable-next-line typescript/only-throw-error -- O Solid usa Response/ResponseEnvelope como sinais de controle.
+    // oxlint-disable-next-line typescript/only-throw-error -- Solid uses Response/ResponseEnvelope as control signals.
     if (control) throw control
     if (!isPublicError(error) && !isPublicationCancellation(error)) {
-      // O erro público lançado abaixo é o único que chega ao hook; em
-      // desenvolvimento o log devolve o original ao terminal.
+      // The public error thrown below is the only one that reaches the hook; in
+      // development the log brings the original back to the terminal.
       logServerFailure({
         source: 'server-operation',
         error,

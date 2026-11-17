@@ -71,8 +71,8 @@ export const lint: NonNullable<UserConfig['lint']> = {
       rules: { 'unicorn/filename-case': 'off' }
     },
     {
-      // Callbacks de teste e hooks de plugin do Vite seguem assinaturas de
-      // terceiros, que podem exigir mais de dois parâmetros.
+      // Test callbacks and Vite plugin hooks follow third-party signatures, which
+      // can require more than two parameters.
       files: [
         'src/**/*.test.{ts,tsx}',
         'src/tests/**/*.{ts,tsx}',
@@ -102,8 +102,8 @@ export const lint: NonNullable<UserConfig['lint']> = {
       ],
       rules: {
         'import/no-unassigned-import': 'off',
-        // Estas declarações ampliam interfaces de terceiros por declaration
-        // merging, que só interface permite; os tipos próprios seguem com type.
+        // These declarations extend third-party interfaces through declaration
+        // merging, which only interface allows; the own types stay with type.
         'typescript/consistent-type-definitions': 'off'
       }
     },
@@ -116,14 +116,14 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      // O tooling não usa o Vitest: suítes e helpers de teste importam o
+      // The tooling does not use Vitest: test suites and helpers import
       // node:test.
       files: ['tooling/**/*.ts'],
       rules: { 'vitest/no-import-node-test': 'off' }
     },
     {
-      // O node:test não tem each, e o runner acompanha a Promise que describe
-      // e it devolvem.
+      // node:test has no each, and the runner follows the Promise that describe
+      // and it return.
       files: ['tooling/**/__tests__/**/*.ts'],
       rules: {
         'typescript/no-floating-promises': [
@@ -142,7 +142,7 @@ export const lint: NonNullable<UserConfig['lint']> = {
       }
     },
     {
-      // O runner do Playwright não oferece test.each.
+      // The Playwright runner does not offer test.each.
       files: ['src/tests/pages/**/*.e2e.test.ts'],
       rules: { 'vitest/prefer-each': 'off' }
     },

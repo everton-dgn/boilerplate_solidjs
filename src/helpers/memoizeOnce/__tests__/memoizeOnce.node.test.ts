@@ -4,8 +4,8 @@ type Render = () => string
 
 const RENDERS_WITHOUT_CACHE = 2
 
-describe('memoização única do texto', () => {
-  it('renderiza uma vez e reutiliza o texto', () => {
+describe('single text memoization', () => {
+  it('renders once and reuses the text', () => {
     const render = vi.fn<Render>(() => 'text')
     const memoized = memoizeOnce({ render, isEnabled: true })
 
@@ -14,7 +14,7 @@ describe('memoização única do texto', () => {
     expect(render).toHaveBeenCalledOnce()
   })
 
-  it('guarda também um texto vazio', () => {
+  it('keeps an empty text too', () => {
     const render = vi.fn<Render>(() => '')
     const memoized = memoizeOnce({ render, isEnabled: true })
 
@@ -23,7 +23,7 @@ describe('memoização única do texto', () => {
     expect(render).toHaveBeenCalledOnce()
   })
 
-  it('guarda qualquer valor, inclusive objetos e undefined', () => {
+  it('keeps any value, objects and undefined included', () => {
     const manifest = { entries: [] }
     const memoizedObject = memoizeOnce({
       render: () => manifest,
@@ -39,21 +39,21 @@ describe('memoização única do texto', () => {
     expect(render).toHaveBeenCalledOnce()
   })
 
-  it('não guarda uma falha e tenta renderizar de novo na próxima chamada', () => {
+  it('does not keep a failure and tries to render again on the next call', () => {
     const render = vi
       .fn<Render>()
       .mockImplementationOnce(() => {
-        throw new Error('manifesto indisponível')
+        throw new Error('manifest unavailable')
       })
       .mockReturnValue('text')
     const memoized = memoizeOnce({ render, isEnabled: true })
 
-    expect(() => memoized()).toThrow('manifesto indisponível')
+    expect(() => memoized()).toThrow('manifest unavailable')
     expect(memoized()).toBe('text')
     expect(render).toHaveBeenCalledTimes(RENDERS_WITHOUT_CACHE)
   })
 
-  it('desabilitado, devolve o render original sem cache', () => {
+  it('when disabled, returns the original render without a cache', () => {
     const render = vi.fn<Render>(() => 'text')
     const memoized = memoizeOnce({ render, isEnabled: false })
 

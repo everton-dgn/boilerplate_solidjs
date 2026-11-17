@@ -50,13 +50,13 @@ async function verifyMerge({
   await git('merge-base', '--is-ancestor', merge, 'origin/main')
 }
 
-// Devolve o SHA do merge, ou undefined quando a main avançou antes do merge.
+// Returns the merge SHA, or undefined when main moved before the merge.
 async function mergeRelease({
   ctx,
   prepared
 }: PublishRequest): Promise<string | undefined> {
   if (prepared.pr.merged) return prepared.pr.merge_commit_sha ?? undefined
-  // Os strict checks rejeitam atualização concorrente da base dentro da operação de merge do GitHub.
+  // The strict checks reject a concurrent update of the base inside the GitHub merge operation.
   await assertMainProtection(ctx)
   if ((await mainSha(ctx)) !== ctx.source) {
     await postpone(
@@ -103,7 +103,7 @@ async function cleanupBranch({ ctx, prepared }: PublishRequest): Promise<void> {
     if (remaining.object.sha !== prepared.head) {
       throw new Error('Release branch advanced; refusing cleanup.')
     }
-    // O lease confere o SHA esperado de forma atômica, inclusive atualizações após a leitura.
+    // The lease checks the expected SHA atomically, updates after the read included.
     await git(
       'push',
       `--force-with-lease=${branchRef}:${prepared.head}`,

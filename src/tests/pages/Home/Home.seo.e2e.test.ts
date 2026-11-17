@@ -16,13 +16,13 @@ const SITE_DESCRIPTION =
 const SITE_IMAGE_ALT = 'Logo do SolidJS sobre o título SolidJS Boilerplate'
 const ROBOTS_INDEX = 'index, follow, max-image-preview:large'
 const SOCIAL_TAGS = 'head meta[property^="og:"], head meta[name^="twitter:"]'
-// Grafo base do createSeo mais o script próprio da página.
+// Base graph of createSeo plus the own script of the page.
 const SCRIPTS_WITH_PAGE_DATA = 2
-// WebSite, página e Organization; a ordem não importa em JSON-LD.
+// WebSite, page and Organization; the order does not matter in JSON-LD.
 const BASE_GRAPH_NODES = 3
 
-// Só os campos que identificam cada nó; o formato completo é coberto pelos
-// testes unitários de `buildStructuredData`.
+// Only the fields that identify each node; the full format is covered by the
+// unit tests of `buildStructuredData`.
 async function readStructuredData(
   page: Page
 ): Promise<StructuredData['@graph']> {
@@ -41,8 +41,8 @@ function readServerScripts(html: string): string[] {
   ].map(match => match.groups?.json ?? '')
 }
 
-test.describe('metadados de SEO', () => {
-  test('publica canonical, Open Graph e imagem social por rota', async ({
+test.describe('SEO metadata', () => {
+  test('publishes canonical, Open Graph and the social image per route', async ({
     page
   }) => {
     const siteUrl = readSiteOrigin()
@@ -153,14 +153,14 @@ test.describe('metadados de SEO', () => {
     )
   })
 
-  test.describe('sem JavaScript', () => {
+  test.describe('without JavaScript', () => {
     test.use({ javaScriptEnabled: false })
 
-    test('publica noindex no HTML de uma rota estática sem depender de JavaScript', async ({
+    test('publishes noindex in the HTML of a static route without depending on JavaScript', async ({
       page
     }) => {
       await page.goto('/seo-noindex')
-      await expect(page).toHaveTitle('Página utilitária')
+      await expect(page).toHaveTitle('Utility page')
       await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
         'content',
         'noindex'
@@ -168,13 +168,13 @@ test.describe('metadados de SEO', () => {
     })
   })
 
-  test('publica tipo, imagem e JSON-LD declarados pela rota', async ({
+  test('publishes the type, image and JSON-LD declared by the route', async ({
     page
   }) => {
     const siteUrl = readSiteOrigin()
     await page.goto('/seo-article')
 
-    await expect(page).toHaveTitle('Artigo de exemplo')
+    await expect(page).toHaveTitle('Sample article')
     await expect(page.locator('head meta[property="og:type"]')).toHaveAttribute(
       'content',
       'article'
@@ -187,7 +187,7 @@ test.describe('metadados de SEO', () => {
     ).toHaveAttribute('content', `${siteUrl}/favicon/apple-touch-icon.png`)
     await expect(
       page.locator('head meta[property="og:image:alt"]')
-    ).toHaveAttribute('content', 'Capa do artigo de exemplo')
+    ).toHaveAttribute('content', 'Cover of the sample article')
     await expect(
       page.locator('head meta[property="og:image:width"]')
     ).toHaveAttribute('content', '180')
@@ -201,7 +201,7 @@ test.describe('metadados de SEO', () => {
       expect.objectContaining({
         '@type': 'Article',
         url: `${siteUrl}/pt/seo-article`,
-        name: 'Artigo de exemplo',
+        name: 'Sample article',
         datePublished: '2026-09-01',
         dateModified: '2026-09-21',
         publisher: { '@id': `${siteUrl}/#organization` }
@@ -216,7 +216,7 @@ test.describe('metadados de SEO', () => {
     await expect(page.locator('head meta[property^="article:"]')).toHaveCount(0)
   })
 
-  test('publica o JSON-LD próprio da página ao lado do grafo base', async ({
+  test('publishes the own JSON-LD of the page next to the base graph', async ({
     page,
     request
   }) => {

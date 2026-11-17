@@ -5,7 +5,7 @@ import { isPagePath } from '../../../requestClassification/index.ts'
 
 type RouteRequest = { request: Request; url: URL; isPublished: boolean }
 
-// Sem opt-in, só o 404 da rota catch-all vira Markdown.
+// Without the opt-in, only the 404 of the catch-all route becomes Markdown.
 function isCatchAllRoute(url: URL): boolean {
   return Router.match(url.href).at(-1)?.pattern.includes('*') === true
 }
@@ -27,8 +27,8 @@ export function isEligible(url: URL): boolean {
   )
 }
 
-// Pedido autenticado e página sem opt-in, fora o 404 da catch-all, só têm a
-// representação HTML.
+// An authenticated request and a page without the opt-in, besides the 404 of the
+// catch-all, only have the HTML representation.
 export function isHtmlOnly({
   request,
   url,
@@ -40,8 +40,8 @@ export function isHtmlOnly({
   )
 }
 
-// Só a forma canônica publica: /pt.md ou /pt/about/.md duplicariam páginas
-// fora dos arquivos estáticos.
+// Only the canonical form publishes: /pt.md or /pt/about/.md would duplicate
+// pages outside the static files.
 export function isUnpublished(route: RouteRequest): boolean {
   return (
     markdownPath(route.url.pathname) !== new URL(route.request.url).pathname ||

@@ -1,12 +1,12 @@
 import { isTheme } from '../index.ts'
 
-describe('validação da preferência de tema', () => {
-  it.each(['light', 'dark', 'system'] as const)('aceita %s', theme => {
+describe('theme preference validation', () => {
+  it.each(['light', 'dark', 'system'] as const)('accepts %s', theme => {
     expect(isTheme(theme)).toBe(true)
   })
 
   it.each([null, undefined, '', 'invalid', {}, 1])(
-    'rejeita preferência inválida: %s',
+    'rejects an invalid preference: %s',
     value => {
       expect(isTheme(value)).toBe(false)
     }

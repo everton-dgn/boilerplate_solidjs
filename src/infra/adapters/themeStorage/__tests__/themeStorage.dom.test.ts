@@ -3,16 +3,19 @@ import { clearThemeCookie } from '@/tests/helpers/clearThemeCookie/index.ts'
 
 import { readTheme, saveTheme } from '../index.ts'
 
-describe('persistência da preferência no cookie', () => {
+describe('preference persistence in the cookie', () => {
   beforeEach(clearThemeCookie)
 
-  it.each(['light', 'dark', 'system'] as const)('grava e relê %s', theme => {
-    expect(saveTheme(theme)).toBe(true)
-    expect(readTheme()).toBe(theme)
-  })
+  it.each(['light', 'dark', 'system'] as const)(
+    'writes and reads %s again',
+    theme => {
+      expect(saveTheme(theme)).toBe(true)
+      expect(readTheme()).toBe(theme)
+    }
+  )
 
   it.each(['light', 'system'] as const)(
-    'detecta rejeição silenciosa ao gravar %s sem cookie anterior',
+    'detects a silent rejection when writing %s without a previous cookie',
     theme => {
       vi.spyOn(document, 'cookie', 'set').mockImplementation(
         vi.fn<() => void>()
@@ -22,20 +25,20 @@ describe('persistência da preferência no cookie', () => {
     }
   )
 
-  it('detecta escrita bloqueada mantendo o cookie antigo', () => {
+  it('detects a blocked write that keeps the old cookie', () => {
     saveTheme('light')
     vi.spyOn(document, 'cookie', 'set').mockImplementation(vi.fn<() => void>())
     expect(saveTheme('dark')).toBe(false)
     expect(readTheme()).toBe('light')
   })
 
-  it('tolera exceções na leitura e na escrita', () => {
+  it('tolerates exceptions in the read and the write', () => {
     blockCookie()
     expect(readTheme()).toBeUndefined()
     expect(saveTheme('dark')).toBe(false)
   })
 
-  it('restringe o cookie ao host e usa Secure em HTTPS', () => {
+  it('restricts the cookie to the host and uses Secure on HTTPS', () => {
     vi.stubGlobal('location', { protocol: 'https:' })
     const write = vi
       .spyOn(document, 'cookie', 'set')

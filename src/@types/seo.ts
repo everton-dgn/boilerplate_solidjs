@@ -1,15 +1,15 @@
 type SeoPageType = 'website' | 'article'
 
 export type SeoImage = {
-  // Caminho absoluto no site (`/images/og.png`) ou URL absoluta.
+  // Absolute site path (`/images/og.png`) or absolute URL.
   path: string
   width: number
   height: number
   alt: string
 }
 
-// Datas do nó `Article` no JSON-LD, em ISO 8601 (`2026-09-21` ou com hora e
-// fuso). Ignoradas quando `type` não é `article`.
+// Dates of the `Article` node in the JSON-LD, in ISO 8601 (`2026-09-21` or with
+// time and time zone). Ignored when `type` is not `article`.
 export type SeoArticle = {
   datePublished?: string
   dateModified?: string

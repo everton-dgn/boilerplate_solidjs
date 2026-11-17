@@ -33,13 +33,13 @@ type ParserProxy = {
 const HTTP_BAD_GATEWAY = 502
 const INDEX_NOT_FOUND = -1
 const PANEL_COUNT = 2
-// Script que o servidor acrescenta ao fim do shell; sem ele, hydrate() espera
-// o DOMContentLoaded.
+// Script that the server appends at the end of the shell; without it, hydrate()
+// waits for DOMContentLoaded.
 const SHELL_MARKER = '_$HY.s['
 const SHELL_TAIL = 1024
 
-// Envia o shell até antes do marcador e mantém a resposta aberta até o teste
-// truncar o documento.
+// Sends the shell up to before the marker and keeps the response open until the
+// test cuts the document short.
 async function streamUntilShellMarker({
   response,
   outgoing
@@ -160,7 +160,7 @@ async function stopProxy(server: Server): Promise<void> {
   await closed
 }
 
-test('não marca antes do shell quando a entrada async já executou', async ({
+test('does not mark before the shell when the async entry already ran', async ({
   page,
   baseURL,
   pageErrors,
@@ -200,7 +200,7 @@ test('não marca antes do shell quando a entrada async já executou', async ({
   }
 })
 
-test('encerra a hidratação e recupera dados pelo cliente após truncamento', async ({
+test('ends the hydration and fetches the data again on the client after the stream is cut', async ({
   page,
   baseURL,
   request,
@@ -281,7 +281,7 @@ test('encerra a hidratação e recupera dados pelo cliente após truncamento', a
   }
 })
 
-test('recupera dados pelo cliente quando o truncamento antecede o fim do shell', async ({
+test('fetches the data again on the client when the cut comes before the end of the shell', async ({
   page,
   baseURL,
   request,

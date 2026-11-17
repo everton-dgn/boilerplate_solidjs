@@ -18,7 +18,7 @@ function artifact(overrides: Partial<PrerenderRoute>): PrerenderRoute {
   }
 }
 
-it('aceita páginas curtas, HTML em código e texto que cita marcação', () => {
+it('accepts short pages, HTML in code and text that quotes markup', () => {
   for (const contents of [
     '# A',
     'x',
@@ -32,7 +32,7 @@ it('aceita páginas curtas, HTML em código e texto que cita marcação', () => 
   }
 })
 
-it('aceita o tipo Markdown com charset UTF-8 em qualquer grafia', () => {
+it('accepts the Markdown type with a UTF-8 charset in any spelling', () => {
   for (const contentType of [
     'text/markdown;charset=utf-8',
     'Text/Markdown; Charset="UTF-8"',
@@ -42,7 +42,7 @@ it('aceita o tipo Markdown com charset UTF-8 em qualquer grafia', () => {
   }
 })
 
-it('lê os bytes gravados em vez do texto já decodificado', () => {
+it('reads the written bytes instead of the already decoded text', () => {
   const data = new TextEncoder().encode('# Olá').buffer
   assert.equal(
     inspectMarkdownArtifact(artifact({ contents: undefined, data })),
@@ -50,7 +50,7 @@ it('lê os bytes gravados em vez do texto já decodificado', () => {
   )
 })
 
-it('recusa HTML gravado como .md.html para a URL .md', () => {
+it('refuses HTML written as .md.html for the .md URL', () => {
   assert.equal(
     inspectMarkdownArtifact(artifact({ fileName: '/en/about.md.html' })),
     'written as /en/about.md.html'
@@ -61,11 +61,11 @@ it('recusa HTML gravado como .md.html para a URL .md', () => {
   )
 })
 
-it('recusa tipos que não sejam Markdown UTF-8 declarado pela resposta', () => {
+it('refuses types other than UTF-8 Markdown declared by the response', () => {
   for (const [contentType, problem] of [
     ['text/html; charset=utf-8', 'served as text/html; charset=utf-8'],
-    // Tipo inferido pelo Nitro quando a resposta não declara nenhum, como num
-    // redirect sem corpo.
+    // Type inferred by Nitro when the response declares none, as in a redirect
+    // without a body.
     ['text/markdown', 'served as text/markdown'],
     [
       'text/markdown; charset=iso-8859-1',
@@ -78,14 +78,14 @@ it('recusa tipos que não sejam Markdown UTF-8 declarado pela resposta', () => {
   }
 })
 
-it('recusa corpo vazio, só espaços ou ausente', () => {
+it('refuses an empty, whitespace-only or missing body', () => {
   for (const contents of ['', ' \n\t ', undefined]) {
     assert.equal(inspectMarkdownArtifact(artifact({ contents })), 'empty body')
   }
 })
 
-it('recusa bytes que não são UTF-8 válido', () => {
-  // Byte de continuação isolado e sequência multibyte truncada no fim.
+it('refuses bytes that are not valid UTF-8', () => {
+  // An isolated continuation byte and a multibyte sequence cut at the end.
   for (const hex of ['ff23', '2320c3']) {
     const data = new Uint8Array(Buffer.from(hex, 'hex')).buffer
     assert.equal(
@@ -95,7 +95,7 @@ it('recusa bytes que não são UTF-8 válido', () => {
   }
 })
 
-it('recusa um documento HTML inteiro mesmo com o tipo Markdown', () => {
+it('refuses a whole HTML document even with the Markdown type', () => {
   for (const contents of [
     '<!DOCTYPE html><html lang="en"><body><main>About</main></body></html>',
     '\n  <html><head></head><body data-hk="0">About</body></html>\n'

@@ -11,9 +11,9 @@ const manifestSchema = v.object({
   patchedDependencies: v.optional(patchesSchema, {})
 })
 
-// O Bun só avisa, sem falhar o install, quando a chave de um patch não
-// corresponde à versão resolvida: atualizar o pacote sem regenerar o patch
-// perderia a correção.
+// Bun only warns, without failing the install, when the key of a patch does not
+// match the resolved version: updating the package without regenerating the
+// patch would lose the fix.
 it('keeps every patch keyed to a version resolved in bun.lock', async () => {
   const packageJson = await readFile(path.join(ROOT, 'package.json'), 'utf8')
   const manifest = v.parse(manifestSchema, JSON.parse(packageJson))

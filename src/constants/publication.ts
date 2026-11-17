@@ -1,13 +1,13 @@
-// O build lê este módulo sem aliases: mantenha-o sem imports.
+// The build reads this module without aliases: keep it without imports.
 export const PUBLICATION_PHASE_ENV = 'PUBLICATION_BUILD_PHASE'
 export const PUBLICATION_PRERENDER_PHASE = 'prerender'
 export const PUBLICATION_ARTIFACT_DIR = 'publication'
 export const SITEMAP_MANIFEST_FILE = 'sitemap-manifest.json'
 export const SITEMAP_IDENTITIES_FILE = 'sitemap-identities.json'
 export const SITEMAP_ARTIFACT_VERSION = 1
-// O manifesto cresce com o número de partes, limitado pelo índice do sitemap.
+// The manifest grows with the number of parts, bounded by the sitemap index.
 export const SITEMAP_MANIFEST_MAX_BYTES = 1_048_576
-// Com fonte em array, a instância carrega este arquivo inteiro uma vez. O teto
-// limita esse custo O(N); acima dele o build falha e o catálogo deve migrar
-// para fontes particionadas.
+// With an array source, the instance loads this whole file once. The limit bounds
+// that O(N) cost; above it the build fails and the catalog must move to
+// partitioned sources.
 export const SITEMAP_IDENTITIES_MAX_BYTES = 33_554_432

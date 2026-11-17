@@ -1,4 +1,4 @@
-// Acima dos limites, use um sitemap index; não trunque as URLs.
+// Above the limits, use a sitemap index; do not cut the URLs short.
 export const SITEMAP_URL_LIMIT = 50_000
 
 export const SITEMAP_BYTE_LIMIT = 52_428_800

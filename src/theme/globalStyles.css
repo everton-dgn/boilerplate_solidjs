@@ -26,8 +26,8 @@
   scrollbar-color: var(--color-muted-foreground) transparent;
 }
 
-/* scrollbar-color é herdada e cobre todo container sozinha.
-   scrollbar-width não é, então precisa do universal. */
+/* scrollbar-color is inherited and covers every container on its own.
+   scrollbar-width is not, so it needs the universal selector. */
 * {
   scrollbar-width: thin;
 }
@@ -71,7 +71,7 @@ h6 {
   padding-inline-start: 0;
 }
 
-/* Entrelinha variável: quanto maior a fonte, menor a proporção.
+/* Variable line height: the larger the font, the smaller the ratio.
    16px -> 24px, 36px -> 44px, 60px -> 68px. */
 :where(
   h1,
@@ -110,8 +110,9 @@ a {
   text-decoration: none;
 }
 
-/* Anuncia o limite do destaque para leitor de tela, que ignora a cor de fundo
-   do mark. O texto fica fora do fluxo visual e segue o idioma do documento. */
+/* Announces the bounds of the highlight to screen readers, which ignore the
+   background color of mark. The text stays out of the visual flow and follows
+   the locale of the document. */
 mark {
   position: relative;
 
@@ -179,8 +180,8 @@ mark {
 }
 
 @media (forced-colors: active) {
-  /* Sem o fundo de destaque, o item que o menu foca ao abrir pelo ponteiro
-     também precisa do contorno, que :focus-visible não aplicaria. */
+  /* Without the highlight background, the item that the menu focuses when opened
+     by pointer also needs the outline, which :focus-visible would not apply. */
   :focus {
     outline: 3px solid Highlight !important;
     outline-offset: 1px;

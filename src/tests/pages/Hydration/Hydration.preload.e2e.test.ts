@@ -33,7 +33,7 @@ async function readHomeModule(request: APIRequestContext): Promise<string> {
   return path
 }
 
-test('espera o módulo da rota depois de a entrada executar', async ({
+test('waits for the route module after the entry runs', async ({
   page,
   request,
   pageErrors
@@ -58,7 +58,7 @@ test('espera o módulo da rota depois de a entrada executar', async ({
   }
 })
 
-test('mantém o HTML sem marcador quando o preload da raiz falha', async ({
+test('keeps the HTML without the marker when the root preload fails', async ({
   page,
   request,
   pageErrors

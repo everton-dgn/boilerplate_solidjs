@@ -45,8 +45,8 @@ type BodyTexts = { message: string; texts: string[] }
 
 type TextSearch = { source: string; texts: string[] }
 
-// Mensagens usadas só no corpo de cada página, sem parâmetros nem aspas, para
-// que apareçam literalmente no JavaScript gerado. A Home vem primeiro.
+// Messages used only in the body of each page, without parameters or quotes, so
+// that they show up literally in the generated JavaScript. The Home comes first.
 const PAGE_BODIES: PageBody[] = [
   { catalog: '(home)', message: 'home_features' },
   { catalog: 'about', message: 'about_purpose' },
@@ -125,8 +125,8 @@ test('loads each page body only with its route implementation', async ({
     }))
   )
   const bodies = await Promise.all(PAGE_BODIES.map(body => readBodyTexts(body)))
-  // Cada mensagem do corpo fica, nos três idiomas, só no módulo lazy da rota.
-  // Um corpo importado pelo `route` da página iria para o manifesto inicial.
+  // Each body message stays, in the three locales, only in the lazy module of the
+  // route. A body imported by the `route` of the page would go into the initial manifest.
   const bodyModules = bodies.map(({ message, texts }) => {
     const modules = sources.filter(({ source }) =>
       includesAny({ source, texts })

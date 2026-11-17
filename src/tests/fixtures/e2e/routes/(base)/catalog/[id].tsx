@@ -2,7 +2,7 @@ import { useParams } from '@solidjs/router'
 
 export const route = {
   info: {
-    seo: { title: 'Catálogo', description: 'Entrada pública do catálogo.' }
+    seo: { title: 'Catalog', description: 'Public catalog entry.' }
   }
 }
 
@@ -10,7 +10,7 @@ export default function CatalogPage() {
   const params = useParams()
   return (
     <main>
-      <h1>Entrada {params.id}</h1>
+      <h1>Entry {params.id}</h1>
     </main>
   )
 }

@@ -5,16 +5,16 @@ import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { SiteContent } from '../index.tsx'
 
-describe('conteúdo das páginas institucionais', () => {
-  it('localiza os links internos uma vez e preserva os externos', () => {
+describe('content of the institutional pages', () => {
+  it('localizes the internal links once and keeps the external ones', () => {
     const page: SitePage = {
-      title: 'Título',
-      intro: 'Introdução',
+      title: 'Title',
+      intro: 'Introduction',
       sections: [],
       links: [
         ...SITE_LINKS.pages,
-        { label: 'Repositório', href: SITE.repositoryUrl },
-        { label: 'Documentação', href: `${SITE.repositoryUrl}#readme` }
+        { label: 'Repository', href: SITE.repositoryUrl },
+        { label: 'Documentation', href: `${SITE.repositoryUrl}#readme` }
       ]
     }
     const host = renderComponent(() => <SiteContent page={page} />, {

@@ -54,8 +54,8 @@ function layer(file: string): Layer | undefined {
     return 'base'
   }
   if (/^src\/primitives(?:\/|$)/u.test(file)) return 'primitives'
-  // Um barrel nomeado (src/components/atoms.ts) pertence ao mesmo nível que a
-  // pasta homônima.
+  // A named barrel (src/components/atoms.ts) belongs to the same level as the
+  // folder with the same name.
   const level =
     /^src\/components\/(?<level>atoms|molecules|organisms)(?:\/|\.[cm]?[jt]sx?$|$)/u.exec(
       file
@@ -65,7 +65,7 @@ function layer(file: string): Layer | undefined {
   }
   if (/^src\/components(?:\/|$)/u.test(file)) return 'components'
   if (/^src\/routes(?:\/|$)/u.test(file)) return 'routes'
-  // As pastas homônimas guardam os módulos colocalizados de cada entrada.
+  // The folders with the same name hold the colocated modules of each entry.
   if (
     /^src\/(?:App|Document|entry-server|entry-client|router|middleware)(?:\.[cm]?[jt]sx?$|\/|$)/u.test(
       file
@@ -82,7 +82,7 @@ const layerImports = defineRule({
     schema: [],
     messages: {
       forbidden:
-        'A camada {{from}} não pode depender de {{to}} ({{target}}). Consulte as regras de camadas em docs/architecture.md.'
+        'The {{from}} layer cannot depend on {{to}} ({{target}}). See the layer rules in docs/architecture.md.'
     }
   },
   create(context) {

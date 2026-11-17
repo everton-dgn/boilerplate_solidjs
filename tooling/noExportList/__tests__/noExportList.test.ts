@@ -10,12 +10,12 @@ import { noExportList } from '../index.ts'
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')
 
-test('o plugin project registra a regra e o lint a ativa como erro', () => {
+test('the project plugin registers the rule and the lint turns it on as an error', () => {
   assert.equal(plugin.rules['no-export-list'], noExportList)
   assert.equal(lint.rules?.['project/no-export-list'], 'error')
 })
 
-test('a regra aceita export inline e reexport com from', () => {
+test('the rule accepts an inline export and a reexport with from', () => {
   new RuleTester({ cwd: ROOT }).run('no-export-list', noExportList, {
     valid: [
       'export { default } from "@/routes/(base).tsx"',
