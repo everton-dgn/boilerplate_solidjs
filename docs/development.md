@@ -442,6 +442,15 @@ seguintes depois de uma falha.
   usar `compiler: 'babel'`, declare `@babel/core` e `@solidjs/babel-plugin` como
   devDependencies, com o plugin Babel na versão do runtime do Solid; a opção
   `babel` do plugin, com o compilador nativo, exige só `@babel/core`.
+- Os patches Bun ficam em `patches/`, declarados em `patchedDependencies`. A
+  chave inclui a versão do pacote, então atualizar um pacote com patch exige
+  regenerá-lo com `bun patch` ou provar que a versão nova dispensa a correção. O
+  teste `tooling/__tests__/patched-dependencies.test.ts` falha quando a chave
+  não corresponde a uma versão resolvida no `bun.lock`. A prova roda as
+  regressões do patch sem ele: elas devem falhar na versão anterior e passar na
+  nova. O linker isolado reaproveita em `node_modules/.bun` a cópia já corrigida
+  de uma versão instalada antes; confira no pacote instalado que o patch saiu,
+  ou reinstale `node_modules` do zero, antes de rodar esse controle.
 - `vite-plus`, `vite`, `vitest` e os pacotes `@vitest/*` vêm do catálogo em
   `workspaces.catalog` do `package.json`; `vite` resolve para o core do Vite+.
   Atualize as versões nesse catálogo e mantenha os `@vitest/*` na versão exata

@@ -47,6 +47,13 @@ passa pela política de `configureServerErrors` e encerra o render sem chamar
 exceção para o chamador. O descarte libera o owner e as fontes assíncronas
 pendentes.
 
+Há uma exceção antes do primeiro envio. Quando falha a serialização do erro de
+um `<Errored>`, ou do motivo de uma rejeição que um `<Errored>` capturou, o
+runtime grava no lugar um `Error` só com a mensagem e o render continua. A falha
+ainda chega ao hook e marca `hasErrors`, então o Markdown recusa a página. Esse
+erro já passou pelo hook, e em produção a mensagem é a pública. Uma rejeição sem
+`<Errored>` que a capture continua encerrando o render.
+
 No HTML em streaming, uma falha ocorrida enquanto o shell é montado impede que
 ele seja enviado, e a resposta é um 500. Depois do shell, os bytes já enviados
 não podem ser recolhidos: a falha chega ao hook, o render continua e o cliente
@@ -62,37 +69,34 @@ eles informam chegam ao hook, mas não encerram o render. Erros suprimidos
 internamente não são observáveis. Qualquer adoção exige validar a relação entre
 conteúdo, conclusão e falhas.
 
-O patch Bun de `@solidjs/web` cobre o que o runtime publicado ainda não faz, nos
-runtimes padrão e de desenvolvimento: encerrar o render quando o serializador
-padrão falha de forma síncrona, durante a escrita de um valor, antes do primeiro
-envio. O runtime publicado já encerra quando a falha chega depois da escrita,
-como na rejeição de um valor assíncrono
-([solidjs/solid#4647](https://github.com/solidjs/solid/issues/4647)). Numa falha
-síncrona, ele só informa o hook e conclui o render pelo fluxo normal, inclusive
-chamando `onCompleteAll`. O Markdown recusaria esse resultado pela falha
-registrada, mas uma falha durante a montagem do shell enviaria o HTML com
-status 200. O patch retira essa exceção da condição que encerra o render. O
-runtime de observação não recebe o patch porque o projeto não ativa `observe` no
-`@solidjs/vite-plugin`; ativar essa opção exige incluir também
-`dist/server.observe.js`. Falhas na fase de serialização chegam ao log como
-`SerovalSerializationError`; a mensagem e a causa continuam descartadas. A chave
-do patch inclui a versão do pacote, então cada atualização de `@solidjs/web`
-exige regenerá-lo com `bun patch`. O teste
-`tooling/__tests__/patched-dependencies.test.ts` falha quando a chave de um
-patch não corresponde a uma versão resolvida no `bun.lock`.
+O runtime publicado encerra o render também quando o serializador padrão falha
+de forma síncrona, durante a escrita de um valor, antes do primeiro envio, nos
+runtimes padrão e de desenvolvimento
+([solidjs/solid#4709](https://github.com/solidjs/solid/issues/4709)). A falha
+que chega depois da escrita, como na rejeição de um valor assíncrono, já
+encerrava o render
+([solidjs/solid#4647](https://github.com/solidjs/solid/issues/4647)). Antes do
+#4709, numa falha síncrona o runtime só informava o hook e concluía o render
+pelo fluxo normal, inclusive chamando `onCompleteAll`: o Markdown recusaria esse
+resultado pela falha registrada, mas uma falha durante a montagem do shell
+enviaria o HTML com status 200. Um patch Bun de `@solidjs/web` cobria esse caso
+até o pacote publicado passar sem ele nas regressões de
+`markdownContent.serialization.node.test.ts`, que falham no runtime anterior sem
+o patch. Falhas na fase de serialização chegam ao log como
+`SerovalSerializationError`; a mensagem e a causa continuam descartadas.
 
-O patch cobre também uma queda do processo. O `pipe` grava o shell e chama
-`buffer.flush()` na linha seguinte. Com um shell de 16.384 caracteres ou mais,
-essa primeira escrita já chega ao destino, que pode abandonar o render ali
-mesmo: o `createSSRResponse` faz isso quando a página declarou `Location`, e o
-mesmo acontece quando a escrita lança ou quando o sinal do render é abortado
-dentro dela. O `abandon` troca o buffer por um objeto sem `flush`, a chamada
-seguinte lança `TypeError` numa microtask que ninguém aguarda, e a rejeição sem
-tratamento encerra o processo do Node. O patch dá um `flush` vazio a esse
-buffer, e o render abandonado termina como já terminava com um shell menor. A
-regressão fica em `renderIntegrity.redirect.node.test.ts`, e o acompanhamento em
-[solidjs/solid#4745](https://github.com/solidjs/solid/issues/4745). Remova esse
-trecho quando um pacote publicado passar nesse teste sem ele.
+Um render abandonado dentro da primeira escrita também não derruba o processo. O
+`pipe` grava o shell e chama `buffer.flush()` na linha seguinte. Com um shell de
+16.384 caracteres ou mais, essa primeira escrita já chega ao destino, que pode
+abandonar o render ali mesmo: o `createSSRResponse` faz isso quando a página
+declarou `Location`, e o mesmo acontece quando a escrita lança ou quando o sinal
+do render é abortado dentro dela. O `abandon` troca o buffer por um objeto com
+`flush` vazio
+([solidjs/solid#4745](https://github.com/solidjs/solid/issues/4745)), e o render
+abandonado termina do mesmo jeito que com um shell menor. Sem esse `flush`, a
+chamada seguinte lançaria `TypeError` numa microtask que ninguém aguarda, e a
+rejeição sem tratamento encerraria o processo do Node; o patch Bun também cobria
+esse caso. A regressão fica em `renderIntegrity.redirect.node.test.ts`.
 
 O [solidjs/solid#4193](https://github.com/solidjs/solid/issues/4193) relatou
 três lacunas. O [solidjs/solid#4206](https://github.com/solidjs/solid/pull/4206)
@@ -103,16 +107,13 @@ mesmo depois de um que lança. O
 concluir na falha síncrona, e o
 [solidjs/solid#4246](https://github.com/solidjs/solid/pull/4246) encerra cada
 escrita no primeiro valor que falha. O #4647 encerra o render na falha
-assíncrona antes do envio e rejeita no cliente a chave que falha depois dele.
-Essas partes saíram do patch. O restante é acompanhado no
-[solidjs/solid#4709](https://github.com/solidjs/solid/issues/4709). Remova-o
-quando um pacote publicado encerrar o render também na falha síncrona e passar
-as regressões de erro reutilizado entre requisições, falha de server function
-que escapa de Loading, recuperação local, serialização, cleanup que lança e
-cancelamento. A issue ou o PR fechado não substitui a verificação dos artefatos
-instalados. O sinal composto de timeout e desconexão chega ao `renderToStream`;
-o teste Node do adaptador verifica o descarte de uma raiz SSR pendente no
-cancelamento.
+assíncrona antes do envio e rejeita no cliente a chave que falha depois dele, e
+o #4709 fecha o caso síncrono. Ao atualizar o Solid, rode de novo as regressões
+de erro reutilizado entre requisições, falha de server function que escapa de
+Loading, recuperação local, serialização, cleanup que lança e cancelamento. A
+issue ou o PR fechado não substitui a verificação dos artefatos instalados. O
+sinal composto de timeout e desconexão chega ao `renderToStream`; o teste Node
+do adaptador verifica o descarte de uma raiz SSR pendente no cancelamento.
 
 No abandono por cancelamento, o thenable de `renderToStream` rejeita com
 `signal.reason`, inclusive para consumidores registrados depois do aborto, sem

@@ -153,9 +153,9 @@ traga o motivo em `cause`. Na página de erro, o critério usa o sinal de
 `[error-page]`, e a falha original já foi registrada antes do render. Um erro
 distinto desse render mantém a linha. Em desenvolvimento o valor é relançado,
 como qualquer outro. Um motivo primitivo não tem identidade própria e se
-confunde com o mesmo valor lançado. O patch preserva também motivos como `null`,
-`false`, zero, string vazia e `NaN`; o middleware usa `Object.is` para comparar
-o motivo sem perder esses valores.
+confunde com o mesmo valor lançado. O runtime rejeita com o próprio motivo,
+inclusive `null`, `false`, zero, string vazia e `NaN`; o middleware usa
+`Object.is` para comparar o motivo sem perder esses valores.
 
 A contenção só alcança a janela da cadeia de middleware. A criação do evento, o
 commit da resposta e falhas do corpo depois que a `Response` sai ficam fora

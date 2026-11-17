@@ -37,8 +37,7 @@ Markdown, aguarda o SSR e só converte o HTML quando o estado de integridade do
 render indica conclusão sem erros; o HTML normal mantém streaming. O estado
 cobre erros observados pelo render; não atesta dados de hidratação
 silenciosamente descartados pelo serializador, e o Markdown usa o HTML
-assentado, sem esses dados. O contrato completo, a resposta de recusa e o
-critério para remover o patch estão em
+assentado, sem esses dados. O contrato completo e a resposta de recusa estão em
 [erros no servidor](../server-errors/ssr-integrity.md#integridade-do-ssr-para-markdown).
 
 O prerender do build passa pelo mesmo adaptador. O módulo
