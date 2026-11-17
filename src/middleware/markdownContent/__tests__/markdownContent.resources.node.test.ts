@@ -166,7 +166,7 @@ describe('markdown resource bounds', () => {
     await expect(response.text()).resolves.not.toContain('Partial fallback')
   })
 
-  // O adaptador roda fora do contexto de idioma; o idioma vem da requisição.
+  // The adapter runs outside the locale context; the locale comes from the request.
   it.each([
     ['/pt/about.md', 'Não foi possível concluir a solicitação.'],
     ['/en/about.md', 'The request could not be completed.'],
@@ -182,8 +182,8 @@ describe('markdown resource bounds', () => {
     }
   )
 
-  // O teto encerra a publicação no 500 público do próprio adaptador, no idioma
-  // da requisição, em vez de subir até a contenção externa.
+  // The limit ends the publication on the public 500 of the adapter itself, in
+  // the locale of the request, instead of going up to the outer containment.
   it('bounds conversion input', async () => {
     vi.spyOn(console, 'error').mockReturnValue()
     const response = await markdownContent(

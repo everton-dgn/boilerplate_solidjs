@@ -7,8 +7,8 @@ type RouteOptions = { route: true }
 type DataOptions = { structuredData: () => undefined }
 type BothOptions = RouteOptions & DataOptions
 
-describe('contrato exclusivo de createSeo', () => {
-  it('aceita exatamente um modo sem executar o primitive fora de um owner', () => {
+describe('exclusive contract of createSeo', () => {
+  it('accepts exactly one mode without running the primitive outside an owner', () => {
     expectTypeOf<RouteOptions>().toExtend<Options>()
     expectTypeOf<DataOptions>().toExtend<Options>()
     expectTypeOf<BothOptions>().not.toExtend<Options>()

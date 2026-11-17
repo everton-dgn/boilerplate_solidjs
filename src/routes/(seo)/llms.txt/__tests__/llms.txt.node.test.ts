@@ -30,7 +30,7 @@ function matchEvery({ pattern, info }: MatchOptions): void {
   ])
 }
 
-// Contexto de uma requisição em português, como o de uma página localizada.
+// Context of a request in Portuguese, like the one of a localized page.
 function inPortuguese(read: () => Promise<Response>): Promise<Response> {
   return paraglideMiddleware(new Request('https://example.com/pt/'), () => {
     expect(getLocale()).toBe('pt')
@@ -38,8 +38,8 @@ function inPortuguese(read: () => Promise<Response>): Promise<Response> {
   })
 }
 
-describe('rota do llms.txt', () => {
-  it('publica o mesmo índice dentro e fora de um contexto em português', async () => {
+describe('llms.txt route', () => {
+  it('publishes the same index inside and outside a Portuguese context', async () => {
     const baseResponse = await GET()
     const base = await baseResponse.text()
 
@@ -54,7 +54,7 @@ describe('rota do llms.txt', () => {
     expect(response.headers.get('cache-control')).toBe(SITE_CACHE_CONTROL)
   })
 
-  it('declara na nota o idioma base em que o índice é montado', async () => {
+  it('declares in the note the base locale in which the index is built', async () => {
     const response = await GET()
 
     await expect(response.text()).resolves.toContain(
@@ -63,8 +63,8 @@ describe('rota do llms.txt', () => {
   })
 })
 
-describe('llms.txt publicado no build', () => {
-  it('falha pequeno em produção, sem reconstruir o índice na função', async () => {
+describe('llms.txt published in the build', () => {
+  it('fails small in production, without rebuilding the index in the function', async () => {
     vi.stubEnv('PROD', true)
     const log = vi.spyOn(console, 'error').mockReturnValue()
     const match = vi.spyOn(Router, 'match')
@@ -86,7 +86,7 @@ describe('llms.txt publicado no build', () => {
     )
   })
 
-  it('gera o índice no prerender', async () => {
+  it('generates the index in the prerender', async () => {
     vi.stubEnv('PROD', true)
     vi.stubEnv(PUBLICATION_PHASE_ENV, PUBLICATION_PRERENDER_PHASE)
     const response = await GET()
@@ -94,8 +94,8 @@ describe('llms.txt publicado no build', () => {
   })
 })
 
-describe('anúncio do llms-full.txt', () => {
-  it('cita o agregado quando o índice aponta para um Markdown estático', async () => {
+describe('llms-full.txt announcement', () => {
+  it('cites the aggregate when the index points to a static Markdown', async () => {
     matchEvery({ pattern: '/about', info: { markdown: true } })
     const response = await GET()
     const text = await response.text()
@@ -113,7 +113,7 @@ describe('anúncio do llms-full.txt', () => {
     { pattern: '/about', info: { markdown: true, seo: { noindex: true } } },
     { pattern: '/about', info: {} }
   ] satisfies MatchOptions[])(
-    'omite o agregado sem Markdown estático: $pattern $info',
+    'leaves out the aggregate without static Markdown: $pattern $info',
     async options => {
       matchEvery(options)
       const response = await GET()

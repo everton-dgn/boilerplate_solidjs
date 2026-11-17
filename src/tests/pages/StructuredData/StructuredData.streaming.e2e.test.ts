@@ -12,8 +12,8 @@ test.use({ locale: 'pt-BR' })
 
 const HTTP_OK = 200
 const PAGE_URL = '/structured-data-stream'
-const PRODUCT_NAME = 'Produto em streaming'
-const LOADING_TEXT = 'Carregando produto...'
+const PRODUCT_NAME = 'Streamed product'
+const LOADING_TEXT = 'Loading product...'
 const JSON_LD = 'script[type="application/ld+json"]'
 const SCRIPTS_WITH_PRODUCT = 2
 
@@ -23,7 +23,7 @@ function productId(): string {
   return `structured-data:${crypto.randomUUID()}`
 }
 
-// Navega com um gate novo e só o libera quando o fallback do shell aparece.
+// Navigates with a new gate and only releases it when the shell fallback shows up.
 async function visitGated({ page, request }: GatedVisit): Promise<void> {
   const id = productId()
   await page.goto(`${PAGE_URL}?id=${id}`, { waitUntil: 'commit' })
@@ -47,7 +47,7 @@ async function expectSafeProduct(page: Page): Promise<void> {
   ).toBeUndefined()
 }
 
-test('envia o JSON-LD assíncrono como atualização de head após o HTML inicial', async ({
+test('sends the async JSON-LD as a head update after the initial HTML', async ({
   request,
   baseURL
 }) => {
@@ -73,7 +73,7 @@ test('envia o JSON-LD assíncrono como atualização de head após o HTML inicia
   expect(head).not.toContain(PRODUCT_NAME)
   expect(tail).toContain(LOADING_TEXT)
   expect(tail).toContain('"a","script:key:structured-data:')
-  // O runtime repassa o nonce CSP da requisição à tag criada no head.
+  // The runtime passes the CSP nonce of the request to the tag created in the head.
   expect(tail).toMatch(
     /"script",\{"type":"application\/ld\+json","nonce":"[^"]+"\}/u
   )
@@ -84,10 +84,13 @@ test('envia o JSON-LD assíncrono como atualização de head após o HTML inicia
   ).toHaveLength(1)
 })
 
-test.describe('streaming sem JavaScript', () => {
+test.describe('streaming without JavaScript', () => {
   test.use({ javaScriptEnabled: false })
 
-  test('mantém apenas o JSON-LD inicial no head', async ({ page, request }) => {
+  test('keeps only the initial JSON-LD in the head', async ({
+    page,
+    request
+  }) => {
     await visitGated({ page, request })
     await page.waitForLoadState('load')
     await expect(page.getByText(LOADING_TEXT, { exact: true })).toBeVisible()
@@ -98,7 +101,7 @@ test.describe('streaming sem JavaScript', () => {
   })
 })
 
-test('insere o JSON-LD tardio no head antes de carregar o JavaScript da aplicação', async ({
+test('inserts the late JSON-LD in the head before loading the JavaScript of the application', async ({
   page,
   request,
   cspViolations
@@ -119,14 +122,14 @@ test('insere o JSON-LD tardio no head antes de carregar o JavaScript da aplicaç
   await expect(page.locator(`body ${JSON_LD}`)).toHaveCount(0)
 })
 
-test('hidrata sem duplicar o JSON-LD e o remove ao sair da rota', async ({
+test('hydrates without duplicating the JSON-LD and removes it when leaving the route', async ({
   page,
   request,
   pageErrors,
   cspViolations
 }) => {
   await visitGated({ page, request })
-  await page.getByRole('button', { name: 'Incrementar', exact: true }).click()
+  await page.getByRole('button', { name: 'Increment', exact: true }).click()
   await expect(page.getByText('Cliques: 1', { exact: true })).toBeVisible()
   await expect(page.locator(`head ${JSON_LD}`)).toHaveCount(
     SCRIPTS_WITH_PRODUCT

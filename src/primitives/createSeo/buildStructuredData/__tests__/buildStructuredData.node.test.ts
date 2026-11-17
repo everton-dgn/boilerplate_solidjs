@@ -5,8 +5,8 @@ import { parseStructuredData } from '@/tests/helpers/parseStructuredData/index.t
 import { buildStructuredData } from '../index.ts'
 
 const page: SeoMetadata = {
-  title: 'Guia público',
-  description: 'Conteúdo público do guia.',
+  title: 'Public guide',
+  description: 'Public content of the guide.',
   noindex: false,
   type: 'website',
   image: SITE.image
@@ -43,8 +43,8 @@ const organization = {
   }
 }
 
-describe('dados estruturados da página', () => {
-  it('descreve o site, a página e a organização que os publica', () => {
+describe('structured data of the page', () => {
+  it('describes the site, the page and the organization that publishes them', () => {
     const graph = parseStructuredData(
       buildStructuredData({
         seo: page,
@@ -68,8 +68,8 @@ describe('dados estruturados da página', () => {
         '@type': 'WebPage',
         '@id': `${SITE.url}/guia`,
         url: `${SITE.url}/guia`,
-        name: 'Guia público',
-        description: 'Conteúdo público do guia.',
+        name: 'Public guide',
+        description: 'Public content of the guide.',
         inLanguage: SITE.locale,
         isPartOf: { '@id': `${SITE.url}/#website` },
         image: {
@@ -82,7 +82,7 @@ describe('dados estruturados da página', () => {
     ])
   })
 
-  it('omite contato e endereço que a configuração do site não define', () => {
+  it('leaves out the contact and the address that the site configuration does not define', () => {
     const { organization: configured } = SITE
     SITE.organization = {}
     try {
@@ -100,18 +100,18 @@ describe('dados estruturados da página', () => {
     }
   })
 
-  it('publica artigos como Article com headline, autor e publisher', () => {
+  it('publishes articles as Article with headline, author and publisher', () => {
     const graph = parseStructuredData(
       buildStructuredData({
-        seo: { ...page, type: 'article', title: 'Artigo' },
-        url: `${SITE.url}/artigo`,
-        image: `${SITE.url}/images/artigo.png`
+        seo: { ...page, type: 'article', title: 'Article' },
+        url: `${SITE.url}/article`,
+        image: `${SITE.url}/images/article.png`
       })
     )
     const [, article] = graph['@graph']
 
     expect(article?.['@type']).toBe('Article')
-    expect(article?.headline).toBe('Artigo')
+    expect(article?.headline).toBe('Article')
     expect(article?.author).toStrictEqual({
       '@type': 'Person',
       name: SITE.author.name,
@@ -124,7 +124,7 @@ describe('dados estruturados da página', () => {
     expect('datePublished' in (article ?? {})).toBe(false)
   })
 
-  it('publica as datas do artigo quando a rota as declara', () => {
+  it('publishes the article dates when the route declares them', () => {
     const graph = parseStructuredData(
       buildStructuredData({
         seo: {
@@ -132,8 +132,8 @@ describe('dados estruturados da página', () => {
           type: 'article',
           article: { datePublished: '2026-09-01', dateModified: '2026-09-21' }
         },
-        url: `${SITE.url}/artigo`,
-        image: `${SITE.url}/images/artigo.png`
+        url: `${SITE.url}/article`,
+        image: `${SITE.url}/images/article.png`
       })
     )
     const [, article] = graph['@graph']
@@ -145,7 +145,7 @@ describe('dados estruturados da página', () => {
     })
   })
 
-  it('ignora as datas de artigo em página que não é artigo', () => {
+  it('ignores the article dates on a page that is not an article', () => {
     const graph = parseStructuredData(
       buildStructuredData({
         seo: { ...page, article: { datePublished: '2026-09-01' } },
@@ -157,7 +157,7 @@ describe('dados estruturados da página', () => {
     expect('datePublished' in (graph['@graph'][1] ?? {})).toBe(false)
   })
 
-  it('preserva caracteres de HTML na descrição serializada como JSON', () => {
+  it('keeps HTML characters in the description serialized as JSON', () => {
     const json = buildStructuredData({
       seo: { ...page, description: '</script><b>&</b>' },
       url: `${SITE.url}/`,

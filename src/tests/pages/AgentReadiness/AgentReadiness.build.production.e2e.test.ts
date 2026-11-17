@@ -103,7 +103,7 @@ const manifestSchema = v.object({
 })
 const STATIC_ROOT = fileURLToPath(STATIC_OUTPUT)
 
-// Inventário do diretório publicado, sem depender da lista do build.
+// Inventory of the published folder, without depending on the build list.
 async function readStaticFiles(extension: string): Promise<Set<string>> {
   const entries = await readdir(STATIC_ROOT, {
     recursive: true,
@@ -241,8 +241,8 @@ test('declares the headers of the static Markdown files', async () => {
       rule?.headers.map(({ key, value }) => [key, value]) ?? []
     )
   ).toStrictEqual({ 'Content-Type': 'text/markdown; charset=utf-8' })
-  // O tipo do agregado vem do overrides do artefato, que só vale para o
-  // arquivo estático; um Content-Type aqui chegaria também ao 404 da função.
+  // The type of the aggregate comes from the overrides of the artifact, which only
+  // apply to the static file; a Content-Type here would also reach the 404 of the function.
   expect(
     config.headers.find(({ source }) => source === LLMS_FULL_PATH)
   ).toBeUndefined()
@@ -319,7 +319,7 @@ test('publishes exactly the static Markdown files listed by the build', async ({
     expect(response.status(), path).toBe(HTTP_OK)
     const served = await response.body()
     expect(served.equals(file), path).toBe(true)
-    // O HTML da página anuncia o mesmo arquivo, por outro caminho do código.
+    // The HTML of the page announces the same file, through another code path.
     const page = await request.get(pageOf(path), {
       headers: { accept: 'text/html' },
       maxRedirects: 0
@@ -373,7 +373,7 @@ test('publishes sitemap, llms.txt and the Markdown list as build artifacts', asy
     hasPartitionSources: false,
     identities: null
   })
-  // O manifesto só vale para o bundle que carrega o mesmo identificador.
+  // The manifest only applies to the bundle that carries the same identifier.
   const chunks = await readdir(SSR_BUNDLE)
   const sources = await Promise.all(
     chunks.map(chunk => readFile(new URL(chunk, SSR_BUNDLE), 'utf8'))
@@ -388,8 +388,8 @@ test('publishes sitemap, llms.txt and the Markdown list as build artifacts', asy
   })
 })
 
-// A Vercel aplica todas as rotas com continue que casam antes do primeiro
-// handle; as seguintes só valem na fase desse handle.
+// Vercel applies every route with continue that matches before the first handle;
+// the following ones only apply in the phase of that handle.
 test('declares the security headers of the static files in the Vercel artifact', async () => {
   const config = v.parse(
     artifactSchema,
@@ -408,8 +408,8 @@ test('declares the security headers of the static files in the Vercel artifact',
         .filter(route => new RegExp(route.src ?? '', 'u').test(path))
         .flatMap(route => Object.entries(route.headers ?? {}))
     )
-  // As regras dos .md são por idioma: um .md publicado fora desse prefixo
-  // sairia do CDN sem os cabeçalhos.
+  // The .md rules are per locale: a .md published outside that prefix would leave
+  // the CDN without the headers.
   const markdownFiles = [...(await readStaticFiles('.md'))].map(path =>
     encodeURI(path)
   )
@@ -438,7 +438,7 @@ test('serves every internal destination of llms.txt without redirects', async ({
   const destinations = new Map<string, Destination>()
   for (const { href } of links) {
     const url = new URL(href)
-    // Links externos ficam fora: o teste não depende de outros hosts.
+    // External links stay out: the test does not depend on other hosts.
     if (url.origin !== origin) continue
     const fragment = url.hash.slice(1)
     url.hash = ''
@@ -463,7 +463,7 @@ test('aggregates in llms-full.txt the static Markdown linked by llms.txt', async
   const index = await request.get('/llms.txt')
   const { links } = readLlmsIndex(await index.text())
   const origin = readSiteOrigin()
-  // Só os arquivos do idioma base entram, pela lista do build e pelo disco.
+  // Only the base locale files enter, through the build list and the disk.
   const { baseLocalePaths } = await readManifest(request)
   const staticFiles = await readStaticFiles('.md')
   const selectable = new Set(
@@ -507,7 +507,7 @@ test('aggregates in llms-full.txt the static Markdown linked by llms.txt', async
     .filter(line => line.startsWith('- '))
     .map(line => line.slice('- '.length))
   expect(listed).toStrictEqual([...expected.values()])
-  // Cada corpo é lido pelo tamanho declarado e comparado byte a byte.
+  // Each body is read by the declared size and compared byte by byte.
   let offset = Buffer.byteLength(text.slice(0, text.indexOf('\nSource: ')))
   for (const [path, url] of expected) {
     const body = await readFile(new URL(path.slice(1), STATIC_OUTPUT))

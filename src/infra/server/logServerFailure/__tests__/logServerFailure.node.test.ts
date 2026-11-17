@@ -8,24 +8,24 @@ import { logServerFailure } from '../index.ts'
 
 const MESSAGE = '[middleware] Unexpected failure; private details omitted'
 const LOG_ATTEMPTS = 2
-// Limites do módulo: frames gravados, linhas lidas depois do cabeçalho e
-// tamanho da linha examinada.
+// Limits of the module: written frames, lines read after the header and the
+// size of the examined line.
 const FRAME_LIMIT = 10
 const READ_LIMIT = 50
 const LINE_LIMIT = 1024
-// O stack sintético oferece mais frames válidos do que o log grava.
+// The synthetic stack offers more valid frames than the log writes.
 const SYNTHETIC_FRAMES = 15
-// Primeiro frame de um erro criado neste arquivo.
+// First frame of an error created in this file.
 const LOCAL_FRAME = /^ {4}at .+logServerFailure\.node\.test\.ts:\d+:\d+\)?$/u
 const LATE_FRAME = '    at late (file:///app/server.js:1:1)'
 const PLAIN_FRAME = '    at handler (/app/server.js:1:1)'
-// Linha com a forma de frame embutida no name ou no code de um erro.
+// A line shaped like a frame embedded in the name or the code of an error.
 const INJECTED_FRAME = '    at /PRIVATE_HEADER:1:1'
 
 type ErrorClass = new (message: string) => Error
 
-// Um erro de biblioteca que troca o name depois do super(): o V8 monta o
-// cabeçalho do stack com o name atual na primeira leitura.
+// A library error that changes the name after super(): V8 builds the stack
+// header with the current name on the first read.
 class UpstreamError extends Error {
   public constructor(message: string) {
     super(message)
@@ -33,13 +33,13 @@ class UpstreamError extends Error {
   }
 }
 
-// Devolvida por uma função, a expressão de classe não recebe o nome de nenhuma
-// variável: o construtor fica com o nome vazio.
+// Returned by a function, the class expression gets the name of no variable:
+// the constructor keeps an empty name.
 function anonymousErrorClass(): ErrorClass {
   return class extends Error {}
 }
 
-// O log de uma falha é uma única chamada com uma única string.
+// The log of a failure is a single call with a single string.
 function loggedText(): string {
   const calls: unknown[][] = vi.mocked(console.error).mock.calls
   const [call] = calls
@@ -67,11 +67,11 @@ function textDecoderError(): Error {
   return caughtError(() => new TextDecoder('PRIVATE_LABEL'))
 }
 
-// Cria o erro com o cabeçalho que o próprio Node monta. O Vitest troca o
-// Error.prepareStackTrace pelo do module runner do Vite, que omite o código dos
-// erros do Node e escreve "Error: " quando a mensagem é vazia; o formatador do
-// Node volta só durante a criação e a primeira leitura do stack, que fixa o
-// cabeçalho.
+// Creates the error with the header that Node itself builds. Vitest replaces
+// Error.prepareStackTrace with the one of the Vite module runner, which leaves out
+// the code of Node errors and writes "Error: " when the message is empty; the Node
+// formatter comes back only during the creation and the first read of the stack,
+// which pins the header.
 function formattedByNode(create: () => Error): Error {
   const formatter = Object.getOwnPropertyDescriptor(Error, 'prepareStackTrace')
   Reflect.deleteProperty(Error, 'prepareStackTrace')
@@ -84,15 +84,15 @@ function formattedByNode(create: () => Error): Error {
   }
 }
 
-// Um stack trocado por texto que imita o cabeçalho e os frames do V8: o
-// formato que um stack forjado precisa copiar para passar pelo filtro.
+// A stack replaced by text that imitates the V8 header and frames: the format
+// that a forged stack needs to copy to pass the filter.
 function withStack(lines: string[]): Error {
   return Object.assign(new Error('PRIVATE_MESSAGE'), {
     stack: ['Error: PRIVATE_MESSAGE', ...lines].join('\n')
   })
 }
 
-// Frame válido com exatamente o tamanho pedido.
+// A valid frame with exactly the requested size.
 function frameOfLength(length: number): string {
   const prefix = '    at handler (/'
   const suffix = '.js:1:1)'
@@ -111,7 +111,7 @@ function throwingStack(): Error {
   })
 }
 
-describe('linha fixa do log de falhas', () => {
+describe('fixed line of the failure log', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 
   it.each([
@@ -126,33 +126,36 @@ describe('linha fixa do log de falhas', () => {
     ['middleware', MESSAGE],
     ['error-page', '[error-page] Unexpected failure; private details omitted'],
     ['sitemap', '[sitemap] Unexpected failure; private details omitted']
-  ] as const)('registra %s só com a linha fixa sem erro', (source, message) => {
-    logServerFailure({ source })
-    expect(console.error).toHaveBeenCalledExactlyOnceWith(message)
-  })
+  ] as const)(
+    'writes %s with only the fixed line without an error',
+    (source, message) => {
+      logServerFailure({ source })
+      expect(console.error).toHaveBeenCalledExactlyOnceWith(message)
+    }
+  )
 
   it.each([
-    ['uma string', 'PRIVATE_STRING'],
+    ['a string', 'PRIVATE_STRING'],
     [
-      'um objeto comum',
+      'a plain object',
       {
         message: 'PRIVATE_MESSAGE',
         stack: 'Error: PRIVATE_MESSAGE\n    at /PRIVATE_FRAME:1:1'
       }
     ],
-    ['um Proxy cujo protótipo lança', hostileValue()],
-    ['um Proxy de Error cujas leituras lançam', hostileError()],
-    ['um Error cujo getter de stack lança', throwingStack()]
-  ])('registra só a linha fixa para %s', (_label, error) => {
+    ['a Proxy whose prototype throws', hostileValue()],
+    ['an Error Proxy whose reads throw', hostileError()],
+    ['an Error whose stack getter throws', throwingStack()]
+  ])('writes only the fixed line for %s', (_label, error) => {
     logServerFailure({ source: 'middleware', error })
     expect(console.error).toHaveBeenCalledExactlyOnceWith(MESSAGE)
   })
 })
 
-describe('falhas do destino de log', () => {
+describe('log destination failures', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 
-  it('tenta só a linha fixa após uma falha, sem inspecionar o erro novamente', () => {
+  it('tries only the fixed line after a failure, without inspecting the error again', () => {
     const readStack = vi.fn<() => string>(
       () => `Error: PRIVATE_MESSAGE\n${PLAIN_FRAME}`
     )
@@ -176,7 +179,7 @@ describe('falhas do destino de log', () => {
     })
   })
 
-  it('encerra após duas falhas do destino sem propagá-las', () => {
+  it('stops after two destination failures without propagating them', () => {
     vi.mocked(console.error)
       .mockImplementationOnce(() => {
         throw new Error('PRIVATE_FIRST_DESTINATION')
@@ -199,7 +202,7 @@ describe('falhas do destino de log', () => {
     }
   })
 
-  it('contém falhas no próprio acesso ao destino', () => {
+  it('contains failures in the access to the destination itself', () => {
     const descriptor = Object.getOwnPropertyDescriptor(console, 'error')
     assert(descriptor)
     const readError = vi.fn<() => never>(() => {
@@ -218,10 +221,10 @@ describe('falhas do destino de log', () => {
   })
 })
 
-describe('erro original em desenvolvimento', () => {
+describe('original error in development', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 
-  it('imprime o erro depois da linha fixa quando pedido em desenvolvimento', () => {
+  it('prints the error after the fixed line when asked in development', () => {
     vi.stubEnv('DEV', true)
     const error = new Error('PRIVATE')
 
@@ -234,24 +237,27 @@ describe('erro original em desenvolvimento', () => {
   })
 
   it.each([
-    ['fora de desenvolvimento', false, true],
-    ['sem pedido do chamador', true, false]
-  ])('não imprime o erro original %s', (_label, isDevelopment, shouldPrint) => {
-    vi.stubEnv('DEV', isDevelopment)
+    ['outside development', false, true],
+    ['without a request from the caller', true, false]
+  ])(
+    'does not print the original error %s',
+    (_label, isDevelopment, shouldPrint) => {
+      vi.stubEnv('DEV', isDevelopment)
 
-    logServerFailure({
-      source: 'middleware',
-      error: new Error('PRIVATE'),
-      shouldPrintOriginal: shouldPrint
-    })
+      logServerFailure({
+        source: 'middleware',
+        error: new Error('PRIVATE'),
+        shouldPrintOriginal: shouldPrint
+      })
 
-    expect(readLog(console.error)).toStrictEqual({
-      heads: [[MESSAGE, 'Error']],
-      leaks: []
-    })
-  })
+      expect(readLog(console.error)).toStrictEqual({
+        heads: [[MESSAGE, 'Error']],
+        leaks: []
+      })
+    }
+  )
 
-  it('contém a falha ao imprimir o erro original', () => {
+  it('contains the failure when printing the original error', () => {
     vi.stubEnv('DEV', true)
     vi.mocked(console.error)
       .mockImplementationOnce(vi.fn())
@@ -269,10 +275,10 @@ describe('erro original em desenvolvimento', () => {
   })
 })
 
-describe('classe e frames do log de falhas', () => {
+describe('class and frames of the failure log', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 
-  it('registra a classe e os frames sem mensagem, cause nem propriedades', () => {
+  it('writes the class and the frames without the message, cause or properties', () => {
     const error = Object.assign(
       new Error('PRIVATE_MESSAGE', { cause: 'PRIVATE_CAUSE' }),
       { internalContext: 'PRIVATE_CONTEXT' }
@@ -287,9 +293,9 @@ describe('classe e frames do log de falhas', () => {
     expect(loggedText()).not.toContain('PRIVATE')
   })
 
-  it('não trata uma linha da mensagem como frame', () => {
+  it('does not treat a line of the message as a frame', () => {
     const error = new Error('PRIVATE_MESSAGE\n    at /segredo:1:1')
-    // Controle positivo: a linha falsa fica no stack, logo após o cabeçalho.
+    // Positive control: the fake line stays in the stack, right after the header.
     expect(error.stack).toContain('PRIVATE_MESSAGE\n    at /segredo:1:1\n')
 
     logServerFailure({ source: 'middleware', error })
@@ -300,7 +306,7 @@ describe('classe e frames do log de falhas', () => {
     expect(loggedText()).not.toMatch(/segredo|PRIVATE/u)
   })
 
-  it('descarta os frames de um stack sobrescrito sem o cabeçalho', () => {
+  it('drops the frames of an overwritten stack without the header', () => {
     const error = Object.assign(new Error('PRIVATE_MESSAGE'), {
       stack: '    at /segredo:1:1\n    at file:///PRIVATE_FRAME.js:1:1'
     })
@@ -310,10 +316,10 @@ describe('classe e frames do log de falhas', () => {
     expect(console.error).toHaveBeenCalledExactlyOnceWith(`${MESSAGE}\nError`)
   })
 
-  it('descarta os frames quando a mensagem muda depois da formatação do stack', () => {
+  it('drops the frames when the message changes after the stack was formatted', () => {
     const error = new Error('PRIVATE_BEFORE')
-    // O V8 monta o cabeçalho na primeira leitura do stack; a mensagem trocada
-    // depois dela não confere mais com o cabeçalho.
+    // V8 builds the header on the first read of the stack; the message changed
+    // after it no longer matches the header.
     expect(error.stack).toMatch(/^Error: PRIVATE_BEFORE\n/u)
     error.message = 'PRIVATE_AFTER'
 
@@ -322,9 +328,9 @@ describe('classe e frames do log de falhas', () => {
     expect(console.error).toHaveBeenCalledExactlyOnceWith(`${MESSAGE}\nError`)
   })
 
-  it('lê a classe do protótipo, não de uma propriedade própria', () => {
+  it('reads the class from the prototype, not from an own property', () => {
     const error = Object.assign(new TypeError('PRIVATE_MESSAGE'), {
-      constructor: { name: 'SEGREDO' }
+      constructor: { name: 'SECRET' }
     })
 
     logServerFailure({ source: 'middleware', error })
@@ -332,10 +338,10 @@ describe('classe e frames do log de falhas', () => {
     const [first, name, frame] = loggedLines()
     expect([first, name]).toStrictEqual([MESSAGE, 'TypeError'])
     expect(frame).toMatch(LOCAL_FRAME)
-    expect(loggedText()).not.toMatch(/SEGREDO|PRIVATE/u)
+    expect(loggedText()).not.toMatch(/SECRET|PRIVATE/u)
   })
 
-  it('valida e grava a mesma leitura do nome da classe', () => {
+  it('validates and writes the same read of the class name', () => {
     const Failure = anonymousErrorClass()
     const error = new Failure('PRIVATE_MESSAGE')
     const readName = vi
@@ -353,7 +359,7 @@ describe('classe e frames do log de falhas', () => {
     })
   })
 
-  it('recusa nomes de classe que dependem de conversão para string', () => {
+  it('refuses class names that depend on a conversion to string', () => {
     const Failure = anonymousErrorClass()
     const error = Object.assign(new Failure('PRIVATE_MESSAGE'), {
       stack: `Error: PRIVATE_MESSAGE\n${PLAIN_FRAME}`
@@ -372,30 +378,33 @@ describe('classe e frames do log de falhas', () => {
 
   it.each([
     [
-      'uma classe que troca o name depois do super()',
+      'a class that changes the name after super()',
       () => new UpstreamError('PRIVATE_MESSAGE'),
       'UpstreamError'
     ],
     [
-      'um name trocado depois da criação',
+      'a name changed after the creation',
       () =>
         Object.assign(new RangeError('PRIVATE_MESSAGE'), {
           name: 'PRIVATE_NAME'
         }),
       'RangeError'
     ]
-  ])('mantém os frames com %s, sem gravar o name', (_label, create, type) => {
-    logServerFailure({ source: 'middleware', error: create() })
+  ])(
+    'keeps the frames with %s, without writing the name',
+    (_label, create, type) => {
+      logServerFailure({ source: 'middleware', error: create() })
 
-    const [first, name, frame] = loggedLines()
-    expect([first, name]).toStrictEqual([MESSAGE, type])
-    expect(frame).toMatch(LOCAL_FRAME)
-    expect(loggedText()).not.toContain('PRIVATE')
-  })
+      const [first, name, frame] = loggedLines()
+      expect([first, name]).toStrictEqual([MESSAGE, type])
+      expect(frame).toMatch(LOCAL_FRAME)
+      expect(loggedText()).not.toContain('PRIVATE')
+    }
+  )
 
-  it('aceita o código dos erros internos do Node no cabeçalho', () => {
+  it('accepts the code of internal Node errors in the header', () => {
     const error = formattedByNode(textDecoderError)
-    // Controle positivo: o cabeçalho traz o código entre colchetes.
+    // Positive control: the header carries the code between brackets.
     expect(error.stack).toMatch(/^RangeError \[ERR_ENCODING_NOT_SUPPORTED\]: /u)
 
     logServerFailure({ source: 'middleware', error })
@@ -406,11 +415,11 @@ describe('classe e frames do log de falhas', () => {
     expect(loggedText()).not.toContain('PRIVATE')
   })
 
-  // O nome lido do cabeçalho termina na quebra de linha; sem conferir o name e
-  // o code atuais, as linhas seguintes do cabeçalho passariam por frames.
+  // The name read from the header ends at the line break; without checking the
+  // current name and code, the next lines of the header would pass as frames.
   it.each([
     [
-      'um name com quebra de linha e mensagem vazia',
+      'a name with a line break and an empty message',
       () =>
         Object.assign(new Error('PRIVATE_MESSAGE'), {
           message: '',
@@ -419,7 +428,7 @@ describe('classe e frames do log de falhas', () => {
       'Error'
     ],
     [
-      'um name que embute a mensagem',
+      'a name that embeds the message',
       () =>
         Object.assign(new Error('PRIVATE_MESSAGE'), {
           name: `X: PRIVATE_MESSAGE\n${INJECTED_FRAME}\nY`
@@ -427,12 +436,12 @@ describe('classe e frames do log de falhas', () => {
       'Error'
     ],
     [
-      'o name de uma DOMException',
+      'the name of a DOMException',
       () => new DOMException('', `Error\n${INJECTED_FRAME}`),
       'DOMException'
     ],
     [
-      'o código de um erro interno do Node',
+      'the code of an internal Node error',
       () =>
         Object.assign(textDecoderError(), {
           code: `X]\n${INJECTED_FRAME}\nY`,
@@ -440,9 +449,9 @@ describe('classe e frames do log de falhas', () => {
         }),
       'RangeError'
     ]
-  ])('descarta os frames com %s', (_label, create, type) => {
+  ])('drops the frames with %s', (_label, create, type) => {
     const error = formattedByNode(create)
-    // Controle positivo: a linha injetada fica no stack, logo após o nome.
+    // Positive control: the injected line stays in the stack, right after the name.
     expect(error.stack).toContain(`\n${INJECTED_FRAME}\n`)
 
     logServerFailure({ source: 'middleware', error })
@@ -450,9 +459,9 @@ describe('classe e frames do log de falhas', () => {
     expect(console.error).toHaveBeenCalledExactlyOnceWith(`${MESSAGE}\n${type}`)
   })
 
-  it('registra só os frames quando a classe não tem nome válido', () => {
+  it('writes only the frames when the class has no valid name', () => {
     const Anonymous = anonymousErrorClass()
-    // Controle positivo: o construtor não tem nome.
+    // Positive control: the constructor has no name.
     expect(Anonymous.name).toBe('')
 
     logServerFailure({
@@ -467,10 +476,10 @@ describe('classe e frames do log de falhas', () => {
   })
 })
 
-describe('limites da leitura do stack', () => {
+describe('stack read limits', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 
-  it('grava no máximo 10 frames', () => {
+  it('writes at most 10 frames', () => {
     const frames = Array.from(
       { length: SYNTHETIC_FRAMES },
       (_, index) => `    at step${index} (file:///app/server.js:${index + 1}:1)`
@@ -485,8 +494,8 @@ describe('limites da leitura do stack', () => {
     ])
   })
 
-  it('descarta linhas fora da gramática de frame sem interromper a leitura', () => {
-    // Cada par junta uma linha descartada e um frame aceito.
+  it('drops lines outside the frame grammar without stopping the read', () => {
+    // Each pair joins a dropped line and an accepted frame.
     const pairs = [
       [
         '    at async Promise.all (index 0)',
@@ -526,15 +535,15 @@ describe('limites da leitura do stack', () => {
     ])
   })
 
-  // Um frame real em file:// chega com esses caracteres codificados; crus, eles
-  // mexeriam no terminal ou no visualizador que exibe o log.
+  // A real frame in file:// arrives with those characters encoded; raw, they
+  // would mess with the terminal or the viewer that shows the log.
   it.each([
     [
-      'o ESC de uma sequência de terminal',
+      'the ESC of a terminal sequence',
       '    at handler (/PRIVATE\u001B[2J:1:1)'
     ],
-    ['o U+202E, que inverte a direção do texto', '    at /PRIVATE‮gnp.js:1:1']
-  ])('descarta um frame com %s no local', (_label, line) => {
+    ['U+202E, which reverses the text direction', '    at /PRIVATE‮gnp.js:1:1']
+  ])('drops a frame with %s in the location', (_label, line) => {
     logServerFailure({
       source: 'middleware',
       error: withStack([line, PLAIN_FRAME])
@@ -543,19 +552,19 @@ describe('limites da leitura do stack', () => {
     expect(loggedLines()).toStrictEqual([MESSAGE, 'Error', PLAIN_FRAME])
   })
 
-  // Parênteses no local deixariam um frame com função terminar antes da hora;
-  // por isso arquivos em pastas de grupo de rotas saem do log.
+  // Parentheses in the location would make a frame with a function end too early;
+  // that is why files in route group folders leave the log.
   it.each([
     [
-      'em pasta de grupo de rotas',
+      'in a route group folder',
       '    at GET (/app/src/routes/(seo)/sitemap.xml/index.ts:1:1)'
     ],
-    ['sem função', '    at /a(b):1:1'],
+    ['without a function', '    at /a(b):1:1'],
     [
-      'em file:// com grupo de rotas',
+      'in file:// with a route group',
       '    at file:///app/src/routes/(seo)/x.ts:1:1'
     ]
-  ])('descarta um frame com parênteses no local %s', (_label, line) => {
+  ])('drops a frame with parentheses in the location %s', (_label, line) => {
     logServerFailure({
       source: 'middleware',
       error: withStack([line, PLAIN_FRAME])
@@ -564,13 +573,13 @@ describe('limites da leitura do stack', () => {
     expect(loggedLines()).toStrictEqual([MESSAGE, 'Error', PLAIN_FRAME])
   })
 
-  // Com mensagem vazia, o V8 monta o cabeçalho só com o nome. O formatador do
-  // module runner do Vite escreve "Error: ", que deixa o log sem frames.
+  // With an empty message, V8 builds the header with the name only. The formatter
+  // of the Vite module runner writes "Error: ", which leaves the log without frames.
   it.each([
-    ['lê', 'Error', [PLAIN_FRAME]],
-    ['descarta', 'Error: ', []]
+    ['reads', 'Error', [PLAIN_FRAME]],
+    ['drops', 'Error: ', []]
   ])(
-    '%s os frames de uma mensagem vazia sob o cabeçalho %j',
+    '%s the frames of an empty message under the %j header',
     (_label, header, frames) => {
       const error = Object.assign(new Error('PRIVATE_MESSAGE'), {
         message: '',
@@ -584,9 +593,9 @@ describe('limites da leitura do stack', () => {
   )
 
   it.each([
-    ['aceita', LINE_LIMIT, [frameOfLength(LINE_LIMIT)]],
-    ['descarta', LINE_LIMIT + 1, []]
-  ])('%s uma linha de %i caracteres', (_label, length, frames) => {
+    ['accepts', LINE_LIMIT, [frameOfLength(LINE_LIMIT)]],
+    ['drops', LINE_LIMIT + 1, []]
+  ])('%s a line of %i characters', (_label, length, frames) => {
     logServerFailure({
       source: 'middleware',
       error: withStack([frameOfLength(length)])
@@ -596,9 +605,9 @@ describe('limites da leitura do stack', () => {
   })
 
   it.each([
-    ['lê', READ_LIMIT - 1, [LATE_FRAME]],
-    ['não lê', READ_LIMIT, []]
-  ])('%s um frame depois de %i linhas descartadas', (_label, count, frames) => {
+    ['reads', READ_LIMIT - 1, [LATE_FRAME]],
+    ['does not read', READ_LIMIT, []]
+  ])('%s a frame after %i dropped lines', (_label, count, frames) => {
     const filler = Array.from({ length: count }, () => 'PRIVATE_FILLER')
 
     logServerFailure({

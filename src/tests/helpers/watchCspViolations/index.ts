@@ -4,8 +4,8 @@ const CSP_MESSAGE =
   /securitypolicyviolation|Refused to|Content Security Policy/u
 const REPORTER = '__reportCspViolation'
 
-// Roda antes dos scripts da página e fora da CSP dela: repassa ao teste, pela
-// função exposta, as violações que o navegador reporta.
+// Runs before the scripts of the page and outside its CSP: passes to the test,
+// through the exposed function, the violations that the browser reports.
 function reportViolations(reporter: string): void {
   document.addEventListener('securitypolicyviolation', event => {
     const report: unknown = Reflect.get(globalThis, reporter)
@@ -17,8 +17,8 @@ function reportViolations(reporter: string): void {
   })
 }
 
-// Coleta as violações de CSP da página, pelo evento e pelas mensagens que o
-// Chromium grava no console. Chame antes de navegar.
+// Collects the CSP violations of the page, through the event and the messages
+// that Chromium writes to the console. Call it before navigating.
 export async function watchCspViolations(page: Page): Promise<string[]> {
   const violations: string[] = []
   await page.exposeFunction(REPORTER, (text: string) => {

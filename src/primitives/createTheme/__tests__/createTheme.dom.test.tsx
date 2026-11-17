@@ -1,4 +1,4 @@
-/* oxlint-disable unicorn/no-document-cookie -- Os testes exercitam a persistência e o bloqueio de cookie diretamente. */
+/* oxlint-disable unicorn/no-document-cookie -- The tests exercise the cookie persistence and blocking directly. */
 import { flush, useContext } from 'solid-js'
 
 import type { ResolvedTheme, Theme } from '@/@types/theme.ts'
@@ -12,7 +12,7 @@ import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import type { ThemeState } from '../types.ts'
 
-describe('primitive de tema', () => {
+describe('theme primitive', () => {
   let state: ThemeState
   let media: EventTarget & { matches: boolean }
 
@@ -38,7 +38,7 @@ describe('primitive de tema', () => {
     flush()
   }
 
-  it('segue o sistema sem preferência salva', async () => {
+  it('follows the system without a saved preference', async () => {
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     expect(state.theme()).toBe('system')
@@ -47,7 +47,7 @@ describe('primitive de tema', () => {
     expect(document.cookie).not.toContain(`${THEME_COOKIE_NAME}=`)
   })
 
-  it('acompanha a mudança do sistema com a preferência system', async () => {
+  it('follows the system change with the system preference', async () => {
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     changeSystemTheme('light')
@@ -56,7 +56,7 @@ describe('primitive de tema', () => {
     expect(document.documentElement.style.colorScheme).toBe('light')
   })
 
-  it('mantém escolha explícita quando o sistema muda', async () => {
+  it('keeps an explicit choice when the system changes', async () => {
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     state.setTheme('light')
@@ -69,7 +69,7 @@ describe('primitive de tema', () => {
     expect(document.documentElement).toHaveClass('dark')
   })
 
-  it('reconcilia mudança de outra aba e remoção da preferência', async () => {
+  it('reconciles a change from another tab and the removal of the preference', async () => {
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     saveTheme('light')
@@ -81,7 +81,7 @@ describe('primitive de tema', () => {
     await expect.poll(() => document.documentElement).toHaveClass('dark')
   })
 
-  it('continua alternando quando o armazenamento é bloqueado', async () => {
+  it('keeps switching when the storage is blocked', async () => {
     blockCookie()
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
@@ -90,12 +90,12 @@ describe('primitive de tema', () => {
     expect(readTheme()).toBeUndefined()
   })
 
-  it('ignora um tema inválido recebido por cast', async () => {
+  it('ignores an invalid theme received through a cast', async () => {
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     state.setTheme('light')
     flush()
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Simula um valor externo que chega ao setTheme sem validação de tipo.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Simulates an external value that reaches setTheme without type validation.
     const invalid = 'sepia' as unknown as Theme
     state.setTheme(invalid)
     flush()
@@ -105,7 +105,7 @@ describe('primitive de tema', () => {
     expect(readTheme()).toBe('light')
   })
 
-  it('mantém a escolha feita logo após a montagem', async () => {
+  it('keeps the choice made right after mounting', async () => {
     document.cookie = `${THEME_COOKIE_NAME}=dark; Path=/`
     mount()
     state.setTheme('light')
@@ -116,7 +116,7 @@ describe('primitive de tema', () => {
     expect(document.documentElement).toHaveClass('light')
   })
 
-  it('aplica o tema antes de tentar gravar o cookie', async () => {
+  it('applies the theme before trying to write the cookie', async () => {
     mount()
     await expect.poll(() => state.isReady()).toBe(true)
     const applied: boolean[] = []
@@ -127,7 +127,7 @@ describe('primitive de tema', () => {
     expect(applied).toStrictEqual([true])
   })
 
-  it('aplica no DOM o tema recebido de outra aba', async () => {
+  it('applies to the DOM the theme received from another tab', async () => {
     media.matches = false
     const channel = stubBroadcastChannel()
     mount()

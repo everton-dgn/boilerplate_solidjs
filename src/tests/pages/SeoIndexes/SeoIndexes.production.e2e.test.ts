@@ -14,9 +14,9 @@ const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
 const HTTP_METHOD_NOT_ALLOWED = 405
 const CACHE_CONTROL = 'public, max-age=0, s-maxage=3600, stale-if-error=86400'
-// Respostas com s-maxage não levam o nonce da requisição para o cache.
+// Responses with s-maxage do not carry the nonce of the request to the cache.
 const NO_SCRIPTS = "script-src 'none'"
-// Grupo dos robôs de treinamento de IA: começa em GPTBot e termina bloqueando tudo.
+// Group of the AI training robots: starts at GPTBot and ends blocking everything.
 const AI_BOTS_GROUP =
   /\nUser-agent: GPTBot\n(?:User-agent: [^\n]+\n)*Disallow: \/\n/u
 const SEO_ROUTES = nodePath.resolve(
@@ -24,8 +24,8 @@ const SEO_ROUTES = nodePath.resolve(
   '../../../routes/(seo)'
 )
 
-// Pastas e módulos colocalizados em src/routes/(seo)/, exceto os endpoints,
-// lidos da árvore para que um helper novo entre na verificação.
+// Folders and colocated modules in src/routes/(seo)/, except the endpoints, read
+// from the tree so that a new helper enters the check.
 function localModulePath(entry: string): string | undefined {
   const parts = entry.split(nodePath.sep)
   if (parts.length === 1 || parts.includes('__tests__')) return undefined
@@ -41,10 +41,12 @@ const LOCAL_MODULES = SEO_ENTRIES.flatMap(
   entry => localModulePath(entry) ?? []
 ).toSorted()
 
-test.describe('índices na árvore real de produção', () => {
+test.describe('indexes in the real production tree', () => {
   for (const method of ['GET', 'HEAD']) {
     for (const path of ['/sitemaps/pages/1', '/sitemaps/blog/1']) {
-      test(`recusa ${method} ${path} sem sufixo XML`, async ({ request }) => {
+      test(`refuses ${method} ${path} without the XML suffix`, async ({
+        request
+      }) => {
         const response = await request.fetch(path, {
           method,
           maxRedirects: 0
@@ -56,10 +58,10 @@ test.describe('índices na árvore real de produção', () => {
     }
   }
 
-  test('serve sitemap.xml sem redirecionamento', async ({ request }) => {
+  test('serves sitemap.xml without a redirect', async ({ request }) => {
     const response = await request.get('/sitemap.xml', { maxRedirects: 0 })
     expect(response.status()).toBe(HTTP_OK)
-    // Sem fontes dinâmicas a raiz é um arquivo do build, entregue sem a função.
+    // Without dynamic sources the root is a build file, delivered without the function.
     expect(response.headers()['content-type']).toContain('application/xml')
     const xml = await response.text()
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
@@ -77,7 +79,7 @@ test.describe('índices na árvore real de produção', () => {
     expect(xml).not.toContain('(base)')
   })
 
-  test('serve robots.txt sem redirecionamento', async ({ request }) => {
+  test('serves robots.txt without a redirect', async ({ request }) => {
     const response = await request.get('/robots.txt', { maxRedirects: 0 })
     expect(response.status()).toBe(HTTP_OK)
     expect(response.headers()['content-type']).toContain('text/plain')
@@ -96,8 +98,10 @@ test.describe('índices na árvore real de produção', () => {
     )
   })
 
-  // Sem o 405, o render trataria o método sem handler como a página 404.
-  test('recusa métodos sem handler na rota de API', async ({ request }) => {
+  // Without the 405, the render would treat the method without a handler as the 404 page.
+  test('refuses methods without a handler on the API route', async ({
+    request
+  }) => {
     for (const method of ['POST', 'PUT', 'DELETE']) {
       const response = await request.fetch('/robots.txt', {
         method,
@@ -109,11 +113,11 @@ test.describe('índices na árvore real de produção', () => {
     }
   })
 
-  test('serve llms.txt sem redirecionamento', async ({ request }) => {
+  test('serves llms.txt without a redirect', async ({ request }) => {
     const response = await request.get('/llms.txt', { maxRedirects: 0 })
     expect(response.status()).toBe(HTTP_OK)
-    // Arquivo do build: na Vercel o tipo vem do overrides do artefato, conferido
-    // no teste do build; o preview local usa a extensão.
+    // Build file: on Vercel the type comes from the overrides of the artifact,
+    // checked in the build test; the local preview uses the extension.
     expect(response.headers()['content-type']).toContain('text/plain')
     const markdown = await response.text()
     expect(markdown).toMatch(/^# .+\n/u)
@@ -139,9 +143,9 @@ test.describe('índices na árvore real de produção', () => {
   })
 
   for (const path of LOCAL_MODULES) {
-    test(`não publica o módulo local ${path}`, async ({ request }) => {
-      // O createAPIHandler casa o pathname cru, antes do prefixo de idioma:
-      // um módulo publicado por engano responderia sem o prefixo.
+    test(`does not publish the local module ${path}`, async ({ request }) => {
+      // createAPIHandler matches the raw pathname, before the locale prefix: a
+      // module published by mistake would answer without the prefix.
       const raw = await request.get(path, { maxRedirects: 0 })
       expect(raw.status()).not.toBe(HTTP_OK)
       const localized = await request.get(`/pt${path}`, { maxRedirects: 0 })
@@ -149,7 +153,7 @@ test.describe('índices na árvore real de produção', () => {
     })
   }
 
-  test('não inclui a árvore de fixtures E2E', async ({ request }) => {
+  test('does not include the E2E fixture tree', async ({ request }) => {
     const response = await request.get('/pt/seo-public', { maxRedirects: 0 })
     expect(response.status()).toBe(HTTP_NOT_FOUND)
   })

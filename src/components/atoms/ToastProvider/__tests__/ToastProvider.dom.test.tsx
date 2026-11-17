@@ -60,7 +60,7 @@ function advance(milliseconds: number) {
 
 function observeOutput(output: Node) {
   const observer = new MutationObserver(() => {
-    /* Os registros são lidos com takeRecords. */
+    /* The records are read with takeRecords. */
   })
   observer.observe(output, {
     childList: true,
@@ -75,8 +75,8 @@ function readMessages(host: HTMLElement) {
   return Array.from(host.querySelectorAll('li p'), item => item.textContent)
 }
 
-describe('notificações temporárias', () => {
-  it('monta anúncios vazios, isola providers e renderiza texto seguro sem mover foco', () => {
+describe('temporary notifications', () => {
+  it('mounts empty announcements, isolates providers and renders safe text without moving the focus', () => {
     const first = mountToast()
     const second = mountToast()
     expect(
@@ -101,7 +101,7 @@ describe('notificações temporárias', () => {
     first.api.dismiss(id)
   })
 
-  it('compõe chamadas no mesmo tick e limita a lista aos cinco mais recentes', () => {
+  it('composes calls in the same tick and limits the list to the five most recent', () => {
     const { host, api } = mountToast()
     const ids = Array.from({ length: 8 }, (_, index) =>
       api.show({ message: `Item ${index}`, duration: 0 })
@@ -126,7 +126,7 @@ describe('notificações temporárias', () => {
     expect(host).not.toHaveTextContent('Removed')
   })
 
-  it('preserva na fila cheia as notificações com hover ou foco', () => {
+  it('keeps the hovered or focused notifications in a full queue', () => {
     const { host, api } = mountToast()
     for (let index = 0; index < MAX_TOASTS; index += 1) {
       api.show({ message: `Item ${index}`, duration: 0 })
@@ -148,7 +148,7 @@ describe('notificações temporárias', () => {
     ])
   })
 
-  it('mantém loading e duração zero, atualiza o mesmo nó e expira após atualização', () => {
+  it('keeps loading and a zero duration, updates the same node and expires after an update', () => {
     useFakeClock()
     const { host, api } = mountToast()
     const id = api.show({ message: 'Working', variant: 'loading' })
@@ -172,7 +172,7 @@ describe('notificações temporárias', () => {
     expect(readMessages(host)).toStrictEqual(['Persistent'])
   })
 
-  it('preserva o prazo restante quando atualiza só o texto', () => {
+  it('keeps the remaining time when only the text is updated', () => {
     useFakeClock()
     const { host, api } = mountToast()
     const id = api.show({ message: 'Saving', duration: TEXT_DURATION })
@@ -185,7 +185,7 @@ describe('notificações temporárias', () => {
     expect(host.querySelector('li')).toBeNull()
   })
 
-  it('pausa por hover e foco juntos e retoma somente ao sair dos dois', () => {
+  it('pauses on hover and focus together and resumes only after leaving both', () => {
     useFakeClock()
     const { host, api } = mountToast()
     api.show({ message: 'Paused', duration: PAUSED_DURATION })
@@ -206,7 +206,7 @@ describe('notificações temporárias', () => {
     expect(host.querySelector('li')).toBeNull()
   })
 
-  it('suspende timers em aba oculta, inclusive quando atualizados', () => {
+  it('suspends timers in a hidden tab, updated ones included', () => {
     useFakeClock()
     const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
     const { host, api } = mountToast()
@@ -222,8 +222,8 @@ describe('notificações temporárias', () => {
   })
 })
 
-describe('anúncios das notificações', () => {
-  it('anuncia a última atualização por prioridade e suprime repetição consecutiva', () => {
+describe('notification announcements', () => {
+  it('announces the last update per priority and suppresses consecutive repetition', () => {
     useFakeClock()
     const { host, api } = mountToast()
     const id = api.show({ message: 'First', duration: 0 })
@@ -243,7 +243,7 @@ describe('anúncios das notificações', () => {
     api.dismiss(id)
   })
 
-  it('não reanuncia quando o texto volta ao último anúncio no mesmo lote', () => {
+  it('does not announce again when the text goes back to the last announcement in the same batch', () => {
     useFakeClock()
     const { host, api } = mountToast()
     const id = api.show({ message: 'A', duration: 0 })
@@ -265,7 +265,7 @@ describe('anúncios das notificações', () => {
     { variant: 'error', dismissFirst: true },
     { variant: 'error', dismissFirst: false }
   ] as const)(
-    'reanuncia toast independente com texto igual: $variant, dismiss=$dismissFirst',
+    'announces again an independent toast with the same text: $variant, dismiss=$dismissFirst',
     ({ variant, dismissFirst }) => {
       useFakeClock()
       const { host, api } = mountToast()
@@ -286,7 +286,7 @@ describe('anúncios das notificações', () => {
     }
   )
 
-  it('não anuncia toast removido ou a prioridade anterior de uma atualização', () => {
+  it('does not announce a removed toast or the previous priority of an update', () => {
     useFakeClock()
     const { host, api } = mountToast()
     const removed = api.show({ message: 'Removed', duration: 0 })
@@ -300,7 +300,7 @@ describe('anúncios das notificações', () => {
     )
   })
 
-  it('cancela timers e listener no descarte e ignora a API retida', () => {
+  it('cancels timers and the listener on disposal and ignores the retained API', () => {
     const timers = vi.spyOn(globalThis, 'setTimeout')
     const clear = vi.spyOn(globalThis, 'clearTimeout')
     const add = vi.spyOn(document, 'addEventListener')

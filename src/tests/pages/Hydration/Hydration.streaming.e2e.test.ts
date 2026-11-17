@@ -26,7 +26,7 @@ async function openStream({
   await expect(
     page.getByText('Waiting for Second', { exact: true })
   ).toBeVisible()
-  // O shell responde ao teclado enquanto os dois fragmentos estão retidos.
+  // The shell answers the keyboard while both fragments are held.
   await page
     .getByRole('button', { name: 'Shell count: 0', exact: true })
     .press('Enter')
@@ -48,7 +48,7 @@ async function expectPanel(page: Page, panel: string): Promise<void> {
   ).toBeVisible()
 }
 
-test('espera todos os fragmentos, mesmo resolvidos fora de ordem', async ({
+test('waits for every fragment, even when resolved out of order', async ({
   page,
   request,
   pageErrors,
@@ -75,14 +75,14 @@ test('espera todos os fragmentos, mesmo resolvidos fora de ordem', async ({
   }
 })
 
-test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
+test('ends the phase after a contained error without treating it as a success', async ({
   page,
   request,
   pageErrors,
   cspViolations
 }) => {
   const id = crypto.randomUUID()
-  // A rejeição enviada pelo servidor é adotada na hidratação, sem nova busca.
+  // The rejection sent by the server is adopted in the hydration, without a new fetch.
   let clientLoads = 0
   page.on('request', resource => {
     if (
@@ -118,7 +118,7 @@ test('encerra a fase após um erro contido sem tratá-lo como sucesso', async ({
   }
 })
 
-test('encerra a fase quando a navegação descarta fragmentos pendentes', async ({
+test('ends the phase when the navigation drops pending fragments', async ({
   page,
   request,
   pageErrors,

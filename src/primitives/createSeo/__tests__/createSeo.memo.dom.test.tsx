@@ -10,8 +10,8 @@ vi.mock(import('@/helpers/resolveRouteSeo/index.ts'), { spy: true })
 
 const TWO_ROUTES = 2
 
-describe('cálculo do SEO da rota', () => {
-  it('resolve os metadados uma vez por rota em vez de uma vez por tag', async () => {
+describe('route SEO computation', () => {
+  it('resolves the metadata once per route instead of once per tag', async () => {
     let navigate: ReturnType<typeof useNavigate> | undefined
     const Router = createRouter({
       routes: [

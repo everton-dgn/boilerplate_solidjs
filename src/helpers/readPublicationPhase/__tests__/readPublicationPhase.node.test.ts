@@ -5,16 +5,16 @@ import {
 
 import { readPublicationPhase } from '../index.ts'
 
-describe('fase de publicação', () => {
+describe('publication phase', () => {
   afterEach(() => vi.unstubAllEnvs())
 
-  it('gera direto fora do build de produção', () => {
+  it('generates directly outside the production build', () => {
     vi.stubEnv('PROD', false)
     vi.stubEnv(PUBLICATION_PHASE_ENV, PUBLICATION_PRERENDER_PHASE)
     expect(readPublicationPhase()).toBe('direct')
   })
 
-  it('só reconhece o prerender pelo ambiente do processo', () => {
+  it('only recognizes the prerender through the process environment', () => {
     vi.stubEnv('PROD', true)
     vi.stubEnv(PUBLICATION_PHASE_ENV, PUBLICATION_PRERENDER_PHASE)
     expect(readPublicationPhase()).toBe('prerender')

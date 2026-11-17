@@ -3,10 +3,10 @@ import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 const HTTP_NOT_FOUND = 404
 const SOCIAL_TAGS = 'head meta[property^="og:"], head meta[name^="twitter:"]'
 
-test.describe('página inexistente', () => {
+test.describe('missing page', () => {
   test.use({ javaScriptEnabled: false })
 
-  test('pede noindex e omite canonical, Open Graph e JSON-LD na carga direta', async ({
+  test('asks for noindex and leaves out canonical, Open Graph and JSON-LD on a direct load', async ({
     page
   }) => {
     await page.goto('/pagina-inexistente')
@@ -28,15 +28,15 @@ test.describe('página inexistente', () => {
   })
 })
 
-test.describe('página inexistente hidratada', () => {
-  test('responde 404, mantém só robots, título e descrição depois de hidratar e volta ao início', async ({
+test.describe('hydrated missing page', () => {
+  test('answers 404, keeps only robots, title and description after hydrating and goes back to the start', async ({
     page,
     pageErrors
   }) => {
     const response = await page.goto('/pagina-inexistente')
     expect(response?.status()).toBe(HTTP_NOT_FOUND)
 
-    // O menu de tema só abre com o JavaScript hidratado.
+    // The theme menu only opens with hydrated JavaScript.
     await page.getByRole('button', { name: 'Select theme' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
 

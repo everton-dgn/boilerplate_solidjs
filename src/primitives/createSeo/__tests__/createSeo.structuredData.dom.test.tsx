@@ -29,30 +29,30 @@ function parseNode(json: string | undefined): Record<string, unknown> {
   return v.parse(NodeSchema, JSON.parse(json ?? 'null'))
 }
 
-// O registro do head aplica e remove as tags em microtask após os efeitos.
+// The head registry applies and removes the tags in a microtask after the effects.
 async function waitForScripts(count: number): Promise<string[]> {
   await vi.waitUntil(() => readScripts().length === count, POLL)
   return readScripts()
 }
 
-describe('dados estruturados publicados pela página', () => {
+describe('structured data published by the page', () => {
   beforeEach(async () => {
     await waitForScripts(0)
   })
 
-  it('envolve um nó com @context e o publica no head', async () => {
-    mountData([() => ({ '@type': 'FAQPage', name: 'Dúvidas' })])
+  it('wraps a node with @context and publishes it in the head', async () => {
+    mountData([() => ({ '@type': 'FAQPage', name: 'Questions' })])
 
     const [json] = await waitForScripts(1)
     expect(parseNode(json)).toStrictEqual({
       '@context': 'https://schema.org',
       '@type': 'FAQPage',
-      name: 'Dúvidas'
+      name: 'Questions'
     })
   })
 
-  it('publica uma lista de nós como @graph', async () => {
-    // `as const` prova que uma lista `readonly` é aceita.
+  it('publishes a list of nodes as @graph', async () => {
+    // `as const` proves that a `readonly` list is accepted.
     const nodes = [
       { '@type': 'Organization', name: 'Acme' },
       { '@type': 'Person', name: 'Ana' }
@@ -69,23 +69,23 @@ describe('dados estruturados publicados pela página', () => {
     })
   })
 
-  it('mantém um script por instância', async () => {
+  it('keeps one script per instance', async () => {
     mountData([
-      () => ({ '@type': 'Product', name: 'Primeiro' }),
-      () => ({ '@type': 'Product', name: 'Segundo' })
+      () => ({ '@type': 'Product', name: 'First' }),
+      () => ({ '@type': 'Product', name: 'Second' })
     ])
 
     const scripts = await waitForScripts(INSTANCES)
     expect(scripts.map(json => parseNode(json).name)).toStrictEqual([
-      'Primeiro',
-      'Segundo'
+      'First',
+      'Second'
     ])
   })
 
-  it('atualiza o script quando os dados mudam e o remove ao desmontar', async () => {
+  it('updates the script when the data changes and removes it on unmount', async () => {
     const [data, setData] = createSignal<Product>({
       '@type': 'Product',
-      name: 'Antes'
+      name: 'Before'
     })
     const [isMounted, setIsMounted] = createSignal(true)
 
@@ -104,8 +104,8 @@ describe('dados estruturados publicados pela página', () => {
     )
     await waitForScripts(1)
 
-    setData({ '@type': 'Product', name: 'Depois' })
-    await vi.waitUntil(() => readScripts()[0]?.includes('Depois'), POLL)
+    setData({ '@type': 'Product', name: 'After' })
+    await vi.waitUntil(() => readScripts()[0]?.includes('After'), POLL)
     expect(readScripts()).toHaveLength(1)
 
     setIsMounted(false)
@@ -113,12 +113,12 @@ describe('dados estruturados publicados pela página', () => {
     expect(readScripts()).toHaveLength(0)
   })
 
-  it('publica, remove e republica os dados sem afetar outra instância', async () => {
+  it('publishes, removes and publishes the data again without affecting another instance', async () => {
     const [data, setData] = createSignal<Product>()
 
     function ProductData() {
       createSeo({
-        structuredData: () => ({ '@type': 'Product', name: 'Fixo' })
+        structuredData: () => ({ '@type': 'Product', name: 'Fixed' })
       })
       createSeo({ structuredData: data })
       return null
@@ -126,23 +126,23 @@ describe('dados estruturados publicados pela página', () => {
 
     renderComponent(ProductData, { hasProviders: false })
     const [fixed] = await waitForScripts(1)
-    expect(parseNode(fixed).name).toBe('Fixo')
+    expect(parseNode(fixed).name).toBe('Fixed')
 
-    setData({ '@type': 'Product', name: 'Condicional' })
+    setData({ '@type': 'Product', name: 'Conditional' })
     const published = await waitForScripts(INSTANCES)
-    expect(published.map(json => parseNode(json).name)).toContain('Condicional')
+    expect(published.map(json => parseNode(json).name)).toContain('Conditional')
 
     setData(undefined)
     await expect(waitForScripts(1)).resolves.toStrictEqual([fixed])
 
-    setData({ '@type': 'Product', name: 'Retomado' })
+    setData({ '@type': 'Product', name: 'Resumed' })
     const resumed = await waitForScripts(INSTANCES)
     expect(resumed.map(json => parseNode(json).name)).toStrictEqual(
-      expect.arrayContaining(['Fixo', 'Retomado'])
+      expect.arrayContaining(['Fixed', 'Resumed'])
     )
   })
 
-  it('insere o JSON como texto sem criar elementos a partir dos dados', async () => {
+  it('inserts the JSON as text without creating elements from the data', async () => {
     mountData([() => ({ '@type': 'Thing', name: UNSAFE_JSON_LD_TEXT })])
 
     const [json] = await waitForScripts(1)

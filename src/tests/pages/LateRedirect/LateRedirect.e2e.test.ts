@@ -5,17 +5,18 @@ import {
 import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 
 const HTTP_OK = 200
-// Um servidor que pare de emitir bytes falha na leitura, e não no timeout
-// genérico do runner.
+// A server that stops emitting bytes fails on the read, not on the generic
+// timeout of the runner.
 const REQUEST_TIMEOUT = 15_000
 const PAGE_URL = '/pt/late-redirect'
-const LOADING_TEXT = 'Carregando...'
+const LOADING_TEXT = 'Loading...'
 const LATE_REDIRECT_SCRIPT =
   /<script nonce="(?<nonce>[^"]+)">window\.location="\/pt\?from=late-redirect"<\/script>/u
 
-// Depois do shell o status já saiu, e o runtime segue o Location por um
-// script no fim do documento. Ele precisa do nonce da CSP da resposta.
-test('o script do redirect depois do shell leva o nonce da CSP', async ({
+// After the shell the status already went out, and the runtime follows the
+// Location through a script at the end of the document. It needs the CSP nonce of
+// the response.
+test('the redirect script after the shell carries the CSP nonce', async ({
   request,
   baseURL
 }) => {
@@ -39,7 +40,7 @@ test('o script do redirect depois do shell leva o nonce da CSP', async ({
   )
 })
 
-test('o navegador segue o redirect depois do shell sem violação de CSP', async ({
+test('the browser follows the redirect after the shell without a CSP violation', async ({
   page,
   request,
   cspViolations

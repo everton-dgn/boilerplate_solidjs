@@ -1,4 +1,4 @@
-// vi.waitUntil não lê test.expect.poll e espera 50ms por padrão.
+// vi.waitUntil does not read test.expect.poll and waits 50ms by default.
 export const POLL = { interval: 10 }
 
 export function readCanonical(): string | null {

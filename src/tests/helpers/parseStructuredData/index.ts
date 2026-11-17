@@ -8,8 +8,8 @@ const StructuredDataSchema = v.object({
 
 export type StructuredData = v.InferOutput<typeof StructuredDataSchema>
 
-// Lê o JSON-LD publicado em `<script type="application/ld+json">` e garante
-// só a estrutura do grafo; cada teste verifica os nós que lhe interessam.
+// Reads the JSON-LD published in `<script type="application/ld+json">` and only
+// guarantees the structure of the graph; each test checks the nodes it cares about.
 export function parseStructuredData(json: string | null): StructuredData {
   return v.parse(StructuredDataSchema, JSON.parse(json ?? 'null'))
 }

@@ -1,17 +1,17 @@
 import type { RouteDefinition } from '@solidjs/router'
 
-// Artigo com imagem social própria: cobre `type` e `image` por rota.
+// Article with its own social image: covers `type` and `image` per route.
 export const route = {
   info: {
     seo: {
-      title: 'Artigo de exemplo',
-      description: 'Conteúdo de um artigo com imagem própria.',
+      title: 'Sample article',
+      description: 'Content of an article with its own image.',
       type: 'article',
       image: {
         path: '/favicon/apple-touch-icon.png',
         width: 180,
         height: 180,
-        alt: 'Capa do artigo de exemplo'
+        alt: 'Cover of the sample article'
       },
       article: { datePublished: '2026-09-01', dateModified: '2026-09-21' }
     }
@@ -21,7 +21,7 @@ export const route = {
 export default function ArticlePage() {
   return (
     <main>
-      <h1>Artigo de exemplo</h1>
+      <h1>Sample article</h1>
     </main>
   )
 }

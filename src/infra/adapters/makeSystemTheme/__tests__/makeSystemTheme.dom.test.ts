@@ -2,20 +2,20 @@ import { makeSystemTheme } from '../index.ts'
 
 let media: EventTarget & { matches: boolean }
 
-describe('preferência de tema do sistema', () => {
+describe('system theme preference', () => {
   beforeEach(() => {
     media = Object.assign(new EventTarget(), { matches: false })
     vi.stubGlobal('matchMedia', () => media)
   })
 
-  it('informa a preferência atual ao iniciar', () => {
+  it('reports the current preference on start', () => {
     const receive = vi.fn<() => void>()
     const system = makeSystemTheme(receive)
     onTestFinished(system.dispose)
     expect(receive).toHaveBeenCalledExactlyOnceWith('light')
   })
 
-  it('informa dark quando o sistema já está escuro', () => {
+  it('reports dark when the system is already dark', () => {
     media.matches = true
     const receive = vi.fn<() => void>()
     const system = makeSystemTheme(receive)
@@ -23,7 +23,7 @@ describe('preferência de tema do sistema', () => {
     expect(receive).toHaveBeenCalledExactlyOnceWith('dark')
   })
 
-  it('acompanha mudanças do sistema', () => {
+  it('follows system changes', () => {
     const receive = vi.fn<() => void>()
     const system = makeSystemTheme(receive)
     onTestFinished(system.dispose)
@@ -32,7 +32,7 @@ describe('preferência de tema do sistema', () => {
     expect(receive).toHaveBeenLastCalledWith('dark')
   })
 
-  it('para de acompanhar após descartar', () => {
+  it('stops following after disposal', () => {
     const receive = vi.fn<() => void>()
     const system = makeSystemTheme(receive)
     system.dispose()

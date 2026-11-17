@@ -1,9 +1,9 @@
 import { useParams, type RouteDefinition } from '@solidjs/router'
 
-// Rota com parâmetro e `noindex`: a fonte é ignorada e nada entra no sitemap.
+// Route with a parameter and `noindex`: the source is ignored and nothing enters the sitemap.
 export const route = {
   info: {
-    seo: { title: 'Área privada', noindex: true },
+    seo: { title: 'Private area', noindex: true },
     sitemap: () => [{ path: '/private/1' }]
   }
 } satisfies RouteDefinition

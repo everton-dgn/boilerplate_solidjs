@@ -56,17 +56,17 @@ vi.mock(import('virtual:file-routes'), async importOriginal => {
   return manifest
 })
 
-// Prazo do aquecimento: cobre o carregamento a frio dos módulos, não o
-// comportamento verificado pelos casos.
+// Warm-up deadline: covers the cold loading of the modules, not the behavior
+// the cases check.
 const WARM_UP_TIMEOUT_MS = 5000
-// O fallback raiz troca a tela vazia pela página de erro em 10 s; o teste
-// confere um ponto antes e outro depois do prazo.
+// The root fallback replaces the blank screen with the error page in 10 s; the
+// test checks one point before and another after the deadline.
 const BEFORE_STALL_MS = 8000
 const PAST_STALL_MS = 2000
 
-// TODO: Em desenvolvimento, o Errored do Solid registra no console o erro que a
-// boundary capturou quando o fallback não recebe
-// parâmetros. O teste fixa esse comportamento em vez de deixá-lo no stderr.
+// TODO: In development, Solid's Errored logs to the console the error that the
+// boundary caught when the fallback receives no
+// parameters. The test pins that behavior instead of leaving it in stderr.
 function expectBoundaryReport(message: string): void {
   const { calls } = vi.mocked(console.error).mock
   expect(calls).toHaveLength(1)
@@ -86,13 +86,13 @@ function renderApp(): HTMLDivElement {
   )
 }
 
-describe('feedback de erro da aplicação', () => {
-  // O primeiro render do Router carrega as rotas lazy. Sem aquecimento, esse
-  // custo cai no primeiro caso que chega ao layout e estoura o expect.poll
-  // quando a suíte roda em paralelo com cobertura.
+describe('application error feedback', () => {
+  // The first render of the Router loads the lazy routes. Without a warm-up, that
+  // cost falls on the first case that reaches the layout and exceeds expect.poll
+  // when the suite runs in parallel with coverage.
   beforeAll(async () => {
     const consoleError = vi.spyOn(console, 'error')
-    renderHome.mockReturnValue(<h1>Página inicial</h1>)
+    renderHome.mockReturnValue(<h1>Home page</h1>)
     const host = document.createElement('div')
     document.body.append(host)
     const dispose = render(
@@ -106,17 +106,14 @@ describe('feedback de erro da aplicação', () => {
     try {
       await vi.waitFor(
         () => {
-          assert(
-            host.querySelector('h1'),
-            'A página inicial precisa renderizar'
-          )
+          assert(host.querySelector('h1'), 'The home page must render')
         },
         { timeout: WARM_UP_TIMEOUT_MS }
       )
       assert.lengthOf(
         consoleError.mock.calls,
         0,
-        'O aquecimento não pode reportar erros'
+        'The warm-up must not report errors'
       )
     } finally {
       dispose()
@@ -131,56 +128,53 @@ describe('feedback de erro da aplicação', () => {
     ['provider', checkProvider],
     ['topbar', checkTopbar],
     ['rota', renderHome]
-  ] as const)(
-    'oferece recarregamento após falha em %s',
-    async (_name, check) => {
-      onTestFinished(() => {
-        check.mockReset()
-        renderHome.mockReset()
-      })
-      renderHome.mockReturnValue(<h1>Página inicial</h1>)
-      check.mockImplementation(() => {
-        throw new Error('Detalhe interno que não deve aparecer')
-      })
+  ] as const)('offers a reload after a failure in %s', async (_name, check) => {
+    onTestFinished(() => {
+      check.mockReset()
+      renderHome.mockReset()
+    })
+    renderHome.mockReturnValue(<h1>Home page</h1>)
+    check.mockImplementation(() => {
+      throw new Error('Internal detail that must not appear')
+    })
 
-      const host = renderComponent(
-        () => (
-          <Loading>
-            <App />
-          </Loading>
-        ),
-        { hasProviders: false }
-      )
+    const host = renderComponent(
+      () => (
+        <Loading>
+          <App />
+        </Loading>
+      ),
+      { hasProviders: false }
+    )
 
-      await expect
-        .poll(() => host.querySelector('h1')?.textContent)
-        .toBe('Something went wrong!')
-      expect(host.textContent).not.toContain('Detalhe interno')
+    await expect
+      .poll(() => host.querySelector('h1')?.textContent)
+      .toBe('Something went wrong!')
+    expect(host.textContent).not.toContain('Internal detail')
 
-      expect(host.querySelector('header')).toBeNull()
-      const reload = host.querySelector<HTMLAnchorElement>(
-        '[data-error-variant="runtime"] a'
-      )
-      assert(reload, 'A falha precisa permitir recarregar a página')
-      expect(reload.textContent).toBe('Reload page')
-      expect(reload.href).toBe(globalThis.location.href)
-      expect(reload.target).toBe('_self')
-      expectBoundaryReport('Detalhe interno que não deve aparecer')
-    }
-  )
+    expect(host.querySelector('header')).toBeNull()
+    const reload = host.querySelector<HTMLAnchorElement>(
+      '[data-error-variant="runtime"] a'
+    )
+    assert(reload, 'The failure must allow reloading the page')
+    expect(reload.textContent).toBe('Reload page')
+    expect(reload.href).toBe(globalThis.location.href)
+    expect(reload.target).toBe('_self')
+    expectBoundaryReport('Internal detail that must not appear')
+  })
 
-  it('recarrega uma vez no erro de versão e mostra a página de erro se ele voltar', async () => {
+  it('reloads once on a version error and shows the error page if it comes back', async () => {
     globalThis.sessionStorage.clear()
     const reload = vi
       .spyOn(globalThis.location, 'reload')
       .mockImplementation(() => {
-        /* Permanece no documento do teste. */
+        /* Stays in the test document. */
       })
     onTestFinished(() => {
       renderHome.mockReset()
     })
     renderHome.mockImplementation(() => {
-      throw Object.assign(new Error('Função fora do build'), {
+      throw Object.assign(new Error('Function outside the build'), {
         unknownFunction: true
       })
     })
@@ -195,17 +189,17 @@ describe('feedback de erro da aplicação', () => {
     expect(reload).toHaveBeenCalledOnce()
   })
 
-  it('recarrega quando o erro que chega é a falha de chunk registrada', async () => {
+  it('reloads when the incoming error is the recorded chunk failure', async () => {
     globalThis.sessionStorage.clear()
     const reload = vi
       .spyOn(globalThis.location, 'reload')
       .mockImplementation(() => {
-        /* Permanece no documento do teste. */
+        /* Stays in the test document. */
       })
     onTestFinished(() => {
       renderHome.mockReset()
     })
-    // O helper de preload despacha o mesmo erro que o import rejeita.
+    // The preload helper dispatches the same error that the import rejects.
     const chunkFailure = new TypeError(
       'Failed to fetch dynamically imported module'
     )
@@ -218,21 +212,21 @@ describe('feedback de erro da aplicação', () => {
     expect(recovering.textContent).toBe('')
   })
 
-  it('mostra a página de erro se a recarga não trocar o documento', async () => {
+  it('shows the error page if the reload does not replace the document', async () => {
     globalThis.sessionStorage.clear()
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     onTestFinished(() => {
       vi.useRealTimers()
       renderHome.mockReset()
     })
-    // Um beforeunload que cancela a recarga deixa o documento no lugar.
+    // A beforeunload that cancels the reload leaves the document in place.
     const reload = vi
       .spyOn(globalThis.location, 'reload')
       .mockImplementation(() => {
-        /* Permanece no documento do teste. */
+        /* Stays in the test document. */
       })
     renderHome.mockImplementation(() => {
-      throw Object.assign(new Error('Função fora do build'), {
+      throw Object.assign(new Error('Function outside the build'), {
         unknownFunction: true
       })
     })

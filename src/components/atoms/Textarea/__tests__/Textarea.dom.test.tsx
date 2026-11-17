@@ -4,8 +4,8 @@ import { renderComponent } from '@/tests/providers/renderComponent/index.tsx'
 
 import { Textarea } from '../index.tsx'
 
-describe('campo de texto multilinha', () => {
-  it('preserva valor inicial, ref e atributos de formulário', () => {
+describe('multiline text field', () => {
+  it('keeps the initial value, the ref and the form attributes', () => {
     const ref = vi.fn<(element: HTMLTextAreaElement) => void>()
     const host = renderComponent(() => (
       <Textarea
@@ -14,7 +14,7 @@ describe('campo de texto multilinha', () => {
         defaultValue={'First line\nSecond line'}
         required
         rows={4}
-        aria-label="Mensagem"
+        aria-label="Message"
         aria-describedby="message-help"
       />
     ))
@@ -35,7 +35,7 @@ describe('campo de texto multilinha', () => {
     })
   })
 
-  it('preserva o texto digitado sem controle quando a variante muda', () => {
+  it('keeps the text typed without control when the variant changes', () => {
     const [isInvalid, setIsInvalid] = createSignal(false)
     const host = renderComponent(() => (
       <Textarea
@@ -53,7 +53,7 @@ describe('campo de texto multilinha', () => {
     expect(textarea).toHaveValue('Edited\ntext')
   })
 
-  it('mantém o valor controlado e o estado de erro reativos', async () => {
+  it('keeps the controlled value and the error state reactive', async () => {
     const [value, setValue] = createSignal('initial')
     const [isInvalid, setIsInvalid] = createSignal(true)
     const host = renderComponent(() => (

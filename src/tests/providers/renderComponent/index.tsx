@@ -13,8 +13,8 @@ export function renderComponent(
   const host = document.createElement('div')
   document.body.append(host)
 
-  // WHY: registrado antes do render para remover o host mesmo se ele lançar; os
-  // hooks rodam em ordem inversa, então o dispose abaixo executa primeiro.
+  // WHY: registered before the render to remove the host even if it throws; the
+  // hooks run in reverse order, so the dispose below runs first.
   onTestFinished(() => host.remove())
 
   const dispose = render(

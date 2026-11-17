@@ -1,9 +1,9 @@
-/* oxlint-disable unicorn/no-document-cookie -- Os testes exercitam a persistência e o bloqueio de cookie diretamente. */
+/* oxlint-disable unicorn/no-document-cookie -- The tests exercise the cookie persistence and blocking directly. */
 import { expect, test } from '@playwright/test'
 
 test.use({ locale: 'pt-BR' })
 
-test('propaga a escolha temporária quando a escrita no cookie é ignorada', async ({
+test('propagates the temporary choice when the cookie write is ignored', async ({
   context,
   page,
   baseURL
@@ -20,7 +20,7 @@ test('propaga a escolha temporária quando a escrita no cookie é ignorada', asy
         return typeof value === 'string' ? value : ''
       },
       set() {
-        /* Simula um navegador que rejeita escritas silenciosamente. */
+        /* Simulates a browser that rejects writes silently. */
       },
       configurable: true
     })
@@ -45,7 +45,7 @@ test('propaga a escolha temporária quando a escrita no cookie é ignorada', asy
   )
 })
 
-test('retorna ao sistema após remover o cookie e simular foco', async ({
+test('goes back to the system after removing the cookie and simulating focus', async ({
   context,
   page,
   baseURL
@@ -77,7 +77,7 @@ test('retorna ao sistema após remover o cookie e simular foco', async ({
   ).toHaveAttribute('aria-checked', 'true')
 })
 
-test('alterna imediatamente quando o acesso a document.cookie está bloqueado', async ({
+test('switches right away when access to document.cookie is blocked', async ({
   context,
   page
 }) => {

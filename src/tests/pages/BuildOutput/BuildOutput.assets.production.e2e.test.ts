@@ -14,7 +14,7 @@ const IMMUTABLE = 'public, max-age=31536000, immutable'
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url))
 const STATIC_ASSETS = path.join(ROOT, '.vercel/output/static/assets')
 const BUILD_CONFIG = path.join(ROOT, '.vercel/output/config.json')
-// O tipo do acerto vem do servidor estático; o woff2 só não pode ser HTML.
+// The type of the hit comes from the static server; the woff2 only must not be HTML.
 const ASSET_CASES: AssetCase[] = [
   { extension: '.js', contentType: 'javascript' },
   { extension: '.css', contentType: 'text/css' },
@@ -61,7 +61,7 @@ async function readRoutes(): Promise<Route[]> {
 function assertAssetRouting(routes: Route[]): void {
   const filesystem = routes.findIndex(route => route.handle === 'filesystem')
   expect(filesystem).toBeGreaterThan(0)
-  // Cada handle inicia uma fase própria, mesmo quando error vem antes de filesystem.
+  // Each handle starts its own phase, even when error comes before filesystem.
   const firstPhase = routes.findIndex(route => route.handle !== undefined)
   const nextPhase = routes.findIndex(
     (route, index) => index > filesystem && route.handle !== undefined
@@ -98,8 +98,8 @@ function assertAssetRouting(routes: Route[]): void {
 
 test.use({ javaScriptEnabled: false })
 
-// O Nitro RC gera essa ordem a partir de publicAssets sem fallthrough; o teste
-// falha se uma atualização devolver o miss à função com o cache imutável.
+// Nitro RC generates this order from publicAssets without fallthrough; the test
+// fails if an update sends the miss back to the function with the immutable cache.
 test('routes missing assets to an uncached 404 after the filesystem', async () => {
   assertAssetRouting(await readRoutes())
 })
@@ -187,8 +187,8 @@ for (const pathname of MISSING_PATHS) {
   }
 }
 
-// No preview o acerto sai do servidor estático do srvx, sem Cache-Control; o
-// cache imutável dos acertos é conferido na configuração da Vercel acima.
+// In the preview the hit comes from the srvx static server, without Cache-Control;
+// the immutable cache of the hits is checked in the Vercel configuration above.
 for (const { extension, contentType } of ASSET_CASES) {
   for (const method of METHODS) {
     test(`serves ${method} of a published ${extension} asset`, async ({

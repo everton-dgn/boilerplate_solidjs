@@ -12,7 +12,7 @@ type RenderIntegrityModule = {
   observeRenderFailures: typeof observeRenderFailures
 }
 
-// O registro do hook é estado do módulo; cada teste parte de uma instância nova.
+// The hook registration is module state; each test starts from a new instance.
 function loadModule(): Promise<RenderIntegrityModule> {
   vi.resetModules()
   return import('../index.ts')
@@ -22,8 +22,8 @@ function requestEvent(): RequestEvent {
   return createRequestEvent(new Request('http://localhost/'))
 }
 
-describe('estado de integridade do render', () => {
-  it('deixa hasErrors indefinido enquanto o hook não se registrou', async () => {
+describe('render integrity state', () => {
+  it('leaves hasErrors undefined while the hook has not registered', async () => {
     const { createRenderIntegrity, markRenderFailure } = await loadModule()
     const { state, complete } = createRenderIntegrity()
     const event = requestEvent()
@@ -36,7 +36,7 @@ describe('estado de integridade do render', () => {
     expect(createRenderIntegrity().state.hasErrors).toBeUndefined()
   })
 
-  it('começa sem erros depois do registro e marca a falha do evento', async () => {
+  it('starts without errors after the registration and marks the failure of the event', async () => {
     const { createRenderIntegrity, markRenderFailure, observeRenderFailures } =
       await loadModule()
     observeRenderFailures()
@@ -54,7 +54,7 @@ describe('estado de integridade do render', () => {
     })
   })
 
-  it('ignora eventos sem estado e estados criados fora da fábrica', async () => {
+  it('ignores events without a state and states created outside the factory', async () => {
     const { markRenderFailure, observeRenderFailures } = await loadModule()
     observeRenderFailures()
     const event = requestEvent()

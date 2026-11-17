@@ -1,6 +1,6 @@
 import { acceptsMarkdown, negotiatePageFormat } from '../index.ts'
 
-// Com a varredura quadrática, 200 mil caracteres levavam dezenas de segundos.
+// With the quadratic scan, 200,000 characters took tens of seconds.
 const LONG_HEADER_LENGTH = 200_000
 const LONG_HEADER_BUDGET_MS = 3000
 
@@ -57,10 +57,10 @@ describe('page representation negotiation', () => {
   })
 
   it.each([
-    ['vírgulas', ','.repeat(LONG_HEADER_LENGTH)],
-    ['vírgulas e aspas', ',"'.repeat(LONG_HEADER_LENGTH)],
-    ['parâmetros', `text/html${';'.repeat(LONG_HEADER_LENGTH)}`]
-  ])('negocia um Accept longo de %s em tempo linear', (_label, accept) => {
+    ['commas', ','.repeat(LONG_HEADER_LENGTH)],
+    ['commas and quotes', ',"'.repeat(LONG_HEADER_LENGTH)],
+    ['parameters', `text/html${';'.repeat(LONG_HEADER_LENGTH)}`]
+  ])('negotiates a long Accept of %s in linear time', (_label, accept) => {
     const start = performance.now()
     negotiatePageFormat(accept)
     acceptsMarkdown(accept)

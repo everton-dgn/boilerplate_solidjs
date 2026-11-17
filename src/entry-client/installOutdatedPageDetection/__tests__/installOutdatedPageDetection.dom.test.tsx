@@ -42,7 +42,7 @@ const HTTP_INTERNAL_SERVER_ERROR = 500
 
 type Answer = { status: number; isLabelled: boolean }
 type ThrowerProps = { error: unknown }
-// O registro real alimenta o mesmo WeakSet que isVersionError consulta.
+// The real registration feeds the same WeakSet that isVersionError reads.
 type OutdatedPageActual = { recordChunkFailure: (error: unknown) => void }
 
 function waitForNextTask(): Promise<unknown> {
@@ -82,7 +82,7 @@ function renderInsideLocalBoundary(error: unknown): void {
   document.body.append(host)
   const dispose = render(
     () => (
-      <Errored fallback={<p>Parte recusada</p>}>
+      <Errored fallback={<p>Refused part</p>}>
         <Thrower error={error} />
       </Errored>
     ),
@@ -94,8 +94,8 @@ function renderInsideLocalBoundary(error: unknown): void {
   })
 }
 
-// O render chama a leitura dentro de uma computação rastreada; a fase de
-// computação do efeito reproduz esse ponto de chamada.
+// The render calls the read inside a tracked computation; the compute phase of
+// the effect reproduces that call site.
 function callInsideComputation(call: () => Promise<unknown>): Promise<unknown> {
   let pending: Promise<unknown> | undefined
   createRoot(dispose => {
@@ -105,7 +105,7 @@ function callInsideComputation(call: () => Promise<unknown>): Promise<unknown> {
         pending = call()
       },
       () => {
-        /* A chamada já aconteceu na fase de computação. */
+        /* The call already happened in the compute phase. */
       }
     )
   })
@@ -114,8 +114,8 @@ function callInsideComputation(call: () => Promise<unknown>): Promise<unknown> {
   return pending
 }
 
-describe('detecção de página desatualizada', () => {
-  // O descarte devolvido vira o teardown do beforeAll.
+describe('outdated page detection', () => {
+  // The returned disposal becomes the teardown of beforeAll.
   beforeAll(installOutdatedPageDetection)
 
   afterEach(() => {
@@ -123,7 +123,7 @@ describe('detecção de página desatualizada', () => {
   })
 
   it.each([HTTP_CONFLICT, HTTP_NOT_FOUND])(
-    'avisa o envio recusado com %i e mantém a rejeição unknownFunction',
+    'warns about the submission refused with %i and keeps the unknownFunction rejection',
     async status => {
       const events = countEvents(REFUSED_SUBMIT_EVENT)
       answerWith({ status, isLabelled: true })
@@ -137,7 +137,7 @@ describe('detecção de página desatualizada', () => {
     }
   )
 
-  it('marca a página na leitura declarada com GET, sem avisar', async () => {
+  it('marks the page on the read declared with GET, without warning', async () => {
     const events = countEvents(REFUSED_SUBMIT_EVENT)
     answerWith({ status: HTTP_NOT_FOUND, isLabelled: true })
     const read = GET(createServerReference('read-1'))
@@ -146,7 +146,7 @@ describe('detecção de página desatualizada', () => {
     expect(markPageOutdated).toHaveBeenCalledOnce()
   })
 
-  it('marca a página na chamada feita numa computação rastreada, sem avisar', async () => {
+  it('marks the page on the call made in a tracked computation, without warning', async () => {
     const events = countEvents(REFUSED_SUBMIT_EVENT)
     answerWith({ status: HTTP_NOT_FOUND, isLabelled: true })
     const read = createServerReference('read-2')
@@ -160,16 +160,19 @@ describe('detecção de página desatualizada', () => {
   it.each([
     { status: HTTP_CONFLICT, isLabelled: false },
     { status: HTTP_INTERNAL_SERVER_ERROR, isLabelled: true }
-  ])('ignora a resposta $status fora do contrato de versão', async answer => {
-    const events = countEvents(REFUSED_SUBMIT_EVENT)
-    answerWith(answer)
-    const save = createServerReference('save-2')
-    await expect(save()).rejects.toMatchObject({ status: answer.status })
-    expect(events()).toBe(0)
-    expect(markPageOutdated).not.toHaveBeenCalled()
-  })
+  ])(
+    'ignores the $status response outside the version contract',
+    async answer => {
+      const events = countEvents(REFUSED_SUBMIT_EVENT)
+      answerWith(answer)
+      const save = createServerReference('save-2')
+      await expect(save()).rejects.toMatchObject({ status: answer.status })
+      expect(events()).toBe(0)
+      expect(markPageOutdated).not.toHaveBeenCalled()
+    }
+  )
 
-  it('registra a falha de chunk sem cancelar o evento', () => {
+  it('records the chunk failure without cancelling the event', () => {
     const failure = new TypeError('Failed to fetch dynamically imported module')
     const event = Object.assign(
       new Event('vite:preloadError', { cancelable: true }),
@@ -180,8 +183,8 @@ describe('detecção de página desatualizada', () => {
     expect(event.defaultPrevented).toBe(false)
   })
 
-  it('remove o ouvinte e o handler ao descartar', async () => {
-    // O listener é a mesma função: descartar esta instalação remove a única.
+  it('removes the listener and the handler on disposal', async () => {
+    // The listener is the same function: disposing this installation removes the only one.
     const dispose = installOutdatedPageDetection()
     dispose()
     onTestFinished(() => {
@@ -198,19 +201,19 @@ describe('detecção de página desatualizada', () => {
   })
 })
 
-describe('aviso de parte da página', () => {
-  // O descarte devolvido vira o teardown do beforeAll.
+describe('notice for part of the page', () => {
+  // The returned disposal becomes the teardown of beforeAll.
   beforeAll(installOutdatedPageDetection)
 
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {
-      /* O Errored de desenvolvimento reporta o erro capturado. */
+      /* The development Errored reports the caught error. */
     })
   })
 
-  it('avisa uma vez a recusa capturada por Errored locais', async () => {
+  it('warns once about the refusal caught by local Errored boundaries', async () => {
     const events = countEvents(OUTDATED_FALLBACK_EVENT)
-    const refusal = Object.assign(new Error('Recusada'), {
+    const refusal = Object.assign(new Error('Refused'), {
       unknownFunction: true
     })
     renderInsideLocalBoundary(refusal)
@@ -220,7 +223,7 @@ describe('aviso de parte da página', () => {
     expect(events()).toBe(1)
   })
 
-  it('avisa a falha de chunk registrada', async () => {
+  it('warns about the recorded chunk failure', async () => {
     const actual = await vi.importActual<OutdatedPageActual>(
       '@/primitives/createOutdatedPageGuard/index.ts'
     )
@@ -231,7 +234,7 @@ describe('aviso de parte da página', () => {
     await expect.poll(events).toBe(1)
   })
 
-  it('avisa uma vez quando o import de lazy falha após o evento de preload', async () => {
+  it('warns once when the lazy import fails after the preload event', async () => {
     const actual = await vi.importActual<OutdatedPageActual>(
       '@/primitives/createOutdatedPageGuard/index.ts'
     )
@@ -252,14 +255,14 @@ describe('aviso de parte da página', () => {
         globalThis.dispatchEvent(event)
         if (!event.defaultPrevented) throw error
       }
-      return { default: () => <p>Import cancelado</p> }
+      return { default: () => <p>Import canceled</p> }
     })
     const host = document.createElement('div')
     document.body.append(host)
     const dispose = render(
       () => (
-        <Errored fallback={<p>Parte recusada</p>}>
-          <Loading fallback={<p>Carregando</p>}>
+        <Errored fallback={<p>Refused part</p>}>
+          <Loading fallback={<p>Loading</p>}>
             <MissingChunk />
           </Loading>
         </Errored>
@@ -270,7 +273,7 @@ describe('aviso de parte da página', () => {
       dispose()
       host.remove()
     })
-    await expect.poll(() => host.textContent).toBe('Parte recusada')
+    await expect.poll(() => host.textContent).toBe('Refused part')
     await expect.poll(events).toBe(1)
     await waitForNextTask()
     expect(event.defaultPrevented).toBe(false)
@@ -278,14 +281,14 @@ describe('aviso de parte da página', () => {
     expect(events()).toBe(1)
   })
 
-  it('ignora o erro que não é de versão', async () => {
+  it('ignores the error that is not a version error', async () => {
     const events = countEvents(OUTDATED_FALLBACK_EVENT)
-    renderInsideLocalBoundary(new Error('Detalhe interno'))
+    renderInsideLocalBoundary(new Error('Internal detail'))
     await waitForNextTask()
     expect(events()).toBe(0)
   })
 
-  it('para de avisar depois do descarte', async () => {
+  it('stops warning after disposal', async () => {
     const dispose = installOutdatedPageDetection()
     dispose()
     onTestFinished(() => {
@@ -293,7 +296,7 @@ describe('aviso de parte da página', () => {
     })
     const events = countEvents(OUTDATED_FALLBACK_EVENT)
     renderInsideLocalBoundary(
-      Object.assign(new Error('Recusada'), { unknownFunction: true })
+      Object.assign(new Error('Refused'), { unknownFunction: true })
     )
     await waitForNextTask()
     expect(events()).toBe(0)

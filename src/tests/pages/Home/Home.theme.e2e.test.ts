@@ -4,8 +4,8 @@ test.use({ locale: 'pt-BR' })
 
 const THEME_KEY = 'app-theme'
 
-// O listener da página foi registrado antes deste; quando este dispara, o tema
-// já teve a chance de reagir ao change.
+// The listener of the page was registered before this one; when this one fires,
+// the theme already had the chance to react to the change.
 function watchDarkScheme(): void {
   matchMedia('(prefers-color-scheme: dark)').addEventListener(
     'change',
@@ -18,9 +18,9 @@ function hasDarkSchemeChanged(): boolean {
   return Reflect.get(globalThis, '__darkSchemeChanged') === true
 }
 
-test.describe('tema da aplicação', () => {
+test.describe('application theme', () => {
   for (const colorScheme of ['dark', 'light'] as const) {
-    test(`segue o sistema ${colorScheme} no primeiro carregamento`, async ({
+    test(`follows the ${colorScheme} system on the first load`, async ({
       page
     }) => {
       await page.emulateMedia({ colorScheme })
@@ -36,7 +36,7 @@ test.describe('tema da aplicação', () => {
     })
   }
 
-  test('sincroniza duas abas nos dois sentidos e persiste após recarga', async ({
+  test('syncs two tabs both ways and persists after a reload', async ({
     context,
     page
   }) => {
@@ -55,9 +55,7 @@ test.describe('tema da aplicação', () => {
     await expect(page.locator('html')).toHaveClass('light')
   })
 
-  test('acompanha mudanças do sistema somente no modo sistema', async ({
-    page
-  }) => {
+  test('follows system changes only in system mode', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/')
     await page.emulateMedia({ colorScheme: 'light' })
@@ -72,7 +70,7 @@ test.describe('tema da aplicação', () => {
     await expect(page.locator('html')).toHaveClass('light')
   })
 
-  test('aplica preferência salva antes de hidratar', async ({
+  test('applies a saved preference before hydrating', async ({
     page,
     context,
     baseURL
@@ -90,7 +88,7 @@ test.describe('tema da aplicação', () => {
     ).toBeDisabled()
   })
 
-  test('relê o cookie com evento de foco simulado sem BroadcastChannel', async ({
+  test('reads the cookie again with a simulated focus event without BroadcastChannel', async ({
     context,
     page
   }) => {
@@ -127,7 +125,7 @@ test.describe('tema da aplicação', () => {
 
   for (const colorScheme of ['dark', 'light'] as const) {
     for (const preference of ['system', 'missing']) {
-      test(`resolve ${preference} como ${colorScheme} no script antes da hidratação`, async ({
+      test(`resolves ${preference} as ${colorScheme} in the script before the hydration`, async ({
         page,
         context,
         baseURL,

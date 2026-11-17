@@ -17,8 +17,8 @@ function mountSwitcher() {
   })
 }
 
-describe('seletor de idioma', () => {
-  it('inclui o idioma visível no nome acessível do gatilho', async () => {
+describe('locale switcher', () => {
+  it('includes the visible locale in the accessible name of the trigger', async () => {
     mountSwitcher()
     const trigger = page.getByRole('button', { name: /select language/u })
     await expect.element(trigger).toHaveTextContent('EN')

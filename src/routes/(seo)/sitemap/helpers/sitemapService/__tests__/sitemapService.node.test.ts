@@ -68,8 +68,8 @@ function source(entries: string[]): SitemapPartitionSource {
   }
 }
 
-describe('sitemap particionado', () => {
-  it('responde 404 para catálogo de páginas vazio', async () => {
+describe('partitioned sitemap', () => {
+  it('answers 404 for an empty page catalog', async () => {
     const response = await buildSitemapIndexResponse({
       manifest: { ...manifest, entries: [] },
       sources: [],
@@ -82,7 +82,7 @@ describe('sitemap particionado', () => {
     await expect(response.text()).resolves.toBe('')
   })
 
-  it('divide páginas estáticas por bytes e mantém urlset pequeno', async () => {
+  it('splits static pages by bytes and keeps a small urlset', async () => {
     const small = await buildSitemapIndexResponse({
       manifest,
       sources: [],
@@ -108,7 +108,7 @@ describe('sitemap particionado', () => {
     await expect(large.text()).resolves.toContain('<sitemapindex')
   })
 
-  it('aceita o orçamento exato de bytes e recusa um grupo uma unidade acima', async () => {
+  it('accepts the exact byte budget and refuses a group one unit above', async () => {
     const entries = [{ path: '/blog/static' }]
     const exact = new TextEncoder().encode(
       buildSitemap({ entries, siteUrl })
@@ -133,7 +133,7 @@ describe('sitemap particionado', () => {
     expect(rejected.status).toBe(HTTP_SERVICE_UNAVAILABLE)
   })
 
-  it('divide dois grupos somente quando a soma excede o orçamento de bytes', async () => {
+  it('splits two groups only when the sum exceeds the byte budget', async () => {
     const entries = [
       { path: `/${'a'.repeat(LONG_PATH_CHARS)}` },
       { path: `/${'b'.repeat(LONG_PATH_CHARS)}` }
@@ -194,9 +194,9 @@ describe('sitemap particionado', () => {
   })
 })
 
-describe('limites de URLs e seleção de fontes', () => {
+describe('URL limits and source selection', () => {
   it(
-    'mantém o count exato em um urlset e divide uma entrada acima',
+    'keeps the exact count in one urlset and splits one entry above',
     { timeout: 30_000 },
     async () => {
       const count = Math.floor(SITEMAP_URL_LIMIT / locales.length)
@@ -226,11 +226,11 @@ describe('limites de URLs e seleção de fontes', () => {
     }
   )
 
-  it('consulta somente a partição pedida', async () => {
+  it('reads only the requested partition', async () => {
     const selected = {
       ...source(['/blog/first']),
       listPartitions: vi.fn<() => Promise<string[]>>(() =>
-        Promise.reject(new Error('Não deve enumerar partições'))
+        Promise.reject(new Error('Must not list partitions'))
       )
     }
     const other = {
@@ -238,7 +238,7 @@ describe('limites de URLs e seleção de fontes', () => {
       id: 'stories',
       routePath: '/stories/*rest',
       listPartitions: vi.fn<() => Promise<string[]>>(() =>
-        Promise.reject(new Error('Não deve consultar outra fonte'))
+        Promise.reject(new Error('Must not read another source'))
       ),
       readPartition: vi.fn<SitemapPartitionSource['readPartition']>(() =>
         Promise.resolve([{ path: '/stories/second' }])
@@ -261,11 +261,11 @@ describe('limites de URLs e seleção de fontes', () => {
     expect(other.listPartitions).not.toHaveBeenCalled()
   })
 
-  it('não acessa o inventário estático ao servir uma parte dinâmica', async () => {
+  it('does not reach the static inventory when serving a dynamic part', async () => {
     const isolated = {
       ...manifest,
       get entries(): typeof manifest.entries {
-        throw new Error('Inventário estático não deve ser lido')
+        throw new Error('The static inventory must not be read')
       }
     }
     const response = await buildSitemapPartResponse({
@@ -282,8 +282,8 @@ describe('limites de URLs e seleção de fontes', () => {
   })
 })
 
-describe('validação das fontes e consistência eventual', () => {
-  it('recusa página estática que sombreia a rota dinâmica', async () => {
+describe('source validation and eventual consistency', () => {
+  it('refuses a static page that shadows the dynamic route', async () => {
     const response = await buildSitemapPartResponse({
       manifest,
       sources: [source(['/blog/static'])],
@@ -298,7 +298,7 @@ describe('validação das fontes e consistência eventual', () => {
     expect(response.headers.get('cache-control')).toBe('no-store')
   })
 
-  it('aceita splat efetivo e recusa fonte sob noindex herdado', async () => {
+  it('accepts an effective splat and refuses a source under an inherited noindex', async () => {
     const stories = {
       ...source(['/stories/a/b']),
       id: 'stories',
@@ -328,7 +328,7 @@ describe('validação das fontes e consistência eventual', () => {
     expect(rejected.status).toBe(HTTP_SERVICE_UNAVAILABLE)
   })
 
-  it('responde 404 sem cache para partição removida ou vazia', async () => {
+  it('answers 404 without cache for a removed or empty partition', async () => {
     const removed = await buildSitemapPartResponse({
       manifest,
       sources: [source([])],
@@ -343,7 +343,7 @@ describe('validação das fontes e consistência eventual', () => {
     expect(removed.headers.get('cache-control')).toBe('no-store')
   })
 
-  it('índice antigo pode apontar para parte removida após atualização', async () => {
+  it('an old index can point to a part removed after an update', async () => {
     let isPresent = true
     const changing = {
       ...source([]),
@@ -373,7 +373,7 @@ describe('validação das fontes e consistência eventual', () => {
     expect(removed.headers.get('cache-control')).toBe('no-store')
   })
 
-  it('publica inserção, migração entre partes e rollback eventual', async () => {
+  it('publishes an insertion, a move between parts and an eventual rollback', async () => {
     let activePart = 'a'
     const changing = {
       ...source([]),
@@ -417,7 +417,7 @@ describe('validação das fontes e consistência eventual', () => {
     expect(rollback.status).toBe(HTTP_OK)
   })
 
-  it('cancela a espera quando a fonte ignora o sinal', async () => {
+  it('cancels the wait when the source ignores the signal', async () => {
     vi.useFakeTimers()
     try {
       const blocked = {

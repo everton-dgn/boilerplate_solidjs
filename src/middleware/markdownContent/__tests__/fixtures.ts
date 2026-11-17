@@ -99,7 +99,7 @@ export async function cancelOpenResponses(): Promise<void> {
     try {
       await response.body?.cancel()
     } catch {
-      /* Já consumido. */
+      /* Already consumed. */
     }
   }
 }

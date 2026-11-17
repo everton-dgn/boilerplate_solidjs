@@ -2,8 +2,8 @@ import { buildRobotsText } from '../index.ts'
 
 const SITEMAP = 'https://example.com/sitemap.xml'
 
-describe('geração do robots.txt', () => {
-  it('publica user-agents, regras e o sitemap com uma linha vazia entre grupos', () => {
+describe('robots.txt generation', () => {
+  it('publishes user-agents, rules and the sitemap with a blank line between groups', () => {
     const text = buildRobotsText({
       groups: [
         { userAgents: ['*'], allow: ['/'], disallow: ['/_server'] },
@@ -28,7 +28,7 @@ describe('geração do robots.txt', () => {
     )
   })
 
-  it('lista um Sitemap por URL informada', () => {
+  it('lists one Sitemap per given URL', () => {
     const text = buildRobotsText({
       groups: [{ userAgents: ['*'], allow: ['/'] }],
       sitemaps: [SITEMAP, 'https://example.com/sitemap-noticias.xml']
@@ -46,7 +46,7 @@ describe('geração do robots.txt', () => {
     )
   })
 
-  it('omite a seção de sitemaps quando não há URL', () => {
+  it('leaves out the sitemaps section when there is no URL', () => {
     const text = buildRobotsText({
       groups: [{ userAgents: ['*'], disallow: ['/'] }],
       sitemaps: []
@@ -55,7 +55,7 @@ describe('geração do robots.txt', () => {
     expect(text).toBe('User-agent: *\nDisallow: /\n')
   })
 
-  it('publica só os user-agents de um grupo sem regras', () => {
+  it('publishes only the user-agents of a group without rules', () => {
     const text = buildRobotsText({
       groups: [{ userAgents: ['Googlebot'] }],
       sitemaps: []

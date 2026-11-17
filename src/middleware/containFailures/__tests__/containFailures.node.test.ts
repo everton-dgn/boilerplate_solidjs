@@ -12,13 +12,13 @@ const TEST_ORIGIN = 'http://localhost'
 const HTTP_FOUND = 302
 const HTTP_BAD_GATEWAY = 502
 const HTTP_INTERNAL_SERVER_ERROR = 500
-// Sem o contexto de idioma do paraglide, a mensagem sai no idioma base.
+// Without the paraglide locale context, the message is in the base locale.
 const PUBLIC_MESSAGE = 'The request could not be completed.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
 const ERROR_PAGE_LOG =
   '[error-page] Unexpected failure; private details omitted'
 
-// Uma cadeia cujo único middleware rejeita com o valor recebido.
+// A chain whose only middleware rejects with the received value.
 function failingWith(value: unknown) {
   const fail = vi.fn<() => Promise<Response>>().mockRejectedValue(value)
   return containFailures([fail])
@@ -26,7 +26,7 @@ function failingWith(value: unknown) {
 
 function renderPage() {
   return vi.fn<() => Promise<Response>>().mockResolvedValue(
-    new Response('<main>Algo deu errado!</main>', {
+    new Response('<main>Something went wrong!</main>', {
       headers: { 'content-type': 'text/html; charset=utf-8' }
     })
   )
@@ -39,8 +39,8 @@ function pageEvent(path = '/'): RequestEvent {
   return createRequestEvent(request)
 }
 
-// Um redirect que passa na classificação de controle, mas cujos headers falham
-// ao ser lidos: não aceita gravação nem cópia.
+// A redirect that passes the control classification, but whose headers fail when
+// read: it accepts neither a write nor a copy.
 function hostileControl(): Response {
   const control = Response.redirect(new URL('/', TEST_ORIGIN), HTTP_FOUND)
   return new Proxy(control, {
@@ -56,16 +56,16 @@ function failLog(): never {
 }
 
 function mockProductionLog(): void {
-  // A contenção e a CSP só valem nos builds de produção; o Vitest roda com DEV.
+  // The containment and the CSP only apply to production builds; Vitest runs with DEV.
   vi.stubEnv('DEV', false)
   vi.spyOn(console, 'error').mockImplementation(vi.fn())
 }
 
-describe('contenção de falhas do middleware', () => {
+describe('middleware failure containment', () => {
   beforeEach(mockProductionLog)
 
-  it('preserva a resposta do próximo handler sem registrar log', async () => {
-    const response = new Response('conteúdo')
+  it('keeps the response of the next handler without logging', async () => {
+    const response = new Response('content')
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
 
     await expect(
@@ -75,17 +75,17 @@ describe('contenção de falhas do middleware', () => {
   })
 
   it.each([
-    ['um Error', new Error('PRIVATE', { cause: 'CAUSE_PRIVATE' }), ['Error']],
+    ['an Error', new Error('PRIVATE', { cause: 'CAUSE_PRIVATE' }), ['Error']],
     [
-      'uma Response com corpo',
+      'a Response with a body',
       new Response('PRIVATE', { status: HTTP_BAD_GATEWAY }),
       []
     ],
-    ['um objeto cuja inspeção falha', hostileValue(), []],
-    ['uma Response.error(), com status 0', Response.error(), []],
-    ['um controle cujos headers falham', hostileControl(), []]
+    ['an object whose inspection fails', hostileValue(), []],
+    ['a Response.error(), with status 0', Response.error(), []],
+    ['a control whose headers fail', hostileControl(), []]
   ])(
-    'troca %s por 500 público com log filtrado',
+    'replaces %s with a public 500 and a filtered log',
     async (_label, failure, details) => {
       const render = renderPage()
       const response = await failingWith(failure)(
@@ -108,9 +108,9 @@ describe('contenção de falhas do middleware', () => {
     }
   )
 
-  it('responde 500 público mesmo quando o log falha', async () => {
+  it('answers a public 500 even when the log fails', async () => {
     vi.mocked(console.error).mockImplementationOnce(() => {
-      throw new Error('stderr indisponível')
+      throw new Error('stderr unavailable')
     })
 
     const response = await failingWith(new Error('PRIVATE'))(
@@ -126,7 +126,7 @@ describe('contenção de falhas do middleware', () => {
     })
   })
 
-  it('responde no idioma da requisição dentro do contexto de idioma', async () => {
+  it('answers in the locale of the request inside the locale context', async () => {
     const response = await paraglideMiddleware(
       new Request(new URL('/pt', TEST_ORIGIN)),
       () =>
@@ -142,7 +142,7 @@ describe('contenção de falhas do middleware', () => {
     )
   })
 
-  it('deixa passar uma Response de controle sem corpo, com os headers de segurança', async () => {
+  it('lets through a control Response without a body, with the security headers', async () => {
     const control = Response.redirect(new URL('/', TEST_ORIGIN), HTTP_FOUND)
 
     const response = await failingWith(control)(
@@ -162,7 +162,7 @@ describe('contenção de falhas do middleware', () => {
     expect(console.error).not.toHaveBeenCalled()
   })
 
-  it('relança o erro original em desenvolvimento', async () => {
+  it('rethrows the original error in development', async () => {
     vi.stubEnv('DEV', true)
     const failure = new Error('PRIVATE')
 
@@ -173,10 +173,10 @@ describe('contenção de falhas do middleware', () => {
   })
 })
 
-describe('página de erro do middleware', () => {
+describe('middleware error page', () => {
   beforeEach(mockProductionLog)
 
-  it('renderiza a página de erro do app numa navegação', async () => {
+  it('renders the error page of the app on a navigation', async () => {
     const event = pageEvent()
     const render = renderPage()
 
@@ -186,7 +186,9 @@ describe('página de erro do middleware', () => {
 
     expect(render).toHaveBeenCalledOnce()
     expect(isPublicError(event.locals.serverFailure)).toBe(true)
-    await expect(response.text()).resolves.toBe('<main>Algo deu errado!</main>')
+    await expect(response.text()).resolves.toBe(
+      '<main>Something went wrong!</main>'
+    )
     expect({
       status: response.status,
       ...Object.fromEntries(response.headers)
@@ -201,7 +203,7 @@ describe('página de erro do middleware', () => {
     })
   })
 
-  it('não renderiza de novo quando a falha vem depois do render', async () => {
+  it('does not render again when the failure comes after the render', async () => {
     const event = pageEvent()
     const render = renderPage()
     const failAfterRender = vi
@@ -221,9 +223,9 @@ describe('página de erro do middleware', () => {
     await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
   })
 
-  // Com as entries autorais não há boundary fora do Document: uma exceção
-  // nele sai síncrona do renderToStream e rejeita o render da cadeia.
-  it('responde 500 em texto sem renderizar de novo quando o próprio render lança', async () => {
+  // With the authored entries there is no boundary outside Document: an exception
+  // in it leaves renderToStream synchronously and rejects the render of the chain.
+  it('answers a text 500 without rendering again when the render itself throws', async () => {
     const event = pageEvent()
     const render = vi
       .fn<() => Promise<Response>>()
@@ -251,7 +253,7 @@ describe('página de erro do middleware', () => {
   })
 
   it.each(['/_server', '/_server/abc123'])(
-    'não renderiza a página de erro em %s, mesmo com accept de HTML',
+    'does not render the error page on %s, even with an HTML accept',
     async path => {
       const event = pageEvent(path)
       const render = renderPage()
@@ -265,7 +267,7 @@ describe('página de erro do middleware', () => {
     }
   )
 
-  it('cai no 500 em texto e registra a linha fixa e o erro do render quando a página de erro falha', async () => {
+  it('falls back to the text 500 and logs the fixed line and the render error when the error page fails', async () => {
     const event = pageEvent()
     const render = vi
       .fn<() => Promise<Response>>()
@@ -286,7 +288,7 @@ describe('página de erro do middleware', () => {
     })
   })
 
-  it('mantém o 500 público quando o render de erro e os dois logs falham', async () => {
+  it('keeps the public 500 when the error render and both logs fail', async () => {
     const event = pageEvent()
     const render = vi
       .fn<() => Promise<Response>>()
@@ -315,7 +317,7 @@ describe('página de erro do middleware', () => {
     })
   })
 
-  it('não renderiza páginas para métodos que não são de navegação', async () => {
+  it('does not render pages for methods that are not navigation methods', async () => {
     const event = pageEvent()
     const request = new Request(TEST_ORIGIN, {
       method: 'POST',
@@ -332,17 +334,17 @@ describe('página de erro do middleware', () => {
   })
 })
 
-// O critério de HTML segue o do plugin: os pedidos que recebem a página quando
-// nada falha recebem a página de erro.
-describe('accept de uma navegação', () => {
+// The HTML criterion follows the plugin: the requests that get the page when
+// nothing fails get the error page.
+describe('accept of a navigation', () => {
   beforeEach(mockProductionLog)
 
   it.each([
-    ['com accept */*', { accept: '*/*' }, true],
-    ['sem accept', {}, true],
-    ['com accept de JSON', { accept: 'application/json' }, false]
+    ['with accept */*', { accept: '*/*' }, true],
+    ['without accept', {}, true],
+    ['with a JSON accept', { accept: 'application/json' }, false]
   ])(
-    'decide a página de erro de um GET %s',
+    'decides the error page of a GET %s',
     async (_label, headers, hasErrorPage) => {
       const event = pageEvent()
       const request = new Request(TEST_ORIGIN, { headers })
@@ -354,18 +356,18 @@ describe('accept de uma navegação', () => {
 
       expect(render).toHaveBeenCalledTimes(hasErrorPage ? 1 : 0)
       await expect(response.text()).resolves.toBe(
-        hasErrorPage ? '<main>Algo deu errado!</main>' : PUBLIC_MESSAGE
+        hasErrorPage ? '<main>Something went wrong!</main>' : PUBLIC_MESSAGE
       )
     }
   )
 })
 
-// As respostas da contenção não voltam pelo securityHeaders; a CSP e o nonce
-// são gravados aqui.
-describe('CSP nas respostas da contenção', () => {
+// The containment responses do not go back through securityHeaders; the CSP and
+// the nonce are written here.
+describe('CSP in the containment responses', () => {
   beforeEach(mockProductionLog)
 
-  it('bloqueia scripts no 500 em texto fora de uma requisição', async () => {
+  it('blocks scripts on the text 500 outside a request', async () => {
     const response = await failingWith(new Error('PRIVATE'))(
       new Request(TEST_ORIGIN),
       renderPage()
@@ -379,15 +381,15 @@ describe('CSP nas respostas da contenção', () => {
     )
   })
 
-  // Uma falha antes do securityHeaders deixa a requisição sem nonce; a página
-  // de erro precisa dele no render para que os scripts batam com a CSP.
-  it('cria o nonce antes de renderizar a página de erro', async () => {
+  // A failure before securityHeaders leaves the request without a nonce; the error
+  // page needs it in the render so that the scripts match the CSP.
+  it('creates the nonce before rendering the error page', async () => {
     const event = pageEvent()
     let seen: unknown
     const render = vi.fn<() => Promise<Response>>().mockImplementation(() => {
       seen = event.nonce
       return Promise.resolve(
-        new Response('<main>Algo deu errado!</main>', {
+        new Response('<main>Something went wrong!</main>', {
           headers: { 'content-type': 'text/html; charset=utf-8' }
         })
       )
@@ -404,7 +406,7 @@ describe('CSP nas respostas da contenção', () => {
     )
   })
 
-  it('mantém na página de erro o nonce já criado na requisição', async () => {
+  it('keeps on the error page the nonce already created in the request', async () => {
     const event = pageEvent()
     event.nonce = 'bm9uY2UtYW50ZXJpb3I='
 
@@ -417,7 +419,7 @@ describe('CSP nas respostas da contenção', () => {
     )
   })
 
-  it('grava a CSP e os cabeçalhos de segurança no controle lançado', async () => {
+  it('writes the CSP and the security headers on the thrown control', async () => {
     const event = pageEvent()
     const control = Response.redirect(new URL('/', TEST_ORIGIN), HTTP_FOUND)
 
@@ -430,7 +432,7 @@ describe('CSP nas respostas da contenção', () => {
       'x-frame-options': 'DENY',
       'strict-transport-security': 'max-age=63072000; includeSubDomains'
     })
-    // O redirect não tem documento: a CSP bloqueia scripts sem gravar o nonce.
+    // The redirect has no document: the CSP blocks scripts without writing the nonce.
     expect(response.headers.get('content-security-policy')).toContain(
       "script-src 'none'"
     )

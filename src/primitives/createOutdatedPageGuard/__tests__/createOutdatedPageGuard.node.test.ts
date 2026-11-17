@@ -2,8 +2,8 @@ import { isServer } from '@solidjs/web'
 
 import { registerUnsavedChanges } from '../index.ts'
 
-describe('checagens de alterações no servidor', () => {
-  it('não registra nem executa a checagem durante SSR', () => {
+describe('change checks on the server', () => {
+  it('neither registers nor runs the check during SSR', () => {
     expect(isServer).toBe(true)
     const check = vi.fn<() => boolean>(() => true)
     const add = vi.spyOn(Set.prototype, 'add')

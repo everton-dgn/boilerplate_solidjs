@@ -8,11 +8,11 @@ import '@/theme/globalStyles.css'
 
 import { ThemeToggle } from '../index.tsx'
 
-describe('seletor de tema', () => {
+describe('theme switcher', () => {
   beforeEach(clearThemeCookie)
   afterEach(clearThemeCookie)
 
-  it('seleciona cada preferência e atualiza o estado acessível', async () => {
+  it('selects each preference and updates the accessible state', async () => {
     renderComponent(() => <ThemeToggle />)
     const trigger = page.getByRole('button', { name: /^Select theme/u })
     await expect

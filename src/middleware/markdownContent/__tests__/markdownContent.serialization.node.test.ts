@@ -50,7 +50,7 @@ type ContainedCase = {
 }
 
 const PRIVATE_MARKER = 'PRIVATE_SERIALIZATION_FAILURE'
-// O adaptador tira o idioma da requisição, e as requisições usam /en.
+// The adapter takes the locale from the request, and the requests use /en.
 const PUBLIC_MESSAGE = 'The request could not be completed.'
 const LOG_MESSAGE = '[server-error] Unexpected failure; private details omitted'
 const FAILURE_LOG_CLASSES = {
@@ -61,7 +61,7 @@ const DEADLINE_MS = 1000
 const HTTP_OK = 200
 const HTTP_SERVER_ERROR = 500
 const CONTAINED_DIAGNOSTIC = '[SSR_RENDER_ERROR_CONTAINED]'
-// Um redirect() capturado por um <Errored> aninhado também vira fallback.
+// A redirect() caught by a nested <Errored> also becomes a fallback.
 const CONTAINED_CASES: ContainedCase[] = [
   {
     name: 'an Error',
@@ -134,7 +134,7 @@ function makeProbe({
     deserialize: () => token
   }
   const completed = vi.fn<() => void>()
-  // Mesma fábrica da entrada; o hook global marca hasErrors.
+  // Same factory as the entry; the global hook sets hasErrors.
   const { state, complete } = createRenderIntegrity()
   let render: ReturnType<typeof renderToStream> | undefined
   let html = ''
@@ -312,7 +312,7 @@ describe('markdown with the installed SSR serializer', () => {
   it('keeps the 500 of an HTML shell that failed to serialize', async () => {
     const token = Object.freeze({ isProbe: true })
     let isPending = true
-    // O primeiro passe suspende; o re-pull acontece enquanto o shell é montado.
+    // The first pass suspends; the re-pull happens while the shell is being built.
     function shellContent() {
       if (isPending) {
         isPending = false
@@ -400,9 +400,9 @@ describe('markdown with the installed SSR serializer', () => {
           hasFallback: true
         })
         await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE)
-        // O Vitest resolve o runtime de desenvolvimento do Solid, cujo
-        // diagnóstico do <Errored> imprime a mensagem original antes do hook; o
-        // de produção não o emite.
+        // Vitest resolves the development runtime of Solid, whose <Errored>
+        // diagnostic prints the original message before the hook; the production
+        // one does not emit it.
         const log = readLog(console.error)
         expect(log.heads[0]?.[0]).toContain(CONTAINED_DIAGNOSTIC)
         expect(log.heads.slice(1)).toStrictEqual(hookLogs)

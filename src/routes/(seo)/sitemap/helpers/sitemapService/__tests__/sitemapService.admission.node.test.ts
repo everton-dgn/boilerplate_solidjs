@@ -37,7 +37,7 @@ vi.mock(import('@/infra/server/publication/index.ts'), async importOriginal => {
   return {
     ...actual,
     runPublication: (options: PublicationOptions) => {
-      if (!publication.run) throw new Error('Controlador ausente')
+      if (!publication.run) throw new Error('Missing controller')
       return publication.run(options)
     }
   }
@@ -116,11 +116,11 @@ function restore(): void {
   vi.restoreAllMocks()
 }
 
-describe('admissão do sitemap', () => {
+describe('sitemap admission', () => {
   beforeEach(prepare)
   afterEach(restore)
 
-  it('recusa o pedido extra sem iniciar o produtor, com resposta pequena', async () => {
+  it('refuses the extra request without starting the producer, with a small response', async () => {
     const controller = useController({ total: 1, sitemap: 1, outputs: 1 })
     const gate = Promise.withResolvers<SitemapEntry[]>()
     const readPartition = vi.fn<SitemapPartitionSource['readPartition']>(
@@ -154,7 +154,7 @@ describe('admissão do sitemap', () => {
     expect(controller.getMetrics().active).toBe(0)
   })
 
-  it('mantém a vaga depois do prazo enquanto a fonte ignora o sinal', async () => {
+  it('keeps the slot after the deadline while the source ignores the signal', async () => {
     vi.useFakeTimers()
     const controller = useController({ total: 1, sitemap: 1, outputs: 2 })
     const late = Promise.withResolvers<SitemapEntry[]>()
@@ -182,7 +182,7 @@ describe('admissão do sitemap', () => {
     expect(controller.getMetrics()).toMatchObject({ active: 0, sources: 0 })
   })
 
-  it('libera a vaga uma vez em rejeição tardia e em exceção síncrona', async () => {
+  it('releases the slot once on a late rejection and on a sync exception', async () => {
     vi.useFakeTimers()
     const controller = useController({ total: 1, sitemap: 1, outputs: 2 })
     const late = Promise.withResolvers<SitemapEntry[]>()
@@ -192,14 +192,14 @@ describe('admissão do sitemap', () => {
     })
     await vi.advanceTimersByTimeAsync(SITEMAP_SOURCES_TIMEOUT_MS)
     await pending
-    late.reject(new Error('Tardia'))
+    late.reject(new Error('Late'))
     await vi.advanceTimersByTimeAsync(0)
     const thrown = await buildSitemapPartResponse({
       ...partOptions,
       sources: [
         source({
           readPartition: () => {
-            throw new Error('Síncrona')
+            throw new Error('Synchronous')
           }
         })
       ]
@@ -208,7 +208,7 @@ describe('admissão do sitemap', () => {
     expect(controller.getMetrics()).toMatchObject({ active: 0, sources: 0 })
   })
 
-  it('não inicia a fonte em array seguinte depois de uma falha e funciona com capacidade 1', async () => {
+  it('does not start the next array source after a failure and works with capacity 1', async () => {
     const controller = useController({
       total: 1,
       sitemap: 1,
@@ -221,7 +221,7 @@ describe('admissão do sitemap', () => {
       ...sourceOptions,
       manifest: arrayManifest([
         () => {
-          throw new Error('Falha')
+          throw new Error('Failure')
         },
         next
       ]),
@@ -239,7 +239,7 @@ describe('admissão do sitemap', () => {
     await healthy.text()
   })
 
-  it('executa fontes em array uma por vez', async () => {
+  it('runs array sources one at a time', async () => {
     const controller = useController()
     const first = Promise.withResolvers<SitemapEntry[]>()
     const second = vi.fn<() => SitemapEntry[]>(() => [{ path: '/blog/b' }])
@@ -259,7 +259,7 @@ describe('admissão do sitemap', () => {
     await response.text()
   })
 
-  it('índice e parte disputam o executor da fonte sem esperar nem índice parcial', async () => {
+  it('the index and a part compete for the source runner without waiting and without a partial index', async () => {
     const controller = useController({ sources: 1, perSource: 1 })
     const gate = Promise.withResolvers<string[]>()
     const selected = source({ listPartitions: () => gate.promise })
@@ -281,11 +281,11 @@ describe('admissão do sitemap', () => {
   })
 })
 
-describe('limites antes da fonte', () => {
+describe('limits before the source', () => {
   beforeEach(prepare)
   afterEach(restore)
 
-  it('aborta o sinal da fonte ao fim da leitura, sem cortar a resposta', async () => {
+  it('aborts the source signal at the end of the read, without cutting the response', async () => {
     useController()
     const received = Promise.withResolvers<AbortSignal>()
     const response = await buildSitemapPartResponse({
@@ -303,7 +303,7 @@ describe('limites antes da fonte', () => {
     await expect(received.promise).resolves.toHaveProperty('aborted', true)
   })
 
-  it('informa o orçamento à enumeração e recusa acima dele antes de normalizar', async () => {
+  it('passes the budget to the enumeration and refuses above it before normalizing', async () => {
     useController()
     const listPartitions = vi.fn<SitemapPartitionSource['listPartitions']>(() =>
       Promise.resolve(['a'])
@@ -320,20 +320,23 @@ describe('limites antes da fonte', () => {
     { part: 'BAD' },
     { part: 'a/b' },
     { part: 'x'.repeat(SITEMAP_LOC_LIMIT + 1) }
-  ])('recusa ID inválido antes da admissão e da fonte', async ({ part }) => {
-    const controller = useController({ total: 1, sitemap: 1, outputs: 1 })
-    const readPartition = vi.fn<SitemapPartitionSource['readPartition']>()
-    const response = await buildSitemapPartResponse({
-      ...partOptions,
-      part,
-      sources: [source({ readPartition })]
-    })
-    expect(response.status).toBe(HTTP_NOT_FOUND)
-    expect(readPartition).not.toHaveBeenCalled()
-    expect(controller.getMetrics().rejected).toBe(0)
-  })
+  ])(
+    'refuses an invalid ID before the admission and the source',
+    async ({ part }) => {
+      const controller = useController({ total: 1, sitemap: 1, outputs: 1 })
+      const readPartition = vi.fn<SitemapPartitionSource['readPartition']>()
+      const response = await buildSitemapPartResponse({
+        ...partOptions,
+        part,
+        sources: [source({ readPartition })]
+      })
+      expect(response.status).toBe(HTTP_NOT_FOUND)
+      expect(readPartition).not.toHaveBeenCalled()
+      expect(controller.getMetrics().rejected).toBe(0)
+    }
+  )
 
-  it('não consome vaga para responder 404 sem fonte registrada', async () => {
+  it('does not take a slot to answer 404 without a registered source', async () => {
     const controller = useController({ total: 1, sitemap: 1, outputs: 1 })
     const gate = Promise.withResolvers<SitemapEntry[]>()
     const pending = buildSitemapPartResponse({

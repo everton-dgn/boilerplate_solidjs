@@ -12,17 +12,18 @@ import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 const HTTP_OK = 200
 const HTTP_BAD_GATEWAY = 502
 const PAGE_URL = '/fragment-css'
-const PANEL_TEXT = 'Painel com CSS própria'
-const LOADING_TEXT = 'Carregando fragmento...'
-// A ordem dos atributos não faz parte do contrato do runtime.
+const PANEL_TEXT = 'Panel with its own CSS'
+const LOADING_TEXT = 'Loading fragment...'
+// The order of the attributes is not part of the runtime contract.
 const FRAGMENT_STYLESHEET =
   /<link\b(?=[^>]*\brel="stylesheet")(?=[^>]*\bhref="(?<href>\/assets\/[^"]+\.css)")[^>]*>/gu
 const FRAGMENT_KEY = /\bdata-dfc="(?<key>[^"]+)"/u
 const SCRIPT_NONCE = /script-src 'nonce-(?<nonce>[^']+)' 'strict-dynamic'/u
 
-// O preview revalida os assets entre documentos. Este proxy preserva o
-// streaming, o status e os cabeçalhos, mudando só o cache das folhas CSS para
-// exercitar o carregamento imediato que ocorre com assets cacheáveis no host.
+// The preview revalidates the assets between documents. This proxy keeps the
+// streaming, the status and the headers, changing only the cache of the CSS
+// stylesheets to exercise the immediate loading that happens with cacheable assets
+// on the host.
 async function startCachingProxy(target: string): Promise<Server> {
   const server = createServer((incoming, outgoing) => {
     const url = new URL(incoming.url ?? '/', target)
@@ -91,8 +92,8 @@ function fragmentId(): string {
   return `fragment-css:${crypto.randomUUID()}`
 }
 
-// O template deve existir antes de uma folha em cache disparar o evento load.
-test('envia o template antes da CSS do fragmento, sem handlers inline', async ({
+// The template must exist before a cached stylesheet fires the load event.
+test('sends the template before the fragment CSS, without inline handlers', async ({
   request,
   baseURL
 }) => {
@@ -131,7 +132,7 @@ test('envia o template antes da CSS do fragmento, sem handlers inline', async ({
   }
 })
 
-test('revela o painel com CSS nova e em cache, sem violação de CSP', async ({
+test('reveals the panel with new and cached CSS, without a CSP violation', async ({
   page,
   request,
   baseURL,
@@ -147,8 +148,8 @@ test('revela o painel com CSS nova e em cache, sem violação de CSP', async ({
     }
     const url = `http://127.0.0.1:${address.port}${PAGE_URL}`
 
-    // Cada navegação usa um gate novo: um id já liberado resolveria o dado
-    // antes do shell e levaria a CSS ao <head>.
+    // Each navigation uses a new gate: an id already released would resolve the
+    // data before the shell and bring the CSS into the <head>.
     const firstId = fragmentId()
     const response = await page.goto(`${url}?id=${firstId}`, {
       waitUntil: 'commit'
@@ -165,9 +166,9 @@ test('revela o painel com CSS nova e em cache, sem violação de CSP', async ({
       return new URL(href, url).href
     })
 
-    // A primeira navegação termina com a folha carregada. A segunda usa a
-    // mesma origem e as mesmas folhas, sem modificar o DOM nem interceptar
-    // requests.
+    // The first navigation ends with the stylesheet loaded. The second one uses
+    // the same origin and the same stylesheets, without changing the DOM or
+    // intercepting requests.
     await page.goto('about:blank')
     const cachedId = fragmentId()
     const cachedResponse = await page.goto(`${url}?id=${cachedId}`, {

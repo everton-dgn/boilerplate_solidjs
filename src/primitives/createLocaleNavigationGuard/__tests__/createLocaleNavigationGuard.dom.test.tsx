@@ -51,12 +51,12 @@ describe('locale navigation guard', () => {
     const replace = vi
       .spyOn(globalThis.location, 'replace')
       .mockImplementation(() => {
-        /* Permanece no documento do teste. */
+        /* Stays in the test document. */
       })
     const assign = vi
       .spyOn(globalThis.location, 'assign')
       .mockImplementation(() => {
-        /* Permanece no documento do teste. */
+        /* Stays in the test document. */
       })
     const history = memoryHistory('/en/start')
     let navigate: ReturnType<typeof useNavigate> | undefined
@@ -119,7 +119,7 @@ describe('locale guard with Router response processing', () => {
     const replace = vi
       .spyOn(globalThis.location, 'replace')
       .mockImplementation(() => {
-        /* Observa a chamada sem sair do teste. */
+        /* Watches the call without leaving the test. */
       })
     const submit = formAction(
       () =>
@@ -131,8 +131,8 @@ describe('locale guard with Router response processing', () => {
         ),
       'locale-guard-action-test'
     )
-    // A ação do router só recebe o contexto dele quando está ligada a um
-    // formulário; o envio passa pelo mesmo tratamento de redirect.
+    // The router action only receives its context when it is bound to a form;
+    // the submission goes through the same redirect handling.
     function Page() {
       return (
         <form action={submit} method="post">
@@ -157,7 +157,7 @@ describe('locale guard with Router response processing', () => {
     const replace = vi
       .spyOn(globalThis.location, 'replace')
       .mockImplementation(() => {
-        /* Observa a chamada sem sair do teste. */
+        /* Watches the call without leaving the test. */
       })
     const read = query(
       () =>

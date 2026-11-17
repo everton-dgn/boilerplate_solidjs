@@ -8,10 +8,10 @@ describe('generated message types', () => {
       { framework: 'SolidJS', toolchain: 'Vite+', language: 'TypeScript' },
       { locale }
     )
-    // @ts-expect-error Todos os parâmetros declarados são obrigatórios.
+    // @ts-expect-error Every declared parameter is required.
     m.home_description({ framework: 'SolidJS' })
     expectTypeOf<keyof typeof m>().extract<'home_missing'>().toBeNever()
-    // @ts-expect-error Apenas os idiomas configurados são aceitos.
+    // @ts-expect-error Only the configured locales are accepted.
     m.home_title({}, { locale: 'fr' })
   })
 })

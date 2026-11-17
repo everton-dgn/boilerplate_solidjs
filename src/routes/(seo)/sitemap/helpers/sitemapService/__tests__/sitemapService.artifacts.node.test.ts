@@ -14,7 +14,7 @@ import {
 } from '@/constants/publication.ts'
 import type { PublicationOptions } from '@/infra/server/publication/types.ts'
 
-// oxlint-disable-next-line eslint/no-restricted-imports -- Contrato real entre o escritor do build e o leitor da função.
+// oxlint-disable-next-line eslint/no-restricted-imports -- Real contract between the build writer and the function reader.
 import { writeServerArtifacts } from '../../../../../../../tooling/publicationArtifacts/helpers/writeServerArtifacts/index.ts'
 import { SITEMAP_BYTE_LIMIT, SITEMAP_URL_LIMIT } from '../../../constants.ts'
 import type { SitemapManifest, SitemapRouteContext } from '../../../types.ts'
@@ -188,11 +188,11 @@ async function restore(): Promise<void> {
   )
 }
 
-describe('sitemap servido por artefatos', () => {
+describe('sitemap served by artifacts', () => {
   beforeEach(prepare)
   afterEach(restore)
 
-  it('leitura estática usa só o manifesto, sem rotas nem identidades', async () => {
+  it('a static read uses only the manifest, without routes or identities', async () => {
     await writeArtifacts()
     const options = runtime()
     const part = { ...options, kind: 'pages' as const }
@@ -214,7 +214,7 @@ describe('sitemap servido por artefatos', () => {
     expect(options.readRoutes).not.toHaveBeenCalled()
   })
 
-  it('mantém 404 sem páginas e sem fontes', async () => {
+  it('keeps 404 without pages and without sources', async () => {
     await writeArtifacts({ parts: 0 })
     const options = runtime()
     const response = await buildSitemapIndexResponse(options)
@@ -250,7 +250,7 @@ describe('sitemap servido por artefatos', () => {
     }
   )
 
-  it('índice misto usa referências prontas e fontes por requisição', async () => {
+  it('a mixed index uses ready references and per-request sources', async () => {
     await writeArtifacts({ parts: 3, hasPartitionSources: true })
     let partitions = ['a']
     const selected = source({
@@ -266,7 +266,7 @@ describe('sitemap servido por artefatos', () => {
     expect(second).toContain('/sitemaps/catalog/b.xml')
   })
 
-  it('une uma parte à fonte em array, muda por pedido e carrega identidades uma vez', async () => {
+  it('joins a part to the array source, changes per request and loads the identities once', async () => {
     const directory = await writeArtifacts({
       parts: 1,
       hasArraySources: true
@@ -284,7 +284,7 @@ describe('sitemap servido por artefatos', () => {
     expect(second).not.toContain('/blog/array')
   })
 
-  it('duplicata de fonte em array preserva os metadados estáticos', async () => {
+  it('an array source duplicate keeps the static metadata', async () => {
     await writeArtifacts({ parts: 1, hasArraySources: true })
     const options = runtime({
       manifest: withArraySource(() => [
@@ -298,7 +298,7 @@ describe('sitemap servido por artefatos', () => {
     )
   })
 
-  it('decide urlset ou índice pelos bytes exatos da união', async () => {
+  it('chooses urlset or index by the exact bytes of the union', async () => {
     const exact = encoder.encode(
       buildSitemap({ entries: [staticEntry, arrayEntry], siteUrl })
     ).byteLength
@@ -324,7 +324,7 @@ describe('sitemap servido por artefatos', () => {
   })
 
   it(
-    'decide urlset ou índice pela contagem exata da união',
+    'chooses urlset or index by the exact count of the union',
     { timeout: 30_000 },
     async () => {
       const limit = Math.floor(SITEMAP_URL_LIMIT / locales.length)
@@ -355,7 +355,7 @@ describe('sitemap servido por artefatos', () => {
     }
   )
 
-  it('fonte em array vazia não publica parte e omite a referência', async () => {
+  it('an empty array source publishes no part and leaves out the reference', async () => {
     await writeArtifacts({ parts: 2, hasArraySources: true })
     const options = runtime({ manifest: withArraySource(() => []) })
     const xml = await readIndex(options)
@@ -369,7 +369,7 @@ describe('sitemap servido por artefatos', () => {
     expect(part.status).toBe(HTTP_NOT_FOUND)
   })
 
-  it('fonte em array vazia sem páginas continua 404', async () => {
+  it('an empty array source without pages stays 404', async () => {
     await writeArtifacts({ parts: 0, hasArraySources: true, pages: [] })
     const options = runtime({ manifest: withArraySource(() => []) })
     const response = await buildSitemapIndexResponse(options)
@@ -377,11 +377,11 @@ describe('sitemap servido por artefatos', () => {
   })
 })
 
-describe('artefatos ausentes ou de outra geração', () => {
+describe('missing artifacts or artifacts from another generation', () => {
   beforeEach(prepare)
   afterEach(restore)
 
-  it('falha pequeno com manifesto ausente e se recupera sem cache de falha', async () => {
+  it('fails small with a missing manifest and recovers without a failure cache', async () => {
     const directory = await writeArtifacts()
     const manifestFile = path.join(directory, SITEMAP_MANIFEST_FILE)
     const contents = await readFile(manifestFile)
@@ -405,26 +405,26 @@ describe('artefatos ausentes ou de outra geração', () => {
   })
 
   it.each([
-    { name: 'JSON inválido', edit: () => 'not json' },
+    { name: 'invalid JSON', edit: () => 'not json' },
     {
-      name: 'contagem incompleta',
+      name: 'incomplete count',
       edit: (text: string) =>
         text.replace('"pagePartCount":2', '"pagePartCount":3')
     },
     {
-      name: 'outro site',
+      name: 'another site',
       edit: (text: string) => text.replace(siteUrl, 'https://other.example/')
     },
     {
-      name: 'outro orçamento',
+      name: 'another budget',
       edit: (text: string) =>
         text.replace(`"byteBudget":${BYTE_BUDGET}`, '"byteBudget":1')
     },
     {
-      name: 'versão desconhecida',
+      name: 'unknown version',
       edit: (text: string) => text.replace('"version":1', '"version":2')
     }
-  ])('recusa manifesto com $name', async ({ edit }) => {
+  ])('refuses a manifest with $name', async ({ edit }) => {
     const directory = await writeArtifacts()
     const file = path.join(directory, SITEMAP_MANIFEST_FILE)
     await writeFile(file, edit(await readFile(file, 'utf8')))
@@ -438,7 +438,7 @@ describe('artefatos ausentes ou de outra geração', () => {
     expect(options.readRoutes).not.toHaveBeenCalled()
   })
 
-  it('recusa manifesto e identidades coerentes de outro build', async () => {
+  it('refuses a consistent manifest and identities from another build', async () => {
     const pages = [staticEntry]
     await writeArtifacts({
       buildId: 'other-build',
@@ -462,7 +462,7 @@ describe('artefatos ausentes ou de outra geração', () => {
     expect(options.readRoutes).not.toHaveBeenCalled()
   })
 
-  it('recusa artefatos válidos num bundle sem identificador', async () => {
+  it('refuses valid artifacts in a bundle without an identifier', async () => {
     await writeArtifacts()
     vi.stubEnv('PUBLICATION_BUILD_ID', '')
     const options = runtime()
@@ -474,7 +474,7 @@ describe('artefatos ausentes ou de outra geração', () => {
     expect(response.status).toBe(HTTP_SERVICE_UNAVAILABLE)
   })
 
-  it('não registra caminho nem detalhe da falha de leitura', async () => {
+  it('logs neither the path nor the detail of the read failure', async () => {
     const directory = await writeArtifacts()
     await rm(path.join(directory, SITEMAP_MANIFEST_FILE))
     await buildSitemapPartResponse({
@@ -488,7 +488,7 @@ describe('artefatos ausentes ou de outra geração', () => {
     expect(logged).not.toContain('ENOENT')
   })
 
-  it('recusa raiz de um manifesto com outro registro de fontes', async () => {
+  it('refuses the root of a manifest with another source registry', async () => {
     await writeArtifacts({ parts: 2 })
     const listPartitions = vi.fn<SitemapPartitionSource['listPartitions']>()
     const response = await buildSitemapIndexResponse(
@@ -498,7 +498,7 @@ describe('artefatos ausentes ou de outra geração', () => {
     expect(listPartitions).not.toHaveBeenCalled()
   })
 
-  it('recusa identidades alteradas, ausentes e sem referência', async () => {
+  it('refuses changed, missing and unreferenced identities', async () => {
     const directory = await writeArtifacts({
       parts: 1,
       hasArraySources: true
@@ -525,7 +525,7 @@ describe('artefatos ausentes ou de outra geração', () => {
     expect(unreferenced.status).toBe(HTTP_NOT_FOUND)
   })
 
-  it('falha explicitamente sem o diretório da função', async () => {
+  it('fails explicitly without the function folder', async () => {
     await writeArtifacts()
     vi.stubGlobal('__nitro_main__', null)
     const response = await buildSitemapPartResponse({

@@ -15,7 +15,7 @@ type Visit<State> = WalkStaticRoutesOptions<State>['visit']
 const EXTREME_DEPTH = 10_000
 const WIDE_COUNT = 10_000
 
-// Cada visita devolve o próprio caminho, e a filha recebe o caminho do pai.
+// Each visit returns its own path, and the child receives the path of the parent.
 function visitPath(visited: Visited[]): Visit<string> {
   return ({ path, parentState }) => {
     visited.push({ path, parentState })
@@ -40,8 +40,8 @@ function collectPagePaths(routes: readonly StaticRoute[]): string[] {
   return pages
 }
 
-describe('travessia das rotas estáticas', () => {
-  it('compõe caminhos absolutos, normaliza barras e propaga o estado do pai', () => {
+describe('static route walk', () => {
+  it('builds absolute paths, normalizes slashes and passes down the state of the parent', () => {
     const visited: Visited[] = []
     walkStaticRoutes<string>({
       routes: [
@@ -75,7 +75,7 @@ describe('travessia das rotas estáticas', () => {
     ])
   })
 
-  it('não visita ramos dinâmicos nem seus descendentes', () => {
+  it('does not visit dynamic branches or their descendants', () => {
     const visit = vi.fn<Visit<null>>(() => null)
     walkStaticRoutes<null>({
       routes: [
@@ -95,7 +95,7 @@ describe('travessia das rotas estáticas', () => {
     })
   })
 
-  it('com shouldVisitDynamic, visita ramos com parâmetro e marca também os descendentes', () => {
+  it('with shouldVisitDynamic, visits branches with a parameter and marks the descendants too', () => {
     const visited: VisitedDynamic[] = []
     walkStaticRoutes<null>({
       routes: [
@@ -120,7 +120,7 @@ describe('travessia das rotas estáticas', () => {
     ])
   })
 
-  it('percorre em profundidade, preservando a ordem dos irmãos', () => {
+  it('walks depth-first, keeping the order of the siblings', () => {
     const visited: Visited[] = []
     walkStaticRoutes<string>({
       routes: [
@@ -140,8 +140,8 @@ describe('travessia das rotas estáticas', () => {
   })
 })
 
-describe('travessia das rotas em casos extremos', () => {
-  it('atravessa dez mil layouts sem estourar a pilha de chamadas', () => {
+describe('route walk in extreme cases', () => {
+  it('walks ten thousand layouts without overflowing the call stack', () => {
     let routes: StaticRoute[] = [{ path: '/leaf', page: true }]
     for (let depth = 0; depth < EXTREME_DEPTH; depth += 1) {
       routes = [{ path: '/', children: routes }]
@@ -150,7 +150,7 @@ describe('travessia das rotas em casos extremos', () => {
     expect(collectPagePaths(routes)).toStrictEqual(['/leaf'])
   })
 
-  it('preserva a ordem de dez mil rotas irmãs e normaliza as barras', () => {
+  it('keeps the order of ten thousand sibling routes and normalizes the slashes', () => {
     const routes = Array.from({ length: WIDE_COUNT }, (_, index) => ({
       path: `//page-${index}//`,
       page: true

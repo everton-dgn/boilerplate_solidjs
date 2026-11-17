@@ -8,12 +8,12 @@ import { waitFixtureGate } from '../../backend/waitFixtureGate/index.ts'
 
 type ProductDetailsProps = { id: string }
 
-// O gate, liberado pelo teste depois do shell, publica o JSON-LD do produto
-// como atualização tardia do head.
+// The gate, released by the test after the shell, publishes the JSON-LD of the
+// product as a late update of the head.
 function ProductDetails(props: ProductDetailsProps) {
   const name = createMemo(async () => {
     await waitFixtureGate({ id: props.id, real: false })
-    return 'Produto em streaming'
+    return 'Streamed product'
   })
   createSeo({
     structuredData: () => ({
@@ -28,7 +28,7 @@ function ProductDetails(props: ProductDetailsProps) {
     <section>
       <h2>{name()}</h2>
       <button type="button" onClick={() => setClicks(value => value + 1)}>
-        Incrementar
+        Increment
       </button>
       <p>Cliques: {clicks()}</p>
     </section>
@@ -38,8 +38,8 @@ function ProductDetails(props: ProductDetailsProps) {
 export const route = {
   info: {
     seo: {
-      title: 'Dados estruturados em streaming',
-      description: 'Fixture de JSON-LD publicado após os dados assíncronos.'
+      title: 'Streamed structured data',
+      description: 'Fixture of JSON-LD published after the async data.'
     }
   }
 } satisfies RouteDefinition
@@ -48,8 +48,8 @@ export default function StructuredDataStreamPage() {
   const [params] = useSearchParams()
   return (
     <main>
-      <h1>Dados estruturados em streaming</h1>
-      <Loading fallback={<p>Carregando produto...</p>}>
+      <h1>Streamed structured data</h1>
+      <Loading fallback={<p>Loading product...</p>}>
         <ProductDetails id={String(params.id)} />
       </Loading>
     </main>

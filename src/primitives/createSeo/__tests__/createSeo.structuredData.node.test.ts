@@ -14,11 +14,11 @@ function Page() {
   createSeo({
     structuredData: () => ({ '@type': 'Thing', name: UNSAFE_JSON_LD_TEXT })
   })
-  return ssr('<html><head></head><body><p>Conteúdo da página</p></body></html>')
+  return ssr('<html><head></head><body><p>Page content</p></body></html>')
 }
 
-describe('serialização nativa do JSON-LD no servidor', () => {
-  it('escapa o JSON-LD no HTML inicial e preserva seu conteúdo ao decodificar', () => {
+describe('native JSON-LD serialization on the server', () => {
+  it('escapes the JSON-LD in the initial HTML and keeps its content when decoding', () => {
     const html = renderToString(() => createComponent(Page, {}))
     const json =
       /<script\b[^>]*type="application\/ld\+json"[^>]*>(?<json>.*?)<\/script>/su.exec(
@@ -32,10 +32,10 @@ describe('serialização nativa do JSON-LD no servidor', () => {
       '@type': 'Thing',
       name: UNSAFE_JSON_LD_TEXT
     })
-    expect(html).toContain('<p>Conteúdo da página</p>')
+    expect(html).toContain('<p>Page content</p>')
   })
 
-  it('escapa a atualização de JSON-LD liberada depois do primeiro chunk', async () => {
+  it('escapes the JSON-LD update released after the first chunk', async () => {
     const pending = Promise.withResolvers<string>()
 
     function DeferredData() {
@@ -43,7 +43,7 @@ describe('serialização nativa do JSON-LD no servidor', () => {
       createSeo({ structuredData: () => ({ '@type': 'Thing', name: name() }) })
       return ssr(
         ['', ''],
-        createMemo(() => name() && 'Dados publicados')
+        createMemo(() => name() && 'Published data')
       )
     }
 
@@ -52,7 +52,7 @@ describe('serialização nativa do JSON-LD no servidor', () => {
         ssr(
           ['<html><head></head><body>', '</body></html>'],
           createComponent(Loading, {
-            fallback: 'Carregando dados',
+            fallback: 'Loading data',
             get children() {
               return createComponent(DeferredData, {})
             }
@@ -69,7 +69,7 @@ describe('serialização nativa do JSON-LD no servidor', () => {
     const shell = new TextDecoder().decode(first.value)
     expect({
       isDone: first.done,
-      hasFallback: shell.includes('Carregando dados'),
+      hasFallback: shell.includes('Loading data'),
       hasJsonLd: shell.includes('application/ld+json')
     }).toStrictEqual({
       isDone: false,
@@ -95,6 +95,6 @@ describe('serialização nativa do JSON-LD no servidor', () => {
       /<script data-json-ld-injected>|<img data-json-ld-injected|<!--<script>/u
     )
     expect(tail).toContain('data-json-ld-injected')
-    expect(tail).toContain('Dados publicados')
+    expect(tail).toContain('Published data')
   })
 })

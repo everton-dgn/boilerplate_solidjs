@@ -11,7 +11,7 @@ import { localizeRequest } from '../localizeRequest/index.ts'
 import { MAX_HTML_BYTES } from '../markdownContent/constants.ts'
 
 const TEST_ORIGIN = 'http://localhost'
-// vi.mock é içado para o topo do arquivo; o caminho sobe junto.
+// vi.mock is hoisted to the top of the file; the path goes up with it.
 const { API_PATH, FORM_PATH } = vi.hoisted(() => ({
   API_PATH: '/rota-api',
   FORM_PATH: '/formulario'
@@ -19,8 +19,8 @@ const { API_PATH, FORM_PATH } = vi.hoisted(() => ({
 const HTTP_FOUND = 302
 const HTTP_METHOD_NOT_ALLOWED = 405
 const HTTP_INTERNAL_SERVER_ERROR = 500
-// A cadeia interna responde no idioma da página. As contenções externas e o
-// adaptador Markdown, fora do contexto de idioma, respondem no idioma base.
+// The inner chain answers in the locale of the page. The outer containments and
+// the Markdown adapter, outside the locale context, answer in the base locale.
 const PUBLIC_MESSAGE_PT = 'Não foi possível concluir a solicitação.'
 const PUBLIC_MESSAGE_EN = 'The request could not be completed.'
 const LOG_MESSAGE = '[middleware] Unexpected failure; private details omitted'
@@ -29,9 +29,9 @@ const ERROR_PAGE_LOG =
 
 vi.mock(import('../localizeRequest/index.ts'), { spy: true })
 
-// O projeto node usa um manifesto vazio. O handler de API real recebe aqui uma
-// rota sintética que responde sem chamar next, como sitemap.xml e robots.txt,
-// e uma página que também trata POST.
+// The node project uses an empty manifest. The real API handler gets here a
+// synthetic route that answers without calling next, like sitemap.xml and
+// robots.txt, and a page that also handles POST.
 vi.mock(import('filesystem-routing/api'), async importOriginal => {
   const api = await importOriginal()
   const formRoute = {
@@ -89,16 +89,16 @@ function pageEvent(path = '/pt'): RequestEvent {
 }
 
 function mockProductionLog(): void {
-  // A contenção só vale nos builds de produção; o Vitest roda com DEV.
+  // The containment only applies to production builds; Vitest runs with DEV.
   vi.stubEnv('DEV', false)
   vi.spyOn(console, 'error').mockImplementation(vi.fn())
 }
 
-describe('export padrão do middleware', () => {
+describe('default export of the middleware', () => {
   beforeEach(mockProductionLog)
 
-  it('compõe a cadeia de produção dentro da contenção', async () => {
-    const response = new Response('página')
+  it('composes the production chain inside the containment', async () => {
+    const response = new Response('page')
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
     const event = pageEvent('/pt/pagina')
 
@@ -109,9 +109,9 @@ describe('export padrão do middleware', () => {
     expect(response.headers.get('x-content-type-options')).toBe('nosniff')
   })
 
-  // O E2E injeta falhas pela fábrica; só este teste prova que o export padrão
-  // mantém a contenção.
-  it('troca uma falha da cadeia por 500 público', async () => {
+  // The E2E tests inject failures through the factory; only this test proves that
+  // the default export keeps the containment.
+  it('replaces a chain failure with a public 500', async () => {
     const event = pageEvent()
     const next = vi
       .fn<() => Promise<Response>>()
@@ -134,11 +134,11 @@ describe('export padrão do middleware', () => {
   })
 })
 
-describe('contenção do adaptador Markdown', () => {
+describe('containment of the Markdown adapter', () => {
   beforeEach(mockProductionLog)
 
   it.each(['pt', 'en', 'es'])(
-    'contém uma falha do matching Markdown antes do render no idioma %s',
+    'contains a Markdown matching failure before the render in the %s locale',
     async locale => {
       vi.spyOn(Router, 'match').mockImplementation(() => {
         throw new Error('PRIVATE_MATCH', { cause: 'PRIVATE_CAUSE' })
@@ -171,7 +171,7 @@ describe('contenção do adaptador Markdown', () => {
     }
   )
 
-  it('contém uma falha de localização do fallback anterior ao matching', async () => {
+  it('contains a localization failure of the fallback before the matching', async () => {
     vi.spyOn(Router, 'match').mockImplementation(() => {
       throw new Error('PRIVATE_MATCH')
     })
@@ -197,7 +197,7 @@ describe('contenção do adaptador Markdown', () => {
     })
   })
 
-  it('contém uma falha de Vary do Markdown sem repetir o render', async () => {
+  it('contains a Markdown Vary failure without repeating the render', async () => {
     vi.spyOn(Router, 'match').mockReturnValue([
       {
         path: '/about',
@@ -234,7 +234,7 @@ describe('contenção do adaptador Markdown', () => {
     })
   })
 
-  it('mantém o idioma durante o render do fallback interno', async () => {
+  it('keeps the locale during the render of the inner fallback', async () => {
     const event = pageEvent('/en/about')
     const fail = vi
       .fn<() => Promise<Response>>()
@@ -260,7 +260,7 @@ describe('contenção do adaptador Markdown', () => {
     })
   })
 
-  it('entrega o alias reescrito ao render dentro do idioma da página', async () => {
+  it('hands the rewritten alias to the render inside the locale of the page', async () => {
     vi.spyOn(Router, 'match').mockReturnValue([
       {
         path: '/about',
@@ -300,11 +300,11 @@ describe('contenção do adaptador Markdown', () => {
   })
 })
 
-describe('falhas próprias do adaptador Markdown', () => {
+describe('failures of the Markdown adapter itself', () => {
   beforeEach(mockProductionLog)
 
-  // Sem prefixo de idioma, o fallback devolve o redirect em vez da página.
-  it('troca por 500 em texto o redirect de idioma do fallback', async () => {
+  // Without a locale prefix, the fallback returns the redirect instead of the page.
+  it('replaces the locale redirect of the fallback with a text 500', async () => {
     vi.spyOn(Router, 'match').mockImplementation(() => {
       throw new Error('PRIVATE_MATCH')
     })
@@ -325,7 +325,7 @@ describe('falhas próprias do adaptador Markdown', () => {
     })
   })
 
-  it('registra a falha da conversão acima do limite de bytes', async () => {
+  it('logs the conversion failure above the byte limit', async () => {
     vi.spyOn(Router, 'match').mockReturnValue([
       {
         path: '/about',
@@ -362,11 +362,11 @@ describe('falhas próprias do adaptador Markdown', () => {
   })
 })
 
-describe('respostas com headers imutáveis', () => {
+describe('responses with immutable headers', () => {
   beforeEach(mockProductionLog)
 
-  // Response.redirect() chega com headers imutáveis e sem corpo.
-  it('grava os headers da cadeia num redirect sem trocar por 500', async () => {
+  // Response.redirect() arrives with immutable headers and without a body.
+  it('writes the chain headers on a redirect without replacing it with a 500', async () => {
     const event = pageEvent('/pt/pagina')
     const next = vi
       .fn<() => Promise<Response>>()
@@ -390,9 +390,9 @@ describe('respostas com headers imutáveis', () => {
     })
   })
 
-  // O retorno cru de fetch() tem headers imutáveis e corpo upstream; a cadeia
-  // não o repassa.
-  it('troca a resposta crua de fetch() por 500 público', async () => {
+  // The raw return of fetch() has immutable headers and an upstream body; the
+  // chain does not pass it along.
+  it('replaces the raw fetch() response with a public 500', async () => {
     const event = pageEvent('/pt/pagina')
     const next = vi
       .fn<() => Promise<Response>>()
@@ -404,7 +404,7 @@ describe('respostas com headers imutáveis', () => {
 
     expect(response.status).toBe(HTTP_INTERNAL_SERVER_ERROR)
     await expect(response.text()).resolves.toBe(PUBLIC_MESSAGE_PT)
-    // Headers imutáveis lançam um TypeError; o corpo upstream fica fora do log.
+    // Immutable headers throw a TypeError; the upstream body stays out of the log.
     expect(readLog(console.error)).toStrictEqual({
       heads: [[LOG_MESSAGE, 'TypeError']],
       leaks: []
@@ -412,16 +412,16 @@ describe('respostas com headers imutáveis', () => {
   })
 })
 
-describe('cadeia de produção', () => {
+describe('production chain', () => {
   beforeEach(() => {
-    // A CSP só sai nos builds de produção; o Vitest roda com DEV.
+    // The CSP only goes out in production builds; Vitest runs with DEV.
     vi.stubEnv('DEV', false)
   })
 
-  // A ordem decide quais respostas recebem os cabeçalhos de segurança e o
-  // nonce: o handler de API responde sem chamar next, então o que vier
-  // depois dele não roda nas rotas de API. Trocar a ordem faz este teste falhar.
-  it('aplica os cabeçalhos e o nonce antes do handler de API', async () => {
+  // The order decides which responses get the security headers and the nonce:
+  // the API handler answers without calling next, so what comes after it does
+  // not run on the API routes. Changing the order makes this test fail.
+  it('applies the headers and the nonce before the API handler', async () => {
     const event = pageEvent(API_PATH)
     const next = vi.fn<() => Promise<Response>>()
 
@@ -443,11 +443,11 @@ describe('cadeia de produção', () => {
     )
   })
 
-  // O despacho das rotas de API é do filesystem-routing e a suíte E2E cobre
-  // sitemap.xml e robots.txt; aqui só o encadeamento importa.
-  it('entrega ao próximo handler as requisições sem rota de API', async () => {
+  // Dispatching the API routes belongs to filesystem-routing and the E2E suite
+  // covers sitemap.xml and robots.txt; here only the chaining matters.
+  it('hands the requests without an API route to the next handler', async () => {
     const event = pageEvent('/pt/pagina')
-    const response = new Response('página')
+    const response = new Response('page')
     const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
       expect(event.nonce).toBeDefined()
       return Promise.resolve(response)
@@ -459,9 +459,9 @@ describe('cadeia de produção', () => {
     expect(next).toHaveBeenCalledOnce()
   })
 
-  // O handler do plugin renderizaria a página com qualquer método, no idioma
-  // base e com status 200.
-  it('responde 405 a um POST numa página sem chamar o render', async () => {
+  // The plugin handler would render the page with any method, in the base locale
+  // and with status 200.
+  it('answers 405 to a POST on a page without calling the render', async () => {
     const event = writeEvent('/pt/about')
     const next = vi.fn<() => Promise<Response>>()
 
@@ -478,7 +478,7 @@ describe('cadeia de produção', () => {
     )
   })
 
-  it('mantém o POST de uma página tratado pelo handler de API', async () => {
+  it('keeps the POST of a page handled by the API handler', async () => {
     const event = writeEvent(FORM_PATH)
     const next = vi.fn<() => Promise<Response>>()
 
@@ -490,7 +490,7 @@ describe('cadeia de produção', () => {
     await expect(response.text()).resolves.toBe('post')
   })
 
-  it('entrega ao dispatcher o POST de uma server function', async () => {
+  it('hands the POST of a server function to the dispatcher', async () => {
     const event = writeEvent('/_server/acao')
     const response = new Response('rpc')
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)

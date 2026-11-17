@@ -37,7 +37,7 @@ const START_MS = 1_000_000
 type StorageAccess = Pick<Storage, 'getItem' | 'setItem'>
 
 function throwBlocked(): never {
-  throw new DOMException('Bloqueado', 'SecurityError')
+  throw new DOMException('Blocked', 'SecurityError')
 }
 
 function readNothing(): null {
@@ -45,7 +45,7 @@ function readNothing(): null {
 }
 
 function writeNothing(): void {
-  /* A escrita não importa quando a leitura já foi recusada. */
+  /* The write does not matter when the read was already refused. */
 }
 
 function hasDraft(): boolean {
@@ -55,10 +55,10 @@ function hasDraft(): boolean {
 function spyDocumentNavigation(): DocumentNavigation {
   return {
     assign: vi.spyOn(globalThis.location, 'assign').mockImplementation(() => {
-      /* Permanece no documento do teste. */
+      /* Stays in the test document. */
     }),
     replace: vi.spyOn(globalThis.location, 'replace').mockImplementation(() => {
-      /* Permanece no documento do teste. */
+      /* Stays in the test document. */
     })
   }
 }
@@ -106,13 +106,13 @@ async function renderGuardedRouter({
   }
 }
 
-// A marca vale até a próxima carga de documento e não volta atrás no módulo.
-// O caso da aba ainda atual fica em createOutdatedPageGuard.initial.dom.test.tsx, que
-// carrega o módulo isolado.
-describe('guard de página desatualizada', () => {
+// The mark lasts until the next document load and does not go back in the
+// module. The case of the tab that is still current is in
+// createOutdatedPageGuard.initial.dom.test.tsx, which loads the module isolated.
+describe('outdated page guard', () => {
   beforeEach(markPageOutdated)
 
-  it('troca por documento a navegação que muda o caminho', async () => {
+  it('turns into a document navigation the navigation that changes the path', async () => {
     const { assign } = spyDocumentNavigation()
     const { host, navigate } = await renderGuardedRouter()
     navigate()('/en/other?q=1#part')
@@ -123,7 +123,7 @@ describe('guard de página desatualizada', () => {
     expect(host.textContent).toBe('/en/start')
   })
 
-  it('respeita o cancelamento de um guard anterior', async () => {
+  it('respects the cancellation of an earlier guard', async () => {
     const { assign, replace } = spyDocumentNavigation()
     const { host, navigate } = await renderGuardedRouter({
       shouldCancelFirst: true
@@ -135,9 +135,9 @@ describe('guard de página desatualizada', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
-  // O guard de versão é inscrito antes das rotas: sem o registro, o guard de
-  // rascunho da página veria defaultPrevented e não perguntaria.
-  it('deixa a navegação no client para a página com alterações não salvas', async () => {
+  // The version guard is subscribed before the routes: without the registration,
+  // the draft guard of the page would see defaultPrevented and not ask.
+  it('leaves the navigation on the client for the page with unsaved changes', async () => {
     const { assign } = spyDocumentNavigation()
     onTestFinished(registerUnsavedChanges(() => true))
     let wasPrevented: boolean | undefined
@@ -152,7 +152,7 @@ describe('guard de página desatualizada', () => {
     expect(assign).not.toHaveBeenCalled()
   })
 
-  it('basta uma checagem com alterações para manter a navegação no client', async () => {
+  it('one check with changes is enough to keep the navigation on the client', async () => {
     const { assign } = spyDocumentNavigation()
     onTestFinished(registerUnsavedChanges(() => false))
     onTestFinished(registerUnsavedChanges(() => true))
@@ -162,7 +162,7 @@ describe('guard de página desatualizada', () => {
     expect(assign).not.toHaveBeenCalled()
   })
 
-  it('mantém a proteção quando só um de dois registros da mesma checagem sai', async () => {
+  it('keeps the protection when only one of two registrations of the same check leaves', async () => {
     const { assign } = spyDocumentNavigation()
     const removeFirst = registerUnsavedChanges(hasDraft)
     onTestFinished(registerUnsavedChanges(hasDraft))
@@ -173,7 +173,7 @@ describe('guard de página desatualizada', () => {
     expect(assign).not.toHaveBeenCalled()
   })
 
-  it('volta a trocar por documento depois de remover a checagem', async () => {
+  it('goes back to document navigation after the check is removed', async () => {
     const { assign } = spyDocumentNavigation()
     const removeCheck = registerUnsavedChanges(() => true)
     removeCheck()
@@ -185,7 +185,7 @@ describe('guard de página desatualizada', () => {
     )
   })
 
-  it('preserva o replace na navegação de documento', async () => {
+  it('keeps replace in the document navigation', async () => {
     const { assign, replace } = spyDocumentNavigation()
     const { navigate } = await renderGuardedRouter()
     navigate()('/en/other', { replace: true })
@@ -197,19 +197,22 @@ describe('guard de página desatualizada', () => {
   })
 
   it.each([
-    ['a query', '/en/start?q=1', '/en/start?q=1'],
-    ['o hash', '/en/start#part', '/en/start'],
-    ['o idioma do mesmo caminho', '/pt/start', '/pt/start']
-  ])('deixa no client a troca só de %s', async (_change, href, rendered) => {
-    const { assign, replace } = spyDocumentNavigation()
-    const { host, navigate } = await renderGuardedRouter()
-    navigate()(href)
-    await expect.poll(() => host.textContent).toBe(rendered)
-    expect(assign).not.toHaveBeenCalled()
-    expect(replace).not.toHaveBeenCalled()
-  })
+    ['the query', '/en/start?q=1', '/en/start?q=1'],
+    ['the hash', '/en/start#part', '/en/start'],
+    ['the locale of the same path', '/pt/start', '/pt/start']
+  ])(
+    'leaves on the client a change of only %s',
+    async (_change, href, rendered) => {
+      const { assign, replace } = spyDocumentNavigation()
+      const { host, navigate } = await renderGuardedRouter()
+      navigate()(href)
+      await expect.poll(() => host.textContent).toBe(rendered)
+      expect(assign).not.toHaveBeenCalled()
+      expect(replace).not.toHaveBeenCalled()
+    }
+  )
 
-  it('deixa no client o voltar entre entradas do mesmo documento', async () => {
+  it('leaves on the client going back between entries of the same document', async () => {
     const { assign, replace } = spyDocumentNavigation()
     const history = memoryHistory('/en/start')
     const { host, navigate } = await renderGuardedRouter({ history })
@@ -221,7 +224,7 @@ describe('guard de página desatualizada', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
-  it('deixa a navegação no client sem conexão', async () => {
+  it('leaves the navigation on the client without a connection', async () => {
     vi.spyOn(globalThis.navigator, 'onLine', 'get').mockReturnValue(false)
     const { assign } = spyDocumentNavigation()
     const { host, navigate } = await renderGuardedRouter()
@@ -231,10 +234,10 @@ describe('guard de página desatualizada', () => {
   })
 })
 
-describe('reconhecimento de erro de versão', () => {
-  it('reconhece a falha de chunk registrada e a função desconhecida', () => {
+describe('version error recognition', () => {
+  it('recognizes the recorded chunk failure and the unknown function', () => {
     const chunkFailure = new TypeError('Failed to fetch module')
-    const unknownFunction = Object.assign(new Error('Recusada'), {
+    const unknownFunction = Object.assign(new Error('Refused'), {
       unknownFunction: true
     })
     recordChunkFailure(chunkFailure)
@@ -243,21 +246,21 @@ describe('reconhecimento de erro de versão', () => {
   })
 
   it.each([
-    ['um erro comum', new Error('Detalhe interno')],
-    ['um erro com unknownFunction falso', { unknownFunction: false }],
-    ['uma string', 'falha'],
+    ['a plain error', new Error('Internal detail')],
+    ['an error with a false unknownFunction', { unknownFunction: false }],
+    ['a string', 'failure'],
     ['undefined', undefined]
-  ])('recusa %s', (_case, error) => {
+  ])('refuses %s', (_case, error) => {
     expect(isVersionError(error)).toBe(false)
   })
 })
 
-describe('trava da recarga automática', () => {
+describe('automatic reload lock', () => {
   beforeEach(() => {
     globalThis.sessionStorage.clear()
   })
 
-  it('libera uma recarga por janela e volta a liberar depois dela', () => {
+  it('allows one reload per window and allows it again after the window', () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(START_MS)
     expect(claimOutdatedPageReload()).toBe(true)
     expect(claimOutdatedPageReload()).toBe(false)
@@ -268,27 +271,27 @@ describe('trava da recarga automática', () => {
   })
 
   it.each([
-    ['não numérica', 'x'],
-    ['no futuro', String(Number.MAX_SAFE_INTEGER)]
-  ])('libera a recarga com a marca %s', (_case, stored) => {
+    ['non-numeric', 'x'],
+    ['in the future', String(Number.MAX_SAFE_INTEGER)]
+  ])('allows the reload with the %s mark', (_case, stored) => {
     globalThis.sessionStorage.setItem('outdated-page-reload', stored)
     expect(claimOutdatedPageReload()).toBe(true)
   })
 
-  // O Storage do happy-dom é um Proxy que não desfaz o spy; o stub global é
-  // restaurado entre os casos.
+  // The happy-dom Storage is a Proxy that does not undo the spy; the global stub
+  // is restored between the cases.
   it.each([
-    ['a leitura', { getItem: throwBlocked, setItem: writeNothing }],
-    ['a escrita', { getItem: readNothing, setItem: throwBlocked }]
+    ['the read', { getItem: throwBlocked, setItem: writeNothing }],
+    ['the write', { getItem: readNothing, setItem: throwBlocked }]
   ])(
-    'não recarrega quando o sessionStorage recusa %s',
+    'does not reload when sessionStorage refuses %s',
     (_case, storage: StorageAccess) => {
       vi.stubGlobal('sessionStorage', storage)
       expect(claimOutdatedPageReload()).toBe(false)
     }
   )
 
-  it('não recarrega sem conexão', () => {
+  it('does not reload without a connection', () => {
     vi.spyOn(globalThis.navigator, 'onLine', 'get').mockReturnValue(false)
     expect(claimOutdatedPageReload()).toBe(false)
     expect(globalThis.sessionStorage.getItem('outdated-page-reload')).toBeNull()

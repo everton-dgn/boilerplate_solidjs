@@ -2,7 +2,7 @@ import { useParams } from '@solidjs/router'
 
 export const route = {
   info: {
-    seo: { title: 'Catálogo', description: 'Entrada pública do catálogo.' }
+    seo: { title: 'Catalog', description: 'Public catalog entry.' }
   }
 }
 

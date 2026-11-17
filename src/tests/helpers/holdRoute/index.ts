@@ -6,9 +6,9 @@ type HeldRoute = {
   release: () => Promise<void>
 }
 
-// Segura as requisições que casam com url até release(), sem depender de
-// tempo. release() remove todas as rotas da página, não só esta, e espera os
-// handlers em andamento terminarem.
+// Holds the requests that match url until release(), without relying on time.
+// release() removes every route of the page, not only this one, and waits for
+// the handlers in progress to finish.
 export async function holdRoute({ page, url }: HoldRoute): Promise<HeldRoute> {
   const requested = Promise.withResolvers<null>()
   const released = Promise.withResolvers<null>()
