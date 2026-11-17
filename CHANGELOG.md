@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.15.3 - 2026-11-17
+
+### Fixed
+
+- update Vite+ to 1.7.0 and check the tooling with tsrs (fd952f9)
+
 ## 1.15.2 - 2026-11-16
 
 ### Fixed
