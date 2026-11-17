@@ -1,47 +1,47 @@
-# Formulários e acessibilidade
+# Forms and accessibility
 
-Base: [revisão verificada](../SKILL.md), reverificada em 2026-09-29.
+Base: [verified revision](../SKILL.md), reverified on 2026-09-29.
 
-## Estado e entradas
+## State and inputs
 
-`createSignal(() => props.value)` cria derivação gravável: sobrescrita local dura até a origem mudar. Para rascunho independente, não use essa forma como inicializador único.
+`createSignal(() => props.value)` creates a writable derivation: a local override lasts until the origin changes. For an independent draft, do not use that form as a one-time initializer.
 
-`value`/`checked` são controlados; `defaultValue`/`defaultChecked` são iniciais. Eventos são nativos: capture `event.currentTarget` antes de `await`.
+`value`/`checked` are controlled; `defaultValue`/`defaultChecked` are initial. Events are native: capture `event.currentTarget` before `await`.
 
-## Select com opções tardias
+## Select with late options
 
-Contrato: select com value/onChange acompanha código/usuário no mesmo nó. Sem handler não desfaz seleção do usuário, divergindo do estado. Runtime aplica value na hora e numa microtask, sem reaplicar ao mudar options.
+Contract: a select with value/onChange follows the code/user on the same node. Without a handler it does not undo the selection of the user, diverging from the state. The runtime applies value right away and in a microtask, without reapplying when the options change.
 
-Receita:
+Recipe:
 ```tsx
 <select onChange={event => setChoice(event.currentTarget.value)}>
   <For each={options()}>{option => <option selected={choice() === option}>{option}</option>}</For>
 </select>
 ```
 
-Armadilha: só value deixa primeira opção visível quando opções chegam depois, mesmo com outro valor no estado. Multiple/hidratação não testados.
+Pitfall: value alone leaves the first option visible when the options arrive later, even with another value in the state. Multiple/hydration not tested.
 
-## Rótulos e atributos
+## Labels and attributes
 
-Contrato: label usa `for` no JSX DOM; `htmlFor` do React não pertence aos tipos; createUniqueId no caminho correto mantém ID SSR/hidratação. Ligue mensagem por aria-describedby e estado por aria-invalid. Aria-pressed/busy exigem texto enumerado reativo.
+Contract: label uses `for` in DOM JSX; the React `htmlFor` does not belong to the types; createUniqueId on the right path keeps the SSR/hydration ID. Link the message through aria-describedby and the state through aria-invalid. Aria-pressed/busy require reactive enumerated text.
 
-Receita:
+Recipe:
 ```tsx
 const id = createUniqueId();
 <>
-<label for={id}>Nome</label>
+<label for={id}>Name</label>
 <input id={id} name="name" autocomplete="name" required />
-<button type="button" aria-pressed={active() ? "true" : "false"}>Selecionar</button>
+<button type="button" aria-pressed={active() ? "true" : "false"}>Select</button>
 </>
 ```
 
-Armadilha: em `aria-pressed` e `aria-busy`, `true` booleano é rejeitado pelo tipo; `false` booleano é aceito para remover o atributo. Use as strings `"true"` e `"false"` para comunicar o estado. Um cast só oculta o erro de tipo. Em atributo booleano nativo, `disabled="false"` desabilita e `disabled={false}` remove.
+Pitfall: in `aria-pressed` and `aria-busy`, a boolean `true` is rejected by the type; a boolean `false` is accepted to remove the attribute. Use the strings `"true"` and `"false"` to convey the state. A cast only hides the type error. In a native boolean attribute, `disabled="false"` disables and `disabled={false}` removes.
 
-## Anúncios
+## Announcements
 
-Contrato: monte região vazia, altere texto e modere repetição em listas. Show/fallback insere região preenchida; use status do modelo fora de Loading/Errored.
+Contract: mount an empty region, change the text and moderate repetition in lists. Show/fallback inserts a filled region; use the model status outside Loading/Errored.
 
-Receita:
+Recipe:
 ```tsx
 <>
 <p role="alert">{error()}</p>
@@ -49,8 +49,8 @@ Receita:
 </>
 ```
 
-Armadilha: Show remove nó ao limpar erro; novo nó preenchido pode não anunciar. Região por item exige nó vazio; o exemplo de tarefas usa outro contrato: o alert só monta quando há falha (de validação, de gravação ou de carga, que chega pelo fallback de `Errored`); sem falha, nenhum alert aparece. DOM não prova anúncio.
+Pitfall: Show removes the node when clearing the error; a new filled node may not announce. A region per item requires an empty node; the tasks example uses another contract: the alert only mounts when there is a failure (of validation, of a write or of a load, which arrives through the `Errored` fallback); without a failure, no alert shows. The DOM does not prove an announcement.
 
-## Foco e ciclo do formulário
+## Focus and form cycle
 
-Keyed preserva a identidade, mas mover o nó focado pode causar blur. Use a [restauração de foco](06-lists-control-flow-and-local-state.md#foco-ao-reordenar) após o flush. Formulário e rascunho fora de `Loading`/`Errored` continuam editáveis durante carga e falha; mensagens imediatas no clique seguem o [agendamento da action](10-actions-optimism-and-confirmation.md#indicador-de-operação-e-publicação-no-clique).
+Keyed keeps the identity, but moving the focused node can cause a blur. Use the [focus restoration](06-lists-control-flow-and-local-state.md#focus-when-reordering) after the flush. A form and a draft outside `Loading`/`Errored` stay editable during loading and failure; immediate messages on click follow the [action scheduling](10-actions-optimism-and-confirmation.md#operation-indicator-and-publication-on-click).

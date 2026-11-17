@@ -1,10 +1,10 @@
-# Montagem, contexto, diagnósticos e halt
+# Mount, context, diagnostics and halt
 
-Códigos de diagnóstico e reparo: [diagnósticos](../../skill-solidjs/references/15-diagnostics-checklists-and-recipes.md#diagnósticos-de-corretude-e-reparo) da skill principal.
+Diagnostic and repair codes: [diagnostics](../../skill-solidjs/references/15-diagnostics-checklists-and-recipes.md#correctness-and-repair-diagnostics) of the main skill.
 
-## Montar com descarte garantido
+## Mount with guaranteed disposal
 
-Reutilize o helper de render do projeto. Na falta dele, esta receita registra o descarte antes de montar. `render()` chama `flush()` antes de retornar, então o DOM inicial já existe no retorno:
+Reuse the render helper of the project. Without it, this recipe registers the disposal before mounting. `render()` calls `flush()` before returning, so the initial DOM already exists on return:
 
 ```tsx
 // support/mount.tsx
@@ -34,17 +34,17 @@ export const mount = (ui: () => JSX.Element): Mounted => {
 }
 ```
 
-Primitives fora de componente usam `createRoot(dispose => ...)`, com `dispose()` no fim ou `onTestFinished(dispose)` logo depois ([receita](reactivity.md#receita-primitive-sob-createroot)).
+Primitives outside a component use `createRoot(dispose => ...)`, with `dispose()` at the end or `onTestFinished(dispose)` right after ([recipe](reactivity.md#recipe-primitive-under-createroot)).
 
-Ordem dos hooks do Vitest: `afterEach` roda antes de `onTestFinished`, e os `onTestFinished` rodam em ordem reversa ao registro. Spy ou global restaurado em `afterEach` perde o que o descarte da árvore registra; quando o descarte depende dele, restaure num `onTestFinished` registrado antes de `mount()`.
+Order of the Vitest hooks: `afterEach` runs before `onTestFinished`, and the `onTestFinished` hooks run in reverse registration order. A spy or global restored in `afterEach` misses what the tree disposal records; when the disposal depends on it, restore it in an `onTestFinished` registered before `mount()`.
 
-## Contexto
+## Context
 
-O contexto é o próprio provider, sem `.Provider`. Uma primitive que lê contexto precisa ser chamada por componente sonda dentro do provider real. Sem default nem provider, `useContext` lança `ContextNotFoundError`; a classe não é exportada, então compare `constructor.name`. Contrato em [contexto](../../skill-solidjs/references/04-components-props-and-context.md#contexto).
+The context is the provider itself, without `.Provider`. A primitive that reads context must be called by a probe component inside the real provider. Without a default or a provider, `useContext` throws `ContextNotFoundError`; the class is not exported, so compare `constructor.name`. Contract in [context](../../skill-solidjs/references/04-components-props-and-context.md#context).
 
-## Capturar diagnósticos
+## Capture diagnostics
 
-Os diagnósticos do build dev saem no console com prefixo `[CODE]`: `console.error` para severidade erro e `console.warn` para as demais. Para diagnósticos de erro que não passam por esse relatório, como o halt, o rodapé de reparo chega sozinho em `console.warn` (começa com `[CODE] repair guide:` na base histórica e com `[CODE] what it means and how to fix it:` em pacotes posteriores) numa microtask, uma vez por código e por instância do motor. Por isso a captura só restaura o console depois de uma microtask:
+The diagnostics of the dev build go to the console with a `[CODE]` prefix: `console.error` for the error severity and `console.warn` for the others. For error diagnostics that do not go through that report, such as the halt, the repair footer arrives alone in `console.warn` (it starts with `[CODE] repair guide:` on the historical base and with `[CODE] what it means and how to fix it:` in later packages) in a microtask, once per code and per engine instance. That is why the capture only restores the console after a microtask:
 
 ```ts
 // support/capture-console.ts
@@ -95,16 +95,16 @@ export const captureConsole = (): ConsoleCapture => {
 }
 ```
 
-A captura precisa cobrir `dispose()` e a microtask antes de `restore()`. Ao configurar ou investigar uma captura que retorna zero, confira o build dev e um negativo conhecido: `NO_OWNER_EFFECT` no grafo cliente, `STRICT_READ_UNTRACKED` no DOM ou `SERVER_WRITE` no servidor. Reutilize o controle do projeto, se houver.
+The capture must cover `dispose()` and the microtask before `restore()`. When setting up or investigating a capture that returns zero, check the dev build and a known negative: `NO_OWNER_EFFECT` in the client graph, `STRICT_READ_UNTRACKED` in the DOM or `SERVER_WRITE` on the server. Reuse the control of the project, if there is one.
 
-`Errored` no build dev registra o erro original com `console.error` quando o fallback é elemento ou função sem parâmetro, e não registra quando o fallback recebe o erro. Num teste com fallback estático, exija essa entrada exata em vez de aceitar console sujo.
+`Errored` in the dev build logs the original error with `console.error` when the fallback is an element or a function without a parameter, and does not log it when the fallback receives the error. In a test with a static fallback, require that exact entry instead of accepting a dirty console.
 
-## Halt reativo
+## Reactive halt
 
-Um erro não contido em effect ou cálculo interrompe o agendador do módulo inteiro. O halt passa para o teste seguinte do mesmo arquivo: aparece `[REACTIVITY_HALTED] Update ignored` e o effect novo nunca aplica, sem reprovar se o teste não tiver asserção positiva.
+An uncontained error in an effect or computation stops the scheduler of the whole module. The halt carries over to the next test of the same file: `[REACTIVITY_HALTED] Update ignored` shows up and the new effect never applies, without failing if the test has no positive assertion.
 
-- `render()` reseta o halt ao montar, só no build dev. `createRoot` nunca reseta: teste de primitive não se recupera sozinho.
-- Teste que provoca halt de propósito registra `onTestFinished(() => resetErrorHalt())`. Quando o halt não é o assunto, contenha o erro com `Errored` e fallback que recebe o erro.
-- Nós criados durante o halt ficam instáveis depois do reset; recrie a árvore.
-- No Chromium o halt chega a `reportError`: o run pode sair com código 1 mesmo com o teste verde. Num teste que provoca halt de propósito, escute `error` em `globalThis` e chame `preventDefault()` apenas quando `event.error` for a causa esperada; o runtime reporta o erro original, não o texto `REACTIVITY_HALTED`. Afirme que o evento esperado ocorreu e remova o listener num `onTestFinished`. Erros diferentes continuam sem supressão.
-- Não execute concorrentemente testes que provocam halt, capturam console ou alteram estado global do motor: a falha ou o reset de um contamina o outro.
+- `render()` resets the halt when mounting, only in the dev build. `createRoot` never resets: a primitive test does not recover by itself.
+- A test that causes a halt on purpose registers `onTestFinished(() => resetErrorHalt())`. When the halt is not the subject, contain the error with `Errored` and a fallback that receives the error.
+- Nodes created during the halt become unstable after the reset; recreate the tree.
+- In Chromium the halt reaches `reportError`: the run can exit with code 1 even with the test green. In a test that causes a halt on purpose, listen to `error` on `globalThis` and call `preventDefault()` only when `event.error` is the expected cause; the runtime reports the original error, not the `REACTIVITY_HALTED` text. Assert that the expected event happened and remove the listener in an `onTestFinished`. Other errors stay unsuppressed.
+- Do not run concurrently tests that cause a halt, capture the console or change global engine state: the failure or the reset of one contaminates the other.

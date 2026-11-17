@@ -1,10 +1,10 @@
-# Effects e ciclo de vida
+# Effects and lifecycle
 
-## Compute e apply
+## Compute and apply
 
-Contrato: `createEffect(compute, apply, options?)` rastreia no compute; apply recebe o resultado, lê sem rastrear, escreve e sincroniza sistemas externos. Devolva cleanup síncrono para liberar antes do próximo apply e no descarte. Apply roda a cada reexecução mesmo com resultado igual: `EffectOptions` não tem `equals`. Com 50 linhas comparando seleção, houve 50 applies; memo por linha reduziu a 2.
+Contract: `createEffect(compute, apply, options?)` tracks in the compute; the apply receives the result, reads without tracking, writes and syncs external systems. Return a synchronous cleanup to release before the next apply and on disposal. The apply runs on every rerun even with an equal result: `EffectOptions` has no `equals`. With 50 rows comparing the selection, there were 50 applies; a memo per row brought it down to 2.
 
-Receita:
+Recipe:
 
 ```ts
 createEffect(
@@ -17,13 +17,13 @@ createEffect(
 )
 ```
 
-Armadilha: dependência lida só no apply não reinscreve. Retornar proxy pai e ler folhas no apply perde a assinatura das folhas; extraia os campos no compute ou use `deep(store)` deliberadamente, pagando pela assinatura ampla. Um effect que apenas copia signal para outro deve virar derivação. Effect atende title, storage, métricas, sockets e integrações. Sem apply, dev lança `MISSING_EFFECT_FN`; trabalho único sem leitura pode ser chamada direta. Apply async devolve Promise e disponibiliza limpeza tarde demais; preserve cancelador síncrono e trate rejeição.
+Pitfall: a dependency read only in the apply does not resubscribe. Returning the parent proxy and reading leaves in the apply loses the subscription of the leaves; extract the fields in the compute or use `deep(store)` deliberately, paying for the broad subscription. An effect that only copies a signal into another should become a derivation. An effect serves title, storage, metrics, sockets and integrations. Without an apply, dev throws `MISSING_EFFECT_FN`; one-time work without a read can be a direct call. An async apply returns a Promise and makes the cleanup available too late; keep a synchronous canceler and handle the rejection.
 
-## Owner por fase
+## Owner per phase
 
-Contrato: apply de `createEffect` tem owner null. Compute e apply de `createRenderEffect` têm owner. `onSettled` expõe owner, mas proíbe criar primitivas. Memo criado no apply pode funcionar sem aviso em dev, porém nasce sem dono.
+Contract: the apply of `createEffect` has a null owner. The compute and the apply of `createRenderEffect` have an owner. `onSettled` exposes an owner, but forbids creating primitives. A memo created in the apply can work without a warning in dev, but it is born without an owner.
 
-Receita: capture `const owner = getOwner()` no setup. Se subscribe exige owner e retorna cancelador, devolva-o via runWithOwner. Se devolve objeto, envolva `unsubscribe` numa função. Se a biblioteca usa `onCleanup` internamente, dê a cada execução seu próprio root:
+Recipe: capture `const owner = getOwner()` in the setup. If subscribe requires an owner and returns a canceler, return it through runWithOwner. If it returns an object, wrap `unsubscribe` in a function. If the library uses `onCleanup` internally, give each run its own root:
 
 ```ts
 const owner = getOwner()
@@ -35,13 +35,13 @@ createEffect(source, current => runWithOwner(owner, () =>
 ))
 ```
 
-Armadilha: `onCleanup` no apply não roda e dev avisa `NO_OWNER_CLEANUP`. Reentrar só no owner do componente mantém A e B assinadas até desmontar; root por execução remove A na troca e B no descarte. Primitivas ficam no setup.
+Pitfall: `onCleanup` in the apply does not run and dev warns `NO_OWNER_CLEANUP`. Reentering only in the owner of the component keeps A and B subscribed until unmount; a root per run removes A on the switch and B on disposal. Primitives stay in the setup.
 
-## Retorno do apply
+## Return of the apply
 
-Contrato: só função de cleanup ou undefined são retornos válidos. Setter retorna valor escrito; `push`, `Map.set` e chamadas similares também devolvem valores.
+Contract: only a cleanup function or undefined are valid returns. A setter returns the written value; `push`, `Map.set` and similar calls also return values.
 
-Receita:
+Recipe:
 
 ```ts
 createEffect(source, value => {
@@ -49,23 +49,23 @@ createEffect(source, value => {
 })
 ```
 
-Armadilha: arrow sem chaves pode transformar retorno em cleanup. Dev lança no primeiro apply "Callback do effect retornou cleanup inválido; retorne função ou undefined" (`effect callback returned an invalid cleanup value. Return a cleanup function or undefined.`). Padrão guarda o valor e falha na próxima execução com "não é uma função". Sem reexecução, dispose lança TypeError síncrono sem halt. Durante execução sem boundary, ambos os builds param todas as raízes com `REACTIVITY_HALTED`; escritas seguintes são ignoradas e registradas. Sob `createErrorBoundary`/`Errored`, fallback recebe a falha sem parar o grafo. Tsc estrito recusa o retorno, mas JS, any e casts perdem a proteção.
+Pitfall: an arrow without braces can turn the return into a cleanup. Dev throws on the first apply `effect callback returned an invalid cleanup value. Return a cleanup function or undefined.`. The default build keeps the value and fails on the next run with "is not a function". Without a rerun, dispose throws a synchronous TypeError without a halt. During a run without a boundary, both builds stop every root with `REACTIVITY_HALTED`; the following writes are ignored and logged. Under `createErrorBoundary`/`Errored`, the fallback receives the failure without stopping the graph. Strict tsc refuses the return, but JS, any and casts lose the protection.
 
-## Erros por fase
+## Errors per phase
 
-Contrato: `{ effect, error }` no lugar de apply recebe em error falhas do compute/upstream, incluindo rejeições async. Falha de compute sem handler num effect não renderizador é registrada, pula apply e mantém o sistema. Falha no apply vai à boundary ou provoca halt. O braço error não captura indiscriminadamente erros de apply.
+Contract: `{ effect, error }` in place of the apply receives in error the failures of the compute/upstream, including async rejections. A compute failure without a handler in a non-rendering effect is logged, skips the apply and keeps the system running. A failure in the apply goes to the boundary or causes a halt. The error arm does not catch apply errors indiscriminately.
 
-Receita: trate falha esperada do apply com try/catch local. Handler recebe erro original, escreve estado e observa assentado: recuperação antes da fase imperativa pode executar sucesso, e transação retida adia o handler. Relançar escala para boundary/halt. Resultados esperados de domínio não devem expor detalhes internos. Consulte o [contrato de EffectBundle](https://v2.solidjs.com/reference/solid-js/reactivity/create-effect#effectbundle) com essa separação de fases.
+Recipe: handle an expected apply failure with a local try/catch. The handler receives the original error, writes state and observes the settled value: a recovery before the imperative phase can run the success path, and a held transaction defers the handler. Rethrowing escalates to the boundary/halt. Expected domain results must not expose internal details. See the [EffectBundle contract](https://v2.solidjs.com/reference/solid-js/reactivity/create-effect#effectbundle) with that phase separation.
 
-Contrato: falha de compute não limpa automaticamente a última inscrição válida. `error(error, cleanup)` permite liberá-la explicitamente; sem chamar cleanup, ele aguarda o próximo apply ou descarte. Cleanup anterior que lança antes do novo apply participa do mesmo tratamento desse apply.
+Contract: a compute failure does not clean up the last valid subscription automatically. `error(error, cleanup)` lets you release it explicitly; without calling cleanup, it waits for the next apply or disposal. A previous cleanup that throws before the new apply takes part in the same handling as that apply.
 
-Armadilha: decida se a integração conserva inscrição durante falha. `REACTIVITY_HALTED` é consequência da primeira falha não contida; não há recuperação pública. `resetErrorHalt` é interno a testes, apesar do export: escrita durante halt pode se perder e atrasar a próxima publicação.
+Pitfall: decide whether the integration keeps the subscription during a failure. `REACTIVITY_HALTED` is the consequence of the first uncontained failure; there is no public recovery. `resetErrorHalt` is internal to tests, despite the export: a write during the halt can be lost and delay the next publication.
 
 ## onSettled
 
-Contrato: cada registro dispara uma vez após assentamento, sem assinatura contínua. Agende no corpo proprietário para widget, medição ou observer. Retorne cleanup; não crie primitivas nem registre onCleanup no callback. `createMemo` ali lança `PRIMITIVE_IN_FORBIDDEN_SCOPE` em dev.
+Contract: each registration fires once after settling, without a continuous subscription. Schedule it in the owning body for a widget, measurement or observer. Return a cleanup; do not create primitives nor register onCleanup in the callback. `createMemo` there throws `PRIMITIVE_IN_FORBIDDEN_SCOPE` in dev.
 
-Receita:
+Recipe:
 
 ```ts
 function createObservedRef(onWidth: (value: number) => void) {
@@ -83,22 +83,22 @@ function createObservedRef(onWidth: (value: number) => void) {
 }
 ```
 
-Contrato: use a fábrica sob owner, callback no ref e APIs browser só no cliente. A receita supõe elemento estável; trocar elemento exige liberar o recurso anterior. Agendamento imperativo sem owner notifica assentamento, mas não promete cleanup do componente. Setup dentro de outro onSettled perde o lifecycle necessário: dev acusa `SETTLED_CLEANUP_UNOWNED`, produção ignora o retorno.
+Contract: use the factory under an owner, the callback in the ref and browser APIs only on the client. The recipe assumes a stable element; swapping the element requires releasing the previous resource. Imperative scheduling without an owner notifies the settle, but does not promise the cleanup of the component. A setup inside another onSettled loses the needed lifecycle: dev reports `SETTLED_CLEANUP_UNOWNED`, production ignores the return.
 
-Armadilha: async devolve Promise, dev lança cleanup inválido e, sem boundary, halt. `onMount` não é exportado; para setup único pós-assentamento com cleanup, use `onSettled`. Escritas no callback continuam no mesmo flush, mas leituras ainda veem o assentado anterior; atualizadores compõem. `flush()` ali lança em dev; dentro de apply é aviso/no-op.
+Pitfall: async returns a Promise, dev throws an invalid cleanup and, without a boundary, halts. `onMount` is not exported; for a one-time post-settle setup with cleanup, use `onSettled`. Writes in the callback stay in the same flush, but reads still see the previous settled value; updaters compose. `flush()` there throws in dev; inside an apply it is a warning/no-op.
 
-## Descarte e primitivas avançadas
+## Disposal and advanced primitives
 
-Contrato: `onCleanup` continua nos escopos proprietários; APIs imperativas podem exigir retorno de cleanup. Memo após dispose devolve último commit sem recalcular, mesmo mudando fonte; termine leituras antes do descarte. Ordem entre cleanups de componentes pai/filho difere entre builds.
+Contract: `onCleanup` stays in the owning scopes; imperative APIs can require returning a cleanup. A memo after dispose returns the last commit without recomputing, even if the source changes; finish the reads before disposal. The order between the cleanups of parent/child components differs between builds.
 
-Receita: reserve `createRenderEffect`, também split, a bindings e integrações de renderer. Ele participa do render e a leitura async pendente retém a transição como os bindings JSX. `createReaction` precisa ser armada novamente; confira seu contrato antes de construir primitiva.
+Recipe: reserve `createRenderEffect`, split as well, for bindings and renderer integrations. It takes part in the render and a pending async read holds the transition like JSX bindings do. `createReaction` must be armed again; check its contract before building a primitive.
 
-Armadilha: `createTrackedEffect` é depreciado, com limitações de transição e leituras/escritas no mesmo flush; não use em código novo. `untrack(fn, label)` com string emite `STRICT_READ_UNTRACKED` em dev quando fn lê diretamente um reativo. O aviso não existe automaticamente para toda leitura sem tracking; rótulo serve a primitivas personalizadas.
+Pitfall: `createTrackedEffect` is deprecated, with transition limitations and reads/writes in the same flush; do not use it in new code. `untrack(fn, label)` with a string emits `STRICT_READ_UNTRACKED` in dev when fn reads a reactive value directly. The warning does not exist automatically for every untracked read; the label serves custom primitives.
 
-## Async tardio e SSR
+## Late async and SSR
 
-Contrato: trabalho async imperativo exige cancelador síncrono e guarda de vigência antes de aplicar resultado. Tipo que aceita async em `onCleanup` não torna o retorno síncrono; apply e onSettled são recusados pelo tsc estrito. Para criar primitivas após espera, capture owner no setup e confira `owner && !isDisposed(owner)` imediatamente antes de reentrar. O runtime avisa owner descartado mas ainda executa callback. `isDisposed` inclui owner marcado para descarte; não cancela operação externa nem propaga contexto através de await.
+Contract: imperative async work requires a synchronous canceler and a validity guard before applying the result. A type that accepts async in `onCleanup` does not make the return synchronous; the apply and onSettled are refused by strict tsc. To create primitives after a wait, capture the owner in the setup and check `owner && !isDisposed(owner)` right before reentering. The runtime warns about a disposed owner but still runs the callback. `isDisposed` includes an owner marked for disposal; it neither cancels an external operation nor propagates context across await.
 
-Receita: cancele a operação e ignore resultado obsoleto; se dado será renderizado, prefira fonte async do grafo. No servidor, `createEffect` executa compute, nunca apply. `createRenderEffect` executa ambos por padrão; `defer: true` pula apply. `ssrSource: 'client'` pula o effect inteiro ([SSR](12-ssr-and-hydration.md#effects-no-servidor)).
+Recipe: cancel the operation and ignore the stale result; if the data will be rendered, prefer an async source of the graph. On the server, `createEffect` runs the compute, never the apply. `createRenderEffect` runs both by default; `defer: true` skips the apply. `ssrSource: 'client'` skips the whole effect ([SSR](12-ssr-and-hydration.md#effects-on-the-server)).
 
-Armadilha: owner marcado pode ainda ter DOM retido e cleanup adiado por action. Em Chromium, trocar ramo de Show marcou owner antes de remover DOM; no commit, ramo novo entrou e cleanup ocorreu uma vez. Isso não mediu recomputações do ramo retido. Guarda de owner não comprova remoção nem cleanup concluído. DOM global no compute normal quebra SSR.
+Pitfall: a marked owner can still have retained DOM and a cleanup deferred by an action. In Chromium, switching a Show branch marked the owner before removing the DOM; on commit, the new branch came in and the cleanup ran once. That did not measure the recomputations of the retained branch. An owner guard does not prove removal or a completed cleanup. Global DOM in a normal compute breaks SSR.

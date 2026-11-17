@@ -1,12 +1,12 @@
-# Actions, otimismo e confirmação
+# Actions, optimism and confirmation
 
-Contratos do runtime da [base verificada](../SKILL.md). `action` aqui vem de `solid-js`; a `formAction` do router (com o alias depreciado `action`) tem outro contrato.
+Runtime contracts of the [verified base](../SKILL.md). `action` here comes from `solid-js`; the `formAction` of the router (with the deprecated `action` alias) has another contract.
 
-## Geradores e reentrada
+## Generators and reentry
 
-Contrato: crie o modelo sob owner e invoque a action no handler, tratando sua Promise. Invocação no corpo de componente/root ou no compute de memo/effect lança `ACTION_CALLED_IN_OWNED_SCOPE` em dev. O apply de `createEffect` e `onSettled` permitem invocação; `runWithOwner(null, fn)` serve à integração imperativa, não para disfarçar mutação durante compute. Gerador mantém passos síncronos na transação; `action(async () => ...)` não substitui essa forma. `affects` marca impacto antes da espera e `refresh` obtém o estado autoritativo.
+Contract: create the model under an owner and invoke the action in the handler, handling its Promise. An invocation in the body of a component/root or in the compute of a memo/effect throws `ACTION_CALLED_IN_OWNED_SCOPE` in dev. The apply of `createEffect` and `onSettled` allow the invocation; `runWithOwner(null, fn)` serves imperative integration, not disguising a mutation during a compute. A generator keeps the synchronous steps in the transaction; `action(async () => ...)` does not replace that form. `affects` marks the impact before the wait and `refresh` gets the authoritative state.
 
-Receita:
+Recipe:
 ```ts
 const items = createMemo(() => api.list())
 const add = action(function* (text: string) {
@@ -16,9 +16,9 @@ const add = action(function* (text: string) {
 })
 ```
 
-Contrato: gerador async permite inferir resultado com await, mas o código entre await e próximo yield fica fora da transação. Isso inclui escrever e criar `until`, `latest`, memo, effect ou montagem. A expressão de `yield until(...)` é avaliada antes de reentrar: faça yield vazio primeiro.
+Contract: an async generator lets you infer the result with await, but the code between the await and the next yield stays outside the transaction. That includes writing and creating `until`, `latest`, a memo, an effect or a mount. The expression of `yield until(...)` is evaluated before reentering: do an empty yield first.
 
-Receita:
+Recipe:
 ```ts
 const save = action(async function* (input: Input) {
   const saved = await api.save(input)
@@ -28,11 +28,11 @@ const save = action(async function* (input: Input) {
 })
 ```
 
-Armadilha: sem yield vazio, confirmação já recebida no store retido pode criar leitor retido, esperando o commit que a própria action bloqueia, até `TimeoutError`. Teste confirmação antes e depois da resposta da mutação. `flush()` dentro da action rejeita com `FLUSH_IN_ACTION` em dev.
+Pitfall: without the empty yield, a confirmation already received in the held store can create a held reader, waiting for the commit that the action itself blocks, until `TimeoutError`. Test the confirmation before and after the response of the mutation. `flush()` inside the action rejects with `FLUSH_IN_ACTION` in dev.
 
-Contrato: helper `async` cedido por `yield helper()` só roda na transação até o primeiro `await` dele. Escrita e `refresh` feitos no helper depois desse ponto ficam fora da action. O helper devolve o resultado e o gerador faz as escritas e o `yield refresh(fonte)`; para reaproveitar o passo, use gerador delegado por `yield*`, como `revalidate` em [tasks](../examples/tasks.tsx). Em `async function*`, `yield refresh(fonte)` logo depois de `await` também roda antes de reentrar: faça `yield` vazio primeiro. Prefira essa forma quando precisar do tipo do resultado: em `function*`, o valor de `yield` é `any` pela assinatura de `action`.
+Contract: an `async` helper yielded through `yield helper()` only runs in the transaction until its first `await`. A write and a `refresh` made in the helper after that point stay outside the action. The helper returns the result and the generator does the writes and the `yield refresh(source)`; to reuse the step, use a generator delegated through `yield*`, like `revalidate` in [tasks](../examples/tasks.tsx). In an `async function*`, `yield refresh(source)` right after `await` also runs before reentering: do an empty `yield` first. Prefer that form when you need the type of the result: in a `function*`, the value of `yield` is `any` by the signature of `action`.
 
-Receita:
+Recipe:
 ```ts
 async function persist(input: Input) {
   const saved = await api.save(input)
@@ -48,18 +48,18 @@ const save = action(async function* (input: Input) {
 })
 ```
 
-Armadilha: nenhum dos desfechos gera erro, e o resultado depende do grafo. Medido em 2026-10-27 no runtime instalado, grafo sem DOM, builds dev e prod, com `await refresh(fonte)` no helper depois de outro `await`:
-- fonte que lê estado já escrito pela action (memo que lê signal escrito no gerador, ou `createOptimistic` com escrita otimista): a Promise da action não assentou, pendente após 2 a 5 s contra cerca de 12 ms no controle;
-- fonte independente: o valor novo publica no meio da action, mesmo com `isPending` ainda verdadeiro por `affects`. Signal que a action ainda não escreveu, escrito no helper, também publica na hora;
-- escrita no helper em signal que a action já escreveu entrelaça com a transação e fica retida, arrastando o `refresh` feito logo depois.
+Pitfall: none of the outcomes raises an error, and the result depends on the graph. Measured on 2026-10-27 in the installed runtime, graph without DOM, dev and prod builds, with `await refresh(source)` in the helper after another `await`:
+- a source that reads state already written by the action (a memo that reads a signal written in the generator, or `createOptimistic` with an optimistic write): the Promise of the action did not settle, still pending after 2 to 5 s against about 12 ms in the control;
+- an independent source: the new value publishes in the middle of the action, even with `isPending` still true through `affects`. A signal that the action has not written yet, written in the helper, also publishes right away;
+- a write in the helper to a signal that the action already wrote interleaves with the transaction and stays held, dragging along the `refresh` made right after.
 
-Com escritas e `refresh` no gerador, todos assentaram juntos. Na revisão, procure `refresh(` e setters em funções `async` chamadas por actions.
+With the writes and the `refresh` in the generator, all of them settled together. In review, look for `refresh(` and setters in `async` functions called by actions.
 
-## Sobreposição e estado durável
+## Overlay and durable state
 
-Contrato: `createOptimistic` e `createOptimisticStore` fornecem sobreposição transitória. Derivação mantém fonte autoritativa; toda escrita otimista dentro da action reverte no settle, com sucesso ou falha, inclusive escrita após yield usando resposta servidor. Verdade durável vem da derivação reexecutada por refresh/entrada ou de store comum separada. Escrita otimista fora de action aparece por um flush e reverte ao fim dele. `setOptimistic` não é export da base; use o setter do par.
+Contract: `createOptimistic` and `createOptimisticStore` provide a transient overlay. The derivation keeps the authoritative source; every optimistic write inside the action reverts on settle, on success or failure, including a write after yield using the server response. Durable truth comes from the derivation rerun through refresh/an input or from a separate plain store. An optimistic write outside an action shows for one flush and reverts at its end. `setOptimistic` is not an export of the base; use the setter of the pair.
 
-Receita:
+Recipe:
 ```ts
 const [items, setItems] = createOptimisticStore<Item[]>(() => api.list(), [])
 const [saving, setSaving] = createOptimistic(false)
@@ -74,52 +74,52 @@ const complete = action(function* (id: string) {
 })
 ```
 
-Armadilha: exemplos documentais que escrevem resposta no otimista após yield não tornam isso persistente. No caso medido, signal/store comuns escritos antes do primeiro yield ficaram invisíveis ao effect externo durante a espera e publicaram mesmo após rejeição da Promise cedida; controle com sucesso publicou o mesmo. Leituras pela própria action após escrita e após yield vazio viram base, inclusive da fonte otimista. Isso não mede exceção no corpo, rejeição após yield posterior nem escrita após reentrada. Não infira sucesso pelo estado final nem rollback de fontes comuns. Snapshot antigo restaurado manualmente pode apagar mudança concorrente válida.
+Pitfall: documentation examples that write the response into the optimistic value after yield do not make it persistent. In the measured case, a plain signal/store written before the first yield stayed invisible to the external effect during the wait and published even after the rejection of the yielded Promise; the success control published the same. Reads by the action itself after the write and after an empty yield saw the base, of the optimistic source included. That does not measure an exception in the body, a rejection after a later yield nor a write after reentry. Do not infer success from the final state nor a rollback of plain sources. An old snapshot restored manually can erase a valid concurrent change.
 
-## Indicador de operação e publicação no clique
+## Operation indicator and publication on click
 
-Contrato: pending observa expressão do grafo; nem toda mutação tem dependência que o botão possa observar. Flag otimista escrita dentro da action aparece no próximo flush e reverte no settle. Signal comum escrito no mesmo tick, antes ou depois da chamada, entra na transação e só publica no settle; escrita independente num tick posterior publica. Para limpar erro/input no clique e mostrar prévia otimista, faça a escrita comum e flush antes da chamada síncrona da action.
+Contract: pending observes an expression of the graph; not every mutation has a dependency the button can observe. An optimistic flag written inside the action shows on the next flush and reverts on settle. A plain signal written in the same tick, before or after the call, enters the transaction and only publishes on settle; an independent write in a later tick publishes. To clear an error/input on click and show an optimistic preview, do the plain write and the flush before the synchronous call of the action.
 
-Receita:
+Recipe:
 ```ts
 const submit = () => {
   const value = text()
   setText("")
   setError("")
   flush()
-  void save(value).catch(() => { setError("Falhou") })
+  void save(value).catch(() => { setError("Failed") })
 }
 ```
 
-Armadilha: `save(text()); setText("")` retém o texto até o fim. Adiar só a action com await/microtask atrasa a prévia, que ainda estará antiga após o flush do evento. A receita é para handler DOM ou código fora de flush em andamento: em `onSettled`/`createTrackedEffect`, flush lança; no apply, é no-op com `FLUSH_IN_EFFECT_CALLBACK`; na action, `FLUSH_IN_ACTION`. Se o comando nasce nesses contextos, agende o bloco inteiro de escrita, flush e action em `queueMicrotask`. Mensagens de resultado podem ser signals comuns após a Promise; região acessível deve estar montada antes do texto.
+Pitfall: `save(text()); setText("")` holds the text until the end. Deferring only the action with await/microtask delays the preview, which will still be old after the flush of the event. The recipe is for a DOM handler or code outside a running flush: in `onSettled`/`createTrackedEffect`, flush throws; in the apply, it is a no-op with `FLUSH_IN_EFFECT_CALLBACK`; in the action, `FLUSH_IN_ACTION`. If the command starts in those contexts, schedule the whole block of write, flush and action in `queueMicrotask`. Result messages can be plain signals after the Promise; the accessible region must be mounted before the text.
 
-Alternativa fora da base verificada (documentação, sem sonda nesta skill): pacotes posteriores exportam `onFlush(callback)`, que roda uma vez logo depois do flush pendente, antes da pintura, sem esperar trabalho assíncrono. Segundo o JSDoc do pacote e a skill oficial `solid-2.0`, ele serve para tirar uma escrita da retenção de outra atualização, como em `onFlush(() => setOpen(false)); props.onSelect?.(id)`. Chame-o em handler ou callback de effect, inclusive `onSettled` e `createTrackedEffect`; no corpo do componente ou numa computação ele avisa em dev. Limites do JSDoc: a escrita só fica independente se nada que ela muda também derivar do trabalho retido; ela chega depois das escritas inline do mesmo quadro, então não escreva o mesmo signal dentro e fora do callback; e `queueMicrotask` chamado antes da primeira escrita do quadro entra no mesmo flush, sem substituir `onFlush`. Confira o export no `solid-js` instalado e mantenha a receita acima até uma sonda comparar as duas com action pendente.
+Alternative outside the verified base (documentation, without a probe in this skill): later packages export `onFlush(callback)`, which runs once right after the pending flush, before painting, without waiting for async work. According to the JSDoc of the package and the official `solid-2.0` skill, it serves to take a write out of the hold of another update, as in `onFlush(() => setOpen(false)); props.onSelect?.(id)`. Call it in a handler or an effect callback, `onSettled` and `createTrackedEffect` included; in the body of the component or in a computation it warns in dev. Limits from the JSDoc: the write only stays independent if nothing it changes also derives from the held work; it arrives after the inline writes of the same frame, so do not write the same signal inside and outside the callback; and a `queueMicrotask` called before the first write of the frame enters the same flush, without replacing `onFlush`. Check the export in the installed `solid-js` and keep the recipe above until a probe compares both with a pending action.
 
-## affects, propriedades e latest
+## affects, properties and latest
 
-Contrato: refresh isolado é silencioso para pending. `affects` antes de refresh na action torna espera visível até assentar. `affects(store, key)` aceita uma chave de slot, não caminho de várias chaves; use nó/folha correto. `isPending(() => store)` só devolve proxy, sem observar campo. Antes do primeiro dado, leitura de propriedade pode lançar NotReadyError; indicador não contém carregamento inicial.
+Contract: an isolated refresh is silent for pending. `affects` before a refresh in the action makes the wait visible until it settles. `affects(store, key)` accepts a slot key, not a path of several keys; use the right node/leaf. `isPending(() => store)` only returns the proxy, without observing a field. Before the first data, a property read can throw NotReadyError; the indicator does not hold the initial loading.
 
-Armadilha: `latest` não filtra toda recarga. Em store derivado assentado, affects global + refresh manteve pendentes leitura comum e latest. Com edição otimista + `affects(store, 0)`, apenas leitura comum da primeira linha ficou pendente; latest e segunda linha não. Edição otimista sem affects não ativou indicadores. Isso prova slot de array, não isolamento de duas propriedades da mesma linha. Não marque aplicação inteira por mudança em uma linha.
+Pitfall: `latest` does not filter every reload. In a settled derived store, a global affects + refresh kept the plain read and latest pending. With an optimistic edit + `affects(store, 0)`, only the plain read of the first row stayed pending; latest and the second row did not. An optimistic edit without affects did not turn on the indicators. That proves an array slot, not the isolation of two properties of the same row. Do not mark the whole application for a change in one row.
 
-## Três esperas
+## Three waits
 
-Contrato: `resolve(expression)` retorna leitura assentada; refresh aguardado retorna próximo estado assentado da invalidação, incluindo supersessão; until espera condição autoritativa correlacionada com timeout/cancelamento. Refresh resolve mesmo com valor igual sem notificação comum. Dentro da action, pode entregar valor autoritativo staged sem esperar commit bloqueado pela própria action. Para accessor otimista, valor resolvido é autoritativo enquanto leitura direta vê sobreposição; para store, resolve o próprio nó, e leitura pelo proxy ainda vê sobreposição. A garantia de não devolver sobreposição refere-se ao valor resolvido, não ao proxy lido depois.
+Contract: `resolve(expression)` returns a settled read; an awaited refresh returns the next settled state of the invalidation, supersession included; until waits for an authoritative condition correlated with timeout/cancellation. Refresh resolves even with an equal value without a plain notification. Inside the action, it can deliver a staged authoritative value without waiting for the commit blocked by the action itself. For an optimistic accessor, the resolved value is authoritative while a direct read sees the overlay; for a store, it resolves the node itself, and a read through the proxy still sees the overlay. The guarantee of not returning the overlay refers to the resolved value, not to the proxy read afterwards.
 
-Armadilha: a janela inicial de `loadingValue` permite refresh resolver com provisório antes do dado real. Until não confirma pela própria sobreposição; falsy continua esperando, erro/timeout/abort rejeita. Uma ID já presente, ausência em página parcial ou contador alterado por outro cliente não confirma sua mutação. Use ID de correlação ou versão, compartilhada pela reconciliação e teste. Refetch após resposta confirmada normalmente basta; until serve quando confirmação vem por fonte viva independente. Teste confirmação precoce, tardia e de outra operação: timeout só limita condição errada.
+Pitfall: the initial window of `loadingValue` lets refresh resolve with the provisional value before the real data. Until does not confirm through the overlay itself; falsy keeps waiting, error/timeout/abort rejects. An ID already present, an absence in a partial page or a counter changed by another client does not confirm your mutation. Use a correlation ID or a version, shared by the reconciliation and the test. A refetch after a confirmed response is usually enough; until serves when the confirmation comes through an independent live source. Test an early, a late and another operation's confirmation: a timeout only limits a wrong condition.
 
-## Operações concorrentes
+## Concurrent operations
 
-Contrato: dois cliques podem ocorrer antes de disabled publicar. Para serialização local use guard imperativo; para paralelismo, chave por entidade. Defina serialização, última escrita vencedora ou versão com conflito no domínio. Setters privados e comandos nomeados impedem sobreposição sem confirmação. Não use fila global para registros independentes nem booleano global para múltiplas operações.
+Contract: two clicks can happen before disabled publishes. For local serialization use an imperative guard; for parallelism, a key per entity. Define serialization, last write wins or a version with conflict in the domain. Private setters and named commands prevent an overlap without confirmation. Do not use a global queue for independent records nor a global boolean for multiple operations.
 
-Receita: no exemplo de tarefas, `Set` comum reserva `form` e `task:<id>` para criação e `task:<id>` para conclusão antes da action. Recusa síncrona aparece em status acessível. Flag otimista por chave alimenta disabled/aria-busy; nova linha fica bloqueada enquanto servidor não conhece a ID. Concluir A enquanto B é criada permite ambas, mas revalidar fonte compartilhada pode assentar ambas juntas na tela: Promise de A terminou após seu refresh, enquanto valor/flag de A esperaram B.
+Recipe: in the tasks example, a plain `Set` reserves `form` and `task:<id>` for creation and `task:<id>` for completion before the action. A synchronous refusal shows in an accessible status. An optimistic flag per key feeds disabled/aria-busy; a new row stays blocked while the server does not know the ID. Completing A while B is created allows both, but revalidating a shared source can settle both together on screen: the Promise of A ended after its refresh, while the value/flag of A waited for B.
 
-Armadilha: fim da Promise não garante DOM confirmado. Use ID estável cliente quando permitido ou correlação explícita; trocar chave temporária sem reconciliar desmonta linha, perde foco ou duplica entidade. Resposta obsoleta descartada não cancela efeito servidor. Backend ainda exige precondição, versão, transação ou chave idempotente.
+Pitfall: the end of the Promise does not guarantee a confirmed DOM. Use a stable client ID when allowed or an explicit correlation; swapping a temporary key without reconciling unmounts the row, loses focus or duplicates the entity. A dropped stale response does not cancel the server effect. The backend still requires a precondition, version, transaction or idempotent key.
 
-## Publicar confirmação de uma action sobreposta
+## Publishing the confirmation of an overlapped action
 
-Contrato: confirmação escrita dentro da action, depois do yield, espera as outras sobrepostas. Escrita após a Promise da própria action publica imediatamente, com guarda de ordem. Passe Promise já criada para gravar uma vez. Se esperar todas é a UX desejada, escrita dentro continua correta.
+Contract: a confirmation written inside the action, after the yield, waits for the other overlapped ones. A write after the Promise of the action itself publishes right away, with an order guard. Pass an already created Promise to write once. If waiting for all of them is the desired UX, the write inside is still right.
 
-Receita:
+Recipe:
 ```ts
 type Submission = { text: string; response: Promise<string> }
 const execute = action(function* ({ text, response }: Submission) {
@@ -140,13 +140,13 @@ const save = async (text: string) => {
 }
 ```
 
-Armadilha: sem guarda, resposta antiga pode sobrescrever confirmação nova. Mantenha intenção persistente, rascunho e flag transitória separados; não transforme todo signal visual em otimista.
+Pitfall: without a guard, an old response can overwrite a new confirmation. Keep the persistent intent, the draft and the transient flag separate; do not turn every visual signal into an optimistic one.
 
-## Gravação, revalidação e falhas
+## Write, revalidation and failures
 
-Contrato: validação, conflito e permissão podem retornar domínio tipado; infraestrutura pode rejeitar. Defina apresentação pública, retry e retenção do rascunho. Rejeição de Promise cedida entra no gerador por throw. `throw` dentro de `async function*` de action rejeita a Promise retornada sem travar, direto ou depois de um `await` interno. Gravação confirmada seguida de refresh falho deve produzir resultado próprio e não repetir a gravação.
+Contract: validation, conflict and permission can return a typed domain result; infrastructure can reject. Define the public presentation, the retry and the retention of the draft. The rejection of a yielded Promise enters the generator through throw. A `throw` inside the `async function*` of an action rejects the returned Promise without locking, directly or after an inner `await`. A confirmed write followed by a failed refresh must produce its own result and not repeat the write.
 
-Receita:
+Recipe:
 ```ts
 yield api.save(input)
 try {
@@ -157,6 +157,6 @@ try {
 return { saved: true, refreshed: true }
 ```
 
-Armadilha: `void action()` não trata rejeição. Não exponha mensagem bruta de servidor. No exemplo, falha de refresh informa que salvou sem atualizar lista, limpa rascunho salvo e mantém Errored da lista; falha de gravação preserva campo, remove linha otimista e não refaz lista. Na base, escrever sobreposição de store derivado e falhar seu refresh provoca outra execução da derivação no settle, sem pedido da aplicação; sem escrita otimista, não. Essa leitura extra pode recuperar lista sem reset. Conte requests com essa regra, sem generalizar a versões futuras.
+Pitfall: `void action()` does not handle the rejection. Do not expose a raw server message. In the example, a refresh failure says that it saved without updating the list, clears the saved draft and keeps the Errored of the list; a write failure keeps the field, removes the optimistic row and does not redo the list. On the base, writing the overlay of a derived store and failing its refresh causes another run of the derivation on settle, without a request from the application; without an optimistic write, it does not. That extra read can recover the list without a reset. Count requests with that rule, without generalizing it to future versions.
 
-Contrato: descarte de tela/abort não desfaz confirmação tardia do backend; próxima leitura deve convergir. Teste ausência de assinaturas/escritas em owner morto. Compensação exige conhecimento de versão/intenção, não catch genérico. Fixe dado confirmado e indicador coerentes, não contagem histórica de commits; duplicação ou assinaturas crescentes pedem reprodução local antes de atribuir ao modelo ou aos riscos R01/R02.
+Contract: disposing of the screen/aborting does not undo a late confirmation of the backend; the next read must converge. Test the absence of subscriptions/writes on a dead owner. Compensation requires knowledge of the version/intent, not a generic catch. Pin consistent confirmed data and indicator, not a historical commit count; duplication or growing subscriptions call for a local reproduction before blaming the model or the risks R01/R02.

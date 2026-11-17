@@ -1,71 +1,71 @@
-# DOM, eventos e refs
+# DOM, events and refs
 
-## HTML e atributos
+## HTML and attributes
 
-Contrato: atributos HTML (class/for/tabindex), eventos camelCase. TS aceita só `tabindex`; `tabIndex` dá `TS2322`, embora Chromium aceite a atualização do atributo minúsculo. Booleano true grava atributo vazio; false/undefined remove. String 'false' mantém disabled e é rejeitada pelo tipo. Muted é propriedade: com valor dinâmico, o compilador atribui elemento.muted, sem atributo mesmo com true; `muted` ou `muted={true}` literal vai ao template como atributo.
+Contract: HTML attributes (class/for/tabindex), camelCase events. TS only accepts `tabindex`; `tabIndex` gives `TS2322`, although Chromium accepts the update of the lowercase attribute. A true boolean writes an empty attribute; false/undefined removes it. The string 'false' keeps disabled and is rejected by the type. Muted is a property: with a dynamic value, the compiler assigns element.muted, without an attribute even with true; a literal `muted` or `muted={true}` goes to the template as an attribute.
 
-Receita: diferencie estado controlado de inicial em value/defaultValue, checked/defaultChecked, selected/defaultSelected e muted/defaultMuted. Preserve semântica textual de ARIA: aria-pressed='false' não equivale universalmente à ausência.
+Recipe: tell controlled from initial state apart in value/defaultValue, checked/defaultChecked, selected/defaultSelected and muted/defaultMuted. Keep the textual semantics of ARIA: aria-pressed='false' is not universally equivalent to its absence.
 
-Armadilha: minúsculas indiscriminadas quebram propriedades nativas. Custom elements e propriedades especiais exigem verificar integração e tipos. Evite prefixos antigos `on:`, `oncapture:`, `use:`, `attr:`, `bool:`, `class:` ou especializações de style. Migre pela intenção: atributo/propriedade/listener/integração, sem troca textual cega.
+Pitfall: indiscriminate lowercase breaks native properties. Custom elements and special properties require checking the integration and the types. Avoid the old prefixes `on:`, `oncapture:`, `use:`, `attr:`, `bool:`, `class:` or style specializations. Migrate by intent: attribute/property/listener/integration, without a blind textual swap.
 
-## Classes e estilos
+## Classes and styles
 
-Contrato: class aceita string, objeto condicional e array. Objeto mutado compara snapshot por elemento e adiciona/remove só tokens alterados; signal com mesma referência precisa `equals: false` para reexecutar binding. Style usa kebab-case/custom properties, repassadas a setProperty; undefined remove. CamelCase dá TS2561 e não aplica no Chromium, estático ou dinâmico.
+Contract: class accepts a string, a conditional object and an array. A mutated object compares a snapshot per element and adds/removes only the changed tokens; a signal with the same reference needs `equals: false` to rerun the binding. Style uses kebab-case/custom properties, passed to setProperty; undefined removes. CamelCase gives TS2561 and does not apply in Chromium, static or dynamic.
 
-Receita:
+Recipe:
 
 ```tsx
 <div class={['card', { selected: props.selected }]} style={{ 'background-color': color(), '--space': space() }} />
 ```
 
-Armadilha: classList não é API JSX atual. Snapshot de classes não torna cru reativo. Com uma CSP sem `'unsafe-inline'` em `style-src`, o navegador bloqueia o atributo `style` que o SSR grava no HTML (regra da CSP, não do Solid); nesse caso, use classes. Atualização dinâmica no cliente por setProperty (CSSOM) não é bloqueada.
+Pitfall: classList is not a current JSX API. A snapshot of classes does not make a raw value reactive. With a CSP without `'unsafe-inline'` in `style-src`, the browser blocks the `style` attribute that the SSR writes in the HTML (a CSP rule, not a Solid one); in that case, use classes. A dynamic update on the client through setProperty (CSSOM) is not blocked.
 
-## Eventos e propagação
+## Events and propagation
 
-Contrato: eventos são nativos, sem SyntheticEvent. currentTarget é elemento do handler; target pode ser descendente. Capture antes de await. onInput acompanha edição; não presuma onChange do React. Respeite contratos de formulário/composição/números.
+Contract: events are native, without a SyntheticEvent. currentTarget is the element of the handler; target can be a descendant. Capture before await. onInput follows the editing; do not assume the React onChange. Respect the contracts of forms/composition/numbers.
 
-Receita:
+Recipe:
 
 ```tsx
 <input value={text()} onInput={event => { setText(event.currentTarget.value) }} />
 <button onClick={event => (mode() === 'open' ? open : close)(event)} />
 ```
 
-Contrato: handler direto é lido na montagem, delegado (onClick) ou nativo (onMouseEnter). Ternário fora do callback fixa escolha. Spread de props/elemento lê getter e reaplica handler. Prop recebe valor (`value={count()}`); accessor pode funcionar como texto, mas multiplicação dá NaN; TS rejeita.
+Contract: a direct handler is read at mount, delegated (onClick) or native (onMouseEnter). A ternary outside the callback fixes the choice. A spread of props/element reads the getter and reapplies the handler. A prop receives a value (`value={count()}`); an accessor can work as text, but a multiplication gives NaN; TS rejects it.
 
-Contrato: roots render/hydrate possuem/limpam delegação; aplicação não limpa singleton document. Portal propaga delegado pela árvore lógica: botão, depois ancestral lógico. Listener nativo no ancestral lógico não recebe; no alvo físico recebe.
+Contract: render/hydrate roots own/clean up the delegation; the application does not clean up the document singleton. Portal propagates a delegated event through the logical tree: the button, then the logical ancestor. A native listener on the logical ancestor does not receive it; on the physical target it does.
 
-Armadilha: teste roots aninhados, ShadowRoot e Portal com eventos reais. stopPropagation mantém semântica nativa. Capture/passive/once/opções fora do JSX: addEventListener com cleanup; evite privados/limpeza global v1. Lint não prova esses contratos: no recorte, plugin lint detectou style camelCase/índice capturado em For, mas não ternário de handler, accessor em prop numérica ou captura no Show.
+Pitfall: test nested roots, ShadowRoot and Portal with real events. stopPropagation keeps the native semantics. Capture/passive/once/options outside the JSX: addEventListener with a cleanup; avoid privates/global v1 cleanup. Lint does not prove these contracts: in the sample, the lint plugin caught a camelCase style/an index captured in For, but not a handler ternary, an accessor in a numeric prop or a capture in Show.
 
-## Fragmentos
+## Fragments
 
-Contrato: nativo rejeita fragmento filho direto de elemento; aceita topo, componente ou expressão. Babel não foi testado nesse caso.
+Contract: native rejects a fragment as a direct child of an element; it accepts it at the top, in a component or in an expression. Babel was not tested in this case.
 
-Receita: remova fragmento redundante ou use `<section>{<><p /><p /></>}</section>`.
+Recipe: remove the redundant fragment or use `<section>{<><p /><p /></>}</section>`.
 
-Armadilha: `<section><><p /><p /></></section>` falha com "Fragmentos e filhos spread ainda não implementados" (`Fragments and spread children are not implemented yet`); no Vitest aparece como erro de import.
+Pitfall: `<section><><p /><p /></></section>` fails with `Fragments and spread children are not implemented yet`; in Vitest it shows up as an import error.
 
-## Ref e lifecycle
+## Ref and lifecycle
 
-Contrato: ref roda sem owner; guarda elemento/aplica DOM com descarte já registrado. Setup de effects/onCleanup/recursos fica no componente/fábrica sob owner. Limpe widgets/observers/listeners/timers, inclusive ao trocar elemento.
+Contract: a ref runs without an owner; it keeps the element/applies DOM with the disposal already registered. The setup of effects/onCleanup/resources stays in the component/factory under an owner. Clean up widgets/observers/listeners/timers, also when the element changes.
 
-Receita:
+Recipe:
 
 ```tsx
 function SearchField() {
   let element: HTMLInputElement | undefined
   onSettled(() => { element?.focus() })
-  return <input ref={value => { element = value }} aria-label="Pesquisar" />
+  return <input ref={value => { element = value }} aria-label="Search" />
 }
 ```
 
-Armadilha: foco inicial exige UX apropriada, sem roubar navegação/tecnologia assistiva. Variável nua em array de refs não recebe atribuição especial de ref isolado. Effect/cleanup ficam no setup.
+Pitfall: initial focus requires suitable UX, without stealing navigation/assistive technology. A bare variable in a refs array does not get the special assignment of an isolated ref. Effect/cleanup stay in the setup.
 
-## Composição de refs e SSR
+## Ref composition and SSR
 
-Contrato: array aplica callbacks em ordem, achata arrays e ignora undefined. Restrinja a prop a `JSX.RefCallback<T> | undefined`: JSX.Ref amplo aceita elemento, mas elemento no array não é chamável e lança TypeError. False/null são descartados pelo runtime, porém recusados pelos tipos. Condição é resolvida na criação; mudança posterior não instala/remove comportamento.
+Contract: an array applies the callbacks in order, flattens arrays and ignores undefined. Restrict the prop to `JSX.RefCallback<T> | undefined`: a broad JSX.Ref accepts an element, but an element in the array is not callable and throws a TypeError. False/null are dropped by the runtime, but refused by the types. A condition is resolved at creation; a later change does not install/remove behavior.
 
-Receita:
+Recipe:
 
 ```tsx
 type LinkProps = {
@@ -79,20 +79,20 @@ function Link(props: LinkProps) {
 }
 ```
 
-Contrato: substitua directive por fábrica `ref={behavior(value)}` ou array; effect/cleanup ficam na fábrica, callback guarda elemento. Leia reativos no compute, pois leitura no callback não assina e pode avisar STRICT_READ_UNTRACKED. Fábrica retorna função/array em todo caminho; compilador ignora demais retornos, inclusive undefined, sem diagnóstico. Condição inicial usa `condition ? callback : undefined`; mudanças reativas usam lifecycle.
+Contract: replace a directive with a `ref={behavior(value)}` factory or an array; effect/cleanup stay in the factory, the callback keeps the element. Read reactive values in the compute, because a read in the callback does not subscribe and can warn STRICT_READ_UNTRACKED. The factory returns a function/array on every path; the compiler ignores the other returns, undefined included, without a diagnostic. An initial condition uses `condition ? callback : undefined`; reactive changes use the lifecycle.
 
-Armadilha: fábrica executa no SSR, callback não recebe elemento. Compute do effect também executa no servidor; só apply é pulado. `ssrSource: 'client'` pula compute. Window/document na fábrica ou compute normal causa ReferenceError. Na base verificada, composição/opcional/atualização/remoção foram observadas em Chromium; fases SSR cobrem default e dev. Isso não prova hidratação composta/performance.
+Pitfall: the factory runs in the SSR, the callback does not receive the element. The effect compute also runs on the server; only the apply is skipped. `ssrSource: 'client'` skips the compute. Window/document in the factory or in a normal compute causes a ReferenceError. On the verified base, composition/optional/update/removal were observed in Chromium; the SSR phases cover default and dev. That does not prove composed hydration/performance.
 
-## Texto e hidratação
+## Text and hydration
 
-Children explícitos suprimem `textContent` na compilação; não combine as duas formas. Em SSR hidratável, `textContent` numérico pode perder o zero e a hidratação preservar o espaço até a primeira atualização. Detalhes e limites em [R07](17-known-risks.md#r07-textcontent-perde-o-zero-numérico-no-html-de-ssr). Esse caminho não sustenta uma recomendação geral de performance.
+Explicit children suppress `textContent` at compile time; do not combine both forms. In hydratable SSR, a numeric `textContent` can lose the zero and hydration keep the space until the first update. Details and limits in [R07](17-known-risks.md#r07-textcontent-loses-the-numeric-zero-in-the-ssr-html). That path does not support a general performance recommendation.
 
-## Número como filho único
+## Number as the only child
 
-`<output>{total()}</output>` começando em zero funciona no Chromium, mas quebra em happy-dom na base verificada. `{String(total())}` preservou 0/5/0 nos dois ambientes; converter muda o caminho exercitado, então não faça isso no teste de comportamento numérico. Veja [ambientes de teste](../../skill-solidjs-testing/references/environments.md#happy-dom).
+`<output>{total()}</output>` starting at zero works in Chromium, but breaks in happy-dom on the verified base. `{String(total())}` kept 0/5/0 in both environments; converting changes the exercised path, so do not do it in the numeric behavior test. See [test environments](../../skill-solidjs-testing/references/environments.md#happy-dom).
 
-Alternar número falso e elemento como filho único: veja [R13](17-known-risks.md#r13-zero-ou-nan-como-filho-único-acumula-nós-de-texto-ao-alternar).
+Switching a falsy number and an element as the only child: see [R13](17-known-risks.md#r13-zero-or-nan-as-the-only-child-piles-up-text-nodes-when-switching).
 
 ## Namespace
 
-Tags ambíguas entre HTML e SVG (`a`, `script`, `style`, `title`) precisam do namespace correto na criação dinâmica. Trocar a tag lógica depois não corrige o namespace.
+Tags that are ambiguous between HTML and SVG (`a`, `script`, `style`, `title`) need the right namespace in dynamic creation. Changing the logical tag later does not fix the namespace.

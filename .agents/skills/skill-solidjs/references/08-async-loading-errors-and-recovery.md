@@ -1,12 +1,12 @@
-# Async, Loading, erros e recuperação
+# Async, Loading, errors and recovery
 
-Contratos do runtime da [base verificada](../SKILL.md). Os limites indicados não são garantias de outros ambientes.
+Runtime contracts of the [verified base](../SKILL.md). The limits given are not guarantees for other environments.
 
-## Fontes assíncronas e dependências
+## Async sources and dependencies
 
-Contrato: `createMemo` pode retornar Promise e seu accessor representa o dado resolvido. Leia em JSX, memo ou compute de effect; capture entradas reativas antes do primeiro `await`. Leituras posteriores não assinam dependências e só veem mudanças quando outra entrada rastreada reinicia a computação. Memos independentes sob root ativo iniciam mesmo sem consumidor, no grafo cliente. Suspender uma leitura pode impedir as próximas expressões do consumidor, mas não impede fontes já criadas de iniciar. `await` sequencial adia a próxima chamada; uma dependência real exige essa espera. `Promise.all` publica o conjunto só quando todas resolvem; exibição independente pede fontes e boundaries separadas.
+Contract: `createMemo` can return a Promise and its accessor stands for the resolved data. Read it in JSX, a memo or an effect compute; capture the reactive inputs before the first `await`. Later reads do not subscribe to dependencies and only see changes when another tracked input restarts the computation. Independent memos under an active root start even without a consumer, in the client graph. Suspending a read can prevent the next expressions of the consumer, but does not prevent already created sources from starting. A sequential `await` defers the next call; a real dependency requires that wait. `Promise.all` publishes the set only when all of them resolve; an independent display calls for separate sources and boundaries.
 
-Receita:
+Recipe:
 ```ts
 const user = createMemo(() => api.read(id()))
 const combined = createMemo(() => {
@@ -15,107 +15,107 @@ const combined = createMemo(() => {
 })
 ```
 
-Armadilha: fetch em cada JSX ou effect imitando `createResource` multiplica trabalho. Ler fonte ainda pendente após `await` pode interromper o consumidor: veja os [canais de erro por build e leitor](02-reactivity-and-ownership.md#leituras-assíncronas). No build padrão, ele pode travar com `isPending` falso.
+Pitfall: a fetch in each JSX or effect imitating `createResource` multiplies the work. Reading a source still pending after `await` can interrupt the consumer: see the [error channels per build and reader](02-reactivity-and-ownership.md#async-reads). In the default build, it can lock with `isPending` false.
 
-## Loading e leitura que lança
+## Loading and a read that throws
 
-Contrato: `Loading` contém prontidão inicial; uma boundary inicializada pode preservar conteúdo confirmado na atualização. Keying ou troca de owner pode criar uma nova boundary. `Errored` precisa envolver o leitor do memo que lança desde o início. Memo criado acima de `Show`/`Switch` recompõe no flush antes da troca de ramo por status: sem boundary, o flush lança, a tela antiga permanece e todas as raízes param com `REACTIVITY_HALTED`. Memo criado dentro do ramo é descartado com ele; função comum que lança no JSX pode ser descartada pelo condicional antes de executar, mas também causa halt sem proteção.
+Contract: `Loading` holds the initial readiness; an initialized boundary can keep the confirmed content on an update. Keying or an owner change can create a new boundary. `Errored` must wrap the reader of the memo that throws from the start. A memo created above `Show`/`Switch` recomposes on the flush before the branch switch by status: without a boundary, the flush throws, the old screen stays and every root stops with `REACTIVITY_HALTED`. A memo created inside the branch is disposed with it; a plain function that throws in the JSX can be disposed by the conditional before running, but also causes a halt without protection.
 
-Receita:
+Recipe:
 ```tsx
 <Errored fallback={(_error, reset) => (
   <section>
-    <p>Indisponível</p>
-    <button type="button" onClick={() => { model.retry(); reset() }}>Tentar novamente</button>
+    <p>Unavailable</p>
+    <button type="button" onClick={() => { model.retry(); reset() }}>Try again</button>
   </section>
 )}>
-  <Loading fallback={<p>Carregando</p>}>
+  <Loading fallback={<p>Loading</p>}>
     <output>{model.read()}</output>
   </Loading>
 </Errored>
 ```
 
-Armadilha: o fallback recebe accessor de erro, não mensagem pública pronta. Com accessor recebido pelo fallback, o erro contido não registra no console e outras raízes continuam. Não releia a fonte quebrada para explicar a falha. `Errored` não contém toda rejeição de evento/action: trate a Promise explicitamente. `ASYNC_OUTSIDE_LOADING_BOUNDARY` costuma ser warning no cliente, com montagem raiz vazia e adiada até assentar; no servidor, fonte `ssrSource: "client"` fora de `Loading` lança `Error` com essa mensagem, e dentro usa `NotReadyError(CLIENT_HOLE)` para preservar o stream. Prefira boundary a enforcement estrito por padrão.
+Pitfall: the fallback receives an error accessor, not a ready public message. With the accessor received by the fallback, the contained error is not logged to the console and other roots keep going. Do not reread the broken source to explain the failure. `Errored` does not contain every event/action rejection: handle the Promise explicitly. `ASYNC_OUTSIDE_LOADING_BOUNDARY` is usually a warning on the client, with the root mount empty and deferred until it settles; on the server, an `ssrSource: "client"` source outside `Loading` throws an `Error` with that message, and inside it uses `NotReadyError(CLIENT_HOLE)` to keep the stream. Prefer a boundary over strict enforcement by default.
 
-## Entrada confirmada, latest e isPending
+## Confirmed input, latest and isPending
 
-Contrato: render effect que lê fonte async dependente de `id` retém a própria escrita até o dado chegar. No handler, `id()` dá a entrada confirmada, `latest(id)` a entrada em voo e `isPending(() => data())` indica espera. Na sequência 1, 2, 3, com resposta de 3 antes da de 2, publica 1 e depois 3; 2 tardia não publica. Com apenas `createEffect` lendo, `id()` já muda e só o leitor espera. Ambos os builds coincidem.
+Contract: a render effect that reads an async source depending on `id` holds its own write until the data arrives. In the handler, `id()` gives the confirmed input, `latest(id)` the in-flight input and `isPending(() => data())` shows the wait. In the sequence 1, 2, 3, with the response of 3 before the one of 2, it publishes 1 and then 3; a late 2 does not publish. With only `createEffect` reading, `id()` already changes and only the reader waits. Both builds match.
 
-Receita:
+Recipe:
 ```ts
 const pending = () => isPending(() => user()) || isPending(() => orders())
 ```
 
-Armadilha: `isPending(() => id())` não observa o trabalho dependente; `isPending(() => users() || orders())` omite o segundo ramo por short-circuit. Mesmo sem short-circuit, uma leitura que lança NotReady pode impedir a seguinte: use consultas separadas, fonte agregada ou boundaries próprias. `latest` escolhe a view disponível, não espera rede nem inventa dado inicial: antes do primeiro resultado lança `NotReadyError`. Não use como catch de pendência, filtro universal de recarga ou prova de edição não confirmada.
+Pitfall: `isPending(() => id())` does not observe the dependent work; `isPending(() => users() || orders())` leaves out the second branch through short-circuit. Even without short-circuit, a read that throws NotReady can prevent the next one: use separate queries, an aggregated source or their own boundaries. `latest` picks the available view, it neither waits for the network nor makes up initial data: before the first result it throws `NotReadyError`. Do not use it as a pending catch, a universal reload filter or proof of an unconfirmed edit.
 
-## Refresh e pontes imperativas
+## Refresh and imperative bridges
 
-Contrato: `refresh(source)` invalida accessor Solid ou store derivada refreshable mesmo sem mudança de entrada. A Promise acompanha o próximo estado assentado, inclusive trabalho substituto; accessor resolve valor, store resolve o nó passado. Nó da mesma família derivada reinicia a fonte inteira, sem refetch parcial implícito. Valor igual também resolve sem notificar leitores comuns. Refresh isolado não ativa pending; `affects(source)` marca impacto, ou modele estado de operação. Se ainda aguarda ao falhar, a Promise rejeita; o runtime permite ignorá-la no uso fire-and-forget, sem estender essa proteção a outras Promises.
+Contract: `refresh(source)` invalidates a Solid accessor or a refreshable derived store even without an input change. The Promise follows the next settled state, replacement work included; an accessor resolves the value, a store resolves the node passed. A node of the same derived family restarts the whole source, without an implicit partial refetch. An equal value also resolves without notifying ordinary readers. An isolated refresh does not turn on pending; `affects(source)` marks the impact, or model the operation state. If it is still waiting when it fails, the Promise rejects; the runtime lets you ignore it in fire-and-forget use, without extending that protection to other Promises.
 
-Receita:
+Recipe:
 ```ts
 const data = await resolve(() => source())
 await refresh(source)
 ```
 
-Armadilha: `refresh(() => source())` e propriedade arbitrária não são alvos. A espera não identifica uma chamada HTTP específica. `resolve` retorna Promise de leitura assentada e não deve nascer em computação rastreada. `until(predicate, options?)` espera verdade e aceita timeout/cancelamento; trate rejeição e confira verdade autoritativa dentro da action. `untrack` só desliga assinatura: leitura sem valor continua lançando `NotReadyError`, volta a funcionar ao assentar e não existe overload `untrack(fn, fallback)`.
+Pitfall: `refresh(() => source())` and an arbitrary property are not targets. The wait does not identify a specific HTTP call. `resolve` returns a Promise of the settled read and must not be created in a tracked computation. `until(predicate, options?)` waits for truth and accepts timeout/cancellation; handle the rejection and check the authoritative truth inside the action. `untrack` only turns off the subscription: a read without a value still throws `NotReadyError`, works again on settle and there is no `untrack(fn, fallback)` overload.
 
-## Valores provisórios
+## Provisional values
 
-Contrato: `loadingValue` publica provisório antes do primeiro resultado, sem suspensão inicial normal. `[]` pode ocultar carregamento: use indicador explícito se vazio e carregando diferem. Stores/projections usam `seedLoadingValue: true`; seed estrutural sozinho não decide UX. Modele `null`/`undefined` no tipo e na UI.
+Contract: `loadingValue` publishes a provisional value before the first result, without the normal initial suspension. `[]` can hide the loading: use an explicit indicator if empty and loading differ. Stores/projections use `seedLoadingValue: true`; a structural seed alone does not decide the UX. Model `null`/`undefined` in the type and in the UI.
 
-Armadilha: na primeira falha com `loadingValue`, o effect inscrito mantém provisório sem reexecutar, e pending fica falso inclusive em leitor novo. `createErrorBoundary` recebe o erro original por identidade; leitura imperativa nova lança `StatusError` com o original em `cause`. Compare identidade no canal escolhido, não só mensagem. `refresh` antes de qualquer dado real restaura provisório, tira a boundary do fallback e resolve com o provisório enquanto a requisição ainda espera. Aguardar esse refresh não confirma dado real; o primeiro sucesso substitui o seed. Não generalize para recarga após valor real.
+Pitfall: on the first failure with `loadingValue`, the subscribed effect keeps the provisional value without rerunning, and pending stays false even in a new reader. `createErrorBoundary` receives the original error by identity; a new imperative read throws a `StatusError` with the original in `cause`. Compare identity in the chosen channel, not only the message. A `refresh` before any real data restores the provisional value, takes the boundary out of the fallback and resolves with the provisional value while the request is still waiting. Waiting for that refresh does not confirm real data; the first success replaces the seed. Do not generalize it to a reload after a real value.
 
-## Fontes AsyncIterable
+## AsyncIterable sources
 
-Contrato: memo aceita `AsyncIterable`. O primeiro pull mantém fallback até um valor; pulls seguintes preservam valor confirmado sem reabrir pending. Troca de entrada espera o primeiro yield da nova fonte e preserva conteúdo antigo em boundary inicializada. Substituição chama `return()` uma vez no iterador anterior; pull antigo resolvido com owner vivo não publica nem pede outro. Descarte chama `return()` uma vez no ativo, sem pull adicional após resposta tardia.
+Contract: a memo accepts an `AsyncIterable`. The first pull keeps the fallback until a value; the following pulls keep the confirmed value without reopening pending. An input change waits for the first yield of the new source and keeps the old content in an initialized boundary. A replacement calls `return()` once on the previous iterator; an old pull resolved with a live owner neither publishes nor asks for another. Disposal calls `return()` once on the active one, without an extra pull after a late response.
 
-Armadilha: isso não cancela transporte/processamento externo, nem é o yield de action. Generator que termina sem yield assenta `undefined`; após um yield, terminar preserva aquele valor. Thenable síncrono e `next()` com resultado já assentado publicam no mesmo flush; Promise nativa, mesmo resolvida, exige microtask. Sondas diretas de pending e via memo coincidiram quando criadas/descartadas por fase sob owner, sem equivalência geral.
+Pitfall: that cancels neither external transport/processing, nor is it the yield of an action. A generator that ends without a yield settles `undefined`; after a yield, ending keeps that value. A synchronous thenable and `next()` with an already settled result publish in the same flush; a native Promise, even resolved, requires a microtask. Direct pending probes and probes through a memo matched when created/disposed per phase under an owner, without a general equivalence.
 
-## Chaves e leitores compartilhados
+## Keys and shared readers
 
-Contrato: no runtime instalado, `Loading.on` é lista de dependências: toda mudança numa leitura rastreada de `on` re-arma a boundary, sem comparar valor. Passe `on={id()}` ou `on={[query(), page()]}`, como no JSDoc; `on={id}` não chama o accessor e equivale a omitir `on`, embora o tipo `any` aceite. O fallback chega junto do frame da mudança: irmã que retém a mesma mudança impede o fallback.
+Contract: in the installed runtime, `Loading.on` is a list of dependencies: every change in a tracked read of `on` rearms the boundary, without comparing values. Pass `on={id()}` or `on={[query(), page()]}`, as in the JSDoc; `on={id}` does not call the accessor and is equivalent to leaving `on` out, although the `any` type accepts it. The fallback arrives with the frame of the change: a sibling that holds the same change prevents the fallback.
 
-| Configuração | Durante a espera | Ambiente |
+| Configuration | During the wait | Environment |
 | --- | --- | --- |
-| `on={id()}`, sozinha | fallback | Chromium (base anterior), grafo (base verificada) |
-| `on={id()}`, irmã lendo mesma fonte | ambas preservam conteúdo; `LOADING_ON_OUTSIDE_HOLD` em dev | Chromium (base anterior), grafo (base verificada) |
-| `on={id}` | conteúdo antigo, pending verdadeiro | Chromium (base anterior), grafo (base verificada) |
-| `on={latest(id)}`, irmã lendo mesma fonte | fallback já; irmã preserva conteúdo | grafo |
-| chave cujo valor não muda, como `on={id() > 0}` | fallback | grafo |
-| `on` com dado async e refresh | fallback a cada refetch | grafo |
-| `on` com id e refresh do mesmo assunto | conteúdo antigo | grafo |
+| `on={id()}`, alone | fallback | Chromium (previous base), graph (verified base) |
+| `on={id()}`, sibling reading the same source | both keep the content; `LOADING_ON_OUTSIDE_HOLD` in dev | Chromium (previous base), graph (verified base) |
+| `on={id}` | old content, pending true | Chromium (previous base), graph (verified base) |
+| `on={latest(id)}`, sibling reading the same source | fallback right away; the sibling keeps the content | graph |
+| key whose value does not change, such as `on={id() > 0}` | fallback | graph |
+| `on` with async data and refresh | fallback on each refetch | graph |
+| `on` with id and refresh of the same subject | old content | graph |
 
-Armadilha: para mostrar o fallback já, apesar da irmã, leia `latest(id)` em `on`; sozinha, `on={latest(id)}` também mostra fallback. Não misture título de B com dados confirmados de A sem indicar a diferença. Não incremente contador nem crie objeto novo ao avaliar `on`. `flush()` só drena trabalho síncrono elegível, sem resolver rede ou forçar transação arbitrária.
+Pitfall: to show the fallback right away, despite the sibling, read `latest(id)` in `on`; alone, `on={latest(id)}` also shows the fallback. Do not mix the title of B with confirmed data of A without showing the difference. Do not increment a counter nor create a new object when evaluating `on`. `flush()` only drains eligible synchronous work, without resolving the network or forcing an arbitrary transaction.
 
-## Aninhamento e Reveal
+## Nesting and Reveal
 
-`Loading` interna contém sua leitura inicial e deixa a shell externa aparecer. Uma leitura pendente diretamente sob a externa mostra o fallback externo. Para ordem e colapso entre boundaries, veja [Reveal](06-lists-control-flow-and-local-state.md#loading-errored-e-reveal); um grupo natural interno não libera a espera do sequencial externo.
+An inner `Loading` holds its initial read and lets the outer shell show. A pending read directly under the outer one shows the outer fallback. For order and collapse between boundaries, see [Reveal](06-lists-control-flow-and-local-state.md#loading-errored-and-reveal); an inner natural group does not release the wait of the outer sequential one.
 
-## SSR e superfície disponível
+## SSR and available surface
 
-Contrato: `ssrSource: "server"` serializa origem autoritativa servidor; `"hybrid"` usa esse dado e permite recomputação cliente; `"client"` pula origem no servidor. `deferStream: true` pode reter shell até dado necessário; `transparent: true` é opção restrita de integração. Fonte client pede Loading/fallback ou provisório explícito. Não leia `window` em origem servidor nem escolha hybrid sem necessidade de refetch.
+Contract: `ssrSource: "server"` serializes an authoritative server origin; `"hybrid"` uses that data and allows a client recomputation; `"client"` skips the origin on the server. `deferStream: true` can hold the shell until the needed data; `transparent: true` is a restricted integration option. A client source calls for Loading/a fallback or an explicit provisional value. Do not read `window` in a server origin nor pick hybrid without a need for refetch.
 
-Armadilha: APIs disponíveis são `latest`, `isPending`, `affects`, `flush`, `refresh`, `until`, `untrack`, `createOptimistic`, `createProjection`, `action`, `onSettled`, `resolve`, `enableExternalSource` e `NotReadyError`. Não existem `isSomePending`, `isRefreshing`, `batch`, `pending` ou `createAsync`; agregue `isPending`, controle operação Refresh e use memo/projection async com `ssrSource`.
+Pitfall: the available APIs are `latest`, `isPending`, `affects`, `flush`, `refresh`, `until`, `untrack`, `createOptimistic`, `createProjection`, `action`, `onSettled`, `resolve`, `enableExternalSource` and `NotReadyError`. There is no `isSomePending`, `isRefreshing`, `batch`, `pending` or `createAsync`; aggregate `isPending`, control a Refresh operation and use an async memo/projection with `ssrSource`.
 
-## Recuperação e cache
+## Recovery and cache
 
-Contrato: `reset` solicita reavaliação das fontes coletadas, sem recriar a subárvore. A boundary também recupera sem reset quando a fonte volta a produzir valor por entrada, refresh ou reexecução. Input ocultado durante erro pode voltar como o mesmo nó com o texto digitado. Antes da primeira carga ele não aparece; mantenha formulário fora da boundary para continuar visível/editável. Fonte que apenas volta a pendente mantém fallback de erro, com ou sem reset; Loading interna só retorna ao conteúdo quando houver valor. Indicador de retry deve vir do modelo fora de `Errored`, em região de anúncio montada vazia desde o início.
+Contract: `reset` asks for a reevaluation of the collected sources, without recreating the subtree. The boundary also recovers without reset when the source produces a value again through an input, a refresh or a rerun. An input hidden during the error can come back as the same node with the typed text. Before the first load it does not show; keep the form outside the boundary to stay visible/editable. A source that only goes back to pending keeps the error fallback, with or without reset; an inner Loading only goes back to the content when there is a value. A retry indicator must come from the model outside `Errored`, in an announcement region mounted empty from the start.
 
-Receita:
+Recipe:
 ```tsx
-<p role="status">{model.retrying() ? "Carregando" : ""}</p>
+<p role="status">{model.retrying() ? "Loading" : ""}</p>
 <p role="alert">{model.publicMessage()}</p>
 ```
 
-Armadilha: reset não apaga Promise rejeitada de cache externo nem desfaz/reautoriza mutação. Invalide na camada correta; não retenha accessor de owner descartado. Modelo responsável pelo retry precisa sobreviver ao leitor. No servidor, `lazy()` limpa sua Promise interna após rejeição, permitindo novo import na próxima montagem/preload; isso não limpa cache do bundler/router. Na API de router inspecionada, `revalidate` casa prefixo, `force` é true por padrão e `query.delete` remove entrada: escolha chave restrita e teste request real, pois HTTP do core não certifica esse cache. Bloqueie retry duplicado; pagamento/criação/reserva exige idempotência e reconciliação do backend. Permissão só recupera se a condição mudou. `NotReadyError` não é falha de negócio.
+Pitfall: reset neither erases a rejected Promise of an external cache nor undoes/reauthorizes a mutation. Invalidate at the right layer; do not keep an accessor of a disposed owner. The model responsible for the retry must outlive the reader. On the server, `lazy()` clears its internal Promise after a rejection, allowing a new import on the next mount/preload; that does not clear the cache of the bundler/router. In the inspected router API, `revalidate` matches a prefix, `force` is true by default and `query.delete` removes an entry: choose a narrow key and test a real request, because the HTTP of the core does not certify that cache. Block a duplicated retry; payment/creation/reservation requires idempotency and backend reconciliation. A permission only recovers if the condition changed. `NotReadyError` is not a business failure.
 
-## Observação e sanitização
+## Observation and sanitization
 
-Contrato: `configureClientErrors` observa erros coletados por boundary, deduplica por objeto e admite política por root em render/hydrate. Erros não contidos seguem a plataforma. `ownerPath` identifica origem e `boundaryPath` tratamento, mas podem faltar conforme artefato/nomes retidos. O hook cliente retorna void e não altera erro servidor; hook servidor pode mapear exposição. `Errored` aceita `fallback`/`children`, sem prop `onError`.
+Contract: `configureClientErrors` observes errors collected by a boundary, deduplicates by object and admits a policy per root in render/hydrate. Uncontained errors follow the platform. `ownerPath` identifies the origin and `boundaryPath` the handling, but they can be missing depending on the artifact/retained names. The client hook returns void and does not change a server error; a server hook can map exposure. `Errored` accepts `fallback`/`children`, without an `onError` prop.
 
-Armadilha: fallback reativo pode reexecutar e duplicar telemetria; não dependa só de `window.onerror` nem envie log sem deduplicação. Mensagem genérica no DOM não protege HTML, chunks, hidratação, RPC ou exportador. Selecione campos públicos antes de entregar ao Solid; retorno de hook e `markSafeError` autorizam exposição. Teste marcador sintético, nunca segredo ou credencial real, em mensagem/cause/campo próprio, falha contida/não contida, mesmo objeto/nova instância e request efetivo após invalidação. Não remova assertions para recuperar contagem antiga de renders.
+Pitfall: a reactive fallback can rerun and duplicate telemetry; do not rely only on `window.onerror` nor send logs without deduplication. A generic message in the DOM does not protect the HTML, chunks, hydration, RPC or an exporter. Select the public fields before handing them to Solid; a hook return and `markSafeError` authorize exposure. Test a synthetic marker, never a real secret or credential, in the message/cause/own field, contained/uncontained failure, same object/new instance and the effective request after invalidation. Do not remove assertions to get back an old render count.
 
-## Limite de atualização
+## Update limit
 
-A semântica de `Loading.on` mudou entre a base anterior e a base verificada. Consulte [R03](17-known-risks.md#r03-on-e-boundary-criada-durante-hold) antes de aplicar exemplos de outra versão.
+The semantics of `Loading.on` changed between the previous base and the verified base. See [R03](17-known-risks.md#r03-on-and-a-boundary-created-during-a-hold) before applying examples from another version.

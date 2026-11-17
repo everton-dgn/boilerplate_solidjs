@@ -1,37 +1,37 @@
-# Primitives, stores e actions
+# Primitives, stores and actions
 
-Contratos em [reatividade](../../skill-solidjs/references/02-reactivity-and-ownership.md), [effects](../../skill-solidjs/references/03-effects-and-lifecycle.md), [stores](../../skill-solidjs/references/05-stores-and-projections.md) e [actions](../../skill-solidjs/references/10-actions-optimism-and-confirmation.md).
+Contracts in [reactivity](../../skill-solidjs/references/02-reactivity-and-ownership.md), [effects](../../skill-solidjs/references/03-effects-and-lifecycle.md), [stores](../../skill-solidjs/references/05-stores-and-projections.md) and [actions](../../skill-solidjs/references/10-actions-optimism-and-confirmation.md).
 
-## Receita: primitive sob createRoot
+## Recipe: primitive under createRoot
 
-Crie o modelo sob owner, registre o disposer e faça as escritas depois que `createRoot` retornar. Escrita no corpo do root lança `REACTIVE_WRITE_IN_OWNED_SCOPE`; `ownedWrite` não deve mascarar isso na fixture. O apply inicial de effect espera o próximo flush, automático por microtask ou explícito com `flush()`.
+Create the model under an owner, register the disposer and do the writes after `createRoot` returns. A write in the body of the root throws `REACTIVE_WRITE_IN_OWNED_SCOPE`; `ownedWrite` must not mask that in the fixture. The initial apply of an effect waits for the next flush, automatic through a microtask or explicit with `flush()`.
 
-Primitiva que lê contexto precisa de componente sonda sob o provider. Para provar descarte, observe primeiro uma atualização bem-sucedida; só então descarte e tente atualizar outra vez.
+A primitive that reads context needs a probe component under the provider. To prove disposal, first observe a successful update; only then dispose and try to update again.
 
-## Store e action
+## Store and action
 
-Para granularidade de store, conte as execuções dos consumidores das folhas afetadas e não afetadas. Observar apenas o valor final perde essa diferença.
+For store granularity, count the runs of the consumers of the affected and unaffected leaves. Observing only the final value misses that difference.
 
-Invoque a action após o setup, fora do corpo de root e dos computes de memo/effect; o apply de `createEffect` é fase imperativa e permite a chamada. Em fixture que ainda tenha owner ambiente, use `runWithOwner(null, fn)` para representar o handler. A sobreposição otimista reverte também no sucesso: confirme que a fonte autoritativa devolve o dado após gravação e refresh. Só testar falha aprovaria uma action que nunca grava.
+Invoke the action after the setup, outside the root body and the memo/effect computes; the apply of `createEffect` is an imperative phase and allows the call. In a fixture that still has an ambient owner, use `runWithOwner(null, fn)` to stand for the handler. The optimistic overlay also reverts on success: confirm that the authoritative source returns the data after the write and the refresh. Testing only the failure would approve an action that never writes.
 
-## Sequências que discriminam erro
+## Sequences that discriminate errors
 
-Escolha as linhas pertinentes ao contrato alterado.
+Choose the rows relevant to the changed contract.
 
-| Área | Sequência e observável |
+| Area | Sequence and observable |
 | --- | --- |
-| Setters | Duas atualizações funcionais antes do flush; composição preservada |
-| Memo condicional | Escrever no ramo inativo, alternar e voltar; execuções e valor atualizado |
-| Effect | Alterar leitura do apply e depois do compute; dependências e cleanup por execução |
-| Props | Alterar prop na instância montada; valor novo sem remontagem |
-| For | Reordenar IDs e atualizar payload; estado local e foco da entidade |
-| Async | Iniciar A e B, resolver B antes de A; A não sobrescreve B |
-| Otimismo | Sobrepor alterações e falhar uma; preservar a confirmação da outra |
-| Owner | Descartar pai e disparar callback tardio; sem reconexão sob owner morto |
+| Setters | Two functional updates before the flush; composition kept |
+| Conditional memo | Write in the inactive branch, switch and switch back; runs and updated value |
+| Effect | Change a read of the apply and then of the compute; dependencies and cleanup per run |
+| Props | Change a prop on the mounted instance; new value without remounting |
+| For | Reorder IDs and update the payload; local state and focus of the entity |
+| Async | Start A and B, resolve B before A; A does not overwrite B |
+| Optimism | Overlap changes and fail one; keep the confirmation of the other |
+| Owner | Dispose the parent and fire a late callback; no reconnection under a dead owner |
 
-## Armadilhas
+## Pitfalls
 
-- `NotReadyError` precisa ser a classe de `solid-js`. Uma classe local homônima vira falha real para `Loading` e `Errored`.
-- `isPending` pode absorver erro do próprio callback e devolver `false`; observe também a falha para não concluir que houve sucesso.
-- Um leitor async criado sob owner já descartado não publica. Mantenha consumidor vivo durante a espera.
-- Microtasks, actions e timers têm [esperas diferentes](settle-and-wait.md).
+- `NotReadyError` must be the class from `solid-js`. A local class with the same name becomes a real failure for `Loading` and `Errored`.
+- `isPending` can absorb an error of its own callback and return `false`; also observe the failure so you do not conclude it succeeded.
+- An async reader created under an already disposed owner does not publish. Keep a consumer alive during the wait.
+- Microtasks, actions and timers have [different waits](settle-and-wait.md).

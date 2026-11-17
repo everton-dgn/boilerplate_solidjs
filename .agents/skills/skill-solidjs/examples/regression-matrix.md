@@ -1,16 +1,16 @@
-# Regressões específicas
+# Specific regressions
 
-Agendamento, props, granularidade e descarte estão na [matriz da skill de testes](../../skill-solidjs-testing/references/reactivity.md#sequências-que-discriminam-erro). Para os contratos avançados dos exemplos, acrescente somente o cenário pertinente.
+Scheduling, props, granularity and disposal are in the [matrix of the testing skill](../../skill-solidjs-testing/references/reactivity.md#sequences-that-discriminate-errors). For the advanced contracts of the examples, add only the relevant scenario.
 
-| Contrato | O que diferencia um teste útil |
+| Contract | What sets a useful test apart |
 | --- | --- |
-| Confirmação por `until` | Entregar a confirmação antes e depois da espera; uma linha só otimista ou a confirmação de outra ID não libera a operação |
-| `refresh` em helper async | Limitar o tempo da Promise da action e observar a fonte durante a espera, com uma fonte independente e outra que leia estado escrito pela action: a action precisa assentar e o valor novo não pode aparecer antes, conforme [actions](../references/10-actions-optimism-and-confirmation.md#geradores-e-reentrada) |
-| `refresh` com valor igual | A Promise termina mesmo sem nova publicação por igualdade; contar renders sozinho perde esse resultado |
-| Estado visual separado | Rollback do título não apaga a seleção por ID; filtro temporário não equivale a exclusão |
-| Boundaries compartilhadas | Comparar leitor único com duas boundaries lendo a mesma fonte, conforme [R03](../references/17-known-risks.md#r03-on-e-boundary-criada-durante-hold) |
-| Retenção durante action | Comparar recursos sem action aberta, durante a espera e após assentamento/descarte, conforme [R01](../references/17-known-risks.md#r01-retenção-de-assinaturas-durante-action-pendente) |
-| Hidratação progressiva | Interagir após a shell e antes da última região do stream; conferir listeners e identidade após o término |
-| Erro de servidor | Procurar marcador sintético em HTML, chunks, RPC e logs; `throw Error` e `return Error` têm exposições diferentes |
+| Confirmation through `until` | Deliver the confirmation before and after the wait; a row that is only optimistic or the confirmation of another ID does not release the operation |
+| `refresh` in an async helper | Limit the time of the Promise of the action and observe the source during the wait, with an independent source and another one that reads state written by the action: the action must settle and the new value cannot show up earlier, according to [actions](../references/10-actions-optimism-and-confirmation.md#generators-and-reentry) |
+| `refresh` with an equal value | The Promise ends even without a new publication because of equality; counting renders alone misses that result |
+| Separate visual state | The rollback of the title does not erase the selection by ID; a temporary filter is not equivalent to a deletion |
+| Shared boundaries | Compare a single reader with two boundaries reading the same source, according to [R03](../references/17-known-risks.md#r03-on-and-a-boundary-created-during-a-hold) |
+| Retention during an action | Compare resources without an open action, during the wait and after the settle/disposal, according to [R01](../references/17-known-risks.md#r01-subscription-retention-during-a-pending-action) |
+| Progressive hydration | Interact after the shell and before the last region of the stream; check listeners and identity after the end |
+| Server error | Look for a synthetic marker in HTML, chunks, RPC and logs; `throw Error` and `return Error` have different exposures |
 
-Esta lista seleciona provas; não declara que todos os cenários foram executados.
+This list selects proofs; it does not state that every scenario was run.

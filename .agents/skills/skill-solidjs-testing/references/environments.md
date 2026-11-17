@@ -1,31 +1,31 @@
-# Ambientes: happy-dom, jsdom e browser mode
+# Environments: happy-dom, jsdom and browser mode
 
-Escolha pela [prova necessária](../SKILL.md#escolha-pela-prova-necessária); configuração em [Vitest](vitest-config.md). As limitações abaixo foram observadas no ambiente de verificação da skill. Atualizar o emulador, o plugin ou o navegador exige conferir o comportamento relevante novamente.
+Choose by the [proof you need](../SKILL.md#choose-by-the-proof-you-need); configuration in [Vitest](vitest-config.md). The limitations below were observed in the verification environment of the skill. Updating the emulator, the plugin or the browser requires checking the relevant behavior again.
 
 ## happy-dom
 
-- `<p>{count()}</p>` começando em 0 renderiza vazio; a atualização seguinte lança `TypeError: Cannot set properties of null (setting 'data')` (atribuição de `data` em `null`) e causa `REACTIVITY_HALTED`. Chromium mantém o zero. Teste esse caminho numérico no browser mode, sem convertê-lo em string só para passar.
-- Não há `reportError`; confira o [canal do halt](mount-dispose-diagnostics.md#halt-reativo) no navegador.
-- O plugin injeta `@testing-library/jest-dom/vitest` em `setupFiles` quando instalado, exceto se um caminho de setup já contém `jest-dom`. Não registre os matchers duas vezes.
-- No jest-dom de happy-dom e jsdom, `toHaveTextContent('n=1')` aceita `n=10`. Para valor exato, use `textContent` com `toBe` ou regex ancorada. No browser mode, `expect.element(...).toHaveTextContent('n=1')` compara o texto inteiro; a busca parcial e a regex ficam em `toMatchTextContent`.
-- Um `PointerEvent` sintético só atravessa shadow root com `composed: true`. A restauração de foco após reordenar `For` foi observada em happy-dom e Chromium; isso não cobre todo comportamento de foco.
+- `<p>{count()}</p>` starting at 0 renders empty; the next update throws `TypeError: Cannot set properties of null (setting 'data')` and causes `REACTIVITY_HALTED`. Chromium keeps the zero. Test that numeric path in browser mode, without turning it into a string just to pass.
+- There is no `reportError`; check the [halt channel](mount-dispose-diagnostics.md#reactive-halt) in the browser.
+- The plugin injects `@testing-library/jest-dom/vitest` into `setupFiles` when it is installed, unless a setup path already contains `jest-dom`. Do not register the matchers twice.
+- In the jest-dom of happy-dom and jsdom, `toHaveTextContent('n=1')` accepts `n=10`. For an exact value, use `textContent` with `toBe` or an anchored regex. In browser mode, `expect.element(...).toHaveTextContent('n=1')` compares the whole text; the partial search and the regex stay in `toMatchTextContent`.
+- A synthetic `PointerEvent` only crosses a shadow root with `composed: true`. Focus restoration after reordering a `For` was observed in happy-dom and Chromium; that does not cover every focus behavior.
 
 ## jsdom
 
-Os resultados específicos de happy-dom não estabelecem o comportamento de jsdom. Para contratos de foco, layout e APIs nativas, use o navegador que observa o comportamento exigido.
+The results specific to happy-dom do not establish the behavior of jsdom. For focus, layout and native API contracts, use the browser that shows the required behavior.
 
 ## Browser mode
 
-O plugin não injeta jest-dom quando `browser.enabled`; as asserções vêm de `expect.element`. No Chromium, `await userEvent.click()` retorna com o DOM assentado.
+The plugin does not inject jest-dom when `browser.enabled`; the assertions come from `expect.element`. In Chromium, `await userEvent.click()` returns with the DOM settled.
 
-## Tipos do jest-dom
+## jest-dom types
 
-A injeção do plugin é de runtime. O tsconfig dos testes precisa incluir `@testing-library/jest-dom/vitest` em `types` para reconhecer os matchers. Um import de `@vitest/browser-playwright` em qualquer arquivo do programa, inclusive a config, também os declara e pode mascarar a falta.
+The plugin injection happens at runtime. The tsconfig of the tests must include `@testing-library/jest-dom/vitest` in `types` to recognize the matchers. An import of `@vitest/browser-playwright` in any file of the program, the config included, also declares them and can hide the gap.
 
-## Formulários
+## Forms
 
-`checked` pode mudar pela ação nativa mesmo com o handler reativo quebrado. Além do estado visual, confira a inclusão e remoção do campo em `FormData` ao marcar, desmarcar e desabilitar. Contratos em [formulários](../../skill-solidjs/references/11-forms-and-accessibility.md).
+`checked` can change through the native action even with a broken reactive handler. Besides the visual state, check that the field is included in and removed from `FormData` when checking, unchecking and disabling. Contracts in [forms](../../skill-solidjs/references/11-forms-and-accessibility.md).
 
 ## Portal
 
-O conteúdo fica fora do host da montagem. Confira o alvo real e seu descarte; contexto e eventos delegados seguem o ramo lógico. Esses contratos foram observados no Chromium, sem prova equivalente de Portal em happy-dom.
+The content stays outside the mount host. Check the real target and its disposal; context and delegated events follow the logical branch. These contracts were observed in Chromium, without an equivalent Portal proof in happy-dom.

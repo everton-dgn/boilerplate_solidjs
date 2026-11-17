@@ -23,7 +23,7 @@ export function ListWithLocalState(props: ListWithLocalStateProps) {
   }
 
   return (
-    <ul aria-label="Itens disponíveis">
+    <ul aria-label="Available items">
       <For each={props.items} keyed={item => item.id}>
         {item => (
           <li>

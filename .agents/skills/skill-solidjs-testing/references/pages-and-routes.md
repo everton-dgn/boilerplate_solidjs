@@ -1,10 +1,10 @@
-# Páginas e rotas
+# Pages and routes
 
-Router em memória testa página, parâmetros e navegação sem servidor. SSR, hidratação e integração HTTP exigem build servido. Contratos em [roteamento](../../skill-solidjs/references/14-routing-and-architecture.md#router-2-superfície-instalada).
+An in-memory router tests a page, parameters and navigation without a server. SSR, hydration and HTTP integration require a served build. Contracts in [routing](../../skill-solidjs/references/14-routing-and-architecture.md#router-2-installed-surface).
 
-## Router em memória
+## In-memory router
 
-Crie o router por teste, com rota inicial no histórico e children explícitos. `mount` representa o helper do projeto; ajuste o import à sua localização. Na falta dele, adapte a [receita de montagem](mount-dispose-diagnostics.md#montar-com-descarte-garantido):
+Create the router per test, with the initial route in the history and explicit children. `mount` stands for the helper of the project; adjust the import to its location. Without it, adapt the [mount recipe](mount-dispose-diagnostics.md#mount-with-guaranteed-disposal):
 
 ```tsx
 import { expect, it, vi } from 'vitest'
@@ -21,13 +21,13 @@ it('renders the initial route', async () => {
 })
 ```
 
-- A resolução da rota é assíncrona mesmo sem dados: espere o conteúdo inicial com `vi.waitFor`.
-- O cache de `query` vive no módulo e atravessa testes. Outro teste com a mesma chave pode receber o cache sem chamar o mock. Use parâmetros distintos ou `revalidate(getUser.key)`; limpe também a fila do mock com `mockReset()`, pois uma resposta `mockResolvedValueOnce` não consumida pode vazar para o caso seguinte.
-- Dados de `query` são lidos por memo sob `Loading`. Mocke o I/O consumido pela query.
-- O link ativo recebe `aria-current="page"`; links são elementos `a` comuns.
+- Route resolution is asynchronous even without data: wait for the initial content with `vi.waitFor`.
+- The `query` cache lives in the module and crosses tests. Another test with the same key can receive the cache without calling the mock. Use distinct parameters or `revalidate(getUser.key)`; also clear the mock queue with `mockReset()`, because an unconsumed `mockResolvedValueOnce` response can leak into the next case.
+- `query` data is read through a memo under `Loading`. Mock the I/O consumed by the query.
+- The active link receives `aria-current="page"`; links are plain `a` elements.
 
-## E2E com Playwright
+## E2E with Playwright
 
-HTML visível pode ser apenas SSR. Espere um sinal de cliente pronto e execute uma interação cujo resultado dependa da hidratação; preservar o nó não prova que os handlers funcionam.
+Visible HTML can be SSR only. Wait for a client-ready signal and run an interaction whose result depends on hydration; keeping the node does not prove that the handlers work.
 
-Contratos exclusivos do artefato de produção precisam de uma execução contra esse build. Use os scripts e o servidor de testes do projeto.
+Contracts exclusive to the production artifact need a run against that build. Use the scripts and the test server of the project.

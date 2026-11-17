@@ -26,8 +26,8 @@ export const ObservedPanel: ParentComponent = props => {
   const ref = createObservedRef(setWidth)
 
   return (
-    <section ref={ref} aria-label="Painel observado">
-      <p>Largura: {Math.round(width())} px</p>
+    <section ref={ref} aria-label="Observed panel">
+      <p>Width: {Math.round(width())} px</p>
       {props.children}
     </section>
   )

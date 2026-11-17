@@ -1,49 +1,49 @@
 ---
 name: skill-solidjs
-description: "SolidJS 2 / Solid 2.0 (solid-js, @solidjs/web): criar, revisar, depurar TSX, createSignal, stores, effects, Loading, action, SSR, hidratação. Testes: skill-solidjs-testing. Fora: Solid 1, SolidStart."
+description: "SolidJS 2 / Solid 2.0 (solid-js, @solidjs/web): create, review and debug TSX, createSignal, stores, effects, Loading, action, SSR, hydration. Tests: skill-solidjs-testing. Out of scope: Solid 1, SolidStart."
 metadata:
-  compatibility: "SolidJS 2 com @solidjs/web. Consulte exports e tipos do pacote instalado."
-  versao-da-skill: "1.9.0"
-  data-da-verificacao: "2026-09-29"
-  commit-base: "ee49b3eee5f457a637075c4a3bbdcee013808fc3"
+  compatibility: "SolidJS 2 with @solidjs/web. Check the exports and types of the installed package."
+  skill-version: "1.9.0"
+  verification-date: "2026-09-29"
+  base-commit: "ee49b3eee5f457a637075c4a3bbdcee013808fc3"
 ---
 
 # SolidJS 2
 
-A base de evidência está no frontmatter ([manifesto da revisão verificada](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/solid/package.json)); as referências a chamam de "base verificada" e chamam de "base anterior" a base anterior da skill (commit `9a29b1a`). As ressalvas de runtime valem para essa base: confirme exports e tipos instalados antes de aplicá-las a outra versão e, quando o pacote trouxer a pasta `skills/`, leia também a skill oficial em `node_modules/solid-js/skills/solid-2.0/SKILL.md`. Documentação de Solid 1 e código em `next` podem descrever APIs ausentes no pacote. O inventário da verificação fica no [README](README.md#histórico-da-verificação).
+The evidence base is in the frontmatter ([manifest of the verified revision](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/solid/package.json)); the references call it the "verified base" and call the previous base of the skill (commit `9a29b1a`) the "previous base". The runtime caveats apply to that base: check the installed exports and types before applying them to another version and, when the package ships the `skills/` folder, also read the official skill in `node_modules/solid-js/skills/solid-2.0/SKILL.md`. Solid 1 documentation and code in `next` can describe APIs missing from the package. The verification inventory is in the [README](README.md#verification-history).
 
-## Erros que o modelo tende a introduzir
+## Mistakes the model tends to introduce
 
-- Core e stores vêm de `solid-js`; DOM, `JSX`, `ComponentProps`, `render` e `hydrate`, de `@solidjs/web`. TSX usa `jsxImportSource: "@solidjs/web"`.
-- `createEffect(compute, apply)` e `createRenderEffect(compute, apply)` têm duas fases. O apply devolve cleanup síncrono ou `undefined`: use chaves em `value => { setValue(value) }`. Retorno implícito do setter pode causar `REACTIVITY_HALTED`.
-- Setter de store recebe função síncrona. `setStore(d => { d.items = items })` muta; retornar o array ou objeto da atribuição pode substituir a raiz e apagar outras chaves. Não guarde o draft para depois.
-- `createSignal(fn)` cria derivação gravável. Escritas publicam por microtask; leitura logo após setter ainda pode ver o valor anterior. Escrita no corpo de componente, root ou compute é proibida em dev; `untrack` não a libera.
-- Componentes e callbacks estruturais não reexecutam como renders de React. Leia props no JSX ou em compute, sem desestruturar no setup. Prop de valor usa `value={count()}`; handler dinâmico decide dentro do callback, como `onClick={e => (active() ? a : b)(e)}`.
-- Apply de `createEffect` não tem owner: devolva cleanup, em vez de usar `onCleanup` ali. Primitivas ficam no setup; callback de ref e `onSettled` não permitem criá-las. Roots aninhados são descartados com o pai.
-- Fontes async são memos/stores lidos sob `Loading`; capture dependências antes de `await`. `refresh` recebe a fonte original. `Loading.on` é lista de dependências e re-arma a cada mudança lida, sem comparar valor: `on={id()}`. `Show` por status não protege um memo que lança; o leitor precisa de `Errored`.
-- Actions são geradores. Depois de `await`, faça `yield` vazio antes de escrever ou criar outra espera. Helper `async` cedido com `yield` sai da transação no primeiro `await` dele: escrita ou `refresh` depois disso pode publicar no meio da action ou impedir que ela assente. Devolva o resultado e faça escritas e `yield refresh(fonte)` no gerador, ou delegue a um gerador com `yield*`. Estado otimista reverte no assentamento, mesmo em sucesso; escrita comum no mesmo tick da action pode ficar retida. Pacotes posteriores à base verificada exportam `onFlush(() => ...)` para tirar uma escrita dessa retenção: chame-o em handler ou callback de effect; no corpo do componente ele avisa, use `onSettled`. Consulte a referência antes de implementar confirmação ou envios sobrepostos.
-- APIs conhecidas do Solid 1 mudaram: `Suspense → Loading`, `ErrorBoundary → Errored`, `onMount → onSettled`, `mergeProps → merge`, `splitProps → omit`. `createResource`, `batch` e setter de store por caminho não são a API desta base. O contexto é o próprio provider: `<Context value={value}>`, sem `.Provider`.
+- Core and stores come from `solid-js`; DOM, `JSX`, `ComponentProps`, `render` and `hydrate`, from `@solidjs/web`. TSX uses `jsxImportSource: "@solidjs/web"`.
+- `createEffect(compute, apply)` and `createRenderEffect(compute, apply)` have two phases. The apply returns a synchronous cleanup or `undefined`: use braces in `value => { setValue(value) }`. An implicit return of the setter can cause `REACTIVITY_HALTED`.
+- A store setter receives a synchronous function. `setStore(d => { d.items = items })` mutates; returning the array or object of the assignment can replace the root and erase other keys. Do not keep the draft for later.
+- `createSignal(fn)` creates a writable derivation. Writes publish on a microtask; a read right after the setter can still see the previous value. Writing in the body of a component, root or compute is forbidden in dev; `untrack` does not allow it.
+- Components and structural callbacks do not rerun like React renders. Read props in the JSX or in a compute, without destructuring in the setup. A value prop uses `value={count()}`; a dynamic handler decides inside the callback, as in `onClick={e => (active() ? a : b)(e)}`.
+- The apply of `createEffect` has no owner: return a cleanup instead of using `onCleanup` there. Primitives stay in the setup; a ref callback and `onSettled` do not allow creating them. Nested roots are disposed with the parent.
+- Async sources are memos/stores read under `Loading`; capture dependencies before `await`. `refresh` receives the original source. `Loading.on` is a list of dependencies and rearms on every change it reads, without comparing values: `on={id()}`. A `Show` by status does not protect a memo that throws; the reader needs `Errored`.
+- Actions are generators. After `await`, do an empty `yield` before writing or creating another wait. An `async` helper yielded with `yield` leaves the transaction at its first `await`: a write or `refresh` after that can publish in the middle of the action or keep it from settling. Return the result and do the writes and `yield refresh(source)` in the generator, or delegate to a generator with `yield*`. Optimistic state reverts on settle, even on success; a plain write in the same tick as the action can be held. Packages newer than the verified base export `onFlush(() => ...)` to take a write out of that hold: call it in a handler or an effect callback; in the component body it warns, use `onSettled`. Read the reference before implementing confirmation or overlapping submissions.
+- Known Solid 1 APIs changed: `Suspense → Loading`, `ErrorBoundary → Errored`, `onMount → onSettled`, `mergeProps → merge`, `splitProps → omit`. `createResource`, `batch` and a store setter by path are not the API of this base. The context is the provider itself: `<Context value={value}>`, without `.Provider`.
 
-## Leia conforme a tarefa
+## Read according to the task
 
-| Tarefa | Referência e armadilha principal |
+| Task | Reference and main pitfall |
 | --- | --- |
-| Imports, tipos, plugin e compatibilidade | [01 ambiente](references/01-environment-imports-and-types.md): cópias do motor não compartilham rastreamento; JSX deve usar o renderer correto |
-| Signals, memo, ownership e agendamento | [02 reatividade](references/02-reactivity-and-ownership.md): escrita retida, `latest`, dependências após `await` |
-| Effects e recursos externos | [03 effects](references/03-effects-and-lifecycle.md): owner por fase, cleanup e erros de compute/apply |
-| Props, defaults, children e contexto | [04 componentes](references/04-components-props-and-context.md): `merge` não preserva default diante de `undefined` explícito |
-| Stores, projections e seleção | [05 stores](references/05-stores-and-projections.md): proxy, identidade, draft e reconciliação |
-| Listas, Show, lazy e Portal | [06 listas](references/06-lists-control-flow-and-local-state.md): item/índice mudam conforme `keyed`; mover nó pode perder foco |
-| Eventos, classes, refs e texto | [07 DOM](references/07-dom-events-and-refs.md): handler fixado na montagem, composição de refs e zero numérico |
-| Async, Loading, retry e erro | [08 async](references/08-async-loading-errors-and-recovery.md): leitores compartilhados, valores provisórios e recuperação |
-| Cancelamento e fontes vivas | [09 cancelamento](references/09-cancellation-and-live-sources.md): trabalho tardio e escopo de invocação |
-| Actions, otimismo e confirmação | [10 actions](references/10-actions-optimism-and-confirmation.md): publicação no clique, reentrada e confirmação fora de ordem |
-| Formulários | [11 formulários](references/11-forms-and-accessibility.md): select com opções tardias e anúncios sob boundaries |
-| SSR e hidratação | [12 SSR](references/12-ssr-and-hydration.md): compute de effect roda no servidor; falha síncrona escapa antes do stream; texto divergente pode ficar sem aviso |
-| Server functions | [13 servidor](references/13-server-functions-and-security.md): wrapper externo pode não proteger o corpo registrado; retornar Error não o sanitiza |
-| Router e integrações | [14 roteamento](references/14-routing-and-architecture.md): `createRouter`, queries e action do router têm contratos próprios |
-| Diagnóstico | [15 diagnóstico](references/15-diagnostics-checklists-and-recipes.md): build default pode silenciar avisos |
-| Migração ou padrão antigo | [16 migração](references/16-migration-from-solid-1.md): APIs removidas e divergências da documentação |
-| Sintoma específico da base | [17 riscos](references/17-known-risks.md): limitações observadas, hipóteses e status histórico upstream |
+| Imports, types, plugin and compatibility | [01 environment](references/01-environment-imports-and-types.md): copies of the engine do not share tracking; JSX must use the right renderer |
+| Signals, memo, ownership and scheduling | [02 reactivity](references/02-reactivity-and-ownership.md): held write, `latest`, dependencies after `await` |
+| Effects and external resources | [03 effects](references/03-effects-and-lifecycle.md): owner per phase, cleanup and compute/apply errors |
+| Props, defaults, children and context | [04 components](references/04-components-props-and-context.md): `merge` does not keep a default against an explicit `undefined` |
+| Stores, projections and selection | [05 stores](references/05-stores-and-projections.md): proxy, identity, draft and reconciliation |
+| Lists, Show, lazy and Portal | [06 lists](references/06-lists-control-flow-and-local-state.md): item/index change with `keyed`; moving a node can lose focus |
+| Events, classes, refs and text | [07 DOM](references/07-dom-events-and-refs.md): handler fixed at mount, ref composition and numeric zero |
+| Async, Loading, retry and error | [08 async](references/08-async-loading-errors-and-recovery.md): shared readers, provisional values and recovery |
+| Cancellation and live sources | [09 cancellation](references/09-cancellation-and-live-sources.md): late work and invocation scope |
+| Actions, optimism and confirmation | [10 actions](references/10-actions-optimism-and-confirmation.md): publication on click, reentry and out-of-order confirmation |
+| Forms | [11 forms](references/11-forms-and-accessibility.md): select with late options and announcements under boundaries |
+| SSR and hydration | [12 SSR](references/12-ssr-and-hydration.md): the effect compute runs on the server; a synchronous failure escapes before the stream; diverging text can go without a warning |
+| Server functions | [13 server](references/13-server-functions-and-security.md): an outer wrapper may not protect the registered body; returning an Error does not sanitize it |
+| Router and integrations | [14 routing](references/14-routing-and-architecture.md): `createRouter`, queries and the router action have their own contracts |
+| Diagnostics | [15 diagnostics](references/15-diagnostics-checklists-and-recipes.md): the default build can silence warnings |
+| Migration or old pattern | [16 migration](references/16-migration-from-solid-1.md): removed APIs and documentation divergences |
+| Base-specific symptom | [17 risks](references/17-known-risks.md): observed limitations, hypotheses and historical upstream status |
 
-Para testes, use [skill-solidjs-testing](../skill-solidjs-testing/SKILL.md). Exemplos adaptáveis ficam em [examples](examples/README.md). As referências distinguem comportamento observado, documentação e inferência; os testes históricos não acompanham o pacote.
+For tests, use [skill-solidjs-testing](../skill-solidjs-testing/SKILL.md). Adaptable examples are in [examples](examples/README.md). The references tell observed behavior, documentation and inference apart; the historical tests do not ship with the package.

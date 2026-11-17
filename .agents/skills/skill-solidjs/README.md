@@ -1,21 +1,21 @@
-# Skill SolidJS 2
+# SolidJS 2 skill
 
-Implementação e diagnóstico de SolidJS 2 pela API pública instalada. [SKILL.md](SKILL.md) contém as armadilhas frequentes e encaminha às referências por assunto. Solid 1 e SolidStart ficam fora.
+Implementation and diagnostics of SolidJS 2 through the installed public API. [SKILL.md](SKILL.md) holds the frequent pitfalls and points to the references by subject. Solid 1 and SolidStart are out of scope.
 
-## Instalação
+## Installation
 
-Mantenha `skill-solidjs` e `skill-solidjs-testing` lado a lado em `.agents/skills/`: as referências entre elas usam caminhos relativos. Neste repositório, `.claude/skills/` aponta por symlink para essas pastas.
+Keep `skill-solidjs` and `skill-solidjs-testing` side by side in `.agents/skills/`: the references between them use relative paths. In this repository, `.claude/skills/` points to these folders through a symlink.
 
-## Organização
+## Layout
 
-- [SKILL.md](SKILL.md): entrada e escolha de referência.
-- `references/`: contratos e diferenças que levam a código incorreto.
-- [examples](examples/README.md): exemplos adaptáveis e suas limitações.
+- [SKILL.md](SKILL.md): entry point and choice of reference.
+- `references/`: contracts and differences that lead to wrong code.
+- [examples](examples/README.md): adaptable examples and their limitations.
 
-## Histórico da verificação
+## Verification history
 
-A reverificação de 2026-09-29 na base verificada, com controle na base anterior da skill (commit `9a29b1a`) em grafo, SSR no Node, happy-dom e Chromium, cobriu os riscos de [17](references/17-known-risks.md), o gate de origem de server functions, `Loading.on`, toda afirmação marcada como da base ou do runtime instalado nas referências 01 a 16 e a tabela de migração de 16; os changelogs de signals, `solid-js` e `@solidjs/web` publicados entre a base anterior e a verificada foram cruzados com as referências e as contradições encontradas foram corrigidas.
+The reverification of 2026-09-29 on the verified base, with a control on the previous base of the skill (commit `9a29b1a`) in the graph, SSR on Node, happy-dom and Chromium, covered the risks of [17](references/17-known-risks.md), the origin gate of server functions, `Loading.on`, every statement marked as coming from the base or from the installed runtime in references 01 to 16 and the migration table of 16; the changelogs of signals, `solid-js` and `@solidjs/web` published between the previous and the verified base were checked against the references and the contradictions found were fixed.
 
-Na mesma data, os cerca de 230 parágrafos de contrato e armadilha sem marcação nas referências 01 a 16 foram examinados na base verificada: exports, tipos (tsc estrito), compilador e diff do `dist` contra a base anterior, com sonda nas duas bases quando o trecho mudou ou o contrato era comportamental; nove foram corrigidos, 18 ficaram sem nova medição e os demais foram mantidos. Os 18 sem nova medição, por exigirem navegador real, hidratação completa, build de produção servido ou por a sonda não reproduzir o caso nem na base anterior, são: o disparo extra da derivação e o leitor retido até `TimeoutError` em [10](references/10-actions-optimism-and-confirmation.md); o snapshot de hidratação em [02](references/02-reactivity-and-ownership.md); o owner marcado com DOM retido em [03](references/03-effects-and-lifecycle.md); `seedLoadingValue` com `ssrSource: 'client'` em [05](references/05-stores-and-projections.md); foco com action pendente, `lazy` com `.then`, `clientOnly` e Portal na hidratação em [06](references/06-lists-control-flow-and-local-state.md); o plugin de lint em [07](references/07-dom-events-and-refs.md); `NoHydration`/`Hydration` com documento inteiro, o lado cliente da hidratação, o build do plugin, a produção servida pelo adapter e a retração de status sob `Loading`/`Errored` em [12](references/12-ssr-and-hydration.md); GET/HEAD declarados, `X-Revalidate` de `reload` e formulário sem JS em [13](references/13-server-functions-and-security.md).
+On the same date, the roughly 230 unmarked contract and pitfall paragraphs in references 01 to 16 were examined on the verified base: exports, types (strict tsc), compiler and the `dist` diff against the previous base, with a probe on both bases when the passage changed or the contract was behavioral; nine were fixed, 18 were left without a new measurement and the rest were kept. The 18 without a new measurement, because they need a real browser, full hydration or a served production build, or because the probe did not reproduce the case even on the previous base, are: the extra firing of the derivation and the reader held until `TimeoutError` in [10](references/10-actions-optimism-and-confirmation.md); the hydration snapshot in [02](references/02-reactivity-and-ownership.md); the marked owner with retained DOM in [03](references/03-effects-and-lifecycle.md); `seedLoadingValue` with `ssrSource: 'client'` in [05](references/05-stores-and-projections.md); focus with a pending action, `lazy` with `.then`, `clientOnly` and Portal during hydration in [06](references/06-lists-control-flow-and-local-state.md); the lint plugin in [07](references/07-dom-events-and-refs.md); `NoHydration`/`Hydration` with a whole document, the client side of hydration, the plugin build, production served by the adapter and the status retraction under `Loading`/`Errored` in [12](references/12-ssr-and-hydration.md); declared GET/HEAD, `X-Revalidate` of `reload` and a form without JS in [13](references/13-server-functions-and-security.md).
 
-Os números de versão das duas bases ficam no `package.json` e no `pnpm-lock.yaml` do monorepo do Solid, nos commits indicados. Orientações acrescentadas depois dessa data sem sonda própria, como `onFlush`, dizem de onde vêm (JSDoc do pacote instalado ou skill oficial) e não alteram a data de verificação.
+The version numbers of both bases are in the `package.json` and the `pnpm-lock.yaml` of the Solid monorepo, at the commits given. Guidance added after that date without its own probe, such as `onFlush`, says where it comes from (JSDoc of the installed package or the official skill) and does not change the verification date.

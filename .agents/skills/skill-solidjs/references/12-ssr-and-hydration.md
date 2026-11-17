@@ -1,42 +1,42 @@
-# SSR e hidratação
+# SSR and hydration
 
-Contratos do runtime da [base verificada](../SKILL.md). Separe compilador, runtime, adapter e fase; a skill não certifica todas as combinações de um projeto.
+Runtime contracts of the [verified base](../SKILL.md). Tell compiler, runtime, adapter and phase apart; the skill does not certify every combination of a project.
 
-## Render e consumo
+## Render and consumption
 
-Contrato: `render` cria UI cliente; `hydrate` associa árvore cliente ao HTML e registros servidor compatíveis. Não hidrate em cada navegação nem use render sobre SSR como equivalente. `renderToString` é síncrono e pode devolver fallback pendente. `renderToStream` aguardado entrega HTML completo e substitui `renderToStringAsync`; sua interface também permite entrega progressiva. O passe de descoberta roda sincronamente na chamada, expondo falha e estado HTTP imediatamente.
+Contract: `render` creates client UI; `hydrate` binds a client tree to the HTML and compatible server records. Do not hydrate on every navigation nor use render over SSR as an equivalent. `renderToString` is synchronous and can return a pending fallback. An awaited `renderToStream` delivers the full HTML and replaces `renderToStringAsync`; its interface also allows a progressive delivery. The discovery pass runs synchronously in the call, exposing a failure and the HTTP state right away.
 
-Receita: escolha um canal no adapter: `pipe` para writable Node, `pipeTo` para WritableStream ou `readable` para Web Streams/Response. Faça render separado para inspeção que consome corpo.
+Recipe: choose one channel in the adapter: `pipe` for a Node writable, `pipeTo` for a WritableStream or `readable` for Web Streams/Response. Do a separate render for an inspection that consumes the body.
 
-Armadilha: guard compara nomes de métodos e bloqueia combinações cruzadas, sem garantir consumo único. Duas chamadas pipe entregaram a dois destinos; readable repetido deu a mesma instância; readable seguido de await resolveu. Evitar entrega duplicada cabe ao adapter.
+Pitfall: the guard compares method names and blocks crossed combinations, without guaranteeing a single consumption. Two pipe calls delivered to two targets; a repeated readable gave the same instance; readable followed by await resolved. Avoiding a duplicated delivery is up to the adapter.
 
-## Effects no servidor
+## Effects on the server
 
-Contrato: createEffect executa compute, nunca apply; createRenderEffect executa ambos, ou só compute com defer true. `ssrSource: "client"` pula todo effect; createTrackedEffect não executa. Effect criado em fábrica de ref segue a mesma regra, inclusive compute.
+Contract: createEffect runs the compute, never the apply; createRenderEffect runs both, or only the compute with defer true. `ssrSource: "client"` skips the whole effect; createTrackedEffect does not run. An effect created in a ref factory follows the same rule, compute included.
 
-Receita:
+Recipe:
 ```ts
 createEffect(() => value(), value => { document.title = value })
 ```
 
-Armadilha: document/window no compute de createEffect ou apply de createRenderEffect lança ReferenceError em SSR. Leve browser para apply de createEffect ou use ssrSource client. As fases cliente têm contrato próprio.
+Pitfall: document/window in the compute of createEffect or in the apply of createRenderEffect throws a ReferenceError in SSR. Move the browser access to the apply of createEffect or use ssrSource client. The client phases have their own contract.
 
-## Compilações e divergências de hidratação
+## Builds and hydration mismatches
 
-Contrato: versões, transformações, criação de owners, IDs e árvore relevante devem corresponder nos dois lados. HydrationScript/generateHydrationScript precede código dependente do bootstrap e preserva nonce/CSP/eventos. Evite random, horário local, storage e contador global entre requests produzindo árvores distintas; viewport/browser pede cliente ou clientOnly.
+Contract: versions, transforms, owner creation, IDs and the relevant tree must match on both sides. HydrationScript/generateHydrationScript comes before code that depends on the bootstrap and keeps the nonce/CSP/events. Avoid random values, local time, storage and a global counter between requests producing different trees; viewport/browser calls for the client or clientOnly.
 
-Armadilha: hidratação não compara texto: mantém texto divergente do servidor sem aviso, inclusive em dev. Reescrever mesmo valor cliente não corrige; só valor diferente atualiza. Divergência estrutural avisa `Hydration` só em dev; produção silencia. style/setStyleProperty não alteram nó durante claim, assim como classes/atributos comuns: inline SSR fica de baseline até escrita reativa posterior. Identidade de nó não basta; botão inerte pode ser exatamente o nó servidor. Exija interação real em produção e console capturado em dev, incluindo inputs/botões após Loading, For e Portal.
+Pitfall: hydration does not compare text: it keeps text that diverges from the server without a warning, even in dev. Rewriting the same value on the client does not fix it; only a different value updates. A structural divergence warns `Hydration` only in dev; production is silent. style/setStyleProperty do not change the node during the claim, just like ordinary classes/attributes: the inline SSR stays as the baseline until a later reactive write. Node identity is not enough; an inert button can be exactly the server node. Require a real interaction in production and a captured console in dev, including inputs/buttons after Loading, For and Portal.
 
-## Documento autoral e slots
+## Authored document and slots
 
-Contrato: se servidor renderiza documento inteiro e cliente hidrata só container, NoHydration envolve casca e Hydration reabre namespace do app. No start gerado, cliente hidrata documento inteiro com o mesmo Document; o par é para entrada autoral de subárvore. NoHydration define conteúdo sem comportamento cliente, não disfarça árvore incompatível.
+Contract: if the server renders the whole document and the client hydrates only a container, NoHydration wraps the shell and Hydration reopens the namespace of the app. In the generated start, the client hydrates the whole document with the same Document; the pair is for an authored subtree entry. NoHydration defines content without client behavior, it does not disguise an incompatible tree.
 
-Receita:
+Recipe:
 ```tsx
 type DocumentProps = { children: JSX.Element }
 const Document = (props: DocumentProps) => (
   <NoHydration>
-    <html lang="pt-BR">
+    <html lang="en">
       <head><meta charset="utf-8" /><HydrationScript /></head>
       <body>
         <div id="app"><Hydration>{props.children}</Hydration></div>
@@ -45,11 +45,11 @@ const Document = (props: DocumentProps) => (
     </html>
   </NoHydration>
 )
-// Na entrada cliente, após encontrar o container:
+// In the client entry, after finding the container:
 hydrate(() => <App />, container)
 ```
 
-Contrato: na base anterior, JSX em prop não children, seguido de outro hole que aloca ID, podia hidratar sem eventos. O compilador da base verificada escopa também o hole que lê essa prop (`_$scope`), e o dev avisa `UNSCOPED_HOLE_ALLOCATED_IDS` quando um hole sem escopo aloca IDs; a hidratação desse arranjo não foi sondada em navegador. Com compilador anterior, passe por children ou renderize slot por componente:
+Contract: on the previous base, JSX in a non-children prop, followed by another hole that allocates an ID, could hydrate without events. The compiler of the verified base also scopes the hole that reads that prop (`_$scope`), and dev warns `UNSCOPED_HOLE_ALLOCATED_IDS` when an unscoped hole allocates IDs; the hydration of that arrangement was not probed in a browser. With the previous compiler, pass it through children or render the slot through a component:
 
 ```tsx
 type SlotProps = { children?: JSX.Element }
@@ -60,25 +60,25 @@ const Layout = (props: LayoutProps) => (
 )
 ```
 
-Armadilha: documento sem par ou slot quebrado deixa nó servidor inerte; dev avisa `Hydration key miss`/`unclaimed server-rendered`, produção não. Slot por componente hidratou sem diagnóstico nos dois builds, sem prova em runtime posterior. Relato não reproduzido de escrita em onSettled/createEffect durante hidratação também envolve key miss; correção posterior não publicada não certifica contorno local. Reavalie escrita nessa fase; onMount não é export da base.
+Pitfall: a document without the pair or a broken slot leaves an inert server node; dev warns `Hydration key miss`/`unclaimed server-rendered`, production does not. A slot through a component hydrated without a diagnostic in both builds, without proof on a later runtime. An unreproduced report of a write in onSettled/createEffect during hydration also involves a key miss; an unpublished later fix does not certify a local workaround. Reconsider writes in that phase; onMount is not an export of the base.
 
-## Ilhas e setup de adapters
+## Islands and adapter setup
 
-Contrato: `clientOnly(() => import("./Chart"))` renderiza apenas fallback ou nada no servidor, sem chamar loader. Cliente começa import ao carregar módulo da ilha, antes de hydrate; reivindica fallback SSR e troca pelo componente real após hidratar, sem diagnóstico. Lazy e export nomeado não foram exercitados.
+Contract: `clientOnly(() => import("./Chart"))` renders only the fallback or nothing on the server, without calling the loader. The client starts the import when it loads the island module, before hydrate; it claims the SSR fallback and swaps it for the real component after hydrating, without a diagnostic. Lazy and a named export were not exercised.
 
-Armadilha: corpo de componente constrói estrutura, mas recuperação/reconstrução/hidratação não garantem efeito externo uma única vez para sempre. Mantenha corpo puro e recurso com ciclo de vida. `untrack` não exclui snapshot/ownership/prontidão: escrever fonte local e lê-la durante setup pode marcar replay. Separe instância, consulta inicial estrutural não reativa e leitura versionada; calcule seed antes da fonte quando possível. Não exponha internos, use ownedWrite/untrack como inicializador automaticamente seguro ou troque tudo para ssrSource client. `transparent` é integração restrita, não correção global de mismatch. Preserve identidade, isolamento por request e adoção do valor servidor.
+Pitfall: the body of a component builds structure, but recovery/rebuild/hydration do not guarantee an external effect only once forever. Keep the body pure and the resource with a lifecycle. `untrack` does not exclude snapshot/ownership/readiness: writing a local source and reading it during the setup can mark a replay. Separate the instance, a non-reactive structural initial query and a versioned read; compute the seed before the source when possible. Do not expose internals, use ownedWrite/untrack as an automatically safe initializer or switch everything to ssrSource client. `transparent` is a restricted integration, not a global mismatch fix. Keep identity, per-request isolation and the adoption of the server value.
 
-## Escopo por request
+## Request scope
 
-Contrato: sessão, tenant, permissões e dados privados precisam de escopo por requisição. Cache compartilhado exige chave, isolamento e expiração explícitos. getRequestEvent pode ser undefined fora dele; provideRequestEvent de `@solidjs/web/storage` estabelece contexto servidor e não entra no cliente. RequestEventLocals admite module augmentation em módulo real, mas tipo não preenche locals: handler fornece dados. Evite declaração .d.ts conflitante com .ts homônimo.
+Contract: session, tenant, permissions and private data need a per-request scope. A shared cache requires an explicit key, isolation and expiration. getRequestEvent can be undefined outside it; provideRequestEvent from `@solidjs/web/storage` establishes a server context and does not enter the client. RequestEventLocals admits module augmentation in a real module, but the type does not fill locals: the handler provides the data. Avoid a .d.ts declaration that conflicts with a .ts of the same name.
 
-Armadilha: signal/store global vaza entre requests. Chamadas diretas de server functions no SSR recebem cópia superficial de locals por chamada; objetos aninhados continuam compartilhados. Resposta é compartilhada deliberadamente no fluxo HTTP. Não espalhe asserções não nulas em utilitário dos dois lados.
+Pitfall: a global signal/store leaks between requests. Direct calls of server functions in the SSR receive a shallow copy of locals per call; nested objects stay shared. The response is deliberately shared in the HTTP flow. Do not spread non-null assertions in a utility used on both sides.
 
-## Handler e momento do commit
+## Handler and commit timing
 
-Contrato: falha síncrona sem boundary lança erro original na chamada de renderToString/renderToStream antes de existir stream/thenable/readable/Promise. No runtime instalado, antes de relançar, o onError local ou, sem ele, o global recebe a falha com handling failed; o retorno é ignorado, então o hook observa sem substituir o erro (dist e JSDoc de `@solidjs/web`, sem sonda; o registro da base verificada dizia que nenhum hook era chamado). Catch encadeado no resultado não alcança isso; try envolve render e await da resposta. Falha contida em Errored continua 200 com fallback, enquanto a síncrona contida pelo handler vira 500 público.
+Contract: a synchronous failure without a boundary throws the original error in the call of renderToString/renderToStream before a stream/thenable/readable/Promise exists. In the installed runtime, before rethrowing, the local onError or, without it, the global one receives the failure with handling failed; the return is ignored, so the hook observes without replacing the error (dist and JSDoc of `@solidjs/web`, without a probe; the record of the verified base said no hook was called). A catch chained on the result does not reach it; a try wraps the render and the await of the response. A failure contained in Errored stays 200 with a fallback, while a synchronous one contained by the handler becomes a public 500.
 
-Receita:
+Recipe:
 ```tsx
 type Root = () => Element
 function createPageHandler(App: Root) {
@@ -89,41 +89,41 @@ function createPageHandler(App: Root) {
         createSSRResponse(renderToStream(() => <App />), event)
       )
     } catch {
-      return new Response("Erro interno", { status: 500 })
+      return new Response("Internal error", { status: 500 })
     }
   }
 }
 ```
 
-Armadilha: createSSRResponse(stream,event) retorna Promise<Response> resolvida no primeiro write; render vazio/null termina sem write e não assenta. Garanta casca não vazia ou limite no adapter. Com string retorna Response. Essa receita não inclui assets, bootstrap, manifesto, RPC, rotas ou adapter de produção. Try cobre render e espera da shell, não consumo posterior. Para Response de API/saída antecipada sem esse caminho, use commitEventResponse. Shell enviada congela headers/status; redirect tardio usa caminho cliente com CSP/nonce corretos.
+Pitfall: createSSRResponse(stream,event) returns a Promise<Response> resolved on the first write; an empty/null render ends without a write and does not settle. Guarantee a non-empty shell or a limit in the adapter. With a string it returns a Response. That recipe does not include assets, bootstrap, manifest, RPC, routes or a production adapter. The try covers the render and the wait for the shell, not the later consumption. For an API Response/early exit without that path, use commitEventResponse. A sent shell freezes headers/status; a late redirect uses the client path with the right CSP/nonce.
 
-## Plugin e entradas
+## Plugin and entries
 
-Contrato: use `solid({ start: true, ssr: true })`. `start: { ssr: true }` dá TS2353 e `ssr: {}` TS2322. Typecheck deve incluir vite.config.ts. Start sem ssr booleano superior é documentado como modo cliente, sem execução desse negativo.
+Contract: use `solid({ start: true, ssr: true })`. `start: { ssr: true }` gives TS2353 and `ssr: {}` TS2322. The typecheck must include vite.config.ts. Start without a top-level ssr boolean is documented as client mode, without running that negative.
 
-Contrato: entry-server autoral exporta `render(request?, context?)`, retornando renderToStream, string ou Response; context.clientEntry traz bundle cliente. Entradas autorais vêm em par entry-server/entry-client. Só servidor reprova build com `found entry-server but no entry-client`. `handleRequest` e default `{ fetch }` pertencem a dist/server/server.js construído. Exportar handleRequest em entry-server passa build e falha no primeiro request com TypeError genérico sem mencionar render.
+Contract: an authored entry-server exports `render(request?, context?)`, returning renderToStream, a string or a Response; context.clientEntry carries the client bundle. Authored entries come as an entry-server/entry-client pair. Server only fails the build with `found entry-server but no entry-client`. `handleRequest` and the default `{ fetch }` belong to the built dist/server/server.js. Exporting handleRequest in entry-server passes the build and fails on the first request with a generic TypeError that does not mention render.
 
-Armadilha: se não precisa do handler/entradas/endpoint do plugin, render/hydrate com servidor próprio ou HTTP comum bastam. Build verde não comprova contrato de entrada.
+Pitfall: if you do not need the handler/entries/endpoint of the plugin, render/hydrate with your own server or plain HTTP are enough. A green build does not prove the entry contract.
 
-## Status, headers, cookies e cache
+## Status, headers, cookies and cache
 
-Contrato: httpStatus(code,text?) e httpHeader(name,value,{append}) declaram estado pela vida do escopo reativo. No request escrevem event.response; renderToString/renderToStream aguardado comitam na conclusão e createSSRResponse(html,event) transporta status/headers. Depois do commit, declarações são ignoradas. Retração em qualquer ordem remove só escopo descartado: cookies vivos permanecem separados, status volta à última declaração viva ou base 200. Passe de Loading descartado retrai declarações sem remover 404 externo.
+Contract: httpStatus(code,text?) and httpHeader(name,value,{append}) declare state for the life of the reactive scope. In the request they write event.response; an awaited renderToString/renderToStream commits on completion and createSSRResponse(html,event) carries status/headers. After the commit, declarations are ignored. A retraction in any order removes only the disposed scope: live cookies stay separate, the status goes back to the last live declaration or the base 200. A disposed Loading pass retracts declarations without removing an outer 404.
 
-Armadilha: fallback Errored que declarou 500/header e suspendeu deixou ambos após recuperar conteúdo, contrariando retração prometida. Não dependa dela nesse arranjo. Fora de request, sem storage é silêncio; com storage sem request cada chamada avisa `RequestEvent is missing`; cliente é no-op. Pipe congelar no primeiro write é documental, não testado. Mutação imperativa pós-commit lança em dev e reporta sem aplicar em produção. Autenticação que seta cookie precisa ocorrer antes da shell, não como política tardia.
+Pitfall: an Errored fallback that declared 500/a header and suspended left both after recovering the content, contrary to the promised retraction. Do not rely on it in that arrangement. Outside a request, without storage it is silent; with storage without a request each call warns `RequestEvent is missing`; on the client it is a no-op. Pipe freezing on the first write is documented, not tested. An imperative mutation after the commit throws in dev and reports without applying in production. Authentication that sets a cookie must happen before the shell, not as a late policy.
 
-Contrato: parseCookieHeader/serializeCookie são codecs; veículo é event.response.headers. Append cada Set-Cookie, sem vírgula, inclusive ao copiar resposta. Set-Cookie não muda Cookie do request atual. Configure HttpOnly, Secure, SameSite, escopo/expiração; codec não implementa sessão, assinatura, cifra, revogação ou autorização. Assinatura não cifra e Max-Age cliente não substitui validação/expiração servidor.
+Contract: parseCookieHeader/serializeCookie are codecs; the vehicle is event.response.headers. Append each Set-Cookie, without a comma, also when copying a response. Set-Cookie does not change the Cookie of the current request. Configure HttpOnly, Secure, SameSite, scope/expiration; the codec does not implement session, signature, encryption, revocation or authorization. A signature does not encrypt and a client Max-Age does not replace server validation/expiration.
 
-Contrato: renderer de página não define Cache-Control; confira o adapter. Página por usuário precisa `private, no-store` em todos os ramos, inclusive 401/404/redirect, antes do commit ou em middleware. Página pública independente de sessão pode usar `public, max-age=0, s-maxage=60`. Server functions têm padrão no-store próprio.
+Contract: the page renderer does not set Cache-Control; check the adapter. A per-user page needs `private, no-store` on every branch, 401/404/redirect included, before the commit or in a middleware. A public page independent of the session can use `public, max-age=0, s-maxage=60`. Server functions have their own no-store default.
 
-## Escape e head
+## Escaping and head
 
-Contrato: texto SSR escapa & e <; atributo escapa &, aspas duplas e <, entre aspas duplas, inclusive spread. > e aspa simples ficam literais. innerHTML não escapa. Teste bytes dos escapes relevantes e parse DOM com tag real, como `<b>x</b>&amp;`, conferindo textContent/getAttribute e zero elementos injetados; `a < c` não detecta markup injetado.
+Contract: SSR text escapes & and <; an attribute escapes &, double quotes and <, between double quotes, spread included. > and single quotes stay literal. innerHTML does not escape. Test the bytes of the relevant escapes and a DOM parse with a real tag, such as `<b>x</b>&amp;`, checking textContent/getAttribute and zero injected elements; `a < c` does not detect injected markup.
 
-Receita:
+Recipe:
 ```tsx
 type ProductHeadProps = { name: string; summary: string }
 function ProductHead(props: ProductHeadProps) {
-  const title = createMemo(() => `${props.name} | Loja`)
+  const title = createMemo(() => `${props.name} | Store`)
   useHead([
     { tag: "title", props: { children: () => title() } },
     { tag: "meta", props: { name: "description", content: () => props.summary } }
@@ -132,22 +132,22 @@ function ProductHead(props: ProductHeadProps) {
 }
 ```
 
-Contrato: useHead de @solidjs/web registra por owner; descarte restaura tags vencedoras anteriores. Props aceitam getters; children é texto, title singleton e key altera dedupe das demais tags. Getter só lê: criar memo/children nele consome ID de um lado e desalinha hidratação; crie no corpo. Se documento não tem fechamento head, onHead de renderToString/renderToStream entrega markup ao host. Solid Meta é recomendação documental para metadados comuns, pacote separado não instalado na base.
+Contract: useHead from @solidjs/web registers per owner; disposal restores the previous winning tags. Props accept getters; children is text, title is a singleton and key changes the dedupe of the other tags. A getter only reads: creating a memo/children in it consumes an ID on one side and misaligns hydration; create it in the body. If the document has no head closing tag, the onHead of renderToString/renderToStream hands the markup to the host. Solid Meta is a documented recommendation for common metadata, a separate package not installed on the base.
 
-Armadilha: receita foi tipada, sem comparação de render cliente/servidor dos dois getters. Dois relatos da base anterior têm correção na base verificada: texto estático com spread sem escape ([R11](17-known-risks.md#r11-texto-estático-filho-de-elemento-com-spread-sai-sem-escape-no-ssr), sondado) e stylesheet de useHead ainda carregando que causava TypeError/REACTIVITY_HALTED ao hidratar (só pelo changelog da tag, sem sonda). Teste esses arranjos antes de adotá-los com versão anterior.
+Pitfall: the recipe was typed, without comparing the client/server render of both getters. Two reports of the previous base have a fix on the verified base: static text with spread without escaping ([R11](17-known-risks.md#r11-static-text-child-of-an-element-with-spread-goes-out-unescaped-in-ssr), probed) and a useHead stylesheet still loading that caused a TypeError/REACTIVITY_HALTED on hydration (only through the changelog of the tag, without a probe). Test those arrangements before adopting them with an earlier version.
 
-## Erros, sanitização e observação
+## Errors, sanitization and observation
 
-Contrato: erro contido por Errored chega ao onError com handling fallback, stream resolve fallback; rejeição tardia dentro de elemento sob Loading chega com handling client e stream resolve. Hook local prevalece sobre global; só global recebe se não houver local. Em dev, contidos também registram SSR_RENDER_ERROR_CONTAINED mesmo com hook. Síncrono sem boundary chega ao hook com handling failed e é relançado antes da Promise ([handler](#handler-e-momento-do-commit)).
+Contract: an error contained by Errored reaches onError with handling fallback, the stream resolves the fallback; a late rejection inside an element under Loading arrives with handling client and the stream resolves. A local hook wins over the global one; only the global receives it if there is no local one. In dev, contained errors also log SSR_RENDER_ERROR_CONTAINED even with a hook. A synchronous one without a boundary reaches the hook with handling failed and is rethrown before the Promise ([handler](#handler-and-commit-timing)).
 
-Contrato: rejeição serializada sob Loading também passa sanitização, mesmo sem Errored. Serialização pode aplicar padrão antes da boundary; não prometa que retorno do hook substituirá rejeição já serializada. Errored sanitiza por padrão apenas em produção, salvo markSafeError; dev preserva original e emite log informativo. Compare builds, sem inferir produção a partir de payload dev. configureServerErrors observa globalmente; para observar sem mapear, não retorne valor. Retorno do hook é exposição deliberada sem nova sanitização; markSafeError só para erro público.
+Contract: a rejection serialized under Loading also goes through sanitization, even without Errored. Serialization can apply the default before the boundary; do not promise that the return of the hook will replace an already serialized rejection. Errored sanitizes by default only in production, except for markSafeError; dev keeps the original and emits an informative log. Compare builds, without inferring production from a dev payload. configureServerErrors observes globally; to observe without mapping, return no value. The return of the hook is a deliberate exposure without new sanitization; markSafeError only for a public error.
 
-Armadilha: fallback genérico e transporte sanitizado não contêm toda exceção servidor. Proteja infraestrutura, validação e saída antes do Solid, criando dados/erros públicos novos; Error retornado como dado de server function não recebe sanitização de throw. Após shell, trate consumo/rejeição/cancelamento sem tentar substituir status/corpo inteiro. Selecione campos públicos de kind, handling, IDs e caminhos; não logue erro original, token, cookie, PII ou payload. getTraceContext correlaciona request; baggage arbitrária não autoriza nem deve ir ao log sem política.
+Pitfall: a generic fallback and a sanitized transport do not contain every server exception. Protect infrastructure, validation and output before Solid, creating new public data/errors; an Error returned as server function data does not get the sanitization of a throw. After the shell, handle consumption/rejection/cancellation without trying to replace the whole status/body. Select the public fields of kind, handling, IDs and paths; do not log the original error, token, cookie, PII or payload. getTraceContext correlates the request; arbitrary baggage does not authorize anything nor should go to the log without a policy.
 
-## Falhas tardias e artefato real
+## Late failures and the real artifact
 
-Na base anterior, rejeições tardias em certos arranjos encerravam o processo Node mesmo depois de enviar uma resposta; a base verificada corrige os arranjos reproduzidos: [R08](17-known-risks.md#r08-rejeição-assíncrona-tardia-durante-ssr-derruba-o-processo-node). Preserve árvore, modo e momento ao reproduzir em processo descartável.
+On the previous base, late rejections in certain arrangements ended the Node process even after sending a response; the verified base fixes the reproduced arrangements: [R08](17-known-risks.md#r08-a-late-async-rejection-during-ssr-takes-down-the-node-process). Keep the tree, mode and timing when reproducing it in a disposable process.
 
-Armadilha: a correção cobre os arranjos medidos, não toda rejeição tardia. Execute regressão em processo filho, registrando saída, código, sinal e timeout; não engula unhandledRejection globalmente. Teste shell/região 1, hidrate com região 2 pendente, altere cache, conclua stream e observe identidade, listeners e criação/destruição de recursos. HTML totalmente aguardado não testa essa janela. Inclua falha tardia, abort e navegação para outro owner.
+Pitfall: the fix covers the measured arrangements, not every late rejection. Run the regression in a child process, recording output, code, signal and timeout; do not swallow unhandledRejection globally. Test shell/region 1, hydrate with region 2 pending, change the cache, finish the stream and observe identity, listeners and the creation/destruction of resources. A fully awaited HTML does not test that window. Include a late failure, an abort and navigation to another owner.
 
-Contrato: produção precisa ser servida pelo adapter real de teste. Source/dev não cobrem campos entre pacotes renomeados na otimização. Botão inerte exige conferir core/web/plugin/compilador/binário nativo resolvidos antes da lógica de evento; não corrija atributos privados. Fixtures use server precisam entrar no filtro efetivo, cujo padrão é src/**; build verde pode manter corpo servidor no cliente se fora dele. Confira referência gerada, registro HTTP, marcador sintético ausente em bundle/chunks/sourcemaps públicos e chamada real. Um marcador ausente não prova ausência de todo segredo. Skip, sinal de término ou erro de spawn não são aprovação.
+Contract: production must be served by the real test adapter. Source/dev do not cover fields between packages renamed in the optimization. An inert button requires checking the resolved core/web/plugin/compiler/native binary before the event logic; do not fix private attributes. Use server fixtures must enter the effective filter, whose default is src/**; a green build can keep the server body in the client if it is outside it. Check the generated reference, the HTTP registration, the synthetic marker absent from public bundles/chunks/sourcemaps and a real call. One absent marker does not prove the absence of every secret. Skip, a termination signal or a spawn error are not approval.

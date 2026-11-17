@@ -1,34 +1,34 @@
-# Servidor, stream e hidratação
+# Server, stream and hydration
 
-Contratos na skill principal: [SSR e hidratação](../../skill-solidjs/references/12-ssr-and-hydration.md) e [server functions](../../skill-solidjs/references/13-server-functions-and-security.md).
+Contracts in the main skill: [SSR and hydration](../../skill-solidjs/references/12-ssr-and-hydration.md) and [server functions](../../skill-solidjs/references/13-server-functions-and-security.md).
 
-## No Vitest
+## In Vitest
 
-- `renderToString` e `renderToStream` rodam só no projeto `environment: 'node'` com o plugin.
-- O HTML dos projetos de teste sai sem chaves `_hk`, mesmo com `solid({ ssr: true })`. Só `solid({ solid: { hydratable: true } })`, num projeto de servidor separado, devolve as chaves; asserções sobre HTML hidratável só valem nesse projeto.
-- Hidratação de ponta a ponta fica fora do Vitest: teste no E2E contra o build ([páginas](pages-and-routes.md#e2e-com-playwright)). A verificação de hidratação roda num `setTimeout`; espere uma macrotask antes de afirmar ausência de mismatch.
-- Para stream, leia o `readable` com um reader e um portão controlado pelo teste: o primeiro chunk traz o fallback, e o conteúdo chega depois da liberação.
+- `renderToString` and `renderToStream` only run in the `environment: 'node'` project with the plugin.
+- The HTML of the test projects comes out without `_hk` keys, even with `solid({ ssr: true })`. Only `solid({ solid: { hydratable: true } })`, in a separate server project, returns the keys; assertions about hydratable HTML only hold in that project.
+- End-to-end hydration stays outside Vitest: test it in the E2E against the build ([pages](pages-and-routes.md#e2e-with-playwright)). The hydration check runs in a `setTimeout`; wait for a macrotask before asserting the absence of a mismatch.
+- For a stream, read the `readable` with a reader and a gate controlled by the test: the first chunk carries the fallback, and the content arrives after the release.
 
-A prova de streaming precisa observar o primeiro chunk enquanto a fonte ainda está bloqueada; só depois libere a Promise e consuma o restante. Aguardar o HTML completo antes da asserção não distingue streaming de resposta retida.
+The streaming proof must observe the first chunk while the source is still blocked; only then release the Promise and consume the rest. Waiting for the full HTML before the assertion does not tell streaming from a held response.
 
-Sem projeto SSR configurado, use o E2E existente ou acrescente o projeto de teste pertinente ao escopo. Um teste DOM aprovado não cobre SSR.
+Without a configured SSR project, use the existing E2E or add the test project relevant to the scope. A passing DOM test does not cover SSR.
 
-## Server functions e request scope
+## Server functions and request scope
 
-Uma server function tem três provas separadas: a função de domínio, a chamada SSR direta e a chamada HTTP transformada. Fixture que chama a função original sem compilação só prova a primeira; a chamada HTTP pede o build e um servidor.
+A server function has three separate proofs: the domain function, the direct SSR call and the transformed HTTP call. A fixture that calls the original function without compilation only proves the first; the HTTP call needs the build and a server.
 
-Para exercitar o handler dentro do Vitest, componha `createRequestEvent(request)` e `commitEventResponse(response, event)` de `@solidjs/web` com `provideRequestEvent` de `@solidjs/web/storage`:
+To exercise the handler inside Vitest, compose `createRequestEvent(request)` and `commitEventResponse(response, event)` from `@solidjs/web` with `provideRequestEvent` from `@solidjs/web/storage`:
 
-- Use o [provedor explícito e as opções do handler](../../skill-solidjs/references/13-server-functions-and-security.md#configuração-e-origem); depender da inicialização de outro teste produz falso positivo.
-- Passe `createEvent` a `handleServerFunctionRequest`, não a `configureServerFunctionsServer`, e afirme um valor conhecido em `locals` antes de comparar identidades: com `locals` vazio, um teste de autorização passa com `undefined` dos dois lados.
-- Teste uma guarda compartilhada pelo evento explícito e pelo escopo ambiente (`getRequestEvent()`); provada só num caminho, ela pode estar quebrada no outro.
+- Use the [explicit provider and the handler options](../../skill-solidjs/references/13-server-functions-and-security.md#configuration-and-origin); relying on the initialization of another test produces a false positive.
+- Pass `createEvent` to `handleServerFunctionRequest`, not to `configureServerFunctionsServer`, and assert a known value in `locals` before comparing identities: with empty `locals`, an authorization test passes with `undefined` on both sides.
+- Test a guard shared by the explicit event and by the ambient scope (`getRequestEvent()`); proven on one path only, it can be broken on the other.
 
-| Fronteira | Observar |
+| Boundary | Observe |
 | --- | --- |
-| Sanitização | Corpo inteiro, HTML, chunks e payload serializado sem o marcador confidencial. Compare dev e produção: o dev preserva a mensagem original sob `Errored` e sob `Loading` sem `Errored` |
-| Falha síncrona no render | Lança na própria chamada de `renderToString` ou `renderToStream`, antes de existir stream; a camada HTTP precisa proteger essa saída |
-| Request scope | Duas requests concorrentes com estados distintos |
-| `httpStatus` e `httpHeader` | Status e header de cada escopo antes e depois do descarte ([contrato](../../skill-solidjs/references/12-ssr-and-hydration.md#status-headers-cookies-e-cache)) |
-| `clientOnly` | HTML do servidor só com o fallback e loader não chamado no servidor |
+| Sanitization | Whole body, HTML, chunks and serialized payload without the confidential marker. Compare dev and production: dev keeps the original message under `Errored` and under `Loading` without `Errored` |
+| Synchronous failure in the render | Throws in the very call of `renderToString` or `renderToStream`, before a stream exists; the HTTP layer must protect that exit |
+| Request scope | Two concurrent requests with distinct states |
+| `httpStatus` and `httpHeader` | Status and header of each scope before and after disposal ([contract](../../skill-solidjs/references/12-ssr-and-hydration.md#status-headers-cookies-and-cache)) |
+| `clientOnly` | Server HTML with only the fallback and the loader not called on the server |
 
-Use um marcador sintético para testar vazamento.
+Use a synthetic marker to test leaks.
