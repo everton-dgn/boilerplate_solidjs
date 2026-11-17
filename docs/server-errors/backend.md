@@ -1,14 +1,15 @@
-# Chamadas de backend e consumo nas páginas
+# Backend calls and their use in pages
 
-[Voltar ao guia principal](../server-errors.md)
+[Back to the main guide](../server-errors.md)
 
-## Como adicionar uma chamada
+## Adding a call
 
-Use `requestJson` dentro de uma server function, com um schema que selecione os
-campos públicos. O bloco abaixo é a forma simplificada da
-[fixture readBackend](../../src/tests/fixtures/e2e/backend-error/readBackend/index.ts),
-a chamada de referência; a fixture acrescenta os cenários de falha que o E2E
-provoca e, como as demais fixtures que usam o transporte, só entra no build E2E:
+Use `requestJson` inside a server function, with a schema that selects the
+public fields. The block below is the simplified form of the
+[readBackend fixture](../../src/tests/fixtures/e2e/backend-error/readBackend/index.ts),
+the reference call; the fixture adds the failure scenarios that the E2E tests
+trigger and, like the other fixtures that use the transport, only goes into the
+E2E build:
 
 ```ts
 import * as v from 'valibot'
@@ -26,125 +27,129 @@ export async function readBackend(id: string): Promise<BackendData> {
 }
 ```
 
-O endereço é do backend de testes. Na integração real, resolva o endereço no
-servidor e defina a saída pública. `v.object` remove campos extras; schemas
-permissivos não substituem essa seleção. O status HTTP 500 não rejeita o
-`fetch`: `requestJson` verifica `response.ok` e cancela o corpo de falha sem
-lê-lo. Rede, JSON inválido e falha de schema também são protegidos. O transporte
-aplica um timeout de 10 s (combinado com `init.signal`, quando informado) e
-recusa corpos acima de 1 MB, cancelando o stream antes de lê-lo inteiro.
+The address is the one of the test backend. In a real integration, resolve the
+address on the server and define the public output. `v.object` removes extra
+fields; permissive schemas do not replace that selection. An HTTP 500 status
+does not reject `fetch`: `requestJson` checks `response.ok` and cancels the
+failure body without reading it. Network failures, invalid JSON and schema
+failures are protected too. The transport applies a 10 s timeout (combined with
+`init.signal`, when given) and refuses bodies over 1 MB, cancelling the stream
+before reading it whole.
 
-Para SDK ou banco, crie um adapter em `infra/server` com `server-only` e envolva
-a operação inteira em `protectServerOperation({ run })`, incluindo leitura,
-validação e montagem da saída. Acrescente o pacote às restrições de import do
-lint, com exceção apenas para o adapter e teste da proteção.
+For an SDK or a database, create an adapter in `infra/server` with `server-only`
+and wrap the whole operation in `protectServerOperation({ run })`, including the
+read, the validation and the building of the output. Add the package to the
+import restrictions of the lint, with an exception only for the adapter and the
+test of the protection.
 
-As fontes do sitemap (`route.info.sitemap`) seguem a mesma regra: a função
-declarada na rota chama uma server function, que faz a leitura protegida e
-devolve só `path` e `lastmod`. A fonte recebe um `AbortSignal` que aborta no
-prazo de 10 s, na desconexão do cliente e ao fim da leitura das fontes;
-repasse-o à leitura (por exemplo, em `init.signal` do `requestJson`) para
-cancelá-la. A rota do sitemap responde 503 sem corpo a qualquer falha e registra
-pela origem `sitemap` a linha fixa
-`[sitemap] Unexpected failure; private details omitted`, com a classe e os
-frames descritos em [Log de falhas](logging.md#log-de-falhas), sem a mensagem do
-erro.
+The sitemap sources (`route.info.sitemap`) follow the same rule: the function
+declared in the route calls a server function, which does the protected read and
+returns only `path` and `lastmod`. The source receives an `AbortSignal` that
+aborts at the 10 s deadline, when the client disconnects and at the end of the
+read of the sources; pass it to the read (for example, in `init.signal` of
+`requestJson`) to cancel it. The sitemap route answers 503 without a body to any
+failure and logs, under the `sitemap` source, the fixed line
+`[sitemap] Unexpected failure; private details omitted`, with the class and the
+frames described in [Failure log](logging.md#failure-log), without the error
+message.
 
-Fontes particionadas ficam no registro `src/infra/server/sitemapSources/`, fora
-de `route.info` e do bundle do cliente. Seus callbacks também usam os adapters
-protegidos para banco e SDK e repassam o sinal à consulta. O índice lista IDs
-públicos, e a leitura de uma parte retorna somente seu lote de `path` e
-`lastmod`. Falhas continuam usando a resposta vazia 503 e o mesmo log fixo. Uma
-parte removida ou vazia responde 404 com `no-store`; a diferença entre o índice
-anterior e essa leitura faz parte da consistência eventual descrita no
-[guia de SEO](../seo/sitemap.md#fontes-particionadas).
+Partitioned sources live in the `src/infra/server/sitemapSources/` registry,
+outside `route.info` and the client bundle. Their callbacks also use the
+protected adapters for databases and SDKs and pass the signal to the query. The
+index lists public IDs, and the read of a part returns only its batch of `path`
+and `lastmod`. Failures still use the empty 503 response and the same fixed log.
+A removed or empty part answers 404 with `no-store`; the difference between the
+previous index and that read is part of the eventual consistency described in
+the [SEO guide](../seo/sitemap.md#partitioned-sources).
 
-Nunca copie `error.message`, `cause`, propriedades, corpo upstream ou issues do
-validador para a saída. Para uma falha pública, use `createPublicError()`.
-Somente `publicErrors` pode usar `markSafeError`, que autoriza a serialização do
-erro inteiro. O wrapper sempre cria outro erro, mesmo se o anterior era público,
-para descartar campos adicionados depois. Novas mensagens de domínio exigem
-extensão explícita desse contrato e testes.
+Never copy `error.message`, `cause`, properties, the upstream body or the
+validator issues to the output. For a public failure, use `createPublicError()`.
+Only `publicErrors` may use `markSafeError`, which allows the whole error to be
+serialized. The wrapper always creates another error, even if the previous one
+was public, to drop fields added later. New domain messages require an explicit
+extension of this contract and tests.
 
-O resultado admite valores simples, arrays comuns e objetos planos resolvidos.
-Arrays precisam ter `Array.prototype` como protótipo direto; subclasses são
-recusadas antes que a serialização herdada possa alterar a saída verificada.
-`Error`, classes, ciclos, getters, setters e promises aninhadas também são
-recusados, inclusive sob chaves `Symbol` e em propriedades não enumeráveis.
-Referências compartilhadas (grafo acíclico) são aceitas e verificadas uma única
-vez. Uma promise principal é aguardada e funções síncronas continuam síncronas.
-Essa verificação estrutural não identifica dados confidenciais em strings: o
-schema e o mapeamento continuam responsáveis pelos campos de negócio.
+The result accepts simple values, plain arrays and resolved plain objects.
+Arrays must have `Array.prototype` as their direct prototype; subclasses are
+refused before the inherited serialization can change the checked output.
+`Error`, classes, cycles, getters, setters and nested promises are refused too,
+including under `Symbol` keys and in non-enumerable properties. Shared
+references (an acyclic graph) are accepted and checked once. A top-level promise
+is awaited, and synchronous functions stay synchronous. This structural check
+does not find confidential data in strings: the schema and the mapping are still
+responsible for the business fields.
 
-`allowControl: true` pertence apenas ao registro global. Preserva suspensão,
-respostas sem corpo (exceto a de `Response.error()`, com status 0) e envelopes
-com dados verificados; o corpo do envelope é reconstruído desses dados. Headers
-e destinos devem ser definidos pela aplicação. Adapters não habilitam essa opção
-nem encaminham respostas upstream. Os logs, emitidos por `logServerFailure`,
-contêm a mensagem fixa da origem e, para um `Error`, só a classe e os frames
-descritos em [Log de falhas](logging.md#log-de-falhas), sem mensagem, `cause`,
-propriedades ou contexto da requisição. Diagnóstico detalhado e telemetria
-exigem uma integração própria.
+`allowControl: true` belongs only to the global registration. It keeps
+suspension, responses without a body (except the one of `Response.error()`, with
+status 0) and envelopes with checked data; the envelope body is rebuilt from
+that data. Headers and destinations must be defined by the application. Adapters
+do not turn this option on or forward upstream responses. The logs, written by
+`logServerFailure`, have the fixed message of the source and, for an `Error`,
+only the class and the frames described in
+[Failure log](logging.md#failure-log), without the message, `cause`, properties
+or request context. Detailed diagnostics and telemetry require their own
+integration.
 
-## O que o lint cobre
+## What the lint covers
 
-[backendPolicy](../../tooling/backendPolicy/index.ts) configura as regras
-nativas `no-restricted-globals`, `no-restricted-properties`,
-`no-restricted-imports` e `no-console` do Oxlint em `src`, incluindo fixtures,
-nas extensões `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs` e `.cjs`:
+[backendPolicy](../../tooling/backendPolicy/index.ts) configures the native
+Oxlint rules `no-restricted-globals`, `no-restricted-properties`,
+`no-restricted-imports` and `no-console` in `src`, fixtures included, for the
+`.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs` and `.cjs` extensions:
 
-- Restringe `fetch` ao transporte e barra acesso direto a `XMLHttpRequest`,
-  `WebSocket` e `EventSource`, inclusive propriedades globais estáticas.
-- Restringe os transportes conhecidos do Node e `undici`.
-- Reserva `markSafeError` e `SAFE_ERROR` a `publicErrors` e o módulo inteiro de
-  configuração/dispatch de server functions (`@solidjs/web/server-functions` e
-  `@solidjs/web/server-functions/server`) a `configureServerErrors`. O import de
-  `configureServerErrors` pela raiz `@solidjs/web` também fica restrito a esse
-  módulo, inclusive em `publicErrors`: cada chamada substitui o hook global de
-  erros do servidor.
-- Reserva `observeRenderFailures`, de
-  [renderIntegrity](../../src/infra/server/renderIntegrity/index.ts), a
-  `configureServerErrors`, inclusive por alias, namespace e reexport: depois
-  dessa chamada o estado do render nasce sem erros, e só o registro instala o
-  hook que o marca.
-- Reserva o objeto global `console` a `logServerFailure`, inclusive aliases e
-  desestruturação direta. Nesse arquivo, use somente `console.error`
-  diretamente; acessos por `globalThis.console`, `window.console`,
-  `self.console` e `global.console` continuam proibidos. Os testes exigem um
-  único argumento, uma string que começa pela mensagem fixa da origem e não traz
-  mensagem, `cause` nem propriedades do erro. Aliases de `console` e outros
-  loggers exigem revisão.
+- Restricts `fetch` to the transport and bars direct access to `XMLHttpRequest`,
+  `WebSocket` and `EventSource`, static global properties included.
+- Restricts the known Node transports and `undici`.
+- Reserves `markSafeError` and `SAFE_ERROR` for `publicErrors`, and the whole
+  server function configuration and dispatch module
+  (`@solidjs/web/server-functions` and `@solidjs/web/server-functions/server`)
+  for `configureServerErrors`. Importing `configureServerErrors` from the
+  `@solidjs/web` root is also restricted to that module, `publicErrors`
+  included: each call replaces the global server error hook.
+- Reserves `observeRenderFailures`, from
+  [renderIntegrity](../../src/infra/server/renderIntegrity/index.ts), for
+  `configureServerErrors`, through an alias, namespace or re-export too: after
+  that call the render state starts without errors, and only the registration
+  installs the hook that marks it.
+- Reserves the global `console` object for `logServerFailure`, aliases and
+  direct destructuring included. In that file, use only `console.error`
+  directly; access through `globalThis.console`, `window.console`,
+  `self.console` and `global.console` stays forbidden. The tests require a
+  single argument, a string that starts with the fixed message of the source and
+  carries no message, `cause` or properties of the error. Aliases of `console`
+  and other loggers require review.
 
-Os testes de regressão exigem que `no-restricted-imports` também recuse
-`import("pacote")` quando o pacote inteiro está restrito. A política não depende
-de restrições por `importNames` para esse carregamento. Por isso,
-[backend/static-solid-imports](../../tooling/backendPolicy/plugin.ts) exige
-imports estáticos de `@solidjs/web` e seus subcaminhos, inclusive em
-`publicErrors` e `configureServerErrors`;
-`backend/static-render-integrity-imports` faz o mesmo com `renderIntegrity`,
-porque a restrição por nome não alcança `import()`. A regra verifica strings e
-templates sem interpolação; as APIs públicas desse pacote continuam disponíveis
-por import estático.
+The regression tests require `no-restricted-imports` to also refuse
+`import("package")` when the whole package is restricted. The policy does not
+rely on `importNames` restrictions for that loading. That is why
+[backend/static-solid-imports](../../tooling/backendPolicy/plugin.ts) requires
+static imports of `@solidjs/web` and its subpaths, in `publicErrors` and
+`configureServerErrors` too; `backend/static-render-integrity-imports` does the
+same with `renderIntegrity`, because a restriction by name does not reach
+`import()`. The rule checks strings and templates without interpolation; the
+public APIs of that package stay available through a static import.
 
-Imports nomeados com alias, reexports e acessos diretos por namespace também são
-verificados. Bibliotecas visuais, métodos locais chamados `fetch` e parâmetros
-locais com esse nome são permitidos. Testes e declarações de tipos ficam fora
-dessas restrições de backend. As exceções dos adapters usam caminhos exatos;
-copiar um módulo privilegiado para outra extensão não concede a mesma permissão.
+Named imports with an alias, re-exports and direct access through a namespace
+are checked too. Visual libraries, local methods called `fetch` and local
+parameters with that name are allowed. Tests and type declarations are outside
+these backend restrictions. The exceptions of the adapters use exact paths;
+copying a privileged module to another extension does not grant the same
+permission.
 
-O lint não faz análise completa de fluxo: aliases do objeto global, como
-`const g = globalThis`, fontes de import calculadas, templates de pacotes fora
-de `@solidjs/web`, SDKs desconhecidos e marcação manual por `Symbol.for` exigem
-revisão. Ele também não restringe `allowControl` pelo nome nem verifica o
-conteúdo dos argumentos de log em `logServerFailure`. Não use essas lacunas nem
-um disable para contornar o contrato. O padrão de imports relativos é
-compartilhado com `tooling/lint/rules/javascript.ts` pela constante
-`RELATIVE_IMPORT_RESTRICTION`, em `tooling/backendPolicy/constants.ts`.
+The lint does not do a full flow analysis: aliases of the global object, such as
+`const g = globalThis`, computed import sources, templates of packages outside
+`@solidjs/web`, unknown SDKs and manual marking through `Symbol.for` require
+review. It also does not restrict `allowControl` by name or check the content of
+the log arguments in `logServerFailure`. Do not use these gaps or a disable
+comment to get around the contract. The pattern of relative imports is shared
+with `tooling/lint/rules/javascript.ts` through the
+`RELATIVE_IMPORT_RESTRICTION` constant, in `tooling/backendPolicy/constants.ts`.
 
-## Consumo em páginas
+## Use in pages
 
-Depois de proteger a server function, use `query` para o cache de dados e leia
-seu resultado no componente. Com a função `readBackend` do exemplo acima:
+After protecting the server function, use `query` for the data cache and read
+its result in the component. With the `readBackend` function of the example
+above:
 
 ```tsx
 const getBackend = query(readBackend, 'backend')
@@ -155,7 +160,7 @@ export default function Page() {
 }
 ```
 
-Importe `query` de `@solidjs/router` e `createMemo` de `solid-js`. O `Errored`
-global do `App` substitui a aplicação e o cabeçalho pelo fallback quando essa
-leitura falha. A recuperação por recarga está descrita em
-[validação e recuperação](recovery.md#validação-e-recuperação).
+Import `query` from `@solidjs/router` and `createMemo` from `solid-js`. The
+global `Errored` of `App` replaces the application and the header with the
+fallback when that read fails. The recovery by reload is described in
+[validation and recovery](recovery.md#validation-and-recovery).
