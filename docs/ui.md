@@ -1,45 +1,46 @@
-# Componentes, tema e estilos
+# Components, theme and styles
 
-[Voltar ao README](../README.md)
+[Back to the README](../README.md)
 
-## Botões
+## Buttons
 
-`Button`, em `components/atoms/`, aceita as props nativas de `button`, com
-`type="button"` como padrão, além de `variant`, `size` e `class`. Para um botão
-só com texto, use `label`: `<Button label={m.save()} />` se lê melhor que abrir
-a tag em volta do texto. Use `children` quando o conteúdo tiver ícone ou outra
-marcação. Com os dois, `label` prevalece. A prop vira o texto visível e o nome
-acessível do botão; para um botão só com ícone, use `aria-label`.
+`Button`, in `components/atoms/`, accepts the native props of `button`, with
+`type="button"` as the default, plus `variant`, `size` and `class`. For a button
+with text only, use `label`: `<Button label={m.save()} />` reads better than
+opening the tag around the text. Use `children` when the content has an icon or
+other markup. With both, `label` wins. The prop becomes the visible text and the
+accessible name of the button; for a button with an icon only, use `aria-label`.
 
-A prop `label` é uma decisão do projeto e faz parte do kit oferecido às
-aplicações derivadas. Não a remova por duplicar `children` nem por não ter
-consumidor de produção na demonstração.
+The `label` prop is a decision of the project and is part of the kit offered to
+the derived applications. Do not remove it for duplicating `children` or for
+having no production consumer in the demo.
 
-## Campos, diálogos e notificações
+## Fields, dialogs and notifications
 
-`Input` e `Textarea`, em `components/atoms/`, aceitam as props nativas,
-incluindo `ref`, `name`, `required`, eventos, `value` e `defaultValue`. O valor
-inicial também aparece no HTML do servidor. Use `value` com um signal para
-controlar o campo, ou `defaultValue` para deixá-lo sob controle do navegador e
-permitir o reset nativo do formulário. Se os dois vierem juntos, o valor
-controlado prevalece, também no HTML do servidor. `Textarea` permite
-redimensionamento vertical. Ambos aceitam `variant="destructive"`, que também
-define `aria-invalid` quando o consumidor não fornece esse atributo. Associe um
-`label` ao `id` e use `aria-describedby` para ligar a mensagem de ajuda ou de
-erro ao campo. Os textos do formulário pertencem ao catálogo da página.
+`Input` and `Textarea`, in `components/atoms/`, accept the native props,
+including `ref`, `name`, `required`, events, `value` and `defaultValue`. The
+initial value also shows up in the server HTML. Use `value` with a signal to
+control the field, or `defaultValue` to leave it under the control of the
+browser and allow the native form reset. If both come together, the controlled
+value wins, in the server HTML too. `Textarea` allows vertical resizing. Both
+accept `variant="destructive"`, which also sets `aria-invalid` when the consumer
+does not provide that attribute. Associate a `label` with the `id` and use
+`aria-describedby` to link the help or error message to the field. The texts of
+the form belong to the catalog of the page.
 
-`Dialog`, em `components/molecules/`, usa o elemento nativo `dialog` com
-`showModal()`. Recebe `open`, `onOpenChange`, `title`, `description` opcional e
-`children`. O consumidor mantém o estado, por exemplo `open={open()}` e
-`onOpenChange={setOpen}`. O título e a descrição são associados ao modal por
-atributos ARIA; o botão de fechar já tem tradução. Escape e esse botão solicitam
-o fechamento; clicar no fundo mantém o modal aberto. O navegador confina o foco
-ao modal e o devolve ao controle de origem ao fechar. Um modal inicialmente
-aberto entra na modalidade após a hidratação.
+`Dialog`, in `components/molecules/`, uses the native `dialog` element with
+`showModal()`. It receives `open`, `onOpenChange`, `title`, an optional
+`description` and `children`. The consumer keeps the state, for example
+`open={open()}` and `onOpenChange={setOpen}`. The title and the description are
+associated with the modal through ARIA attributes; the close button is already
+translated. Escape and that button request the closing; clicking the backdrop
+keeps the modal open. The browser confines the focus to the modal and returns it
+to the source control on close. A modal that starts open becomes modal after the
+hydration.
 
-`Provider` já instala um `ToastProvider` para a aplicação. Chame `useToast()` de
-`@/components/atoms/ToastProvider/useToast/index.ts` durante a criação do
-componente e use a API nos eventos:
+`Provider` already installs a `ToastProvider` for the application. Call
+`useToast()` from `@/components/atoms/ToastProvider/useToast/index.ts` while
+creating the component and use the API in the events:
 
 ```ts
 const toast = useToast()
@@ -48,254 +49,260 @@ toast.update({ id, message: m.save_done(), variant: 'success' })
 toast.dismiss(id)
 ```
 
-As mensagens do exemplo devem existir no catálogo do consumidor nos três
-idiomas. A API aceita texto simples e as variantes `info`, `success`, `warning`,
-`error` e `loading`. O prazo padrão é de cinco segundos; `loading` sem prazo e
-`duration: 0` permanecem até o fechamento. Atualizar a variante ou a duração
-reinicia o prazo; atualizar apenas o texto preserva o tempo restante. Hover,
-foco e aba oculta pausam o cronômetro. A fila mantém até cinco notificações e,
-quando esse limite é excedido, remove a mais antiga que não esteja com hover nem
-com foco. Os anúncios de leitores de tela são agrupados por prioridade; erros
-usam a região assertiva. A notificação não desloca o foco ao aparecer. Se a
-notificação removida contém o foco, ele passa ao botão de fechar da vizinha ou,
-sem vizinha, volta ao elemento focado antes de entrar na região. Cada provider
-tem estado próprio e libera os temporizadores ao desmontar.
+The messages of the example must exist in the catalog of the consumer in the
+three locales. The API accepts plain text and the `info`, `success`, `warning`,
+`error` and `loading` variants. The default duration is five seconds; `loading`
+without a duration and `duration: 0` stay until they are closed. Updating the
+variant or the duration restarts the timer; updating only the text keeps the
+remaining time. Hover, focus and a hidden tab pause the timer. The queue keeps
+up to five notifications and, when that limit is exceeded, removes the oldest
+one that is not hovered or focused. The screen reader announcements are grouped
+by priority; errors use the assertive region. A notification does not move the
+focus when it appears. If the removed notification holds the focus, it moves to
+the close button of the neighbor or, without a neighbor, back to the element
+focused before entering the region. Each provider has its own state and releases
+the timers when it unmounts.
 
-## Menus suspensos
+## Dropdown menus
 
-`DropdownMenu`, em `components/atoms/`, segue o padrão de menu do APG: setas,
-`Home` e `End` navegam entre os itens, `Escape` fecha, e `Tab` fecha sem prender
-o foco. Selecionar um item, pelo teclado ou pelo ponteiro, devolve o foco ao
-gatilho; com o ponteiro, o navegador não mostra o anel de `:focus-visible`. Na
-navegação por teclado, o item focado recebe o anel de foco global, além do fundo
-de destaque. Clicar fora fecha o menu e preserva o destino do foco.
+`DropdownMenu`, in `components/atoms/`, follows the APG menu pattern: arrows,
+`Home` and `End` move between the items, `Escape` closes, and `Tab` closes
+without trapping the focus. Selecting an item, by keyboard or by pointer,
+returns the focus to the trigger; with the pointer, the browser does not show
+the `:focus-visible` ring. In keyboard navigation, the focused item gets the
+global focus ring, plus the highlight background. Clicking outside closes the
+menu and keeps the target of the focus.
 
-Os gatilhos de tema e de idioma incluem o estado atual no nome acessível: o de
-idioma começa pelo código mostrado no botão, como "EN, select language", e o de
-tema informa a preferência atual depois da hidratação. Os dois dependem de
-JavaScript.
+The theme and locale triggers include the current state in the accessible name:
+the locale one starts with the code shown on the button, such as "EN, select
+language", and the theme one reports the current preference after the hydration.
+Both depend on JavaScript.
 
-## Tema e persistência
+## Theme and persistence
 
-O tema começa em `system`. O cookie `app-theme` guarda a preferência por um ano,
-com `Path=/`, `SameSite=Lax` e `Secure` em HTTPS, restrito ao host atual. O
-`Document` lê esse cookie na requisição e entrega o tema explícito no HTML. O
-script diretamente no `head` resolve a preferência do sistema antes da
-hidratação, e `Provider` mantém uma instância de estado por árvore. O seletor
-aplica a escolha imediatamente, antes de tentar persistir o cookie.
-`BroadcastChannel` sincroniza abas da mesma origem; ao recuperar foco, ficar
-visível ou receber `pageshow`, a aba relê o cookie. Sem o canal, a sincronização
-acontece nesses eventos. Se o cookie não puder ser gravado, a escolha fica em
-memória e ainda pode ser propagada pelo canal. Ela é preservada ao retornar à
-aba enquanto o cookie não mudar e é perdida ao recarregar. O tema não usa
-`localStorage`. `infra/adapters/themeStorage/` lê e grava o cookie,
-`infra/adapters/applyTheme/` aplica o tema no DOM,
-`infra/adapters/makeBroadcastChannel/` encapsula o canal entre abas para
-qualquer domínio, `infra/adapters/makeThemeChannel/` concentra a regra de tema
-sobre esse canal, `infra/adapters/makeSystemTheme/` observa a preferência do
-sistema e `@types/theme.ts` define os tipos compartilhados, mantendo `theme/` só
-com CSS. As cores usam `light-dark()` com `color-scheme` para definir cada par
-uma vez e seguir o tema do documento.
+The theme starts at `system`. The `app-theme` cookie keeps the preference for
+one year, with `Path=/`, `SameSite=Lax` and `Secure` on HTTPS, restricted to the
+current host. `Document` reads that cookie in the request and delivers the
+explicit theme in the HTML. The script directly in the `head` resolves the
+system preference before the hydration, and `Provider` keeps one state instance
+per tree. The switcher applies the choice right away, before trying to persist
+the cookie. `BroadcastChannel` syncs tabs of the same origin; when the tab gets
+the focus back, becomes visible or receives `pageshow`, it reads the cookie
+again. Without the channel, the sync happens on those events. If the cookie
+cannot be written, the choice stays in memory and can still be propagated
+through the channel. It is kept when returning to the tab while the cookie does
+not change and is lost on reload. The theme does not use `localStorage`.
+`infra/adapters/themeStorage/` reads and writes the cookie,
+`infra/adapters/applyTheme/` applies the theme to the DOM,
+`infra/adapters/makeBroadcastChannel/` wraps the channel between tabs for any
+domain, `infra/adapters/makeThemeChannel/` holds the theme rule over that
+channel, `infra/adapters/makeSystemTheme/` watches the system preference and
+`@types/theme.ts` defines the shared types, keeping `theme/` for CSS only. The
+colors use `light-dark()` with `color-scheme` to define each pair once and
+follow the theme of the document.
 
-## Fontes
+## Fonts
 
-A Inter vem do pacote `@fontsource-variable/inter`, gravada em
-`src/assets/fonts/` e declarada em `src/theme/tokens/fonts.css`. São arquivos
-variáveis: cada um traz todos os pesos de 100 a 900, então um projeto derivado
-pode usar qualquer `font-weight` sem baixar outro arquivo.
+Inter comes from the `@fontsource-variable/inter` package, stored in
+`src/assets/fonts/` and declared in `src/theme/tokens/fonts.css`. They are
+variable files: each one has every weight from 100 to 900, so a derived project
+can use any `font-weight` without downloading another file.
 
-O subset `latin` cobre o texto de pt, en e es: letras, números, pontuação,
-acentos, aspas, travessões e `€`. Ele é o único arquivo com preload, no
-`Document.tsx`. O `latin-ext` traz as letras extras do latim, como `Ł`, `ő` e
-`ş`, e não substitui o `latin`. Ele fica num arquivo separado, ligado pelo
-`unicode-range`, sem preload: o navegador só o baixa quando a página tem algum
-caractere desse intervalo. Os dois `unicode-range` são os do CSS do pacote.
+The `latin` subset covers the text in pt, en and es: letters, numbers,
+punctuation, accents, quotes, dashes and `€`. It is the only file with a
+preload, in `Document.tsx`. `latin-ext` has the extra Latin letters, such as
+`Ł`, `ő` and `ş`, and does not replace `latin`. It is in a separate file, linked
+through `unicode-range`, without a preload: the browser only downloads it when
+the page has some character of that range. The two `unicode-range` values are
+the ones in the CSS of the package.
 
-Os arquivos do pacote saem sem os nomes de glifo da tabela `post`, que o
-navegador não usa: são 1,5 KB a menos no `latin` e 3,2 KB no `latin-ext`, com a
-renderização idêntica. Os recursos OpenType ficam todos, inclusive frações,
-números tabulares e posicionamento de acentos combinados, porque um projeto
-derivado pode usá-los. O pacote não é dependência do projeto: para atualizar a
-Inter, baixe-o e rode em cada arquivo da pasta `files/` dele, gravando com o
-mesmo nome em `src/assets/fonts/`:
+The files of the package go out without the glyph names of the `post` table,
+which the browser does not use: that is 1.5 KB less in `latin` and 3.2 KB in
+`latin-ext`, with identical rendering. All the OpenType features stay,
+fractions, tabular numbers and the positioning of combining accents included,
+because a derived project can use them. The package is not a dependency of the
+project: to update Inter, download it and run this on each file of its `files/`
+folder, writing it with the same name in `src/assets/fonts/`:
 
 ```sh
-uvx --from fonttools --with brotli pyftsubset <arquivo-do-pacote>.woff2 \
+uvx --from fonttools --with brotli pyftsubset <package-file>.woff2 \
   --unicodes='*' --layout-features='*' --name-IDs='*' --notdef-outline \
-  --flavor=woff2 --output-file=src/assets/fonts/<arquivo-do-pacote>.woff2
+  --flavor=woff2 --output-file=src/assets/fonts/<package-file>.woff2
 ```
 
-Para atender outro alfabeto, como cirílico ou grego, processe do mesmo jeito o
-arquivo do subset, copie o `unicode-range` correspondente do CSS do pacote e
-acrescente um `@font-face` com a mesma família. Não troque o `latin` por outro
-subset nem junte subsets num arquivo único: o visitante passaria a baixar
-caracteres que a página não usa, ou o texto comum sairia na fonte do sistema.
-Confira a cobertura de um arquivo com
-`fc-query --format='%{charset}\n' <arquivo>`.
+To support another alphabet, such as Cyrillic or Greek, process the file of that
+subset the same way, copy the matching `unicode-range` from the CSS of the
+package and add a `@font-face` with the same family. Do not replace `latin` with
+another subset or join subsets into a single file: the visitor would download
+characters the page does not use, or the common text would fall back to the
+system font. Check the coverage of a file with
+`fc-query --format='%{charset}\n' <file>`.
 
-## Regras de CSS
+## CSS rules
 
-Execute `vp run lint:css` para verificar todos os arquivos CSS de `src/`. O
-comando faz parte de `vp run lint` e `vp run check:ci`. O pre-push e o CI
-executam essa verificação. O pre-commit usa `vp run check:fix`, que gera o i18n
-e chama `vp check --fix` nos arquivos staged, sem executar o lint de CSS.
-`vp lint` e `vp check` chamados diretamente continuam sendo os comandos internos
-do Vite+.
+Run `vp run lint:css` to check every CSS file of `src/`. The command is part of
+`vp run lint` and `vp run check:ci`. The pre-push hook and the CI run that
+check. The pre-commit hook uses `vp run check:fix`, which generates the i18n and
+calls `vp check --fix` on the staged files, without running the CSS lint.
+`vp lint` and `vp check` called directly are still the built-in commands of
+Vite+.
 
-- Classes de todo o projeto usam snake_case, como `.home_link` e `.sr_only`.
-  Nomes de uma palavra, como `.btn` e `.page`, continuam válidos.
-- Componentes com variantes e tamanhos usam classes independentes da classe
-  base, com os prefixos `variant_` e `size_`, como `.variant_default` e
-  `.size_sm`. Concatene o prefixo com o valor da prop no acesso ao CSS Module,
-  sem mapas de constantes. Use nesting para estados e media queries de cada
-  classe.
-- Tokens usam nomes em kebab-case, como `--color-primary-hover`. A regra
-  `custom-property-no-missing-var-function` detecta a ausência de `var()` para
-  tokens declarados no mesmo arquivo. Nas propriedades que exigem tokens,
-  valores sem `var()` também são rejeitados.
-- Os tokens de `src/theme/tokens/` formam a paleta oferecida às aplicações
-  derivadas. Um token sem consumidor na demonstração continua no tema: falta de
-  uso aqui não indica código morto nem motivo para removê-lo.
-- Seletores e media queries inválidos geram erro, assim como seletores
-  obsoletos, como `:focus-ring`, e seletores que nunca correspondem a um
-  elemento, como `:is(::before)`. Seletores duplicados no mesmo contexto, etapas
-  duplicadas em `@keyframes` e `@charset` fora do início do arquivo também geram
-  erro.
-- Nomes e valores desconhecidos em media features, operadores sem os espaços
-  obrigatórios em `calc()` e `@import` em posição inválida geram erro.
-- Fora de `src/theme/`, cores literais são proibidas em qualquer propriedade,
-  inclusive em custom properties: hexadecimais, nomes de cor e as funções
-  `rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb()`, `lab()`, `lch()`, `oklab()`,
-  `oklch()`, `color()` e `device-cmyk()`, além de `color-mix()`, `light-dark()`
-  e `contrast-color()`. A regra `value-type-custom-property-required-list` exige
-  token em todo valor do tipo `<color>`, inclusive dentro de abreviações como
-  `border` e `outline`, e por isso também rejeita cores de sistema como
-  `Canvas`. O Stylelint ainda trata essa regra como experimental, e ela pula os
-  valores com `var()` que não consegue resolver, como uma variável desconhecida
-  com fallback.
-- Por isso, `declaration-property-value-disallowed-list` também procura as cores
-  de sistema pelo nome no texto do valor: as atuais, como `Canvas` e
-  `Highlight`, as obsoletas, como `Window`, e as do WebKit, como
-  `-webkit-focus-ring-color`. A busca alcança fallbacks e custom properties,
-  como `outline: var(--largura, 2px) solid Canvas` e `--x: Canvas`. Ficam de
-  fora as propriedades sem cor que recebem nomes livres ou textos (`animation`,
-  `transition`, `will-change`, `grid-*`, `container`, `counter-*`,
-  `view-transition-*`, `font-family`, `content`, `quotes`, `list-style` e
-  `page`) e os caminhos de `url()`. Assim, `grid-area: menu` continua válido, e
-  uma custom property que guarde um nome livre igual a uma cor de sistema, como
-  `--area: menu`, precisa de outro nome ou de exceção com motivo. As regras
-  pegam enganos, não contornos deliberados: um nome escapado, como `C\61 nvas`,
-  num valor com variável desconhecida, as cores `-moz-*` e o `attr()` tipado
-  passam.
-- `declaration-property-value-allowed-list` exige que o valor seja formado só
-  por tokens com `var()` nas propriedades de cor, `background`,
-  `background-image`, `fill`, `stroke`, sombras, `font`, `font-size`,
-  `font-weight`, `z-index` e nos raios de borda, físicos e lógicos. Os nomes de
-  propriedade são comparados sem diferenciar maiúsculas e também com prefixo de
-  fornecedor, então `FONT-SIZE: 14px` e `-webkit-box-shadow: 0 0 4px 2px` geram
-  erro. Os tokens podem vir combinados por espaço, vírgula ou barra, como
-  `var(--ring-focus), var(--shadow-sm)`. Em `font`, a altura de linha depois da
-  barra pode ser crua, como `var(--font-size-14)/1.5`, porque `line-height` não
-  tem token. Valores crus entre tokens e `var()` com fallback são rejeitados.
-  Funções locais não são liberadas; gradientes compartilhados ficam nos tokens.
-  Valores como `transparent`, `currentColor`, `inherit`, `none` e `auto` são
-  permitidos. O tema pode definir os valores e manter as cores de sistema usadas
-  no reset de alto contraste. As regras não aplicam correções automáticas.
-- Um valor que não cabe nos tokens entra como exceção explícita, com o motivo
-  depois de `--`:
-  `/* stylelint-disable-next-line declaration-property-value-allowed-list -- ícone externo exige 13px */`.
-  A opção `reportDescriptionlessDisables` faz um comentário sem motivo gerar
-  erro.
-- Fora de `src/theme/`, `declaration-property-custom-property-allowed-list`
-  exige a família de token de cada propriedade: `--color-*` nas cores, em `fill`
-  e `stroke`, `--radius-*` nos raios, `--color-*` ou `--gradient-*` em
-  `background`, `--gradient-*` em `background-image`, `--shadow-*` ou `--ring-*`
-  em `box-shadow` e `--font-*` em `font`. `font-size`, `font-weight` e `z-index`
-  aceitam só `--font-size-*`, `--font-weight-*` e `--z-index-*`. Assim,
-  `font-size: var(--radius-8)` gera erro, embora `8px` seja um tamanho de fonte
-  válido. Como os tokens não têm sombra de texto, `text-shadow` não aceita
-  nenhum token: fora palavras-chave como `none`, o valor exige exceção com
-  motivo. `border` e `outline` ficam sem essa restrição, porque as abreviações
-  podem combinar tokens de famílias diferentes. A regra confere a família, não
-  qual token dela foi escolhido.
-- Uma custom property declarada fora do tema segue o próprio nome. Com o prefixo
-  de uma família de token (`--color-`, `--gradient-`, `--radius-`, `--shadow-`,
-  `--ring-`, `--font-`, `--font-size-`, `--font-weight-` ou `--z-index-`), ela
-  só aceita tokens daquela família, combinados como na propriedade
-  correspondente: `--radius-button: var(--radius-8)` é válido, e
-  `--radius-button: 0` ou `--font-size-14: 13px` geram erro. Com outro nome,
-  como `--button-radius: 0`, a declaração é livre, mas não entra numa
-  propriedade que exige token, porque a família não confere.
-- Propriedades, valores, unidades, cores hexadecimais, pseudoclasses,
-  pseudoelementos, seletores de tipo e at-rules desconhecidos geram erro, assim
-  como valores que não podem ser interpretados, como `calc(1px + 2)`. `:global`
-  e `:local` não são permitidos; os estilos globais ficam em `src/theme/`.
-- Declarações duplicadas e abreviações que sobrescrevem propriedades anteriores
-  geram erro. Fallbacks consecutivos com sintaxes diferentes são permitidos.
-- Nomes de animação devem ter `@keyframes` no próprio arquivo ou nas referências
-  compartilhadas, incluindo `src/theme/class/animation.css`.
-- `no-unknown-custom-properties` rejeita `var(--token)` sem definição no próprio
-  arquivo ou em `src/theme/tokens/**/*.css`. Por exemplo, `var(--backgroud)`
-  gera erro; `var(--color-background)` é reconhecido. A regra nativa aceita
-  variáveis desconhecidas com fallback, como `var(--opcional, 0)`; nesses
-  valores a checagem por tipo não resolve a variável, e as cores continuam
-  barradas pela busca pelo nome. As referências compartilhadas vêm da opção
-  `referenceFiles` do Stylelint.
-- Fora de `src/theme/`, inclusive nas rotas, o nome obrigatório é
-  `styles.module.css`. Em `src/theme/`, use nomes como `colors.css` e
+- Classes across the project use snake_case, such as `.home_link` and
+  `.sr_only`. One-word names, such as `.btn` and `.page`, are still valid.
+- Components with variants and sizes use classes independent from the base
+  class, with the `variant_` and `size_` prefixes, such as `.variant_default`
+  and `.size_sm`. Concatenate the prefix with the value of the prop when
+  accessing the CSS Module, without constant maps. Use nesting for the states
+  and media queries of each class.
+- Tokens use kebab-case names, such as `--color-primary-hover`. The
+  `custom-property-no-missing-var-function` rule detects a missing `var()` for
+  tokens declared in the same file. In the properties that require tokens,
+  values without `var()` are refused too.
+- The tokens of `src/theme/tokens/` make up the palette offered to the derived
+  applications. A token without a consumer in the demo stays in the theme: no
+  use here does not mean dead code or a reason to remove it.
+- Invalid selectors and media queries are errors, as are deprecated selectors,
+  such as `:focus-ring`, and selectors that never match an element, such as
+  `:is(::before)`. Duplicated selectors in the same context, duplicated steps in
+  `@keyframes` and `@charset` outside the start of the file are errors too.
+- Unknown names and values in media features, operators without the required
+  spaces in `calc()` and an `@import` in an invalid position are errors.
+- Outside `src/theme/`, literal colors are forbidden in any property, custom
+  properties included: hexadecimals, color names and the `rgb()`, `rgba()`,
+  `hsl()`, `hsla()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()`, `color()`
+  and `device-cmyk()` functions, plus `color-mix()`, `light-dark()` and
+  `contrast-color()`. The `value-type-custom-property-required-list` rule
+  requires a token in every value of the `<color>` type, inside shorthands such
+  as `border` and `outline` too, and so it also refuses system colors such as
+  `Canvas`. Stylelint still treats that rule as experimental, and it skips the
+  values with a `var()` it cannot resolve, such as an unknown variable with a
+  fallback.
+- That is why `declaration-property-value-disallowed-list` also looks for the
+  system colors by name in the text of the value: the current ones, such as
+  `Canvas` and `Highlight`, the deprecated ones, such as `Window`, and the
+  WebKit ones, such as `-webkit-focus-ring-color`. The search reaches fallbacks
+  and custom properties, such as `outline: var(--width, 2px) solid Canvas` and
+  `--x: Canvas`. The properties without color that take free names or text
+  (`animation`, `transition`, `will-change`, `grid-*`, `container`, `counter-*`,
+  `view-transition-*`, `font-family`, `content`, `quotes`, `list-style` and
+  `page`) and the paths of `url()` stay out. So `grid-area: menu` is still
+  valid, and a custom property that keeps a free name equal to a system color,
+  such as `--area: menu`, needs another name or an exception with a reason. The
+  rules catch mistakes, not deliberate workarounds: an escaped name, such as
+  `C\61 nvas`, in a value with an unknown variable, the `-moz-*` colors and a
+  typed `attr()` pass.
+- `declaration-property-value-allowed-list` requires the value to be made only
+  of tokens with `var()` in the color properties, `background`,
+  `background-image`, `fill`, `stroke`, shadows, `font`, `font-size`,
+  `font-weight`, `z-index` and the border radii, physical and logical. The
+  property names are compared without case and also with a vendor prefix, so
+  `FONT-SIZE: 14px` and `-webkit-box-shadow: 0 0 4px 2px` are errors. Tokens can
+  be combined by a space, a comma or a slash, such as
+  `var(--ring-focus), var(--shadow-sm)`. In `font`, the line height after the
+  slash can be raw, such as `var(--font-size-14)/1.5`, because `line-height` has
+  no token. Raw values between tokens and `var()` with a fallback are refused.
+  Local functions are not allowed; shared gradients live in the tokens. Values
+  such as `transparent`, `currentColor`, `inherit`, `none` and `auto` are
+  allowed. The theme can define the values and keep the system colors used in
+  the high contrast reset. The rules do not apply automatic fixes.
+- A value that does not fit the tokens comes in as an explicit exception, with
+  the reason after `--`:
+  `/* stylelint-disable-next-line declaration-property-value-allowed-list -- the external icon needs 13px */`.
+  The `reportDescriptionlessDisables` option makes a comment without a reason an
+  error.
+- Outside `src/theme/`, `declaration-property-custom-property-allowed-list`
+  requires the token family of each property: `--color-*` in colors, `fill` and
+  `stroke`, `--radius-*` in radii, `--color-*` or `--gradient-*` in
+  `background`, `--gradient-*` in `background-image`, `--shadow-*` or `--ring-*`
+  in `box-shadow` and `--font-*` in `font`. `font-size`, `font-weight` and
+  `z-index` accept only `--font-size-*`, `--font-weight-*` and `--z-index-*`. So
+  `font-size: var(--radius-8)` is an error, even though `8px` is a valid font
+  size. Since the tokens have no text shadow, `text-shadow` accepts no token:
+  besides keywords such as `none`, the value needs an exception with a reason.
+  `border` and `outline` stay without that restriction, because the shorthands
+  can combine tokens of different families. The rule checks the family, not
+  which token of it was chosen.
+- A custom property declared outside the theme follows its own name. With the
+  prefix of a token family (`--color-`, `--gradient-`, `--radius-`, `--shadow-`,
+  `--ring-`, `--font-`, `--font-size-`, `--font-weight-` or `--z-index-`), it
+  only accepts tokens of that family, combined as in the matching property:
+  `--radius-button: var(--radius-8)` is valid, and `--radius-button: 0` or
+  `--font-size-14: 13px` are errors. With another name, such as
+  `--button-radius: 0`, the declaration is free, but it does not go into a
+  property that requires a token, because the family does not match.
+- Unknown properties, values, units, hex colors, pseudo-classes,
+  pseudo-elements, type selectors and at-rules are errors, as are values that
+  cannot be parsed, such as `calc(1px + 2)`. `:global` and `:local` are not
+  allowed; the global styles live in `src/theme/`.
+- Duplicated declarations and shorthands that override earlier properties are
+  errors. Consecutive fallbacks with different syntaxes are allowed.
+- Animation names must have a `@keyframes` in the same file or in the shared
+  references, including `src/theme/class/animation.css`.
+- `no-unknown-custom-properties` refuses a `var(--token)` without a definition
+  in the same file or in `src/theme/tokens/**/*.css`. For example,
+  `var(--backgroud)` is an error; `var(--color-background)` is recognized. The
+  native rule accepts unknown variables with a fallback, such as
+  `var(--optional, 0)`; in those values the type check does not resolve the
+  variable, and the colors are still blocked by the search by name. The shared
+  references come from the `referenceFiles` option of Stylelint.
+- Outside `src/theme/`, routes included, the required name is
+  `styles.module.css`. In `src/theme/`, use names such as `colors.css` and
   `zIndex.css`.
-- O limite é de dois níveis de nesting dentro de uma regra. O Stylelint
-  desconsidera at-rules na raiz ao contar essa profundidade.
-- `stylelint-use-nesting` aponta seletores e media queries adjacentes que podem
-  ser aninhados. Essa regra não encontra toda oportunidade de nesting entre
-  blocos distantes. Os comandos do projeto não aplicam correção automática de
-  CSS, para preservar a ordem da cascata.
+- The limit is two levels of nesting inside a rule. Stylelint ignores at-rules
+  at the root when counting that depth.
+- `stylelint-use-nesting` points out adjacent selectors and media queries that
+  can be nested. That rule does not find every nesting opportunity between
+  distant blocks. The commands of the project do not apply automatic CSS fixes,
+  to keep the order of the cascade.
 
-A regra `project/css-filename` do plugin local do Oxlint valida os nomes dos
-arquivos CSS referenciados por imports e reexportações em JS/TS. O comando
-`lint:css` reutiliza essa validação para todos os arquivos CSS em `src/`,
-inclusive aqueles sem imports em JS/TS.
+The `project/css-filename` rule of the local Oxlint plugin validates the names
+of the CSS files referenced by imports and re-exports in JS/TS. The `lint:css`
+command reuses that validation for every CSS file in `src/`, those without
+imports in JS/TS included.
 
-`vp run test:tooling` verifica o comportamento dos verificadores com casos em
-memória e roda nos hooks e no CI. O lint do CSS real continua automático, e suas
-violações bloqueiam a validação até serem corrigidas.
+`vp run test:tooling` checks the behavior of the checkers with in-memory cases
+and runs in the hooks and in CI. The lint of the real CSS is still automatic,
+and its violations block the validation until they are fixed.
 
-## Processamento de CSS
+## CSS processing
 
-`vite.config.ts` usa o Lightning CSS (`css.transformer: 'lightningcss'`) para
-transpilar nesting, `light-dark()` e prefixos para os navegadores do Baseline
-padrão do Vite, rebaixando cores modernas só quando o alvo exigir.
-`light-dark()` vira variáveis `--lightningcss-light`/`--lightningcss-dark`,
-alternadas pela media query `prefers-color-scheme` e pelas regras
-`.light`/`.dark` de `src/theme/tokens/colors.css`. O `color-scheme` inline
-aplicado por `applyTheme` não altera essas variáveis: a troca manual de tema
-depende das classes no `<html>`, então mantenha a declaração de `color-scheme`
-nessas regras. O Vite+ cuida dos imports de CSS e da minificação no build, e a
-mesma configuração vale para os builds Nitro e para o projeto `browser` do
-Vitest.
+`vite.config.ts` uses Lightning CSS (`css.transformer: 'lightningcss'`) to
+transpile nesting, `light-dark()` and prefixes for the browsers of the default
+Vite Baseline, lowering modern colors only when the target requires it.
+`light-dark()` becomes the `--lightningcss-light`/`--lightningcss-dark`
+variables, switched by the `prefers-color-scheme` media query and by the
+`.light`/`.dark` rules of `src/theme/tokens/colors.css`. The inline
+`color-scheme` applied by `applyTheme` does not change those variables: the
+manual theme switch depends on the classes on `<html>`, so keep the
+`color-scheme` declaration in those rules. Vite+ handles the CSS imports and the
+minification in the build, and the same configuration applies to the Nitro
+builds and to the Vitest `browser` project.
 
-As classes dos CSS Modules seguem o padrão `[content-hash]_[local]`
-(`css.lightningcss.cssModules.pattern`). O `[hash]` padrão do Lightning CSS
-inclui a query do módulo, e o SSR de desenvolvimento do plugin do Solid importa
-cada folha com `?inline` para entregar o estilo no primeiro HTML: com o padrão,
-o componente e a folha inline gerariam classes diferentes
-([vitejs/vite#23735](https://github.com/vitejs/vite/issues/23735)). Não use
-`[name]_[local]`, porque todos os módulos se chamam `styles.module.css` e as
-classes colidiriam, nem `[content-hash]` sem `[local]`, que junta todas as
-classes da folha num nome só. Como o nome vem do conteúdo, editar um CSS muda as
-classes geradas e o hash do chunk JS que importa a folha, e duas folhas com
-conteúdo idêntico compartilham os nomes; isso só é seguro sem `url()`, `@import`
-ou `composes` relativos, que apontariam para alvos diferentes.
-`tooling/lightningCssModules/` carrega o `vite.config.ts` real e confere que o
-import normal e o `?inline` usam a mesma classe e que as classes continuam
-distintas entre seletores e entre módulos. Quando uma versão do Vite+ trouxer o
-[vitejs/vite#23736](https://github.com/vitejs/vite/pull/23736), o padrão pode
-voltar ao `[hash]` do Lightning CSS, desde que esse teste continue passando.
+The CSS Module classes follow the `[content-hash]_[local]` pattern
+(`css.lightningcss.cssModules.pattern`). The default `[hash]` of Lightning CSS
+includes the query of the module, and the development SSR of the Solid plugin
+imports each stylesheet with `?inline` to deliver the style in the first HTML:
+with the default, the component and the inline stylesheet would generate
+different classes
+([vitejs/vite#23735](https://github.com/vitejs/vite/issues/23735)). Do not use
+`[name]_[local]`, because every module is called `styles.module.css` and the
+classes would collide, or `[content-hash]` without `[local]`, which joins all
+the classes of the stylesheet into a single name. Since the name comes from the
+content, editing a CSS file changes the generated classes and the hash of the JS
+chunk that imports the stylesheet, and two stylesheets with identical content
+share the names; that is only safe without relative `url()`, `@import` or
+`composes`, which would point to different targets.
+`tooling/lightningCssModules/` loads the real `vite.config.ts` and checks that
+the normal import and the `?inline` one use the same class and that the classes
+stay distinct between selectors and between modules. When a version of Vite+
+brings [vitejs/vite#23736](https://github.com/vitejs/vite/pull/23736), the
+pattern can go back to the `[hash]` of Lightning CSS, as long as that test keeps
+passing.
 
-## SVGs locais como componentes
+## Local SVGs as components
 
-O `unplugin-icons` carrega a coleção `my-images` de `src/assets/images/` com
-`FileSystemIconLoader`. A home demonstra a importação do logo do Solid:
+`unplugin-icons` loads the `my-images` collection from `src/assets/images/` with
+`FileSystemIconLoader`. The home page shows the import of the Solid logo:
 
 ```tsx
 import SolidLogo from '~icons/my-images/solid'
@@ -305,17 +312,17 @@ import S from './styles.module.css'
 <SolidLogo class={S.logo} />
 ```
 
-Adicione arquivos `.svg` nessa pasta e importe pelo nome, sem extensão. As cores
-originais são preservadas. PNG, JPEG e WebP continuam sendo imagens comuns. A
-configuração do plugin já adiciona `aria-hidden="true"` aos SVGs importados; não
-repita o atributo em cada uso do componente. `src/@types/icons.d.ts` declara os
-componentes com os tipos de `@solidjs/web` para manter os ícones alinhados à API
-usada pelo projeto.
+Add `.svg` files to that folder and import them by name, without the extension.
+The original colors are kept. PNG, JPEG and WebP are still common images. The
+plugin configuration already adds `aria-hidden="true"` to the imported SVGs; do
+not repeat the attribute on each use of the component. `src/@types/icons.d.ts`
+declares the components with the types of `@solidjs/web` to keep the icons
+aligned with the API the project uses.
 
-O
-[SVG do Solid vem do template oficial do Vite](https://github.com/vitejs/vite/blob/main/packages/create-vite/template-solid/src/assets/solid.svg).
+The
+[Solid SVG comes from the official Vite template](https://github.com/vitejs/vite/blob/main/packages/create-vite/template-solid/src/assets/solid.svg).
 
-Os ícones prontos usam a coleção `@iconify-json/hugeicons` pelo mesmo plugin. O
-seletor de tema usa, por exemplo,
-`import IconSun from '~icons/hugeicons/sun-01'`. Apenas os ícones importados
-entram no build.
+The ready-made icons use the `@iconify-json/hugeicons` collection through the
+same plugin. The theme switcher uses, for example,
+`import IconSun from '~icons/hugeicons/sun-01'`. Only the imported icons go into
+the build.
