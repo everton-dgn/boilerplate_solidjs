@@ -13,7 +13,7 @@ type RouteState = {
 
 type StaticPage = RouteState & { path: string }
 
-// O índice filho pode compartilhar a URL do layout; seus metadados prevalecem.
+// The child index can share the URL of the layout; its metadata wins.
 export function collectLlmsPages(routes: readonly StaticRoute[]): LlmsPage[] {
   const pages = new Map<string, StaticPage>()
   walkStaticRoutes<RouteState>({

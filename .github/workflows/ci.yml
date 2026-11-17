@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
-  # Validação completa manual, sem deploy.
+  # Full manual validation, without a deploy.
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  # O grupo manual não substitui um push pendente da main, que precisa do deploy.
+  # The manual group does not replace a pending push of main, which needs the deploy.
   group:
     ci-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' &&
     'manual-' || '' }}${{ github.ref }}
@@ -19,9 +19,9 @@ concurrency:
 
 env:
   LEFTHOOK: '0'
-  # Única versão do Vercel CLI usada no pull, no build e no deploy. Para
-  # atualizar, escolha uma versão estável publicada no npm (vercel), troque o
-  # valor aqui e valide o E2E de produção e o deploy no push da main.
+  # Single Vercel CLI version used in pull, build and deploy. To update it, pick a
+  # stable version published on npm (vercel), change the value here and check the
+  # production E2E and the deploy on the main push.
   VERCEL_CLI_VERSION: '65.16.0'
 
 jobs:
@@ -59,7 +59,7 @@ jobs:
   quality:
     name: Quality
     needs: proof
-    # Sem prova válida, inclusive em PRs e falhas do proof, roda normalmente.
+    # Without a valid proof, PRs and proof failures included, it runs normally.
     if:
       ${{ !cancelled() && (needs.proof.result != 'success' ||
       needs.proof.outputs.reuse != 'true' || needs.proof.outputs.run-quality ==
@@ -123,8 +123,8 @@ jobs:
           restore-keys: |
             ci-validation-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.toolchain.outputs.node }}-bun-${{ steps.toolchain.outputs.bun }}-${{ hashFiles('bun.lock') }}-
 
-      # Cria .tsbuild antes do lint também quando o cache está vazio, para
-      # estabilizar a listagem da raiz que o Vite Task rastreia.
+      # Creates .tsbuild before the lint even when the cache is empty, to keep
+      # the listing of the root that Vite Task tracks stable.
       - name: Check Node tooling types
         run: vp run typecheck:node
 
@@ -231,7 +231,7 @@ jobs:
           include-hidden-files: true
           retention-days: 14
 
-  # Sempre executa, sem depender do proof: o build testado alimenta o deploy.
+  # Always runs, without depending on the proof: the tested build feeds the deploy.
   e2e-production:
     name: E2E (production)
     runs-on: ubuntu-latest
@@ -251,8 +251,8 @@ jobs:
         with:
           cache-toolchain: 'true'
 
-      # O token chega só aos comandos do Vercel CLI. A documentação da Vercel
-      # passa o token também ao vercel build, então o build o mantém.
+      # The token only reaches the Vercel CLI commands. The Vercel documentation
+      # also passes the token to vercel build, so the build keeps it.
       - name: Pull Vercel production settings
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
@@ -347,7 +347,7 @@ jobs:
   check:
     name: CI required
     needs: [proof, quality, tooling, e2e-fixtures, e2e-production]
-    # Sempre informa o resultado; cancelamentos chegam como cancelled e reprovam.
+    # Always reports the result; cancellations arrive as cancelled and fail.
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 1
@@ -377,9 +377,9 @@ jobs:
 
   deploy:
     needs: check
-    # O success() implícito considera toda a cadeia de needs e pularia o deploy
-    # quando a prova dispensa jobs; check já exige o resultado de cada um,
-    # inclusive o sucesso do E2E de produção.
+    # The implicit success() considers the whole needs chain and would skip the
+    # deploy when the proof skips jobs; check already requires the result of each
+    # one, the success of the production E2E included.
     if:
       ${{ !cancelled() && needs.check.result == 'success' && github.event_name
       == 'push' && github.ref == 'refs/heads/main' }}
@@ -392,8 +392,8 @@ jobs:
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
     steps:
-      # Sob o lock de produção: um run antigo que termina depois não publica por
-      # cima de um commit mais novo da main. Erro de API reprova o job.
+      # Under the production lock: an old run that ends later does not publish over
+      # a newer main commit. An API error fails the job.
       - name: Check that this commit is still the head of main
         id: freshness
         env:
@@ -416,7 +416,7 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      # O deploy só usa vp dlx com o artefato testado; dispensa node_modules.
+      # The deploy only uses vp dlx with the tested artifact; it skips node_modules.
       - name: Set up toolchain
         if: steps.freshness.outputs.should-deploy == 'true'
         uses: ./.github/actions/setup-project

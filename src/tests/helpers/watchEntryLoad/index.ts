@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 
-// O evento load de um módulo async ocorre depois da avaliação, mesmo se
-// hydrate() apenas estacionou enquanto o parser ainda recebia o shell.
+// The load event of an async module happens after the evaluation, even if
+// hydrate() only parked while the parser was still receiving the shell.
 export function watchEntryLoad(page: Page): ReturnType<Page['addInitScript']> {
   return page.addInitScript(() => {
     document.addEventListener(

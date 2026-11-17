@@ -19,8 +19,8 @@ type PlanInput = {
 const SHORT_SHA_LENGTH = 7
 const versionPattern = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u
 
-// O rodapé deveria vir depois de uma linha em branco, mas commits criados fora
-// do hook podem omiti-la; qualquer linha do corpo fora de cercas conta.
+// The footer should come after a blank line, but commits created outside the hook
+// can leave it out; any line of the body outside fences counts.
 function hasBreakingChange(lines: string[]): boolean {
   let fence = ''
   for (const line of lines.slice(1)) {

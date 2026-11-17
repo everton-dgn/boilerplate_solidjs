@@ -84,10 +84,10 @@ function findXmlProblem({
     : 'not an XML document'
 }
 
-// Acompanha o que o build publica além dos `.md`: partes do sitemap, a raiz
-// quando ela não depende de nenhuma fonte, o llms.txt e a lista de Markdown. Só
-// um artefato aprovado no prerender e reencontrado com os mesmos bytes no
-// diretório público chega ao manifesto da função.
+// Tracks what the build publishes besides the `.md` files: sitemap parts, the
+// root when it does not depend on any source, llms.txt and the Markdown list.
+// Only an artifact approved in the prerender and found again with the same bytes
+// in the public folder reaches the function manifest.
 export function publicationArtifacts({
   buildId
 }: PublicationOptions): PublicationArtifacts {
@@ -105,8 +105,8 @@ export function publicationArtifacts({
       route.error = new Error('Invalid sitemap inventory')
       return
     }
-    // O inventário responde com o valor gravado no SSR: a divergência aqui
-    // reprova o build em vez de virar 503 em toda requisição de produção.
+    // The inventory answers with the value written in the SSR: a mismatch here
+    // fails the build instead of becoming a 503 on every production request.
     if (inventory.buildId !== buildId) {
       route.error = new Error('Sitemap inventory belongs to another build')
       return
@@ -167,7 +167,7 @@ export function publicationArtifacts({
       await assertPublishedArtifacts({ ...options, xmlPaths, approved })
       isVerified = true
     },
-    // O hook `compiled` também dispara na instância do prerender, sem artefatos.
+    // The `compiled` hook also fires in the prerender instance, without artifacts.
     async writeServer(serverDir) {
       if (!inventory || !isVerified) return
       const partDigests = Array.from(

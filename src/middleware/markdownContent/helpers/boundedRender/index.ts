@@ -34,7 +34,7 @@ type DiscardOptions = { response: Response; signal: AbortSignal }
 type Publication = { response: Response; isPublished: boolean }
 type RedirectOptions = { response: Response; url: URL; request: Request }
 
-// none equivale a noindex, nofollow; em max-image-preview, só limita a prévia.
+// none is the same as noindex, nofollow; in max-image-preview, it only limits the preview.
 const NOINDEX = /(?<!max-image-preview\s*:\s*)\b(?:noindex|none)\b/iu
 
 function canPublish({ response, isPublished }: Publication): boolean {
@@ -54,13 +54,13 @@ async function resolveRedirect({
   url,
   request
 }: RedirectOptions): Promise<Response> {
-  // Nitro aceita redirects no prerender, mas o arquivo perde o status HTTP. Um
-  // cliente comum que envie o header só troca o redirect por 500 público.
+  // Nitro accepts redirects in the prerender, but the file loses the HTTP status.
+  // A common client that sends the header only replaces the redirect with a public 500.
   if (request.headers.has('x-nitro-prerender')) {
     await response.body?.cancel()
     return publicResponse({ status: HTTP_INTERNAL_SERVER_ERROR, request })
   }
-  // A resposta do render já saiu do securityHeaders; falta só o cache.
+  // The render response already went through securityHeaders; only the cache is missing.
   const redirect = appendVary({
     response: new Response(response.body, {
       status: response.status,
@@ -105,7 +105,7 @@ async function convertPage({
   url,
   signal
 }: ConvertOptions): Promise<string> {
-  // A origem pública resolve os links: no prerender a requisição é local.
+  // The public origin resolves the links: in the prerender the request is local.
   const markdown = await convertHtml({
     response,
     url: resolveSiteUrl(`${url.pathname}${url.search}`),
@@ -168,8 +168,8 @@ async function renderMarkdown({
   try {
     markdown = await convertPage({ response, url, signal })
   } catch (error) {
-    // O cancelamento segue para a publicação; os tetos e as falhas do
-    // conversor viram o 500 público no idioma da requisição original.
+    // The cancellation goes on to the publication; the limits and the converter
+    // failures become the public 500 in the locale of the original request.
     signal.throwIfAborted()
     logServerFailure({ source: 'middleware', error })
     return publicResponse({

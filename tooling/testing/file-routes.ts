@@ -1,7 +1,7 @@
-// O manifesto real vem do plugin filesystem-routing, ausente no projeto node
-// de testes, que recebe estas listas vazias. Os testes node que dependem de rotas
-// substituem com vi.mock o matcher de filesystem-routing/api ou o helper que
-// consulta o manifesto.
+// The real manifest comes from the filesystem-routing plugin, missing in the node
+// test project, which receives these empty lists. The node tests that depend on
+// routes replace the filesystem-routing/api matcher or the helper that reads the
+// manifest with vi.mock.
 const routes: readonly [] = []
 
 export const pageRoutes: readonly [] = []

@@ -7,12 +7,12 @@ type RenderIntegrity = {
   complete: () => void
 }
 
-// O estado exposto é somente leitura; só quem o criou consegue marcá-lo.
+// The exposed state is read-only; only its creator can mark it.
 const markers = new WeakMap<SsrRenderState, () => void>()
 let isObserved = false
 
-// Sem o hook registrado, nenhuma falha marcaria o estado: ele nasce com
-// hasErrors indefinido, que o Markdown recusa.
+// Without the registered hook, no failure would mark the state: it starts with an
+// undefined hasErrors, which the Markdown refuses.
 export function observeRenderFailures(): void {
   isObserved = true
 }

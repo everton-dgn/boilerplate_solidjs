@@ -46,8 +46,8 @@ type HeaderOptions = Omit<
 
 const CHUNK_BYTES = 65_536
 const FILE_NAME = LLMS_FULL_PATH.slice(1)
-// No Windows, O_NOFOLLOW não existe e não altera os flags; o realpath anterior
-// continua recusando links.
+// On Windows, O_NOFOLLOW does not exist and does not change the flags; the
+// earlier realpath still refuses links.
 const READ_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW
 const encoder = new TextEncoder()
 const SEPARATOR = encoder.encode('\n')
@@ -66,8 +66,8 @@ async function exists(file: string): Promise<boolean> {
   }
 }
 
-// O caminho vem do inventário decodificado do prerender. O realpath igual ao
-// caminho montado recusa symlinks no arquivo e nos diretórios acima dele.
+// The path comes from the decoded inventory of the prerender. A realpath equal to
+// the assembled path refuses symlinks in the file and in the folders above it.
 async function resolveArtifact({
   root,
   path
@@ -137,7 +137,7 @@ function formatSource({ url, size }: Artifact): string {
   return `\nSource: ${url}\nBytes: ${size}\n\n`
 }
 
-// Lê em blocos e confere bytes e UTF-8 contra o arquivo aprovado no prerender.
+// Reads in blocks and checks bytes and UTF-8 against the file approved in the prerender.
 async function copyArtifact({
   artifact,
   output,
@@ -184,9 +184,9 @@ async function assemble({
   }
 }
 
-// Monta o agregado num diretório temporário ao lado da saída estática e só o
-// promove completo, com o tamanho previsto; qualquer falha ou cancelamento
-// remove o temporário e interrompe o build.
+// Assembles the aggregate in a temporary folder next to the static output and
+// only promotes it complete, with the expected size; any failure or cancellation
+// removes the temporary folder and stops the build.
 export async function writeLlmsFull(options: LlmsFullOptions): Promise<void> {
   const { outputDir, publicDir, maxBytes, documents, signal } = options
   signal?.throwIfAborted()

@@ -5,7 +5,7 @@ import { writeAll } from '../index.ts'
 
 const MAX_WRITE = 3
 
-it('continua depois de gravações curtas até gravar todos os bytes', async () => {
+it('continues after short writes until every byte is written', async () => {
   const received: number[] = []
   const lengths: number[] = []
   const output = {
@@ -20,14 +20,14 @@ it('continua depois de gravações curtas até gravar todos os bytes', async () 
   await writeAll({ output, bytes })
   assert.deepEqual(Uint8Array.from(received), bytes)
   assert.ok(lengths.length > 1)
-  // Cada chamada recebe só o que falta gravar.
+  // Each call receives only what is left to write.
   assert.deepEqual(
     lengths,
     lengths.map((_, index) => bytes.byteLength - index * MAX_WRITE)
   )
 })
 
-it('recusa uma gravação sem progresso', async () => {
+it('refuses a write without progress', async () => {
   const output = { write: () => Promise.resolve({ bytesWritten: 0 }) }
   await assert.rejects(
     writeAll({ output, bytes: new TextEncoder().encode('# A') }),
@@ -35,7 +35,7 @@ it('recusa uma gravação sem progresso', async () => {
   )
 })
 
-it('para no bloco seguinte quando o sinal é abortado no meio', async () => {
+it('stops at the next block when the signal is aborted in the middle', async () => {
   const controller = new AbortController()
   let calls = 0
   const output = {

@@ -19,17 +19,17 @@ function mountMenu(onChange = vi.fn<(value: string) => void>()) {
       items={ITEMS}
       value="light"
       onChange={onChange}
-      trigger={props => <Button {...props} label="Abrir" />}
+      trigger={props => <Button {...props} label="Open" />}
     />
   ))
 
   return { host, onChange }
 }
 
-describe('menu suspenso no navegador', () => {
-  it('expõe o estado acessível e alterna pelo gatilho', async () => {
+describe('dropdown menu in the browser', () => {
+  it('exposes the accessible state and toggles through the trigger', async () => {
     mountMenu()
-    const opener = page.getByRole('button', { name: 'Abrir' })
+    const opener = page.getByRole('button', { name: 'Open' })
     const menu = page.getByRole('menu', { name: 'Tema' })
 
     await expect.element(opener).toHaveAttribute('aria-expanded', 'false')
@@ -51,9 +51,9 @@ describe('menu suspenso no navegador', () => {
     await expect.element(menu).not.toBeInTheDocument()
   })
 
-  it('navega pelas pontas com setas, Home e End', async () => {
+  it('moves to the ends with arrows, Home and End', async () => {
     mountMenu()
-    const opener = page.getByRole('button', { name: 'Abrir' })
+    const opener = page.getByRole('button', { name: 'Open' })
     const first = page.getByRole('menuitemradio', { name: 'Claro' })
     const last = page.getByRole('menuitemradio', { name: 'Escuro' })
 
@@ -73,15 +73,15 @@ describe('menu suspenso no navegador', () => {
     await expect.element(opener).toHaveFocus()
   })
 
-  it('fecha com Tab e com clique fora preservando o destino do foco', async () => {
+  it('closes with Tab and with an outside click keeping the target of the focus', async () => {
     const { host } = mountMenu()
     renderComponent(() => (
       <div style={{ 'margin-top': '200px' }}>
-        <Button label="Próximo" />
+        <Button label="Next" />
       </div>
     ))
-    const opener = page.getByRole('button', { name: 'Abrir' })
-    const next = page.getByRole('button', { name: 'Próximo' })
+    const opener = page.getByRole('button', { name: 'Open' })
+    const next = page.getByRole('button', { name: 'Next' })
     const menu = page.getByRole('menu')
 
     await opener.click()
@@ -101,7 +101,7 @@ describe('menu suspenso no navegador', () => {
     await expect.element(menu).not.toBeInTheDocument()
   })
 
-  it('ignora item desabilitado na seleção e na navegação', async () => {
+  it('ignores a disabled item in selection and navigation', async () => {
     const onChange = vi.fn<(value: string) => void>()
     const host = renderComponent(() => (
       <DropdownMenu
@@ -111,12 +111,12 @@ describe('menu suspenso no navegador', () => {
           { value: 'dark', label: 'Escuro', disabled: true }
         ]}
         onChange={onChange}
-        trigger={props => <Button {...props} label="Abrir" />}
+        trigger={props => <Button {...props} label="Open" />}
       />
     ))
 
-    await page.getByRole('button', { name: 'Abrir' }).click()
-    // Dispara direto porque a automação do navegador recusa alvos desabilitados.
+    await page.getByRole('button', { name: 'Open' }).click()
+    // Dispatches directly because browser automation refuses disabled targets.
     host.querySelector<HTMLElement>('[aria-disabled="true"]')?.click()
     expect(onChange).not.toHaveBeenCalled()
     await expect.element(page.getByRole('menu')).toBeVisible()
@@ -127,24 +127,24 @@ describe('menu suspenso no navegador', () => {
   })
 
   it.each([
-    { name: 'vazio', items: [] },
+    { name: 'empty', items: [] },
     {
-      name: 'desabilitado',
+      name: 'disabled',
       items: [{ value: 'dark', label: 'Escuro', disabled: true }]
     }
-  ])('fecha o menu $name com Escape e Tab', async ({ items }) => {
+  ])('closes the $name menu with Escape and Tab', async ({ items }) => {
     renderComponent(() => (
       <>
         <DropdownMenu
           label="Tema"
           items={items}
-          trigger={props => <Button {...props} label="Abrir" />}
+          trigger={props => <Button {...props} label="Open" />}
         />
-        <Button label="Próximo" />
+        <Button label="Next" />
       </>
     ))
 
-    const opener = page.getByRole('button', { name: 'Abrir' })
+    const opener = page.getByRole('button', { name: 'Open' })
     await opener.click()
     await expect.element(page.getByRole('menu')).toHaveFocus()
     await userEvent.keyboard('{Escape}')
@@ -155,11 +155,11 @@ describe('menu suspenso no navegador', () => {
     await userEvent.keyboard('{Tab}')
     await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
     await expect
-      .element(page.getByRole('button', { name: 'Próximo' }))
+      .element(page.getByRole('button', { name: 'Next' }))
       .toHaveFocus()
   })
 
-  it.each(['{Enter}', ' '])('navega e seleciona com %s', async key => {
+  it.each(['{Enter}', ' '])('navigates and selects with %s', async key => {
     const { onChange } = mountMenu()
 
     await userEvent.keyboard('{Tab}')
@@ -173,14 +173,14 @@ describe('menu suspenso no navegador', () => {
     await userEvent.keyboard(key)
 
     expect(onChange).toHaveBeenCalledWith('dark')
-    const opener = page.getByRole('button', { name: 'Abrir' })
+    const opener = page.getByRole('button', { name: 'Open' })
     await expect.element(opener).toHaveFocus()
     expect(opener.element().matches(':focus-visible')).toBe(true)
   })
 
-  it('devolve o foco ao gatilho sem anel visível após seleção pelo ponteiro', async () => {
+  it('returns the focus to the trigger without a visible ring after a pointer selection', async () => {
     const { onChange } = mountMenu()
-    const opener = page.getByRole('button', { name: 'Abrir' })
+    const opener = page.getByRole('button', { name: 'Open' })
 
     await opener.click()
     await page.getByRole('menuitemradio', { name: 'Escuro' }).click()
@@ -195,9 +195,9 @@ describe('menu suspenso no navegador', () => {
     await expect.element(opener).toHaveFocus()
   })
 
-  it('mostra o anel de foco no item só na navegação por teclado', async () => {
+  it('shows the focus ring on the item only in keyboard navigation', async () => {
     mountMenu()
-    const opener = page.getByRole('button', { name: 'Abrir' })
+    const opener = page.getByRole('button', { name: 'Open' })
     const first = page.getByRole('menuitemradio', { name: 'Claro' })
 
     await opener.click()

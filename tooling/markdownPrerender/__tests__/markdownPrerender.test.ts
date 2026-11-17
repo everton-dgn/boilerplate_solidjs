@@ -16,7 +16,7 @@ import { BUILD_ID } from './constants.ts'
 import { setup, manifest, written, markdownRoute } from './fixtures.ts'
 import type { Prerender } from './types.ts'
 
-it('registra a lista estática e falha o build em erro de prerender', async () => {
+it('registers the static list and fails the build on a prerender error', async () => {
   const { prerender } = await setup()
   assert.deepEqual(prerender, {
     routes: [
@@ -29,7 +29,7 @@ it('registra a lista estática e falha o build em erro de prerender', async () =
   })
 })
 
-it('enfileira os arquivos listados e publica a lista', async () => {
+it('queues the listed files and publishes the list', async () => {
   const { handlers } = await setup()
   const routes = new Set<string>()
   handlers['prerender:routes']?.(routes)
@@ -43,7 +43,7 @@ it('enfileira os arquivos listados e publica a lista', async () => {
   assert.equal(route.error, undefined)
 })
 
-it('marca erro quando a lista não traz só arquivos .md', async () => {
+it('marks an error when the list does not carry only .md files', async () => {
   for (const contents of [
     'not json',
     '["/en/about.md"]',
@@ -67,7 +67,7 @@ it('marca erro quando a lista não traz só arquivos .md', async () => {
   }
 })
 
-it('recusa a lista quando uma página com opt-in estático resolve para outra rota', async () => {
+it('refuses the list when a page with static opt-in resolves to another route', async () => {
   const { handlers } = await setup()
   const routes = new Set<string>()
   handlers['prerender:routes']?.(routes)
@@ -83,7 +83,7 @@ it('recusa a lista quando uma página com opt-in estático resolve para outra ro
   )
 })
 
-it('não altera as demais rotas nem um .md válido do prerender', async () => {
+it('changes neither the other routes nor a valid .md of the prerender', async () => {
   const { handlers } = await setup()
   handlers['prerender:routes']?.(new Set())
   for (const route of [
@@ -96,7 +96,7 @@ it('não altera as demais rotas nem um .md válido do prerender', async () => {
   }
 })
 
-it('publica o llms.txt e recusa um índice acima do orçamento, sem truncar', async () => {
+it('publishes llms.txt and refuses an index above the budget, without truncating', async () => {
   const { handlers } = await setup()
   const route: PrerenderRoute = { route: '/llms.txt', contents: '# Site' }
   handlers['prerender:generate']?.(route)
@@ -112,7 +112,7 @@ it('publica o llms.txt e recusa um índice acima do orçamento, sem truncar', as
   )
 })
 
-it('não duplica rotas que outra configuração já prerenderiza', () => {
+it('does not duplicate routes that another configuration already prerenders', () => {
   const prerender: Prerender = { routes: ['/llms.txt'] }
   markdownPrerender({ buildId: BUILD_ID })({
     options: {
@@ -128,7 +128,7 @@ it('não duplica rotas que outra configuração já prerenderiza', () => {
   ])
 })
 
-it('expõe a fase de prerender só enquanto o worker existe', async () => {
+it('exposes the prerender phase only while the worker exists', async () => {
   const { handlers } = await setup()
   assert.equal(env[PUBLICATION_PHASE_ENV], undefined)
   handlers['prerender:init']?.()
@@ -138,7 +138,7 @@ it('expõe a fase de prerender só enquanto o worker existe', async () => {
   assert.equal(env[PUBLICATION_PHASE_ENV], undefined)
 })
 
-it('falha o build quando a lista não passa pelo prerender', async () => {
+it('fails the build when the list does not go through the prerender', async () => {
   const { handlers } = await setup()
   handlers['prerender:routes']?.(new Set())
   await assert.rejects(async () => handlers['prerender:done']?.(written([])), {
@@ -146,7 +146,7 @@ it('falha o build quando a lista não passa pelo prerender', async () => {
   })
 })
 
-it('recusa caminhos do idioma base fora da lista', async () => {
+it('refuses base locale paths outside the list', async () => {
   const { handlers } = await setup()
   const route: PrerenderRoute = {
     route: MARKDOWN_PRERENDER_PATH,

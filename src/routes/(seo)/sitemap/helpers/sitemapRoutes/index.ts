@@ -33,8 +33,9 @@ function serviceOptions({ sources, request }: SettingsOptions): ServiceOptions {
   }
 }
 
-// O roteador casa `/sitemaps/pages/1` no mesmo padrão de `1.xml`; sem o sufixo
-// a parte não existe, e a recusa vem antes de ler o estado do sitemap.
+// The router matches `/sitemaps/pages/1` in the same pattern as `1.xml`; without
+// the suffix the part does not exist, and the refusal comes before reading the
+// sitemap state.
 function readXmlSegments(request: Request): XmlSegments | undefined {
   const segments = new URL(request.url).pathname.split('/')
   const segment = segments.at(-1) ?? ''
@@ -87,7 +88,7 @@ export function createArrayPartRoute(sources: Sources): SitemapRoute {
     })
 }
 
-// Só existe no prerender: fora dele, nenhuma requisição recompõe o inventário.
+// Only exists in the prerender: outside it, no request rebuilds the inventory.
 export function createInventoryRoute(sources: Sources): InventoryRoute {
   return () => {
     if (readPublicationPhase() !== 'prerender') return notFound()

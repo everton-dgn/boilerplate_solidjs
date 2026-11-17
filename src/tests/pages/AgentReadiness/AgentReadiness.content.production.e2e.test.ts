@@ -2,7 +2,7 @@ import { hydrationFinished } from '@/tests/helpers/hydrationFinished/index.ts'
 import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 import { readSiteOrigin } from '@/tests/helpers/readSiteOrigin/index.ts'
 
-// Com --headed, o viewport dos blocos por largura redimensionaria a janela do navegador.
+// With --headed, the viewport of the per-width blocks would resize the browser window.
 test.use({ headless: true })
 
 const HTTP_OK = 200
@@ -100,7 +100,7 @@ for (const language of LANGUAGES) {
         await expect(heading).toHaveCount(1)
         await expect(heading).toHaveText(language.headings[index] ?? '')
         await expect(heading).toBeVisible()
-        // oxlint-disable-next-line unicorn/prefer-dom-node-text-content -- A contagem precisa excluir texto oculto por CSS.
+        // oxlint-disable-next-line unicorn/prefer-dom-node-text-content -- The count must exclude text hidden by CSS.
         const visibleText = await main.innerText()
         const content = await page.evaluate(readMainContent, html)
         expect(
@@ -178,8 +178,8 @@ for (const language of LANGUAGES) {
         await expect(page.locator('html')).toHaveClass('dark')
         const header = await page.getByRole('banner').elementHandle()
         if (width === MOBILE_WIDTH) {
-          // Os links transbordam e rolam dentro da barra; tema e idioma ficam
-          // fora dela, visíveis na tela estreita.
+          // The links overflow and scroll inside the bar; theme and locale stay
+          // outside it, visible on the narrow screen.
           const nav = page.locator('header > nav')
           expect(
             await nav.evaluate(

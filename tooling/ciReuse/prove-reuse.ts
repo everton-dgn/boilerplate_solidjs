@@ -11,8 +11,8 @@ const output = env.GITHUB_OUTPUT
 if (!output) throw new Error('Missing GITHUB_OUTPUT.')
 
 const repository = env.GITHUB_REPOSITORY ?? ''
-// O prazo encerra os subprocessos da prova ainda em andamento, e a falha
-// resultante vira CI completo.
+// The deadline ends the proof subprocesses still running, and the resulting
+// failure becomes a full CI.
 const signal = AbortSignal.timeout(DEADLINE_MS)
 const decision = await decideReuse({
   repository,
@@ -26,7 +26,7 @@ const decision = await decideReuse({
 })
 const message =
   signal.aborted && !decision.shouldReuse
-    ? 'A prova excedeu o tempo limite.'
+    ? 'The proof exceeded the time limit.'
     : decision.reason
 const reason = message.replaceAll(/\s+/gu, ' ').slice(0, MAX_REASON_LENGTH)
 await appendFile(
@@ -34,9 +34,9 @@ await appendFile(
   `reuse=${decision.shouldReuse}\nrun_quality=${decision.shouldRunQuality}\n`
 )
 const summary = [
-  `Reutilização: ${decision.shouldReuse ? 'sim' : 'não, CI completo'}`,
-  `Motivo: ${reason}`,
-  ...(decision.sourceRunUrl ? [`Run de origem: ${decision.sourceRunUrl}`] : [])
+  `Reuse: ${decision.shouldReuse ? 'yes' : 'no, full CI'}`,
+  `Reason: ${reason}`,
+  ...(decision.sourceRunUrl ? [`Source run: ${decision.sourceRunUrl}`] : [])
 ].join('\n')
 stdout.write(`${summary}\n`)
 if (env.GITHUB_STEP_SUMMARY) {

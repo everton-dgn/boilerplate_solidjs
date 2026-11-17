@@ -30,7 +30,7 @@ function mountDialog(options: MountOptions = {}) {
       return (
         <>
           <button type="button" onClick={() => setIsOpen(true)}>
-            Abrir
+            Open
           </button>
           <button type="button">Fora</button>
           <Show when={isMounted()}>
@@ -40,12 +40,12 @@ function mountDialog(options: MountOptions = {}) {
                 onChange(value)
                 if (options.shouldAcceptClose !== false) setIsOpen(value)
               }}
-              title="Preferências"
-              description="Escolha suas preferências."
+              title="Preferences"
+              description="Choose your preferences."
             >
               <input aria-label="Nome" />
               <form method="dialog">
-                <button type="submit">Salvar</button>
+                <button type="submit">Save</button>
               </form>
             </Dialog>
           </Show>
@@ -55,19 +55,19 @@ function mountDialog(options: MountOptions = {}) {
     { hasProviders: false }
   )
   const dialog = host.querySelector('dialog')
-  if (!dialog) throw new Error('Dialog não montado')
+  if (!dialog) throw new Error('Dialog not mounted')
   return { dialog, onChange, changeOpen, remove }
 }
 
-describe('dialog no navegador', () => {
-  it('abre modal no clique, nomeia o conteúdo e impede foco externo', async () => {
+describe('dialog in the browser', () => {
+  it('opens a modal on click, names the content and blocks outside focus', async () => {
     const { dialog, onChange } = mountDialog()
     expect(dialog.open).toBe(false)
-    await page.getByRole('button', { name: 'Abrir' }).click()
+    await page.getByRole('button', { name: 'Open' }).click()
     expect(dialog.matches(':modal')).toBe(true)
     await expect
-      .element(page.getByRole('dialog', { name: 'Preferências' }))
-      .toHaveAccessibleDescription('Escolha suas preferências.')
+      .element(page.getByRole('dialog', { name: 'Preferences' }))
+      .toHaveAccessibleDescription('Choose your preferences.')
     await expect
       .element(page.getByRole('button', { name: m.dialog_close() }))
       .toHaveFocus()
@@ -76,9 +76,9 @@ describe('dialog no navegador', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('mantém Tab dentro do modal e restaura foco com Escape', async () => {
+  it('keeps Tab inside the modal and restores the focus with Escape', async () => {
     const { dialog, onChange } = mountDialog()
-    const opener = page.getByRole('button', { name: 'Abrir' })
+    const opener = page.getByRole('button', { name: 'Open' })
     await opener.click()
     await userEvent.keyboard('{Tab}')
     await expect
@@ -86,7 +86,7 @@ describe('dialog no navegador', () => {
       .toHaveFocus()
     await userEvent.keyboard('{Tab}')
     await expect
-      .element(page.getByRole('button', { name: 'Salvar' }))
+      .element(page.getByRole('button', { name: 'Save' }))
       .toHaveFocus()
     await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
     await expect
@@ -102,24 +102,24 @@ describe('dialog no navegador', () => {
     expect(onChange.mock.calls).toStrictEqual([[false]])
   })
 
-  it('sincroniza mudanças externas e fecha pelo botão sem callback duplicado', async () => {
+  it('syncs external changes and closes through the button without a duplicated callback', async () => {
     const { dialog, onChange, changeOpen } = mountDialog()
     changeOpen(true)
     await expect.poll(() => dialog.matches(':modal')).toBe(true)
     changeOpen(false)
     await expect.poll(() => dialog.open).toBe(false)
     expect(onChange).not.toHaveBeenCalled()
-    await page.getByRole('button', { name: 'Abrir' }).click()
+    await page.getByRole('button', { name: 'Open' }).click()
     await page.getByRole('button', { name: m.dialog_close() }).click()
     await expect.poll(() => dialog.open).toBe(false)
     expect(onChange.mock.calls).toStrictEqual([[false]])
   })
 
-  it('sincroniza o fechamento nativo por method=dialog', async () => {
+  it('syncs the native closing through method=dialog', async () => {
     const { dialog, onChange } = mountDialog()
-    const opener = page.getByRole('button', { name: 'Abrir' })
+    const opener = page.getByRole('button', { name: 'Open' })
     await opener.click()
-    await page.getByRole('button', { name: 'Salvar' }).click()
+    await page.getByRole('button', { name: 'Save' }).click()
     await expect.poll(() => onChange.mock.calls).toStrictEqual([[false]])
     expect(dialog.open).toBe(false)
     await expect.element(opener).toHaveFocus()
@@ -127,7 +127,7 @@ describe('dialog no navegador', () => {
     expect(dialog.matches(':modal')).toBe(true)
   })
 
-  it('mantém o estado controlado quando o consumidor recusa fechar', async () => {
+  it('keeps the controlled state when the consumer refuses to close', async () => {
     const { dialog, onChange } = mountDialog({
       isInitiallyOpen: true,
       shouldAcceptClose: false
@@ -137,14 +137,14 @@ describe('dialog no navegador', () => {
     expect(dialog.matches(':modal')).toBe(true)
     await page.getByRole('button', { name: m.dialog_close() }).click()
     expect(dialog.matches(':modal')).toBe(true)
-    await page.getByRole('button', { name: 'Salvar' }).click()
+    await page.getByRole('button', { name: 'Save' }).click()
     await expect
       .poll(() => onChange.mock.calls)
       .toStrictEqual([[false], [false], [false]])
     await expect.poll(() => dialog.matches(':modal')).toBe(true)
   })
 
-  it('abre com open inicial e remove a modalidade ao descartar', async () => {
+  it('opens with an initial open and removes the modality on disposal', async () => {
     const { dialog, onChange, remove } = mountDialog({ isInitiallyOpen: true })
     await expect.poll(() => dialog.matches(':modal')).toBe(true)
     remove()
@@ -156,16 +156,16 @@ describe('dialog no navegador', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('restaura o foco ao descartar um modal aberto pelo gatilho', async () => {
+  it('restores the focus when disposing a modal opened by the trigger', async () => {
     const { dialog, remove } = mountDialog()
-    const opener = page.getByRole('button', { name: 'Abrir' })
+    const opener = page.getByRole('button', { name: 'Open' })
     await opener.click()
     remove()
     await expect.poll(() => dialog.isConnected).toBe(false)
     await expect.element(opener).toHaveFocus()
   })
 
-  it('não fecha no backdrop e omite descrição ausente', async () => {
+  it('does not close on the backdrop and leaves out a missing description', async () => {
     const host = renderComponent(
       () => (
         <Dialog
@@ -173,7 +173,7 @@ describe('dialog no navegador', () => {
           title="Aviso"
           onOpenChange={vi.fn<(open: boolean) => void>()}
         >
-          <p>Conteúdo</p>
+          <p>Content</p>
         </Dialog>
       ),
       { hasProviders: false }

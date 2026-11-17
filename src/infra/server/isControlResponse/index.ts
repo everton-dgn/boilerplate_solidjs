@@ -1,16 +1,17 @@
 import 'server-only'
 
-// Uma Response sem corpo é o sinal de controle do framework (redirect ou
-// reload); uma com corpo pode carregar dados upstream. A de Response.error()
-// também não tem corpo, mas o status 0 não sai como resposta HTTP. O middleware,
-// o hook de erros e o wrapper de operações usam esta mesma classificação.
+// A Response without a body is the control signal of the framework (redirect or
+// reload); one with a body may carry upstream data. The one from Response.error()
+// has no body either, but status 0 does not go out as an HTTP response. The
+// middleware, the error hook and the operation wrapper use this same
+// classification.
 export function isControlResponse(value: unknown): value is Response {
   try {
     return (
       value instanceof Response && value.body === null && value.status !== 0
     )
   } catch {
-    // A inspeção de um objeto lançado também pode falhar (getter ou Proxy).
+    // Inspecting a thrown object can also fail (a getter or a Proxy).
     return false
   }
 }

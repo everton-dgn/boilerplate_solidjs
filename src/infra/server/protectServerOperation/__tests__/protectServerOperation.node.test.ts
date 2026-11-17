@@ -20,7 +20,7 @@ const DIAMOND_DEPTH = 16
 const REJECTED_SHAPES = 4
 const LOG_MESSAGE =
   '[server-operation] Unexpected failure; private details omitted'
-// Sem o contexto de idioma do paraglide, a mensagem sai no idioma base.
+// Without the paraglide locale context, the message is in the base locale.
 const PUBLIC_MESSAGE = 'The request could not be completed.'
 
 function thrownValue(invocation: Invocation): unknown {
@@ -32,7 +32,7 @@ function thrownValue(invocation: Invocation): unknown {
   throw new Error('Expected operation to throw')
 }
 
-// Conta quantas vezes a verificação lista as chaves de cada nó.
+// Counts how many times the check lists the keys of each node.
 function countedNode({ node, count }: CountedNode): object {
   return new Proxy(node, {
     ownKeys(target) {
@@ -43,7 +43,7 @@ function countedNode({ node, count }: CountedNode): object {
 }
 
 function logUnavailable(): never {
-  throw new Error('stderr indisponível')
+  throw new Error('stderr unavailable')
 }
 
 function expectPublicFailure(error: unknown): void {
@@ -58,16 +58,16 @@ function expectPublicFailure(error: unknown): void {
   ])
 }
 
-// O Vitest roda com DEV verdadeiro; os casos conferem o log de produção.
+// Vitest runs with DEV true; the cases check the production log.
 function mockProductionLog(): void {
   vi.stubEnv('DEV', false)
   vi.spyOn(console, 'error').mockImplementation(vi.fn())
 }
 
-describe('proteção de operações no servidor', () => {
+describe('server operation protection', () => {
   beforeEach(mockProductionLog)
 
-  it('preserva o retorno síncrono e remove detalhes de exceções', () => {
+  it('keeps the sync return and removes exception details', () => {
     const data = { ok: true }
     expect(protectServerOperation({ run: () => data })).toBe(data)
     const internal = Object.assign(
@@ -85,7 +85,7 @@ describe('proteção de operações no servidor', () => {
     })
   })
 
-  it('captura rejeições e preserva sucesso assíncrono', async () => {
+  it('catches rejections and keeps an async success', async () => {
     const error = Object.assign(new Error('PRIVATE'), {
       internalContext: 'PRIVATE_CONTEXT'
     })
@@ -101,7 +101,7 @@ describe('proteção de operações no servidor', () => {
     })
   })
 
-  it('rejeita erros, classes, ciclos e fontes adiadas dentro de resultados', async () => {
+  it('rejects errors, classes, cycles and deferred sources inside results', async () => {
     const cyclic: CyclicData = {}
     cyclic.self = cyclic
     for (const value of [
@@ -118,7 +118,7 @@ describe('proteção de operações no servidor', () => {
     }
   })
 
-  it('rejeita getters sem executá-los e aceita campos públicos resolvidos', () => {
+  it('rejects getters without running them and accepts resolved public fields', () => {
     const getter = vi.fn<() => string>(() => 'PRIVATE')
     const data = Object.defineProperty({}, 'private', {
       get: getter,
@@ -133,7 +133,7 @@ describe('proteção de operações no servidor', () => {
     ).toStrictEqual([null, undefined, true, 1, 'public', { ok: true }])
   })
 
-  it('recusa subclasses de Array sem executar a serialização herdada', async () => {
+  it('refuses Array subclasses without running the inherited serialization', async () => {
     const serialize = vi.fn<() => string[]>(() => ['PRIVATE_SERIALIZER'])
     class Rows extends Array<string> {
       public toJSON(): string[] {
@@ -141,7 +141,7 @@ describe('proteção de operações no servidor', () => {
       }
     }
     const rows = new Rows('public')
-    // O status sem corpo evita serializar a fixture antes de chegar ao wrapper.
+    // The status without a body avoids serializing the fixture before it reaches the wrapper.
     const envelope = respond(rows, { status: 204 })
     for (const value of [rows, { rows }, envelope]) {
       expectPublicFailure(thrownValue({ run: () => value, allowControl: true }))
@@ -157,7 +157,7 @@ describe('proteção de operações no servidor', () => {
     expect(protectServerOperation({ run: () => plain })).toBe(plain)
   })
 
-  it('sempre cria um erro público novo, mesmo se o anterior foi adulterado', () => {
+  it('always creates a new public error, even if the previous one was tampered with', () => {
     const original = createPublicError()
     const first = thrownValue({ run: () => throwValue(original) })
     expectPublicFailure(first)
@@ -171,7 +171,7 @@ describe('proteção de operações no servidor', () => {
     expect(console.error).not.toHaveBeenCalled()
   })
 
-  it('preserva sinais do Solid somente quando a invocação permite controle', async () => {
+  it('keeps Solid signals only when the invocation allows control', async () => {
     const pending = new NotReadyError(Promise.resolve('ready'))
     for (const control of [redirect('/'), reload(), pending]) {
       const run = () => throwValue(control)
@@ -193,22 +193,22 @@ describe('proteção de operações no servidor', () => {
     expectPublicFailure(thrownValue({ run: () => response }))
   })
 
-  it('recusa Response.error() como controle, lançada ou devolvida', () => {
+  it('refuses Response.error() as a control, thrown or returned', () => {
     const failure = Response.error()
 
     expectPublicFailure(
       thrownValue({ run: () => throwValue(failure), allowControl: true })
     )
     expectPublicFailure(thrownValue({ run: () => failure, allowControl: true }))
-    // A lançada não é um Error; a devolvida falha na verificação estrutural,
-    // que lança um Error próprio.
+    // The thrown one is not an Error; the returned one fails the structural check,
+    // which throws an Error of its own.
     expect(readLog(console.error)).toStrictEqual({
       heads: [[LOG_MESSAGE], [LOG_MESSAGE, 'Error']],
       leaks: []
     })
   })
 
-  it('verifica valores de envelopes e rejeita corpos upstream', () => {
+  it('checks envelope values and rejects upstream bodies', () => {
     const response = respond(
       { ok: true },
       {
@@ -244,7 +244,7 @@ describe('proteção de operações no servidor', () => {
     )
   })
 
-  it('não mistura resultados de operações simultâneas', async () => {
+  it('does not mix the results of concurrent operations', async () => {
     const results = await Promise.allSettled([
       protectServerOperation({
         run: () => Promise.reject(new Error('PRIVATE_A'))
@@ -266,10 +266,10 @@ describe('proteção de operações no servidor', () => {
   })
 })
 
-describe('reconstrução de envelopes', () => {
-  // respond() serializa no corpo o valor recebido na criação. Um valor trocado
-  // depois disso passa pela verificação, mas o corpo original ainda sairia.
-  it('reconstrói o envelope e o corpo a partir dos dados verificados', async () => {
+describe('envelope rebuilding', () => {
+  // respond() serializes in the body the value received on creation. A value
+  // changed after that passes the check, but the original body would still go out.
+  it('rebuilds the envelope and the body from the checked data', async () => {
     const envelope = respond(
       { secret: 'PRIVATE_BODY' },
       { status: HTTP_CREATED, headers: { 'x-public': 'yes' } }
@@ -290,11 +290,11 @@ describe('reconstrução de envelopes', () => {
   })
 })
 
-describe('envelopes sem corpo', () => {
+describe('envelopes without a body', () => {
   beforeEach(mockProductionLog)
 
   it.each([HTTP_NO_CONTENT, HTTP_RESET_CONTENT, HTTP_NOT_MODIFIED])(
-    'valida dados privados no envelope com status %s',
+    'validates private data in the envelope with status %s',
     status => {
       const envelope = respond({ error: new Error('PRIVATE') }, { status })
       expect(envelope).toBeInstanceOf(Response)
@@ -311,12 +311,12 @@ describe('envelopes sem corpo', () => {
   )
 })
 
-describe('log da proteção de operações', () => {
+describe('operation protection log', () => {
   beforeEach(mockProductionLog)
 
-  it('lança o erro público mesmo quando o log falha', async () => {
-    // O log falha no caminho síncrono e no assíncrono; o mock volta ao normal
-    // depois, para não afetar os logs do próprio Vitest.
+  it('throws the public error even when the log fails', async () => {
+    // The log fails on the sync and the async path; the mock goes back to normal
+    // afterwards, so it does not affect the logs of Vitest itself.
     vi.mocked(console.error)
       .mockImplementationOnce(logUnavailable)
       .mockImplementationOnce(logUnavailable)
@@ -342,7 +342,7 @@ describe('log da proteção de operações', () => {
     })
   })
 
-  it('imprime o erro original depois da linha filtrada em desenvolvimento', () => {
+  it('prints the original error after the filtered line in development', () => {
     vi.stubEnv('DEV', true)
     const failure = new Error('PRIVATE')
 
@@ -357,14 +357,14 @@ describe('log da proteção de operações', () => {
   })
 })
 
-describe('estrutura dos dados públicos', () => {
+describe('public data structure', () => {
   beforeEach(mockProductionLog)
 
-  it('inspeciona setters, chaves Symbol e propriedades não enumeráveis', () => {
+  it('inspects setters, Symbol keys and non-enumerable properties', () => {
     const secret = Symbol('secret')
     const setter = vi.fn<(value: string) => void>()
     for (const value of [
-      // oxlint-disable-next-line eslint/accessor-pairs -- O setter isolado é exatamente o caso que o guard precisa recusar.
+      // oxlint-disable-next-line eslint/accessor-pairs -- The lone setter is exactly the case that the guard must refuse.
       Object.defineProperty({}, 'private', { set: setter, enumerable: true }),
       { [secret]: new Error('PRIVATE') },
       { [secret]: Object.defineProperty({}, 'private', { get: () => 'X' }) },
@@ -379,13 +379,13 @@ describe('estrutura dos dados públicos', () => {
     expect(console.error).toHaveBeenCalledTimes(REJECTED_SHAPES)
   })
 
-  it('aceita referências compartilhadas visitando cada nó uma vez e recusa ciclos profundos', () => {
+  it('accepts shared references visiting each node once and refuses deep cycles', () => {
     const shared = { id: 1 }
     const dag = { a: shared, b: [shared, { c: shared }] }
     expect(protectServerOperation({ run: () => dag })).toBe(dag)
-    // Um losango por nível dobra os caminhos até a folha: sem memória de nós
-    // já verificados, 16 níveis custariam 2^17 - 1 visitas em vez de 17. A
-    // contagem não depende da velocidade da máquina.
+    // One diamond per level doubles the paths to the leaf: without a memory of the
+    // nodes already checked, 16 levels would cost 2^17 - 1 visits instead of 17.
+    // The count does not depend on the speed of the machine.
     const count: VisitCount = { visits: 0 }
     let diamond = countedNode({ node: { leaf: true }, count })
     for (let depth = 0; depth < DIAMOND_DEPTH; depth += 1) {

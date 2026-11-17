@@ -102,7 +102,7 @@ export function createToastState({
 
   function announce(toast: ToastEntry) {
     const channel = toast.variant === 'error' ? 'assertive' : 'polite'
-    // A região precisa mudar entre eventos independentes com o mesmo texto.
+    // The region must change between independent events with the same text.
     const previous = lastAnnouncement.get(channel)
     if (
       previous &&
@@ -112,11 +112,11 @@ export function createToastState({
     ) {
       if (channel === 'assertive') setAssertive(undefined)
       else setPolite(undefined)
-      // Com a região limpa, o lote precisa publicar mesmo que volte ao texto
-      // do último anúncio.
+      // With the region cleared, the batch must publish even if it goes back to
+      // the text of the last announcement.
       lastAnnouncement.delete(channel)
     }
-    // Um lote anuncia somente a última mudança de cada prioridade.
+    // A batch announces only the last change of each priority.
     for (const [priority, current] of pending) {
       if (current.id === toast.id) pending.delete(priority)
     }

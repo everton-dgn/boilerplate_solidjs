@@ -53,7 +53,7 @@ describe('css filenames', () => {
         errors: [
           {
             message:
-              'Use styles.module.css fora de src/theme/, inclusive nas rotas.'
+              'Use styles.module.css outside src/theme/, routes included.'
           }
         ]
       }))
@@ -213,7 +213,7 @@ describe('stylelint token policy', () => {
       '/* stylelint-disable-next-line declaration-property-value-allowed-list'
     assert.deepEqual(
       await lint(
-        `.a {\n  ${disable} -- ícone externo exige 13px */\n  font-size: 13px;\n}`
+        `.a {\n  ${disable} -- external icon needs 13px */\n  font-size: 13px;\n}`
       ),
       []
     )

@@ -28,7 +28,7 @@ function ThrownEnvelope(props: EnvelopeProps) {
 
 export const route = {
   info: {
-    seo: { title: 'Sinal de controle', noindex: true },
+    seo: { title: 'Control signal', noindex: true },
     llms: { optional: true }
   }
 } satisfies RouteDefinition
@@ -37,7 +37,7 @@ export default function ControlSignal() {
   const [params] = useSearchParams()
   return (
     <main>
-      <h1>Sinal de controle</h1>
+      <h1>Control signal</h1>
       <Switch fallback={<Redirected />}>
         <Match when={params.kind === 'envelope-return'}>
           <ReturnedEnvelope />

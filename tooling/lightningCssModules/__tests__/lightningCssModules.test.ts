@@ -12,9 +12,9 @@ const BADGE_CSS = '/src/components/atoms/PageBadge/styles.module.css'
 const BUTTON_CSS = '/src/components/atoms/Button/styles.module.css'
 const INPUT_CSS = '/src/components/atoms/Input/styles.module.css'
 
-// Carrega o vite.config.ts real e reproduz o ?inline que o plugin do Solid usa
-// no SSR de desenvolvimento: as classes precisam coincidir com as do import
-// normal e continuar distintas entre seletores e entre módulos de mesmo nome.
+// Loads the real vite.config.ts and reproduces the ?inline that the Solid plugin
+// uses in the development SSR: the classes must match the ones of the normal
+// import and stay distinct between selectors and between modules with the same name.
 it('keeps CSS Module classes when importing the stylesheet inline', async context => {
   const server = await createServer({
     root: ROOT,

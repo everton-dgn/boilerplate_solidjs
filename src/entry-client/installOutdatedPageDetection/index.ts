@@ -31,13 +31,13 @@ function isVersionRefusal(response: Response): boolean {
   )
 }
 
-// Sem preventDefault: cancelar o evento faria o import resolver undefined e o
-// lazy da rota guardaria esse módulo vazio até a recarga.
+// No preventDefault: cancelling the event would make the import resolve undefined,
+// and the lazy route would keep that empty module until the reload.
 function handlePreloadError(event: Event): void {
   recordChunkFailure('payload' in event ? event.payload : undefined)
 }
 
-// O evento sai depois do passe do boundary, fora da escrita que mostrou o
+// The event fires after the boundary pass, outside the write that showed the
 // fallback.
 function announceOutdatedFallback(error: unknown): void {
   if (!isVersionError(error)) return
@@ -48,20 +48,20 @@ function announceOutdatedFallback(error: unknown): void {
 
 export function installOutdatedPageDetection(): () => void {
   globalThis.addEventListener('vite:preloadError', handlePreloadError)
-  // O runtime chama o hook uma vez por erro, para todo boundary que mostra
-  // fallback. A vaga é única, e um onError passado a render ou hydrate tem
-  // precedência: um monitor de erros precisa ser composto aqui.
+  // The runtime calls the hook once per error, for every boundary that shows a
+  // fallback. The slot is single, and an onError passed to render or hydrate takes
+  // precedence: an error monitor must be composed here.
   configureClientErrors({ onError: announceOutdatedFallback })
-  // O runtime guarda um único responseHandler; server components ocupariam a
-  // mesma vaga (docs/server-errors.md#página-desatualizada-após-um-deploy).
+  // The runtime keeps a single responseHandler; server components would take the
+  // same slot (docs/server-errors.md#outdated-page-after-a-deploy).
   configureServerFunctionsClient({
     responseHandler: {
-      // Leituras do render (computação rastreada) e as declaradas com GET,
-      // como query(), GET() e live(), inclusive em preloads, rejeitam até um
-      // Errored, que recarrega na raiz e avisa num limite local.
+      // Render reads (tracked computation) and the ones declared with GET, such
+      // as query(), GET() and live(), preloads included, reject up to an Errored,
+      // which reloads at the root and warns at a local boundary.
       capture: ({ meta }) => getObserver() === null && !isDeclaredRead(meta),
-      // Qualquer valor devolvido resolveria a chamada; sem ele o runtime
-      // rejeita com unknownFunction e o chamador mantém o próprio tratamento.
+      // Any returned value would resolve the call; without it the runtime rejects
+      // with unknownFunction and the caller keeps its own handling.
       handle(response, { context }): void {
         if (!isVersionRefusal(response)) return
         markPageOutdated()
@@ -77,8 +77,8 @@ export function installOutdatedPageDetection(): () => void {
     configureServerFunctionsClient({
       responseHandler: {
         handle(): void {
-          // O runtime não aceita null aqui; sem retorno, o transporte volta
-          // ao comportamento padrão.
+          // The runtime does not accept null here; without a return, the
+          // transport goes back to the default behavior.
         }
       }
     })

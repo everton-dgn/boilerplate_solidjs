@@ -40,7 +40,7 @@ for (const { locale, tag, missing } of LOCALES) {
           cookie: `session=private; locale=${locale === 'es' ? 'en' : 'es'}`
         }
       })
-      // O arquivo vem do build: a camada estática não grava idioma nem cookie.
+      // The file comes from the build: the static layer writes neither locale nor cookie.
       expect(markdown.status()).toBe(HTTP_OK)
       expect(markdown.headers()['set-cookie']).toBeUndefined()
       expect(markdown.headers()['cache-control']).not.toBe('private, no-store')
@@ -100,8 +100,8 @@ for (const { locale, tag, missing } of LOCALES) {
     )
     expect(response.headers()['x-robots-tag']).toBe('noindex')
     expect(response.headers()['cache-control']).toBe('private, no-store')
-    // A função não anuncia o índice em erros; na Vercel, a regra por
-    // extensão dos `.md` é outra camada, documentada à parte.
+    // The function does not announce the index on errors; on Vercel, the
+    // extension rule of the `.md` files is another layer, documented separately.
     expect(response.headers().link).toBeUndefined()
     const body = await response.text()
     expect(body).toContain(`# ${missing}`)
@@ -257,8 +257,8 @@ for (const accept of [
 }
 
 for (const endpoint of [
-  // Arquivo do build: o tipo na Vercel vem do overrides, conferido no teste do
-  // build; o preview local usa a extensão.
+  // Build file: the type on Vercel comes from the overrides, checked in the build
+  // test; the local preview uses the extension.
   { path: '/llms.txt', contentType: 'text/plain' },
   { path: '/sitemap.xml', contentType: 'application/xml' },
   { path: '/robots.txt', contentType: 'text/plain' },

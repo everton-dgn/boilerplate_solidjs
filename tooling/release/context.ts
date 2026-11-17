@@ -25,7 +25,7 @@ export async function appendOutput(
   )
 }
 
-// Adiar não é falha: o CI do commit mais novo da main inicia outra release.
+// Deferring is not a failure: the CI of the newest main commit starts another release.
 export async function postpone(message: string): Promise<void> {
   console.warn(`::notice::${message}`)
   if (env.GITHUB_STEP_SUMMARY) {
@@ -51,13 +51,13 @@ export async function readContext(): Promise<ReleaseContext> {
   await git('merge-base', '--is-ancestor', trusted, 'origin/main')
   const date = await git('show', '-s', '--format=%cI', source)
   const rawManifest = await git('show', `${source}:package.json`)
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- O manifest é lido do commit validado pela CI; a versão é validada no readSourcePlan.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- The manifest is read from the commit validated by the CI; the version is validated in readSourcePlan.
   const manifest = JSON.parse(rawManifest) as Record<string, unknown>
   return { repository, root: `repos/${repository}`, source, date, manifest }
 }
 
-// Plano sem formatação, calculado só com Git e código nativo. O job com escrita
-// o recalcula para conferir o artifact produzido pelo job de leitura.
+// Plan without formatting, computed only with Git and native code. The write job
+// computes it again to check the artifact produced by the read job.
 export async function readSourcePlan(
   ctx: ReleaseContext
 ): Promise<ReleasePlan | undefined> {

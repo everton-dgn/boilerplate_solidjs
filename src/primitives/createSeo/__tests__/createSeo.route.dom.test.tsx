@@ -18,7 +18,7 @@ import { createSeo } from '../index.ts'
 type RenderAtOptions = {
   pathname: string
   routes?: readonly RouteDefinition[]
-  // Sinal de que o head foi aplicado; por padrão, a canonical da rota.
+  // Sign that the head was applied; by default, the canonical of the route.
   ready?: () => boolean
 }
 
@@ -33,12 +33,12 @@ function readStructuredData(): StructuredData | null {
   return script?.textContent ? parseStructuredData(script.textContent) : null
 }
 
-// A ordem dos nós não importa em JSON-LD; localiza pelo `@type`.
+// The order of the nodes does not matter in JSON-LD; finds it by `@type`.
 function readNode(type: string): StructuredData['@graph'][number] | undefined {
   return readStructuredData()?.['@graph'].find(node => node['@type'] === type)
 }
 
-// O registro do head aplica e remove as tags em microtask após os efeitos.
+// The head registry applies and removes the tags in a microtask after the effects.
 async function renderAt({
   pathname,
   routes = [{ path: '/*rest', component: () => null }],
@@ -63,15 +63,15 @@ async function renderAt({
   return SITE.url
 }
 
-describe('metadados de SEO no head', () => {
-  it('publica canonical e og:url absolutos sem a query da rota', async () => {
+describe('SEO metadata in the head', () => {
+  it('publishes absolute canonical and og:url without the query of the route', async () => {
     const base = await renderAt({ pathname: '/docs?tab=2' })
 
     expect(readCanonical()).toBe(`${base}/en/docs`)
     expect(readMeta('meta[property="og:url"]')).toBe(`${base}/en/docs`)
   })
 
-  it('aponta a imagem social absoluta para Open Graph e Twitter', async () => {
+  it('points the absolute social image to Open Graph and Twitter', async () => {
     const base = await renderAt({ pathname: '/' })
 
     expect(readMeta('meta[property="og:image"]')).toBe(
@@ -82,7 +82,7 @@ describe('metadados de SEO no head', () => {
     )
   })
 
-  it('descreve as dimensões e o texto alternativo da imagem', async () => {
+  it('describes the dimensions and the alternative text of the image', async () => {
     await renderAt({ pathname: '/' })
 
     expect(readMeta('meta[property="og:image:width"]')).toBe('1200')
@@ -91,7 +91,7 @@ describe('metadados de SEO no head', () => {
     expect(readMeta('meta[name="twitter:image:alt"]')).toBe(SITE.image.alt)
   })
 
-  it('publica og:type website e o JSON-LD da página por padrão', async () => {
+  it('publishes og:type website and the JSON-LD of the page by default', async () => {
     const base = await renderAt({ pathname: '/' })
 
     expect(readMeta('meta[property="og:type"]')).toBe('website')
@@ -115,17 +115,17 @@ describe('metadados de SEO no head', () => {
     })
   })
 
-  it('usa a imagem e o tipo declarados pela rota', async () => {
+  it('uses the image and the type declared by the route', async () => {
     const base = await renderAt({
-      pathname: '/artigo',
+      pathname: '/article',
       routes: [
         {
-          path: '/artigo',
+          path: '/article',
           info: {
             seo: {
-              title: 'Artigo',
+              title: 'Article',
               type: 'article',
-              image: { path: '/images/artigo.png', alt: 'Capa' }
+              image: { path: '/images/article.png', alt: 'Cover' }
             }
           },
           component: () => null
@@ -137,19 +137,22 @@ describe('metadados de SEO no head', () => {
     expect([
       readMeta('meta[property="og:image"]'),
       readMeta('meta[name="twitter:image"]')
-    ]).toStrictEqual([`${base}/images/artigo.png`, `${base}/images/artigo.png`])
+    ]).toStrictEqual([
+      `${base}/images/article.png`,
+      `${base}/images/article.png`
+    ])
     expect([
       readMeta('meta[property="og:image:alt"]'),
       readMeta('meta[name="twitter:image:alt"]')
-    ]).toStrictEqual(['Capa', 'Capa'])
+    ]).toStrictEqual(['Cover', 'Cover'])
     expect([
       readMeta('meta[property="og:image:width"]'),
       readMeta('meta[property="article:published_time"]')
     ]).toStrictEqual(['1200', null])
-    expect(readNode('Article')).toMatchObject({ headline: 'Artigo' })
+    expect(readNode('Article')).toMatchObject({ headline: 'Article' })
   })
 
-  it('remove as tags ao desmontar e usa barra final na raiz', async () => {
+  it('removes the tags on unmount and uses a trailing slash at the root', async () => {
     await vi.waitUntil(() => readCanonical() === null, POLL)
     const Router = createRouter({
       routes: [{ path: '/*rest', component: () => null }],
@@ -178,7 +181,7 @@ describe('metadados de SEO no head', () => {
     expect(readMeta('meta[property="og:url"]')).toBeNull()
   })
 
-  it('usa os metadados de SITE quando a rota não declara SEO', async () => {
+  it('uses the SITE metadata when the route declares no SEO', async () => {
     await renderAt({ pathname: '/' })
 
     expect([
@@ -193,19 +196,19 @@ describe('metadados de SEO no head', () => {
     ]).toStrictEqual([SITE.description, SITE.description, SITE.description])
   })
 
-  it('publica os campos da rota filha e herda os demais do layout', async () => {
+  it('publishes the fields of the child route and inherits the others from the layout', async () => {
     await renderAt({
       pathname: '/docs/guia',
       routes: [
         {
           path: '/docs',
           info: {
-            seo: { title: 'Documentação', description: 'Guias do projeto.' }
+            seo: { title: 'Documentation', description: 'Project guides.' }
           },
           children: [
             {
               path: '/guia',
-              info: { seo: { title: 'Primeiros passos' } },
+              info: { seo: { title: 'Getting started' } },
               component: () => null
             }
           ]
@@ -217,25 +220,17 @@ describe('metadados de SEO no head', () => {
       document.title,
       readMeta('meta[property="og:title"]'),
       readMeta('meta[name="twitter:title"]')
-    ]).toStrictEqual([
-      'Primeiros passos',
-      'Primeiros passos',
-      'Primeiros passos'
-    ])
+    ]).toStrictEqual(['Getting started', 'Getting started', 'Getting started'])
     expect([
       readMeta('meta[name="description"]'),
       readMeta('meta[property="og:description"]'),
       readMeta('meta[name="twitter:description"]')
-    ]).toStrictEqual([
-      'Guias do projeto.',
-      'Guias do projeto.',
-      'Guias do projeto.'
-    ])
+    ]).toStrictEqual(['Project guides.', 'Project guides.', 'Project guides.'])
   })
 })
 
-describe('indexação e Open Graph de artigo', () => {
-  it('libera a prévia grande de imagem em rota indexável', async () => {
+describe('indexing and article Open Graph', () => {
+  it('allows the large image preview on an indexable route', async () => {
     await vi.waitUntil(() => readMeta('meta[name="robots"]') === null, POLL)
     await renderAt({ pathname: '/' })
 
@@ -244,12 +239,12 @@ describe('indexação e Open Graph de artigo', () => {
     )
   })
 
-  it('publica as datas do artigo no Open Graph', async () => {
+  it('publishes the article dates in Open Graph', async () => {
     await renderAt({
-      pathname: '/artigo',
+      pathname: '/article',
       routes: [
         {
-          path: '/artigo',
+          path: '/article',
           info: {
             seo: {
               type: 'article',
@@ -270,16 +265,16 @@ describe('indexação e Open Graph de artigo', () => {
     ]).toStrictEqual(['2026-09-01', '2026-09-21'])
   })
 
-  it('publica só a data que o artigo declara', async () => {
+  it('publishes only the date that the article declares', async () => {
     await vi.waitUntil(
       () => readMeta('meta[property="article:published_time"]') === null,
       POLL
     )
     await renderAt({
-      pathname: '/artigo',
+      pathname: '/article',
       routes: [
         {
-          path: '/artigo',
+          path: '/article',
           info: {
             seo: { type: 'article', article: { dateModified: '2026-09-21' } }
           },
@@ -294,7 +289,7 @@ describe('indexação e Open Graph de artigo', () => {
     ]).toStrictEqual([null, '2026-09-21'])
   })
 
-  it('omite as datas de artigo em rota noindex', async () => {
+  it('leaves out the article dates on a noindex route', async () => {
     await vi.waitUntil(() => readMeta('meta[name="robots"]') === null, POLL)
     await renderAt({
       pathname: '/rascunho',
@@ -320,7 +315,7 @@ describe('indexação e Open Graph de artigo', () => {
     ]).toStrictEqual([null, null])
   })
 
-  it('omite as datas de artigo em página que não é artigo', async () => {
+  it('leaves out the article dates on a page that is not an article', async () => {
     await vi.waitUntil(
       () => readMeta('meta[property="article:published_time"]') === null,
       POLL
@@ -339,7 +334,7 @@ describe('indexação e Open Graph de artigo', () => {
     expect(readMeta('meta[property="article:published_time"]')).toBeNull()
   })
 
-  it('publica só robots, título e descrição em rota noindex', async () => {
+  it('publishes only robots, title and description on a noindex route', async () => {
     await vi.waitUntil(() => readCanonical() === null, POLL)
     await renderAt({
       pathname: '/restrita',
@@ -348,8 +343,8 @@ describe('indexação e Open Graph de artigo', () => {
           path: '/restrita',
           info: {
             seo: {
-              title: 'Área restrita',
-              description: 'Conteúdo interno.',
+              title: 'Restricted area',
+              description: 'Internal content.',
               noindex: true
             }
           },
@@ -363,7 +358,7 @@ describe('indexação e Open Graph de artigo', () => {
       readMeta('meta[name="robots"]'),
       document.title,
       readMeta('meta[name="description"]')
-    ]).toStrictEqual(['noindex', 'Área restrita', 'Conteúdo interno.'])
+    ]).toStrictEqual(['noindex', 'Restricted area', 'Internal content.'])
     expect([
       readCanonical(),
       readMeta('meta[property="og:type"]'),

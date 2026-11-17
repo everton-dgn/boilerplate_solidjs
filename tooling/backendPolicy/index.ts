@@ -17,38 +17,37 @@ const GLOBALS = ['globalThis', 'window', 'self', 'global']
 const SAFE_ERRORS: ImportPath = {
   name: '@solidjs/web',
   importNames: ['markSafeError', 'SAFE_ERROR'],
-  message:
-    'Use createPublicError; somente publicErrors autoriza erros públicos.'
+  message: 'Use createPublicError; only publicErrors authorizes public errors.'
 }
-// O hook global de erros do servidor substitui o anterior a cada chamada;
-// somente o módulo de registro pode instalá-lo.
+// The global server error hook replaces the previous one on each call; only the
+// registration module can install it.
 const SERVER_ERROR_HOOK: ImportPath = {
   name: '@solidjs/web',
   importNames: ['configureServerErrors'],
-  message: 'Mantenha o registro da política em configureServerErrors.'
+  message: 'Keep the policy registration in configureServerErrors.'
 }
-// O subcaminho sem sufixo expõe a mesma superfície de configuração e dispatch
-// no runtime do servidor; a restrição precisa cobrir os dois especificadores.
+// The subpath without a suffix exposes the same configuration and dispatch surface
+// in the server runtime; the restriction must cover both specifiers.
 const SERVER_CONFIG: ImportPath[] = [
   '@solidjs/web/server-functions',
   '@solidjs/web/server-functions/server'
 ].map(name => ({
   name,
-  message: 'Mantenha o registro da política em configureServerErrors.'
+  message: 'Keep the policy registration in configureServerErrors.'
 }))
-// Depois dessa chamada o estado do render nasce sem erros; ela só vale no
-// registro que instala o hook capaz de marcá-lo.
+// After this call the render state starts without errors; it only applies in the
+// registration that installs the hook able to mark it.
 const RENDER_OBSERVER: ImportPattern = {
   regex: RENDER_INTEGRITY_MODULE,
   importNames: ['observeRenderFailures'],
   message:
-    'Somente configureServerErrors declara que as falhas de render são observadas.'
+    'Only configureServerErrors declares that render failures are observed.'
 }
 const TRANSPORTS = ['http', 'https', 'http2', 'net', 'tls', 'undici']
   .flatMap(name => [name, `node:${name}`])
   .map(name => ({
     name,
-    message: 'Integre transportes de backend em um adapter protegido.'
+    message: 'Wrap backend transports in a protected adapter.'
   }))
 
 function imports({
@@ -87,8 +86,8 @@ function globals({
           property,
           message:
             property === 'console'
-              ? 'Registre falhas somente por logServerFailure.'
-              : 'Use requestJson ou um adapter de backend protegido.'
+              ? 'Log failures only through logServerFailure.'
+              : 'Use requestJson or a protected backend adapter.'
         }))
       )
     ]

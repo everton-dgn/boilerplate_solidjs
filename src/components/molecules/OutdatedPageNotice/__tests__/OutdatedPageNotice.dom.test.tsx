@@ -24,7 +24,7 @@ function mountNotice(): MountedNotice {
     host.remove()
   }
   onTestFinished(dispose)
-  // O ouvinte entra no onSettled, que roda no flush seguinte à montagem.
+  // The listener enters in onSettled, which runs on the flush after mounting.
   flush()
   return { host, dispose }
 }
@@ -55,8 +55,8 @@ function findButton({ host, name }: ButtonQuery): HTMLButtonElement {
   return button
 }
 
-describe('aviso de página desatualizada', () => {
-  it('aparece na recusa, fecha pelo botão e reaparece na próxima', () => {
+describe('outdated page notice', () => {
+  it('appears on the refusal, closes through the button and appears again on the next one', () => {
     const { host } = mountNotice()
     expect(host.querySelector('section')).toBeNull()
     reportRefusedSubmit()
@@ -75,11 +75,11 @@ describe('aviso de página desatualizada', () => {
     )
   })
 
-  it('recarrega o documento só quando o usuário pede', () => {
+  it('reloads the document only when the user asks', () => {
     const reload = vi
       .spyOn(globalThis.location, 'reload')
       .mockImplementation(() => {
-        /* Mantém este teste no próprio documento. */
+        /* Keeps this test in its own document. */
       })
     const { host } = mountNotice()
     reportRefusedSubmit()
@@ -88,7 +88,7 @@ describe('aviso de página desatualizada', () => {
     expect(reload).toHaveBeenCalledOnce()
   })
 
-  it('devolve o foco à origem quando o botão de fechar tinha o foco', () => {
+  it('returns the focus to the origin when the close button had the focus', () => {
     const { host } = mountNotice()
     const origin = document.createElement('button')
     document.body.append(origin)
@@ -96,7 +96,7 @@ describe('aviso de página desatualizada', () => {
     reportRefusedSubmit()
     const dismiss = findButton({ host, name: m.outdatedPageNotice_dismiss() })
     dismiss.focus()
-    // Fixa a origem sem depender de como o ambiente preenche relatedTarget.
+    // Pins the origin without depending on how the environment fills relatedTarget.
     dismiss.dispatchEvent(
       new FocusEvent('focusin', { bubbles: true, relatedTarget: origin })
     )
@@ -105,7 +105,7 @@ describe('aviso de página desatualizada', () => {
     expect(document.activeElement).toBe(origin)
   })
 
-  it('avisa que parte da página não carregou e reabre depois de fechado', () => {
+  it('warns that part of the page did not load and opens again after being closed', () => {
     const { host } = mountNotice()
     reportOutdatedFallback()
     expect(readTitle(host)).toBe(m.outdatedPageNotice_fallbackTitle())
@@ -119,21 +119,21 @@ describe('aviso de página desatualizada', () => {
     expect(readTitle(host)).toBe(m.outdatedPageNotice_fallbackTitle())
   })
 
-  it('troca o aviso de parte da página pelo de envio', () => {
+  it('replaces the notice for part of the page with the submission one', () => {
     const { host } = mountNotice()
     reportOutdatedFallback()
     reportRefusedSubmit()
     expect(readTitle(host)).toBe(m.outdatedPageNotice_title())
   })
 
-  it('mantém o aviso de envio quando outra parte da página falha', () => {
+  it('keeps the submission notice when another part of the page fails', () => {
     const { host } = mountNotice()
     reportRefusedSubmit()
     reportOutdatedFallback()
     expect(readTitle(host)).toBe(m.outdatedPageNotice_title())
   })
 
-  it('remove os dois ouvintes ao desmontar', () => {
+  it('removes both listeners on unmount', () => {
     const addListener = vi.spyOn(globalThis, 'addEventListener')
     const removeListener = vi.spyOn(globalThis, 'removeEventListener')
     const { dispose } = mountNotice()

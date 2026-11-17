@@ -20,13 +20,13 @@ type Fixture = { outputDir: string; publicDir: string }
 type WriteOptions = Parameters<typeof writeLlmsFull>[0]
 
 const SITE_URL = 'https://example.com/'
-// Maior que o bloco de leitura do agregado.
+// Larger than the read block of the aggregate.
 const LARGE_BODY = 100_000
 const FILES = {
   'en/about.md': '# Sobre\n\nCafé ☕ e 日本語\n',
   'en/index.md': '# Home'
 }
-// Cabeçalho fixo do agregado de FILES, sem a seção de itens não incluídos.
+// Fixed header of the FILES aggregate, without the section of the items not included.
 const HEADER = [
   '# Site',
   '',
@@ -95,20 +95,20 @@ async function assertNotPublished({ outputDir, publicDir }: Fixture) {
   assert.deepEqual(await listSorted(outputDir), ['static'])
 }
 
-it('concatena os corpos integrais com o tamanho exato em bytes UTF-8', async context => {
+it('joins the whole bodies with the exact size in UTF-8 bytes', async context => {
   const target = await fixture(context)
   await writeLlmsFull(options(target))
   const file = path.join(target.publicDir, 'llms-full.txt')
   const body = await readFile(file, 'utf8')
   assert.equal(body, expectedBody())
   assert.deepEqual(await listSorted(target.outputDir), ['static'])
-  // Builds iguais produzem bytes iguais, sem data nem identificador aleatório.
+  // Equal builds produce equal bytes, without a date or a random identifier.
   await rm(file)
   await writeLlmsFull(options(target))
   assert.equal(await readFile(file, 'utf8'), body)
 })
 
-it('declara os links não incluídos e preserva corpos que imitam o formato', async context => {
+it('declares the links not included and keeps bodies that mimic the format', async context => {
   const target = await fixture(context)
   const tricky =
     '# Page\n\nSource: https://example.com/fake.md\nBytes: 1\n\n## Not included\n'
@@ -139,7 +139,7 @@ it('declara os links não incluídos e preserva corpos que imitam o formato', as
   )
 })
 
-it('aceita o agregado exatamente no orçamento e recusa um byte acima, sem truncar', async context => {
+it('accepts the aggregate exactly at the budget and refuses one byte above, without truncating', async context => {
   const target = await fixture(context)
   const size = Buffer.byteLength(expectedBody())
   await assert.rejects(writeLlmsFull(options(target, { maxBytes: size - 1 })), {
@@ -151,7 +151,7 @@ it('aceita o agregado exatamente no orçamento e recusa um byte acima, sem trunc
   assert.equal(published.byteLength, size)
 })
 
-it('recusa caminhos que escapam da saída estática', async context => {
+it('refuses paths that escape the static output', async context => {
   const target = await fixture(context)
   for (const unsafe of [
     '/../outside.md',
@@ -174,7 +174,7 @@ it('recusa caminhos que escapam da saída estática', async context => {
   await assertNotPublished(target)
 })
 
-it('recusa links simbólicos no arquivo ou nos diretórios acima dele', async context => {
+it('refuses symbolic links in the file or in the folders above it', async context => {
   const target = await fixture(context)
   const outside = path.join(target.outputDir, 'outside')
   await mkdir(outside)
@@ -199,7 +199,7 @@ it('recusa links simbólicos no arquivo ou nos diretórios acima dele', async co
   assert.equal(published.includes('llms-full.txt'), false)
 })
 
-it('recusa arquivo ausente, UTF-8 inválido e agregado já existente', async context => {
+it('refuses a missing file, invalid UTF-8 and an already existing aggregate', async context => {
   const target = await fixture(context)
   await assert.rejects(
     writeLlmsFull(
@@ -225,7 +225,7 @@ it('recusa arquivo ausente, UTF-8 inválido e agregado já existente', async con
   )
 })
 
-it('não promove o agregado quando a montagem é cancelada', async context => {
+it('does not promote the aggregate when the assembly is canceled', async context => {
   const target = await fixture(context)
   const controller = new AbortController()
   controller.abort(new Error('cancelled'))
@@ -238,10 +238,10 @@ it('não promove o agregado quando a montagem é cancelada', async context => {
   await assertNotPublished(target)
 })
 
-it('não promove o agregado quando a cópia falha depois de gravar parte do corpo', async context => {
+it('does not promote the aggregate when the copy fails after writing part of the body', async context => {
   const target = await fixture(context)
-  // O primeiro bloco é válido e chega ao temporário; o byte inválido fica no
-  // bloco seguinte.
+  // The first block is valid and reaches the temporary file; the invalid byte
+  // stays in the next block.
   const body = Buffer.concat([
     Buffer.from(`# Page\n${'a'.repeat(LARGE_BODY)}`),
     Buffer.from('ff', 'hex')
@@ -251,7 +251,7 @@ it('não promove o agregado quando a cópia falha depois de gravar parte do corp
   await assertNotPublished(target)
 })
 
-it('cancela depois da gravação completa sem promover o temporário', async context => {
+it('cancels after the full write without promoting the temporary file', async context => {
   const target = await fixture(context)
   const controller = new AbortController()
   const handle = await open(path.join(target.publicDir, 'en', 'about.md'))
@@ -279,7 +279,7 @@ it('cancela depois da gravação completa sem promover o temporário', async con
   await assertNotPublished(target)
 })
 
-it('recusa divergência do tamanho final antes de promover o temporário', async context => {
+it('refuses a mismatch of the final size before promoting the temporary file', async context => {
   const target = await fixture(context)
   const handle = await open(path.join(target.publicDir, 'en', 'about.md'))
   const prototype: unknown = Object.getPrototypeOf(handle)

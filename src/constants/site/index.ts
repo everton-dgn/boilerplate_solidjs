@@ -19,8 +19,8 @@ const AUTHOR_PROFILES = [
   'https://www.youtube.com/@toffanettodev'
 ]
 
-// Valores fictícios da demonstração, publicados no JSON-LD da Organization.
-// Um campo ausente sai do JSON-LD.
+// Fictional demo values, published in the JSON-LD of the Organization. A missing
+// field leaves the JSON-LD.
 const ORGANIZATION: SiteOrganization = {
   contactPoint: {
     '@type': 'ContactPoint',
@@ -53,8 +53,8 @@ export const SITE = {
     sameAs: AUTHOR_PROFILES
   },
   twitter: '@toffanettodev',
-  // BCP 47: `lang` do documento e `inLanguage` do JSON-LD; o `og:locale`
-  // deriva daqui trocando o hífen por sublinhado.
+  // BCP 47: the `lang` of the document and the `inLanguage` of the JSON-LD;
+  // `og:locale` derives from it by replacing the hyphen with an underscore.
   get locale(): string {
     return LOCALE_TAGS[getLocale()]
   },
@@ -62,7 +62,7 @@ export const SITE = {
   repositoryUrl: REPOSITORY_URL,
   socialLinks: [REPOSITORY_URL, ...AUTHOR_PROFILES],
   organization: ORGANIZATION,
-  // Caminho do logo do publisher no JSON-LD; o Google pede ao menos 112x112.
+  // Path of the publisher logo in the JSON-LD; Google asks for at least 112x112.
   logo: '/favicon/apple-touch-icon.png',
   image: {
     path: '/images/og.png',

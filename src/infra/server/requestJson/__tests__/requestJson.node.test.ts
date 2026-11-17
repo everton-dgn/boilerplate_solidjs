@@ -6,7 +6,7 @@ const options = {
   url: 'https://backend.invalid/data',
   schema: v.object({ message: v.string() })
 }
-// Sem o contexto de idioma do paraglide, a mensagem sai no idioma base.
+// Without the paraglide locale context, the message is in the base locale.
 const PUBLIC_MESSAGE = 'The request could not be completed.'
 const TIMEOUT_MS = 10_000
 const OVERSIZED_LENGTH = '1000001'
@@ -22,10 +22,10 @@ function fetchMock(
   return mock
 }
 
-describe('transporte JSON protegido', () => {
+describe('protected JSON transport', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(vi.fn()))
 
-  it('omite campos extras no sucesso e repassa url, init e timeout ao fetch', async () => {
+  it('leaves out extra fields on success and passes url, init and timeout to fetch', async () => {
     const mock = fetchMock(
       Response.json({ message: 'ok', internalContext: 'PRIVATE' })
     )
@@ -40,7 +40,7 @@ describe('transporte JSON protegido', () => {
     expect(passed?.signal?.aborted).toBe(false)
   })
 
-  it('combina o timeout com o signal do chamador', async () => {
+  it('combines the timeout with the signal of the caller', async () => {
     const timeout = vi
       .spyOn(AbortSignal, 'timeout')
       .mockReturnValue(AbortSignal.abort())
@@ -59,7 +59,7 @@ describe('transporte JSON protegido', () => {
     ).toBe(true)
   })
 
-  it('mantém o timeout quando o chamador informa um signal que não aborta', async () => {
+  it('keeps the timeout when the caller passes a signal that does not abort', async () => {
     const timeoutController = new AbortController()
     const timeout = vi
       .spyOn(AbortSignal, 'timeout')
@@ -74,14 +74,14 @@ describe('transporte JSON protegido', () => {
     expect(mock.mock.lastCall?.[1]?.signal?.aborted).toBe(true)
   })
 
-  it('cancela o corpo de uma falha HTTP sem lê-lo', async () => {
+  it('cancels the body of an HTTP failure without reading it', async () => {
     const cancel = vi.fn<() => void>()
     const pull = vi.fn<(controller: ReadableStreamDefaultController) => void>(
       controller => {
         controller.enqueue(new TextEncoder().encode('{"message":"PRIVATE"}'))
       }
     )
-    // Sem fila inicial, o stream só chama pull quando alguém lê o corpo.
+    // Without an initial queue, the stream only calls pull when someone reads the body.
     const body = new ReadableStream(
       { pull, cancel },
       new CountQueuingStrategy({ highWaterMark: 0 })
@@ -92,7 +92,7 @@ describe('transporte JSON protegido', () => {
     expect(pull).not.toHaveBeenCalled()
   })
 
-  it('recusa corpos acima do limite sem lê-los inteiros', async () => {
+  it('refuses bodies over the limit without reading them whole', async () => {
     const declaredCancel = vi.fn<() => void>()
     fetchMock(
       new Response(new ReadableStream({ cancel: declaredCancel }), {
@@ -118,7 +118,7 @@ describe('transporte JSON protegido', () => {
     expect(streamCancel).toHaveBeenCalledOnce()
   })
 
-  it('protege status HTTP, corpo JSON inválido, schema inválido e falha de rede', async () => {
+  it('protects HTTP status, an invalid JSON body, an invalid schema and a network failure', async () => {
     for (const response of [
       new Response('<html>PRIVATE</html>', { status: 500 }),
       new Response('PRIVATE_JSON'),

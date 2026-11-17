@@ -22,8 +22,8 @@ type LocalizedPage = { page: LlmsPage; hasStaticMarkdown: boolean }
 
 const ROUTE_PARAMETER = /[:*]/u
 
-// Só `markdown: true` numa rota sem parâmetro vira arquivo no build; `dynamic`
-// e parâmetros continuam convertidos na requisição.
+// Only `markdown: true` on a route without a parameter becomes a file in the
+// build; `dynamic` and parameters are still converted on the request.
 function localizePage(page: LlmsPage): LocalizedPage {
   const path = localizeHref({ href: page.path, locale: baseLocale })
   const matches = Router.match(path)
@@ -39,7 +39,7 @@ function localizePage(page: LlmsPage): LocalizedPage {
   }
 }
 
-// O build confere que o anúncio coincide com os documentos do llms-full.txt.
+// The build checks that the announcement matches the llms-full.txt documents.
 function collectPages(): LlmsPage[] {
   const localized = [...LLMS_USE_CASES, ...collectLlmsPages(pageRoutes)].map(
     page => localizePage(page)
@@ -62,12 +62,12 @@ const renderLlmsText = memoizeOnce({
     })
 })
 
-// O arquivo do build atende esta URL antes da função. Chegar aqui em produção
-// indica artefato ausente, que não pode virar uma reconstrução O(N) por instância.
+// The build file serves this URL before the function. Getting here in production
+// means a missing artifact, which must not turn into an O(N) rebuild per instance.
 function missingArtifact(): Response {
   logServerFailure({
     source: 'llms',
-    error: new Error('llms.txt fora da camada de arquivos')
+    error: new Error('llms.txt outside the file layer')
   })
   return new Response(null, {
     status: HTTP_SERVICE_UNAVAILABLE,
@@ -75,9 +75,9 @@ function missingArtifact(): Response {
   })
 }
 
-// A descrição do site e os metadados das páginas leem o idioma do contexto
-// Paraglide. O índice sai sempre no idioma base, inclusive na primeira
-// requisição, que fica guardada em produção.
+// The site description and the page metadata read the locale of the Paraglide
+// context. The index always goes out in the base locale, including on the first
+// request, which is kept in production.
 export function GET(): Promise<Response> {
   if (readPublicationPhase() === 'artifact') {
     return Promise.resolve(missingArtifact())

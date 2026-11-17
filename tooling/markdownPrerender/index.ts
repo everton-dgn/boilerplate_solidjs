@@ -80,7 +80,7 @@ const ManifestSchema = v.object({
   mismatches: v.array(v.string())
 })
 
-// O Nitro registra a rota decodificada; o mapa guarda a forma publicada.
+// Nitro registers the decoded route; the map keeps the published form.
 function readInventory(contents: string | undefined): Inventory | undefined {
   try {
     const manifest = v.parse(ManifestSchema, JSON.parse(contents ?? ''))
@@ -122,8 +122,8 @@ function assertRegistered({
   }
 }
 
-// O agregado só lê os `.md` aprovados que o índice editorial cita. O anúncio
-// no llms.txt precisa coincidir com a existência do arquivo.
+// The aggregate only reads the approved `.md` files that the editorial index
+// cites. The announcement in llms.txt must match the existence of the file.
 async function publishLlmsFull({
   inventory,
   llmsText,
@@ -164,14 +164,14 @@ async function publishLlmsFull({
   return documents.length > 0
 }
 
-// O build pede ao middleware a lista de páginas estáticas e prerenderiza cada
-// `.md` pela mesma conversão da requisição. Cada artefato é conferido pelo tipo
-// e pelo arquivo realmente gravados, e o diretório publicado é confrontado com
-// a lista e com os bytes aprovados. A lista e o llms.txt ficam publicados como
-// arquivos, e o llms.txt monta o llms-full.txt. O inventário do sitemap segue o
-// mesmo ciclo em `publicationArtifacts`. O sinal de fase chega ao worker do
-// prerender pelo ambiente herdado na criação dele, nunca por um header público.
-// Uma falha em qualquer etapa interrompe o build.
+// The build asks the middleware for the list of static pages and prerenders each
+// `.md` through the same conversion as the request. Each artifact is checked by
+// the type and by the file actually written, and the published folder is checked
+// against the list and the approved bytes. The list and llms.txt stay published
+// as files, and llms.txt assembles llms-full.txt. The sitemap inventory follows
+// the same cycle in `publicationArtifacts`. The phase signal reaches the prerender
+// worker through the environment inherited when it is created, never through a
+// public header. A failure in any step stops the build.
 export function markdownPrerender({
   buildId
 }: MarkdownPrerenderOptions): (nitro: PrerenderNitro) => void {
@@ -231,17 +231,17 @@ export function markdownPrerender({
         )
         return
       }
-      // Os bytes aprovados aqui são confrontados com o arquivo publicado.
+      // The bytes approved here are checked against the published file.
       approved.set(route.route, digestBytes(readRouteBytes(route)))
     })
-    // O Nitro só falha o build por rota com `error`. Uma exceção no fetch, na
-    // gravação ou no hook de geração, ou uma rota ignorada, termina sem arquivo e
-    // sem erro registrado.
+    // Nitro only fails the build for a route with `error`. An exception in the
+    // fetch, in the write or in the generation hook, or an ignored route, ends
+    // without a file and without a registered error.
     nitro.hooks.hook(
       'prerender:done',
       async ({ prerenderedRoutes, failedRoutes }) => {
         Reflect.deleteProperty(env, PUBLICATION_PHASE_ENV)
-        // Com `failOnError`, o Nitro interrompe o build em seguida e lista as rotas.
+        // With `failOnError`, Nitro stops the build right after and lists the routes.
         if (failedRoutes.length > 0 && nitro.options.prerender.failOnError) {
           return
         }

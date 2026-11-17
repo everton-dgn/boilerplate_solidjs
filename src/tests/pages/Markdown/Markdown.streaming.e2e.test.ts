@@ -20,8 +20,8 @@ async function waitForGates({ request, id }: Gate): Promise<void> {
   }
 }
 
-// Nos blocos finally, esta chamada também é a liberação que a resposta espera;
-// por isso mantém a asserção.
+// In finally blocks, this call is also the release the response waits for;
+// that is why it keeps the assertion.
 async function releaseGates({ request, id }: Gate): Promise<void> {
   for (const label of ['second', 'first']) {
     await releaseFixtureGate({ request, id: `${id}:${label}` })

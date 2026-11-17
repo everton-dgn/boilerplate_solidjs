@@ -36,8 +36,8 @@ export function OutdatedPageNotice() {
     setNoticeKind('submit')
   }
 
-  // O envio recusado pede uma ação da pessoa; uma falha passiva de outra parte
-  // da página não esconde esse aviso.
+  // The refused submission asks the person for an action; a passive failure of
+  // another part of the page does not hide that notice.
   function showFallback(): void {
     setNoticeKind(kind => kind ?? 'fallback')
   }
@@ -55,7 +55,7 @@ export function OutdatedPageNotice() {
     focusOrigin = origin
   })
 
-  // Sem este desvio, fechar o aviso com o foco no botão deixa o foco no body.
+  // Without this detour, closing the notice with the focus on the button leaves the focus on the body.
   const dismiss: JSX.EventHandler<HTMLButtonElement, MouseEvent> = event => {
     const isFocused = event.currentTarget === document.activeElement
     setNoticeKind()

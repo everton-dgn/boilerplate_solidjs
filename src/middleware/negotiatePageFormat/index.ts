@@ -11,15 +11,15 @@ const QUALITY = /^q\s*=\s*(?<quality>0(?:\.\d{0,3})?|1(?:\.0{0,3})?)$/iu
 const EXACT_SPECIFICITY = 4
 const TYPE_SPECIFICITY = 2
 const UTF8 = /^charset\s*=\s*(?:utf-8|"utf-8")$/iu
-// O parâmetro variant é do RFC 7763 e as variantes GFM e CommonMark são
-// registradas pelo RFC 7764: a resposta é CommonMark com extensões GFM, então as
-// duas são atendidas.
+// The variant parameter comes from RFC 7763 and the GFM and CommonMark variants
+// are registered by RFC 7764: the response is CommonMark with GFM extensions, so
+// both are served.
 const MARKDOWN_VARIANT =
   /^variant\s*=\s*(?:gfm|commonmark|"(?:gfm|commonmark)")$/iu
 const PARAMETERS = [UTF8, MARKDOWN_VARIANT]
 
-// Varredura linear: uma regex com lookahead até o fim da string custava O(n²)
-// num Accept longo, enviado por qualquer cliente.
+// Linear scan: a regex with a lookahead up to the end of the string cost O(n²)
+// on a long Accept, which any client can send.
 function splitOutsideQuotes({ value, separator }: SplitOptions): string[] {
   const parts: string[] = []
   let start = 0

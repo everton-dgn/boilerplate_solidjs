@@ -8,11 +8,11 @@ import type { ArtifactDigest } from '../../types.ts'
 
 const CHUNK_BYTES = 65_536
 const HASH = 'sha256'
-// No Windows, O_NOFOLLOW não existe e não altera os flags.
+// On Windows, O_NOFOLLOW does not exist and does not change the flags.
 const READ_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW
 
-// Bytes que o Nitro vai gravar para a rota, sem a decodificação de `contents`
-// que trocaria sequências inválidas por U+FFFD.
+// Bytes that Nitro will write for the route, without the decoding of `contents`
+// that would replace invalid sequences with U+FFFD.
 export function readRouteBytes(route: PrerenderRoute): Uint8Array {
   if (route.data) return new Uint8Array(route.data)
   return new TextEncoder().encode(route.contents ?? '')
@@ -25,7 +25,7 @@ export function digestBytes(bytes: Uint8Array): ArtifactDigest {
   }
 }
 
-// Lê o arquivo publicado em blocos, sem seguir um link simbólico no nome.
+// Reads the published file in blocks, without following a symbolic link in the name.
 export async function digestFile(file: string): Promise<ArtifactDigest> {
   const handle = await open(file, READ_FLAGS)
   try {

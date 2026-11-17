@@ -4,10 +4,10 @@ const HTTP_OK = 200
 const HTTP_NOT_FOUND = 404
 const MENU_TRIGGERS = 2
 
-test.describe('layout na árvore de produção', () => {
+test.describe('layout in the production tree', () => {
   test.use({ javaScriptEnabled: false })
 
-  test('renderiza Home e 404 com barra no SSR', async ({ page }) => {
+  test('renders Home and 404 with the bar in the SSR', async ({ page }) => {
     const home = await page.goto('/pt')
     expect(home?.status()).toBe(HTTP_OK)
     await expect(page.getByRole('banner')).toHaveCount(1)
@@ -34,9 +34,9 @@ test.describe('layout na árvore de produção', () => {
   })
 })
 
-// O build E2E monta a cadeia pela fábrica; aqui passa o export padrão real.
-test.describe('middleware na entrada de produção', () => {
-  test('aplica os cabeçalhos de segurança', async ({ request }) => {
+// The E2E build assembles the chain through the factory; here the real default export runs.
+test.describe('middleware on the production entry', () => {
+  test('applies the security headers', async ({ request }) => {
     const response = await request.get('/')
 
     expect(response.status()).toBe(HTTP_OK)

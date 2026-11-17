@@ -51,7 +51,7 @@ function resolveEntry({ path, state }: ResolveEntryOptions): SitemapEntry {
   return lastmod === undefined ? { path } : { path, lastmod }
 }
 
-// O índice filho pode compartilhar a URL do layout; seus metadados prevalecem.
+// The child index can share the URL of the layout; its metadata wins.
 export function collectSitemapEntries(
   routes: readonly StaticRoute[]
 ): SitemapManifest {

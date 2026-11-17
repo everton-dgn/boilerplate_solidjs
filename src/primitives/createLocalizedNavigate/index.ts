@@ -15,7 +15,7 @@ type LocalizedNavigateOptions = Omit<Partial<NavigateOptions>, 'resolve'> & {
   shouldLocalize?: boolean
 }
 
-/** Requer um Router. A navegação de documento não transporta estado do roteador nem opções de rolagem. */
+/** Requires a Router. Document navigation carries neither router state nor scroll options. */
 export function createLocalizedNavigate() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -27,8 +27,8 @@ export function createLocalizedNavigate() {
     ...options
   }: LocalizedNavigateOptions): void => {
     const requestedHref = String(href)
-    // Fragmentos de âncora podem permanecer relativos; a navegação com resolve: false
-    // precisa do caminho completo da página atual, incluindo os parâmetros de consulta.
+    // Anchor fragments can stay relative; navigation with resolve: false needs
+    // the full path of the current page, query parameters included.
     const resolvedHref =
       requestedHref === '' || requestedHref.startsWith('#')
         ? `${location.pathname}${location.search}${requestedHref}`

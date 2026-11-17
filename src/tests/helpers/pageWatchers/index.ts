@@ -7,9 +7,9 @@ type PageWatchers = {
   cspViolations: string[]
 }
 
-// Os fixtures registram a coleta antes do corpo do teste, então nenhum erro da
-// primeira navegação escapa. Páginas criadas com context.newPage registram a
-// própria coleta.
+// The fixtures register the collection before the body of the test, so no error
+// of the first navigation escapes. Pages created with context.newPage register
+// their own collection.
 export const test = base.extend<PageWatchers>({
   pageErrors: async ({ page }, use) => {
     const errors: string[] = []

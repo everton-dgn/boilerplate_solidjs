@@ -18,8 +18,8 @@ import {
 const PLUGIN_URL = pathToFileURL(
   path.resolve(import.meta.dirname, '../index.ts')
 )
-// Outro processo, sem o estado do módulo do plugin oficial: só o cache em
-// disco e a preparação da inicialização decidem a nova compilação.
+// Another process, without the module state of the official plugin: only the disk
+// cache and the startup preparation decide the new compilation.
 const START_IN_NEW_PROCESS = `
 const { createServer } = await import('vite-plus')
 const { i18nPlugin } = await import(${JSON.stringify(PLUGIN_URL.href)})
@@ -50,9 +50,9 @@ describe('i18n dev shutdown', () => {
       const server = await startServer({
         context,
         onClosing: () => closing.resolve(null),
-        // O teste entrega o evento do primeiro agregado e retém o do segundo,
-        // que o watcher só reportaria depois do fechamento. Nenhum outro evento
-        // das entradas do compilador pode iniciar a compilação retida.
+        // The test delivers the event of the first aggregate and holds the one of
+        // the second, which the watcher would only report after closing. No other
+        // event of the compiler inputs can start the held compilation.
         shouldIgnoreCompilerInputs: true
       })
       const source = path.join(server.root, 'src/routes/Home/i18n/es.json')
@@ -63,8 +63,8 @@ describe('i18n dev shutdown', () => {
       const read = fs.promises.readFile
       let shouldPause = true
 
-      // Preserva os bytes lidos pelo compilador enquanto outra preparação
-      // publica o agregado novo, antes de calcular o digest.
+      // Keeps the bytes read by the compiler while another preparation publishes
+      // the new aggregate, before computing the digest.
       context.mock.method(
         fs.promises,
         'readFile',
@@ -94,12 +94,12 @@ describe('i18n dev shutdown', () => {
         context.diagnostic('Compiler paused after reading Primero')
         await writeFile(
           source,
-          JSON.stringify({ ...MESSAGES, home_body: 'Segundo' })
+          JSON.stringify({ ...MESSAGES, home_body: 'Second' })
         )
         await waitFor(() =>
-          contains({ root: server.root, file: aggregate, expected: /Segundo/u })
+          contains({ root: server.root, file: aggregate, expected: /Second/u })
         )
-        context.diagnostic('Aggregate now contains Segundo')
+        context.diagnostic('Aggregate now contains Second')
         const stopped = server.close()
         await closing.promise
         released.resolve(null)
@@ -109,7 +109,7 @@ describe('i18n dev shutdown', () => {
           await readFile(path.join(server.root, output), 'utf8'),
           /Primero/u
         )
-        assert.match(await readFile(aggregatePath, 'utf8'), /Segundo/u)
+        assert.match(await readFile(aggregatePath, 'utf8'), /Second/u)
 
         if (restart === 'new process') {
           const result = await execute(
@@ -123,7 +123,7 @@ describe('i18n dev shutdown', () => {
         }
         assert.match(
           await readFile(path.join(server.root, output), 'utf8'),
-          /Segundo/u
+          /Second/u
         )
       } finally {
         released.resolve(null)
@@ -135,7 +135,7 @@ describe('i18n dev shutdown', () => {
     const server = await startServer({ context })
     await writeFile(
       path.join(server.root, 'src/routes/Home/i18n/es.json'),
-      JSON.stringify({ ...MESSAGES, home_body: 'Cierre' })
+      JSON.stringify({ ...MESSAGES, home_body: 'Closing' })
     )
     server.change('src/routes/Home/i18n/es.json')
 
@@ -146,13 +146,13 @@ describe('i18n dev shutdown', () => {
         path.join(server.root, '.paraglide/messages/es.json'),
         'utf8'
       ),
-      /Cierre/u
+      /Closing/u
     )
     assert.deepEqual(await temporaryFiles(server.root), [])
   })
 
-  // O watcher pode fechar antes de entregar o evento da escrita.
-  // A próxima inicialização precisa refletir o arquivo salvo em disco.
+  // The watcher can close before delivering the write event.
+  // The next startup must reflect the file saved on disk.
   for (const { file, update, output, expected } of PROJECT_WRITES) {
     it(`preserves a ${file} write across an immediate shutdown and restart`, async context => {
       const first = await startServer({ context })

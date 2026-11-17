@@ -1,4 +1,4 @@
-/* oxlint-disable unicorn/no-document-cookie -- Os testes exercitam a persistência e o bloqueio de cookie diretamente. */
+/* oxlint-disable unicorn/no-document-cookie -- The tests exercise the cookie persistence and blocking directly. */
 import { THEME_COOKIE_NAME } from '@/constants/theme.ts'
 import { clearThemeCookie } from '@/tests/helpers/clearThemeCookie/index.ts'
 import { stubBroadcastChannel } from '@/tests/helpers/stubBroadcastChannel/index.ts'
@@ -15,10 +15,10 @@ function setup(): void {
   channel = stubBroadcastChannel()
 }
 
-describe('sincronização de tema', () => {
+describe('theme sync', () => {
   beforeEach(setup)
 
-  it('ignora mensagens inválidas e usa cookie canônico para escritas persistidas', () => {
+  it('ignores invalid messages and uses the canonical cookie for persisted writes', () => {
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
     onTestFinished(sync.dispose)
@@ -47,7 +47,7 @@ describe('sincronização de tema', () => {
     expect(receive).toHaveBeenLastCalledWith('light')
   })
 
-  it('mantém escolha temporária após mensagem de escrita bloqueada', () => {
+  it('keeps a temporary choice after a blocked write message', () => {
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
     onTestFinished(sync.dispose)
@@ -72,7 +72,7 @@ describe('sincronização de tema', () => {
     })
   })
 
-  it('relê o cookie ao recuperar foco sem BroadcastChannel', () => {
+  it('reads the cookie again when focus comes back without BroadcastChannel', () => {
     vi.stubGlobal('BroadcastChannel', null)
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
@@ -85,7 +85,7 @@ describe('sincronização de tema', () => {
     expect(receive).toHaveBeenLastCalledWith('system')
   })
 
-  it('preserva a escolha temporária até o cookie mudar', () => {
+  it('keeps the temporary choice until the cookie changes', () => {
     document.cookie = `${THEME_COOKIE_NAME}=light; Path=/`
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
@@ -107,7 +107,7 @@ describe('sincronização de tema', () => {
     expect(receive).toHaveBeenLastCalledWith('system')
   })
 
-  it('não desfaz uma escolha temporária com mensagem persistida atrasada', () => {
+  it('does not undo a temporary choice with a late persisted message', () => {
     document.cookie = `${THEME_COOKIE_NAME}=light; Path=/`
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
@@ -128,7 +128,7 @@ describe('sincronização de tema', () => {
     expect(receive).not.toHaveBeenCalled()
   })
 
-  it('relê a preferência somente quando a aba fica visível', () => {
+  it('reads the preference again only when the tab becomes visible', () => {
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
     onTestFinished(sync.dispose)
@@ -144,10 +144,10 @@ describe('sincronização de tema', () => {
   })
 })
 
-describe('ordenação e escolhas temporárias', () => {
+describe('ordering and temporary choices', () => {
   beforeEach(setup)
 
-  it('descarta mensagem temporária anterior à escolha local persistida', () => {
+  it('drops a temporary message older than the persisted local choice', () => {
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
     onTestFinished(sync.dispose)
@@ -167,7 +167,7 @@ describe('ordenação e escolhas temporárias', () => {
     expect(receive).not.toHaveBeenCalled()
   })
 
-  it('reconcilia o cookie atual mesmo com mensagem persistida antiga', () => {
+  it('reconciles the current cookie even with an old persisted message', () => {
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
     onTestFinished(sync.dispose)
@@ -188,7 +188,7 @@ describe('ordenação e escolhas temporárias', () => {
     expect(receive).toHaveBeenCalledExactlyOnceWith('light')
   })
 
-  it('aplica mensagem nova mesmo com leitura de cookie bloqueada', () => {
+  it('applies a new message even with a blocked cookie read', () => {
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
     onTestFinished(sync.dispose)
@@ -208,7 +208,7 @@ describe('ordenação e escolhas temporárias', () => {
     expect(receive).toHaveBeenLastCalledWith('dark')
   })
 
-  it('aceita escolha persistida nova após escolha temporária', () => {
+  it('accepts a new persisted choice after a temporary choice', () => {
     vi.spyOn(Date, 'now').mockReturnValue(NOW)
     document.cookie = `${THEME_COOKIE_NAME}=light; Path=/`
     const receive = vi.fn<() => void>()
@@ -229,7 +229,7 @@ describe('ordenação e escolhas temporárias', () => {
     expect(receive).toHaveBeenLastCalledWith('light')
   })
 
-  it('incrementa versões locais no mesmo instante e desempata mensagens', () => {
+  it('increments local versions at the same instant and breaks ties between messages', () => {
     vi.spyOn(Date, 'now').mockReturnValue(NOW)
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
@@ -254,7 +254,7 @@ describe('ordenação e escolhas temporárias', () => {
     expect(receive).toHaveBeenLastCalledWith('light')
   })
 
-  it('detecta remoção de cookie system após escolha temporária', () => {
+  it('detects the removal of the system cookie after a temporary choice', () => {
     document.cookie = `${THEME_COOKIE_NAME}=system; Path=/`
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
@@ -267,10 +267,10 @@ describe('ordenação e escolhas temporárias', () => {
   })
 })
 
-describe('ciclo de vida do canal de tema', () => {
+describe('theme channel lifecycle', () => {
   beforeEach(setup)
 
-  it('remove listeners e fecha o canal ao descartar', () => {
+  it('removes listeners and closes the channel on disposal', () => {
     const receive = vi.fn<() => void>()
     const sync = makeThemeChannel(receive)
     sync.dispose()
@@ -292,7 +292,7 @@ describe('ciclo de vida do canal de tema', () => {
     expect(channel.close).toHaveBeenCalledExactlyOnceWith()
   })
 
-  it('tolera falha ao publicar no canal', () => {
+  it('tolerates a failure when publishing to the channel', () => {
     channel.postMessage.mockImplementation(() => {
       throw new Error('closed')
     })

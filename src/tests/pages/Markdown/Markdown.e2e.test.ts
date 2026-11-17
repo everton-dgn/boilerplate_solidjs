@@ -16,7 +16,7 @@ const PAGE = '/pt/markdown-contract/sample'
 const LOCALES = ['pt', 'en', 'es']
 const LOCALE_REQUESTS = 12
 const CONCURRENT_MARKDOWN_REQUESTS = 2
-// A ordem dos atributos não faz parte do contrato do HTML.
+// The order of the attributes is not part of the HTML contract.
 const MARKDOWN_ALTERNATE =
   /<link\b(?=[^>]*\brel="alternate")(?=[^>]*\btype="text\/markdown")(?=[^>]*\bhref="(?<href>[^"]+)")[^>]*>/u
 
@@ -159,7 +159,7 @@ for (const locale of LOCALES) {
     expect(markdown.headers()['content-language']).toBe(locale)
     expect(await markdown.text()).toContain('# HTML Markdown contract: index')
 
-    // A home é estática: o arquivo gerado no build dispensa a função.
+    // The home page is static: the file generated in the build skips the function.
     const home = await request.get(`/${locale}/index.md`)
     expect(home.status()).toBe(HTTP_OK)
     expect(home.headers()['set-cookie']).toBeUndefined()

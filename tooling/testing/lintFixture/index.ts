@@ -1,4 +1,4 @@
-/* oxlint-disable node/no-sync -- A fixture é montada em sequência e o teste aguarda o CLI real. */
+/* oxlint-disable node/no-sync -- The fixture is assembled in sequence and the test waits for the real CLI. */
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
 import {
   mkdirSync,
@@ -18,7 +18,7 @@ type LintFixture = {
 }
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')
-// Os plugins locais do lint são resolvidos por ./tooling, ligado à fixture.
+// The local lint plugins are resolved through ./tooling, linked into the fixture.
 const PROJECT_LINT_CONFIG =
   'import { lint } from "./tooling/lint.ts"; export default { lint: { ...lint, options: { typeAware: false, typeCheck: false } } }'
 
@@ -28,7 +28,7 @@ export function lintFixture({
   config
 }: LintFixture): SpawnSyncReturns<string> {
   const directory = mkdtempSync(path.join(tmpdir(), 'solid-lint-fixture-'))
-  // Sandbox criado pelo próprio teste: a remoção direta é o descarte correto.
+  // Sandbox created by the test itself: direct removal is the right disposal.
   context.after(() => rmSync(directory, { recursive: true, force: true }))
   const links =
     config === undefined ? ['node_modules', 'tooling'] : ['node_modules']
@@ -46,9 +46,9 @@ export function lintFixture({
     { flag: 'wx' }
   )
   for (const [filename, source] of Object.entries(sources)) {
-    // Com o lint do projeto, tooling aponta para o repositório real.
+    // With the project lint, tooling points to the real repository.
     if (config === undefined && filename.startsWith('tooling/')) {
-      throw new Error(`${filename} exige uma config própria na fixture.`)
+      throw new Error(`${filename} needs its own config in the fixture.`)
     }
     const destination = path.join(directory, filename)
     mkdirSync(path.dirname(destination), { recursive: true })

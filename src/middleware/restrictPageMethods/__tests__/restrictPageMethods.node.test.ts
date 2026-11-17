@@ -38,9 +38,9 @@ function request({ path, method }: MethodRequest): Request {
   return new Request(new URL(path, ORIGIN), { method })
 }
 
-describe('métodos aceitos nas páginas', () => {
+describe('methods accepted on the pages', () => {
   it.each(['POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])(
-    'responde 405 a %s numa página sem chamar o render',
+    'answers 405 to %s on a page without calling the render',
     async method => {
       const next = vi.fn<() => Promise<Response>>()
 
@@ -57,7 +57,7 @@ describe('métodos aceitos nas páginas', () => {
   )
 
   it.each(['POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])(
-    'responde 405 a %s numa rota de API sem handler para o método',
+    'answers 405 to %s on an API route without a handler for the method',
     async method => {
       const next = vi.fn<() => Promise<Response>>()
 
@@ -74,7 +74,7 @@ describe('métodos aceitos nas páginas', () => {
   )
 
   it.each(['GET', 'HEAD'])(
-    'responde 405 a %s numa rota de API que só atende POST',
+    'answers 405 to %s on an API route that only serves POST',
     async method => {
       const next = vi.fn<() => Promise<Response>>()
 
@@ -89,7 +89,7 @@ describe('métodos aceitos nas páginas', () => {
     }
   )
 
-  it('lista OPTIONS no Allow quando a rota de API o exporta', async () => {
+  it('lists OPTIONS in Allow when the API route exports it', async () => {
     const next = vi.fn<() => Promise<Response>>()
 
     const response = await restrictPageMethods(
@@ -108,8 +108,8 @@ describe('métodos aceitos nas páginas', () => {
     { path: `${endpoint}/save`, method: 'POST' },
     { path: endpoint, method: 'POST' },
     { path: '/assets/app.js', method: 'POST' }
-  ])('entrega ao próximo handler: %o', async ({ path, method }) => {
-    const original = new Response('próximo')
+  ])('hands to the next handler: %o', async ({ path, method }) => {
+    const original = new Response('next')
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(original)
 
     await expect(

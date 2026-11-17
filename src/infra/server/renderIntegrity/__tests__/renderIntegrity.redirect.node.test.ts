@@ -11,8 +11,8 @@ import {
 import { provideRequestEvent } from '@solidjs/web/storage'
 
 const HTTP_TEMPORARY_REDIRECT = 307
-// A partir deste tamanho o runtime grava o shell dentro do primeiro write, e
-// o redirect abandona o render antes de o flush seguinte rodar.
+// From this size on the runtime writes the shell inside the first write, and the
+// redirect abandons the render before the next flush runs.
 const SYNC_WRITE_CHARS = 16_384
 
 function redirectingPage() {
@@ -21,8 +21,8 @@ function redirectingPage() {
   return ssr(['<main>', '</main>'], 'x'.repeat(SYNC_WRITE_CHARS))
 }
 
-describe('redirect durante o render', () => {
-  it('abandona um shell grande sem rejeição não tratada', async () => {
+describe('redirect during the render', () => {
+  it('abandons a large shell without an unhandled rejection', async () => {
     const failures: unknown[] = []
     const capture = (failure: unknown) => {
       failures.push(failure)
@@ -35,7 +35,7 @@ describe('redirect durante o render', () => {
       const response = await provideRequestEvent(event, () =>
         createSSRResponse(renderToStream(redirectingPage), event)
       )
-      // A rejeição sem tratamento só é emitida depois da fila de microtasks.
+      // The unhandled rejection is only emitted after the microtask queue.
       await nextTurn()
       await nextTurn()
 

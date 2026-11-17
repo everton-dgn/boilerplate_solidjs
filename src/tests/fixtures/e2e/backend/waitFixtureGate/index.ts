@@ -5,9 +5,10 @@ import { requestJson } from '@/infra/server/requestJson/index.ts'
 type GateData = { ready: boolean }
 type GateRequest = { id: string; real: boolean }
 
-// Espera o teste liberar o id no backend sintético. A falha da fixture só
-// acontece depois, sem depender de temporizador para cair após o shell. real
-// informa ao backend, sem o valor, que a falha levará o marcador carregado.
+// Waits for the test to release the id in the synthetic backend. The fixture
+// failure only happens afterwards, without relying on a timer to land after the
+// shell. real tells the backend, without the value, that the failure will carry
+// the loaded marker.
 export async function waitFixtureGate({
   id,
   real

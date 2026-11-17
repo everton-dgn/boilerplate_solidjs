@@ -1,6 +1,6 @@
 import { readTheme } from '../index.ts'
 
-describe('preferência no cookie da requisição', () => {
+describe('preference in the request cookie', () => {
   it.each([
     [null, null],
     ['', null],
@@ -11,7 +11,7 @@ describe('preferência no cookie da requisição', () => {
     ['app-theme=invalid', null],
     ['app-theme=%E0%A4%A', null],
     ['other-app-theme=dark', null]
-  ])('resolve %s como %s sem acessar o navegador', (header, expected) => {
+  ])('resolves %s as %s without reaching the browser', (header, expected) => {
     expect(readTheme(header)).toBe(expected)
   })
 })

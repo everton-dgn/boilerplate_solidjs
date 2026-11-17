@@ -66,9 +66,9 @@ async function findChangedFiles({
   return problems
 }
 
-// O diretório publicado é confrontado com o registro do Nitro: uma cópia de
-// `public/` em `sitemaps/` ou um `sitemap.xml` solto sombreariam rotas dinâmicas
-// antes da função, e nada neles passaria pelo prerender.
+// The published folder is checked against the Nitro registry: a copy of
+// `public/` in `sitemaps/` or a stray `sitemap.xml` would shadow dynamic routes
+// before the function, and nothing in them would go through the prerender.
 export async function assertPublishedArtifacts({
   publicDir,
   prerenderedRoutes,

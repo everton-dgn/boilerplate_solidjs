@@ -4,8 +4,8 @@ import { requestJson } from '@/infra/server/requestJson/index.ts'
 
 type FixtureNote = { message: string }
 
-// O backend sintético conta as execuções por id: uma chamada recusada pelo
-// carimbo de build precisa manter a contagem.
+// The synthetic backend counts the runs per id: a call refused by the build stamp
+// must keep the count.
 export async function requestFixtureNote(id: string): Promise<FixtureNote> {
   'use server'
   return requestJson({

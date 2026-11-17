@@ -30,8 +30,8 @@ function page({
   }
 }
 
-describe('coleta das páginas estáticas', () => {
-  it('lista só páginas estáticas, com aninhamento e sem duplicatas', () => {
+describe('static page collection', () => {
+  it('lists only static pages, with nesting and without duplicates', () => {
     const manifest = collectSitemapEntries([
       { path: '/', page: true },
       { path: '/*404', page: true },
@@ -42,14 +42,14 @@ describe('coleta das páginas estáticas', () => {
         page: true,
         children: [
           { path: '/', page: true },
-          { path: '/guia', page: true },
+          { path: '/guide', page: true },
           { path: '/:slug', page: true }
         ]
       }
     ])
 
     expect(manifest).toStrictEqual({
-      entries: [{ path: '/' }, { path: '/docs' }, { path: '/docs/guia' }],
+      entries: [{ path: '/' }, { path: '/docs' }, { path: '/docs/guide' }],
       sources: [],
       sourceRoutes: [],
       dynamicRoutes: [
@@ -60,7 +60,7 @@ describe('coleta das páginas estáticas', () => {
     })
   })
 
-  it('consulta só noindex, tipo e datas, sem ler título e descrição nem executar preload', () => {
+  it('reads only noindex, type and dates, without reading the title and the description or running the preload', () => {
     const preload = vi.fn<() => void>()
     const manifest = collectSitemapEntries([
       page({
@@ -70,10 +70,10 @@ describe('coleta das páginas estáticas', () => {
           seo: {
             noindex: false,
             get title(): string {
-              throw new Error('O sitemap não precisa do título')
+              throw new Error('The sitemap does not need the title')
             },
             get description(): string {
-              throw new Error('O sitemap não precisa da descrição')
+              throw new Error('The sitemap does not need the description')
             }
           }
         },
@@ -88,7 +88,7 @@ describe('coleta das páginas estáticas', () => {
     expect(preload).not.toHaveBeenCalled()
   })
 
-  it('herda noindex e permite que uma filha se torne indexável explicitamente', () => {
+  it('inherits noindex and lets a child become indexable explicitly', () => {
     const manifest = collectSitemapEntries([
       page({
         path: '/account',
@@ -104,11 +104,11 @@ describe('coleta das páginas estáticas', () => {
   })
 })
 
-describe('lastmod das páginas estáticas', () => {
-  it('publica lastmod só em artigo, preferindo a data de alteração', () => {
+describe('lastmod of the static pages', () => {
+  it('publishes lastmod only on articles, preferring the modification date', () => {
     const manifest = collectSitemapEntries([
       page({
-        path: '/artigo',
+        path: '/article',
         info: {
           seo: {
             type: 'article',
@@ -117,13 +117,13 @@ describe('lastmod das páginas estáticas', () => {
         }
       }),
       page({
-        path: '/novo',
+        path: '/new',
         info: {
           seo: { type: 'article', article: { datePublished: '2026-09-01' } }
         }
       }),
       page({
-        path: '/institucional',
+        path: '/institutional',
         info: {
           seo: {
             type: 'website',
@@ -131,18 +131,18 @@ describe('lastmod das páginas estáticas', () => {
           }
         }
       }),
-      page({ path: '/sem-data', info: { seo: { type: 'article' } } })
+      page({ path: '/undated', info: { seo: { type: 'article' } } })
     ])
 
     expect(manifest.entries).toStrictEqual([
-      { path: '/artigo', lastmod: '2026-09-21' },
-      { path: '/novo', lastmod: '2026-09-01' },
-      { path: '/institucional' },
-      { path: '/sem-data' }
+      { path: '/article', lastmod: '2026-09-21' },
+      { path: '/new', lastmod: '2026-09-01' },
+      { path: '/institutional' },
+      { path: '/undated' }
     ])
   })
 
-  it('herda tipo e datas do layout e deixa a filha sobrescrever só o que declara', () => {
+  it('inherits the type and the dates from the layout and lets the child override only what it declares', () => {
     const manifest = collectSitemapEntries([
       page({
         path: '/docs',
@@ -154,7 +154,7 @@ describe('lastmod das páginas estáticas', () => {
             path: '/',
             info: { seo: { article: { dateModified: '2026-09-21' } } }
           }),
-          page({ path: '/guia' }),
+          page({ path: '/guide' }),
           page({ path: '/site', info: { seo: { type: 'website' } } })
         ]
       })
@@ -162,25 +162,25 @@ describe('lastmod das páginas estáticas', () => {
 
     expect(manifest.entries).toStrictEqual([
       { path: '/docs', lastmod: '2026-09-21' },
-      { path: '/docs/guia', lastmod: '2026-09-01' },
+      { path: '/docs/guide', lastmod: '2026-09-01' },
       { path: '/docs/site' }
     ])
   })
 })
 
-describe('fontes das rotas com parâmetro', () => {
-  it('coleta as fontes das páginas com parâmetro sem executá-las', () => {
+describe('sources of the routes with a parameter', () => {
+  it('collects the sources of the pages with a parameter without running them', () => {
     const listPosts = vi.fn<() => never[]>(() => [])
     const listStatic = vi.fn<() => never[]>(() => [])
     const manifest = collectSitemapEntries([
       page({ path: '/blog/:slug', info: { sitemap: listPosts } }),
       page({ path: '/tags/:tag' }),
-      page({ path: '/sobre', info: { sitemap: listStatic } }),
+      page({ path: '/about', info: { sitemap: listStatic } }),
       page({ path: '/api/:id', page: false, info: { sitemap: listStatic } })
     ])
 
     expect(manifest).toStrictEqual({
-      entries: [{ path: '/sobre' }],
+      entries: [{ path: '/about' }],
       sources: [listPosts],
       sourceRoutes: ['/blog/:slug'],
       dynamicRoutes: [
@@ -192,7 +192,7 @@ describe('fontes das rotas com parâmetro', () => {
     expect(listStatic).not.toHaveBeenCalled()
   })
 
-  it('ignora a fonte sob noindex, próprio ou herdado, e respeita a filha que reativa', () => {
+  it('ignores the source under noindex, its own or inherited, and respects the child that turns it back on', () => {
     const own = vi.fn<() => never[]>(() => [])
     const inherited = vi.fn<() => never[]>(() => [])
     const reactivated = vi.fn<() => never[]>(() => [])
@@ -217,7 +217,7 @@ describe('fontes das rotas com parâmetro', () => {
     expect(manifest.sources).toStrictEqual([reactivated])
   })
 
-  it('coleta a fonte de uma filha estática de layout com parâmetro', () => {
+  it('collects the source of a static child of a layout with a parameter', () => {
     const listUserPosts = vi.fn<() => never[]>(() => [])
     const manifest = collectSitemapEntries([
       {
@@ -234,7 +234,7 @@ describe('fontes das rotas com parâmetro', () => {
     })
   })
 
-  it('retira a fonte do layout quando o índice filho na mesma URL declara noindex', () => {
+  it('removes the layout source when the child index at the same URL declares noindex', () => {
     const listPosts = vi.fn<() => never[]>(() => [])
     const listComments = vi.fn<() => never[]>(() => [])
     const listTags = vi.fn<() => never[]>(() => [])
@@ -263,7 +263,7 @@ describe('fontes das rotas com parâmetro', () => {
     expect(manifest.sources).toStrictEqual([listComments, listTags])
   })
 
-  it('troca a fonte do layout pela do índice filho e herda a do layout sem declaração', () => {
+  it('replaces the layout source with the one of the child index and inherits the layout one without a declaration', () => {
     const listPosts = vi.fn<() => never[]>(() => [])
     const listIndexPosts = vi.fn<() => never[]>(() => [])
     const listTags = vi.fn<() => never[]>(() => [])
@@ -283,7 +283,7 @@ describe('fontes das rotas com parâmetro', () => {
     expect(manifest.sources).toStrictEqual([listIndexPosts, listTags])
   })
 
-  it('publica a fonte do layout com noindex quando o índice filho reativa a página', () => {
+  it('publishes the layout source with noindex when the child index turns the page back on', () => {
     const listDrafts = vi.fn<() => never[]>(() => [])
     const manifest = collectSitemapEntries([
       page({

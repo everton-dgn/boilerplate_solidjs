@@ -99,8 +99,8 @@ async function fixture({
     },
     nitro
   )
-  // Com o índice, o fixture percorre também a gravação e a conferência dos
-  // arquivos estáticos, como o prerender real.
+  // With the index, the fixture also walks through writing and checking the
+  // static files, like the real prerender.
   if (llms !== undefined) {
     const { publicDir } = nitro.options.output
     const listFile = path.join(publicDir, MARKDOWN_PRERENDER_PATH)
@@ -158,7 +158,7 @@ function destination({ routes, pathname }: MatchOptions): Route | undefined {
   )
 }
 
-it('gera proteção com o preset real sem configurar rotas da Vercel', async context => {
+it('generates protection with the real preset without configuring Vercel routes', async context => {
   const variants: NitroConfig[] = [
     {},
     { vercel: { functions: { memory: 1024 } } },
@@ -173,7 +173,7 @@ it('gera proteção com o preset real sem configurar rotas da Vercel', async con
   }
 })
 
-it('mantém headers, redirects, proxy, skew protection, ISR e functionRules do Nitro', async context => {
+it('keeps headers, redirects, proxy, skew protection, ISR and functionRules of Nitro', async context => {
   const { routes } = await fixture({
     context,
     paths: ['/pt/index.md', '/en/index.md', '/es/index.md', '/proxy/index.md'],
@@ -225,7 +225,7 @@ it('mantém headers, redirects, proxy, skew protection, ISR e functionRules do N
   }
 })
 
-it('recusa rotas terminais que impedem a proteção de páginas no preset real', async context => {
+it('refuses terminal routes that prevent the page protection in the real preset', async context => {
   for (const src of ['/pt', '/pt/', '/(.*)']) {
     await assert.rejects(
       fixture({
@@ -244,7 +244,7 @@ it('recusa rotas terminais que impedem a proteção de páginas no preset real',
   }
 })
 
-it('mantém os headers de routeRules antes da proteção sem encerrar o roteamento', async context => {
+it('keeps the routeRules headers before the protection without ending the routing', async context => {
   for (const pattern of ['/pt', '/pt/', '/**']) {
     const { routes } = await fixture({
       context,
@@ -262,7 +262,7 @@ it('mantém os headers de routeRules antes da proteção sem encerrar o roteamen
   }
 })
 
-it('preserva a raiz e capturas de ISR para diretórios codificados e aninhados', async context => {
+it('keeps the root and the ISR captures for encoded and nested folders', async context => {
   const { routes } = await fixture({
     context,
     paths: [
@@ -296,7 +296,7 @@ it('preserva a raiz e capturas de ISR para diretórios codificados e aninhados',
   assert.equal(destination({ routes, pathname: '/pt/v1x0/index' }), undefined)
 })
 
-it('grava o manifesto ao lado do bundle da função do preset real', async context => {
+it('writes the manifest next to the function bundle of the real preset', async context => {
   const { nitro } = await fixture({ context, llms: '# Site\n' })
   const contents = await readFile(
     path.join(
@@ -310,7 +310,7 @@ it('grava o manifesto ao lado do bundle da função do preset real', async conte
   assert.equal(path.basename(nitro.options.output.serverDir), '__server.func')
 })
 
-it('anexa o Link aos .md e tipa o llms-full.txt no config.json do preset real', async context => {
+it('attaches the Link to the .md files and types llms-full.txt in the config.json of the real preset', async context => {
   const full = new URL(LLMS_FULL_PATH, SITE_URL).href
   const { nitro, routes } = await fixture({
     context,
@@ -348,6 +348,6 @@ it('anexa o Link aos .md e tipa o llms-full.txt no config.json do preset real', 
     )
   )
   assert.equal(body.includes('/pt/about.md'), false)
-  // O Link não chega às páginas HTML protegidas.
+  // The Link does not reach the protected HTML pages.
   assert.equal(destination({ routes, pathname: '/pt' })?.dest, '/__server')
 })

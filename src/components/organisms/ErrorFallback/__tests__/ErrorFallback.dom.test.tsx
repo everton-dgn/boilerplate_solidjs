@@ -15,13 +15,13 @@ function readMeta(name: string): string | null {
 }
 
 function FailingPage(): never {
-  throw new Error('Falha antes do Router')
+  throw new Error('Failure before the Router')
 }
 
-describe('metadados da falha', () => {
-  it('publica título, descrição e noindex quando a falha ocorre antes do Router', async () => {
+describe('failure metadata', () => {
+  it('publishes the title, description and noindex when the failure happens before the Router', async () => {
     await expect.poll(() => readMeta('robots')).toBeNull()
-    // Em desenvolvimento, o Errored registra no console o erro capturado.
+    // In development, Errored logs the caught error to the console.
     const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn())
     const host = renderComponent(
       () => (
@@ -38,11 +38,11 @@ describe('metadados da falha', () => {
       m.errorFallback_runtimeTitle()
     )
     expect(consoleError).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Falha antes do Router' })
+      expect.objectContaining({ message: 'Failure before the Router' })
     )
   })
 
-  it('retira os metadados da falha quando a variante passa a ser página inexistente', async () => {
+  it('removes the failure metadata when the variant becomes a missing page', async () => {
     const [kind, setKind] = createSignal<ErrorFallbackKind>('runtime')
     renderComponent(() => <ErrorFallback kind={kind()} />, {
       hasProviders: false
@@ -54,8 +54,8 @@ describe('metadados da falha', () => {
   })
 })
 
-describe('navegação após falha', () => {
-  it('mantém os parâmetros da página no recarregamento sem depender do Router', () => {
+describe('navigation after a failure', () => {
+  it('keeps the page parameters on reload without depending on the Router', () => {
     const previousUrl = globalThis.location.href
     const previousState: unknown = globalThis.history.state
     onTestFinished(() => {
@@ -72,7 +72,7 @@ describe('navegação após falha', () => {
     expect(reload.target).toBe('_self')
   })
 
-  it('oferece voltar ao início quando a página não existe', () => {
+  it('offers going back to the start when the page does not exist', () => {
     const host = renderComponent(() => <ErrorFallback kind="not-found" />, {
       hasProviders: false
     })
@@ -82,7 +82,7 @@ describe('navegação após falha', () => {
     expect(new URL(home.href).pathname).toBe('/en')
   })
 
-  it('troca o ícone quando a variante muda e restaura o ícone anterior', async () => {
+  it('replaces the icon when the variant changes and restores the previous icon', async () => {
     const [kind, setKind] = createSignal<ErrorFallbackKind>('not-found')
     const host = renderComponent(() => <ErrorFallback kind={kind()} />, {
       hasProviders: false

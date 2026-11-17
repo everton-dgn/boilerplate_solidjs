@@ -8,8 +8,8 @@ const getBackend = query(readBackend, 'backend-error-fixture')
 export const route = {
   info: {
     seo: {
-      title: 'Dados do backend',
-      description: 'Página de testes para os estados de resposta do backend.'
+      title: 'Backend data',
+      description: 'Test page for the backend response states.'
     },
     llms: { optional: true }
   }
@@ -19,17 +19,15 @@ export default function BackendError() {
   const [params] = useSearchParams()
   const [isRequested, setIsRequested] = createSignal(params.phase !== 'action')
   const data = createMemo(() =>
-    isRequested()
-      ? getBackend(String(params.id))
-      : { message: 'Pronto para consultar' }
+    isRequested() ? getBackend(String(params.id)) : { message: 'Ready to read' }
   )
 
   const content = () => (
     <main>
-      <h1>Dados do backend</h1>
+      <h1>Backend data</h1>
       <p>{data().message}</p>
       <button type="button" onClick={() => setIsRequested(true)}>
-        Consultar backend
+        Query backend
       </button>
     </main>
   )
@@ -37,7 +35,7 @@ export default function BackendError() {
   return (
     <>
       {params.phase === 'stream' ? (
-        <Loading fallback={<p>Carregando dados...</p>}>{content()}</Loading>
+        <Loading fallback={<p>Loading data...</p>}>{content()}</Loading>
       ) : (
         content()
       )}

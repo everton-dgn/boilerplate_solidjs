@@ -2,9 +2,9 @@ type LlmsLink = { label: string; href: string; summary: string }
 
 type LlmsIndex = { title: string; description: string; links: LlmsLink[] }
 
-// Lê o formato produzido por `buildLlmsText`: rótulos e resumos escapam
-// `\`, `[`, `]` e crases, e os destinos codificam parênteses. O build lê este
-// módulo sem aliases para montar o llms-full.txt.
+// Reads the format produced by `buildLlmsText`: labels and summaries escape `\`,
+// `[`, `]` and backticks, and the targets encode parentheses. The build reads this
+// module without aliases to assemble llms-full.txt.
 const LINK_LINE =
   /^- \[(?<label>(?:\\.|[^\\\]])*)\]\((?<href>[^\s()]+)\)(?:: (?<summary>.*))?$/u
 const ESCAPED = /\\(?<character>.)/gu

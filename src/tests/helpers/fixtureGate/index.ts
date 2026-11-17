@@ -41,7 +41,7 @@ export async function markBackendRecovered({
   expect(response.ok()).toBe(true)
 }
 
-// Confirma pelo backend que a fixture chegou ao gate, sem temporizador.
+// Confirms through the backend that the fixture reached the gate, without a timer.
 export async function waitForGate(backend: BackendRequest): Promise<void> {
   await expect
     .poll(async () => {
@@ -51,7 +51,7 @@ export async function waitForGate(backend: BackendRequest): Promise<void> {
     .toBe('waiting')
 }
 
-// Sem asserção, para blocos finally: uma falha aqui não substitui a do teste.
+// No assertion, for finally blocks: a failure here does not replace the one of the test.
 export function releaseFixtureGateQuietly({
   request,
   id
@@ -66,8 +66,8 @@ export async function releaseFixtureGate(
   expect(response.ok()).toBe(true)
 }
 
-// Lê o corpo de um documento em streaming e só libera o gate depois que o
-// shell, com o fallback do Loading, chegou ao cliente.
+// Reads the body of a streamed document and only releases the gate after the
+// shell, with the Loading fallback, reached the client.
 export async function readGatedBody({
   request,
   id,

@@ -12,7 +12,7 @@ function mountRegion(remember: RememberOrigin): MountedRegion {
   const dispose = render(
     () => (
       <section onFocusIn={makeFocusOriginHandler(remember)}>
-        <button type="button">Dentro</button>
+        <button type="button">Inside</button>
       </section>
     ),
     host
@@ -34,15 +34,15 @@ function appendOutside<T extends Element>(element: T): T {
   return element
 }
 
-// Fixa a origem sem depender de como o ambiente preenche relatedTarget.
+// Pins the origin without depending on how the environment fills relatedTarget.
 function moveFocus({ target, origin }: FocusMove): void {
   target.dispatchEvent(
     new FocusEvent('focusin', { bubbles: true, relatedTarget: origin })
   )
 }
 
-describe('origem do foco', () => {
-  it('guarda o elemento de fora que tinha o foco', () => {
+describe('focus origin', () => {
+  it('keeps the outside element that had the focus', () => {
     const remember = vi.fn<RememberOrigin>()
     const { inner } = mountRegion(remember)
     const origin = appendOutside(document.createElement('button'))
@@ -50,7 +50,7 @@ describe('origem do foco', () => {
     expect(remember).toHaveBeenCalledExactlyOnceWith(origin)
   })
 
-  it('ignora o foco que se move dentro da própria região', () => {
+  it('ignores the focus that moves inside the region itself', () => {
     const remember = vi.fn<RememberOrigin>()
     const { region, inner } = mountRegion(remember)
     moveFocus({ target: inner, origin: region })
@@ -58,15 +58,15 @@ describe('origem do foco', () => {
   })
 
   it.each([
-    ['sem origem', () => null],
+    ['without an origin', () => null],
     [
-      'com uma origem fora do HTML',
+      'with an origin outside the HTML',
       () =>
         appendOutside(
           document.createElementNS('http://www.w3.org/2000/svg', 'svg')
         )
     ]
-  ])('esquece a origem quando o foco chega %s', (_case, createOrigin) => {
+  ])('forgets the origin when the focus arrives %s', (_case, createOrigin) => {
     const remember = vi.fn<RememberOrigin>()
     const { inner } = mountRegion(remember)
     moveFocus({ target: inner, origin: createOrigin() })

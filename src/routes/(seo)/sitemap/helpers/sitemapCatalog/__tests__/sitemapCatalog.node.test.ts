@@ -12,8 +12,8 @@ vi.mock<MockSitemapConstants>(
   }
 )
 
-describe('catálogo direto de sitemap', () => {
-  it('recusa um grupo de idiomas maior que a parte sem criar uma parte vazia', async () => {
+describe('direct sitemap catalog', () => {
+  it('refuses a locale group larger than the part without creating an empty part', async () => {
     const options = {
       siteUrl: 'https://example.com',
       byteBudget: 65_536
@@ -31,7 +31,7 @@ describe('catálogo direto de sitemap', () => {
       manifest: { entries: [{ path: '/page' }], sources: [] }
     })
     expect(() => oversized.readSummary()).toThrow(
-      'Grupo de idiomas excede limite'
+      'Locale group exceeds the limit'
     )
   })
 })

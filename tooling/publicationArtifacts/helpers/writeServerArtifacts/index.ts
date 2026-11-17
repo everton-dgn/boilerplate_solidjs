@@ -71,7 +71,7 @@ function buildManifest({
   })
 }
 
-// Promove o arquivo completo e confere o que ficou no diretório final.
+// Promotes the complete file and checks what ended up in the final folder.
 async function publishFile({
   directory,
   name,
@@ -92,8 +92,8 @@ async function publishFile({
   }
 }
 
-// O manifesto entra por último: ele referencia as identidades pelo hash, e a
-// função recusa o conjunto se qualquer metade faltar ou divergir.
+// The manifest goes last: it references the identities by hash, and the function
+// refuses the set if either half is missing or differs.
 export async function writeServerArtifacts({
   serverDir,
   ...options

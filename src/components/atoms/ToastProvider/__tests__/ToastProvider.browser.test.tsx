@@ -36,8 +36,8 @@ function PairTrigger() {
   )
 }
 
-describe('notificações no navegador', () => {
-  it('preserva foco ao aparecer, pausa com foco e fecha pelo teclado', async () => {
+describe('notifications in the browser', () => {
+  it('keeps the focus when it appears, pauses on focus and closes by keyboard', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] })
     onTestFinished(() => {
       vi.useRealTimers()
@@ -63,7 +63,7 @@ describe('notificações no navegador', () => {
     await expect.element(trigger).toHaveFocus()
   })
 
-  it('move o foco para o vizinho e depois para a origem ao fechar pelo teclado', async () => {
+  it('moves the focus to the neighbor and then to the origin when closing by keyboard', async () => {
     renderComponent(
       () => (
         <ToastProvider>
@@ -91,10 +91,10 @@ describe('notificações no navegador', () => {
   })
 
   it.each([
-    { order: 'focado primeiro', isFocusedFirst: true },
-    { order: 'vizinho primeiro', isFocusedFirst: false }
+    { order: 'focused first', isFocusedFirst: true },
+    { order: 'neighbor first', isFocusedFirst: false }
   ])(
-    'devolve o foco à origem quando os dois saem no mesmo tick: $order',
+    'returns the focus to the origin when both leave in the same tick: $order',
     async ({ isFocusedFirst }) => {
       let api: ToastApi | undefined
       const ids: string[] = []

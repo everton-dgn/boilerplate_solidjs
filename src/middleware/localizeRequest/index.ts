@@ -33,13 +33,13 @@ function serverFunctionLocale(request: Request): LocaleRequest {
         }
       }
     } catch {
-      // Referer inválido usa cookie, Accept-Language e idioma base.
+      // An invalid Referer uses the cookie, Accept-Language and the base locale.
     }
   }
   const headers = new Headers(request.headers)
   headers.delete('sec-fetch-dest')
-  // Somente a detecção usa esta requisição sem corpo. A ação recebe o POST
-  // original, sem clonagem ou leitura antecipada do seu stream.
+  // Only the detection uses this request without a body. The action receives the
+  // original POST, without cloning or reading its stream early.
   return { request: new Request(url, { headers }), pageBase }
 }
 
@@ -60,8 +60,8 @@ export async function localizeRequest({
     : { request, pageBase: request.url }
   if (event) event.locals.localizedPageBase = localized.pageBase
   const localeRequest = localized.request
-  // Também atende HEAD, crawlers e clientes HTTP sem Sec-Fetch-Dest. A
-  // decisão usa URL > cookie > Accept-Language > idioma base.
+  // Also serves HEAD, crawlers and HTTP clients without Sec-Fetch-Dest. The
+  // decision uses URL > cookie > Accept-Language > base locale.
   const decision = isServerFunction
     ? undefined
     : await shouldRedirect({ request: localeRequest })
@@ -81,12 +81,12 @@ export async function localizeRequest({
       )
     })
   }
-  // O router transforma só o caminho usado para matching. Preservar a
-  // requisição original mantém URLs, canonical e hidratação coerentes.
+  // The router changes only the path used for matching. Keeping the original
+  // request keeps URLs, canonical and hydration consistent.
   return paraglideMiddleware(localeRequest, async ({ locale }) => {
     const response = await next()
     response.headers.set('content-language', locale)
-    // Uma chamada em segundo plano não deve sobrescrever a escolha da página.
+    // A background call must not overwrite the choice of the page.
     return isServerFunction
       ? response
       : persistLocale({ request, response, locale })

@@ -8,7 +8,7 @@ import { assertPlanArtifact, readPlanArtifact } from './plan-artifact.ts'
 import { prepareRelease } from './prepare-release.ts'
 import { publishRelease } from './publish-release.ts'
 
-// Os jobs com escrita usam só Git, gh e módulos nativos; a formatação fica em plan-release.ts.
+// The write jobs use only Git, gh and native modules; the formatting stays in plan-release.ts.
 
 const mode = requiredEnv('RELEASE_MODE')
 if (!['prepare', 'publish'].includes(mode)) {

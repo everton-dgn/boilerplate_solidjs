@@ -19,7 +19,7 @@ const W3C_DATETIME =
 
 function normalizePath(path: string): string {
   if (!SITE_PATH.test(path)) {
-    throw new Error(`Caminho inválido para o sitemap: ${path}`)
+    throw new Error(`Invalid sitemap path: ${path}`)
   }
   const collapsed = path.replaceAll(/\/+/gu, '/')
   return collapsed.length > 1 ? collapsed.replace(/\/$/u, '') : collapsed
@@ -28,7 +28,7 @@ function normalizePath(path: string): string {
 function normalizeLastmod(lastmod: string | undefined): string | undefined {
   if (lastmod === undefined || !W3C_DATETIME.test(lastmod)) return undefined
   if (Number.isNaN(Date.parse(lastmod))) return undefined
-  // Valida o calendário antes da conversão de fuso: ela pode mudar o dia.
+  // Validates the calendar before the time zone conversion: it can change the day.
   const date = lastmod.slice(0, DATE_LENGTH)
   const parsedDate = new Date(`${date}T00:00:00Z`)
   if (Number.isNaN(parsedDate.getTime())) return undefined
@@ -37,14 +37,14 @@ function normalizeLastmod(lastmod: string | undefined): string | undefined {
     : undefined
 }
 
-// A mesma URL do idioma base que buildLocaleAlternates grava no XML. Caminhos
-// diferentes que a URL resolve igual (`/a/../b`, `/café` e `/caf%C3%A9`, `/pt/x`
-// e `/x`) geram as mesmas URLs em todos os idiomas.
+// The same base locale URL that buildLocaleAlternates writes in the XML.
+// Different paths that the URL resolves the same way (`/a/../b`, `/café` and
+// `/caf%C3%A9`, `/pt/x` and `/x`) produce the same URLs in every locale.
 export function sitemapUrl({ path, siteUrl }: SitemapUrlOptions): string {
   return new URL(localizeHref({ href: path, locale: baseLocale }), siteUrl).href
 }
 
-// Em URLs repetidas, a página estática prevalece sobre a fonte dinâmica.
+// In repeated URLs, the static page wins over the dynamic source.
 export function normalizeSitemapEntries({
   entries,
   siteUrl

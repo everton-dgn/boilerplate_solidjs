@@ -26,8 +26,8 @@ describe('resolveLocalizedHref contracts', () => {
     expect(() =>
       resolveLocalizedHref({ href: '../docs', locale: 'en' })
     ).toThrow('requires a Router or base')
-    // As asserções ficam fora do callback: se ele não rodar, a lista vazia
-    // falha o teste.
+    // The assertions stay outside the callback: if it does not run, the empty
+    // list fails the test.
     const resolved: string[] = []
     await paraglideMiddleware(
       new Request('https://example.com/pt/docs?q=1'),

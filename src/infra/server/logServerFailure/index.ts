@@ -18,15 +18,15 @@ const MAX_FRAMES = 10
 const MAX_STACK_LINES = 50
 const MAX_LINE_LENGTH = 1024
 const CLASS_NAME = /^[A-Za-z_$][\w$]{0,63}$/u
-// Nome no cabeçalho que o V8 monta com o name atual do erro. Aceita o código
-// dos erros internos do Node, como "TypeError [ERR_INVALID_ARG_TYPE]".
+// Name in the header that V8 builds with the current name of the error. Accepts
+// the code of internal Node errors, such as "TypeError [ERR_INVALID_ARG_TYPE]".
 const HEADER_NAME = /^[\w$.]{1,64}(?: \[[A-Z][A-Z0-9_]{0,63}\])?/u
 const SIMPLE_NAME = /^[\w$.]{1,64}$/u
 const NODE_CODE = /^[A-Z][A-Z0-9_]{0,63}$/u
-// Frames do V8 com local em arquivo: file://, node: ou caminho absoluto, sem
-// espaços, parênteses nem caracteres de controle ou de formatação (\p{C}),
-// terminado em :linha:coluna. O nome da função cobre os prefixos async e new,
-// <anonymous> e o alias [as nome].
+// V8 frames with a location in a file: file://, node: or an absolute path,
+// without spaces, parentheses or control or format characters (\p{C}), ending in
+// :line:column. The function name covers the async and new prefixes, <anonymous>
+// and the [as name] alias.
 const CALL_FRAME =
   /^ {4}at [\w$.<>[\] ]+ \((?:file:\/\/|node:|\/)[^\s()\p{C}]*:\d+:\d+\)$/u
 const LOCATION_FRAME =
@@ -48,10 +48,10 @@ function isFrame(line: string): boolean {
   )
 }
 
-// O nome lido do cabeçalho precisa ser o name atual inteiro, ou ele seguido do
-// código de um erro interno do Node. Um name ou code com quebra de linha
-// encerraria o nome lido antes do fim do cabeçalho, e as linhas seguintes dele
-// passariam por frames.
+// The name read from the header must be the whole current name, or that name
+// followed by the code of an internal Node error. A name or code with a line break
+// would end the name read before the end of the header, and the next lines of it
+// would pass as frames.
 function isCurrentName({ error, name }: NameCheck): boolean {
   const current: unknown = Reflect.get(error, 'name')
   if (typeof current !== 'string' || !SIMPLE_NAME.test(current)) return false
@@ -64,9 +64,9 @@ function isCurrentName({ error, name }: NameCheck): boolean {
   )
 }
 
-// Os frames só são lidos quando o stack começa pelo cabeçalho montado com o
-// name e a mensagem atuais: sem ele não há como saber onde a mensagem termina,
-// e uma linha dela poderia se passar por frame.
+// The frames are only read when the stack starts with the header built from the
+// current name and message: without it there is no way to know where the message
+// ends, and a line of it could pass as a frame.
 function stackFrames(error: Error): string[] {
   const stack: unknown = Reflect.get(error, 'stack')
   const message: unknown = Reflect.get(error, 'message')
@@ -82,8 +82,8 @@ function stackFrames(error: Error): string[] {
     .slice(0, MAX_FRAMES)
 }
 
-// Uma exceção na inspeção (getter que lança, Proxy hostil) descarta a classe e
-// os frames juntos: o log fica só com a linha fixa.
+// An exception during the inspection (a getter that throws, a hostile Proxy)
+// drops the class and the frames together: the log keeps only the fixed line.
 function errorDetails(error: unknown): string[] {
   try {
     if (!(error instanceof Error)) return []
@@ -100,24 +100,24 @@ export function logServerFailure({
   error,
   shouldPrintOriginal = false
 }: FailureLog): void {
-  // Linha fixa por origem: nunca inclua mensagem, cause ou propriedades do erro.
+  // Fixed line per source: never include the message, cause or properties of the error.
   const line = `[${source}] Unexpected failure; private details omitted`
   try {
     console.error([line, ...errorDetails(error)].join('\n'))
   } catch {
-    // A segunda tentativa não inspeciona o erro nem usa a falha do destino.
+    // The second attempt neither inspects the error nor uses the destination failure.
     try {
       console.error(line)
     } catch {
-      // Sem destino de log disponível.
+      // No log destination available.
     }
   }
-  // O erro original só sai no servidor de desenvolvimento, mesmo que um
-  // chamador o peça em produção.
+  // The original error only goes out on the development server, even if a caller
+  // asks for it in production.
   if (!shouldPrintOriginal || !import.meta.env.DEV) return
   try {
     console.error(error)
   } catch {
-    // A formatação do erro também pode lançar (getter ou Proxy).
+    // Formatting the error can also throw (a getter or a Proxy).
   }
 }

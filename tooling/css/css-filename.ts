@@ -21,11 +21,11 @@ export function cssFilenameError(file: string): string | undefined {
       basename.slice(0, -'.css'.length)
     )
       ? undefined
-      : 'Use nomeCamelCase.css dentro de src/theme/.'
+      : 'Use camelCaseName.css inside src/theme/.'
   }
   return basename === 'styles.module.css'
     ? undefined
-    : 'Use styles.module.css fora de src/theme/, inclusive nas rotas.'
+    : 'Use styles.module.css outside src/theme/, routes included.'
 }
 
 export const cssFilename = defineRule({

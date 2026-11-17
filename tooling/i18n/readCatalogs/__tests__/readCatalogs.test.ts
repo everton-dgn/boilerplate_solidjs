@@ -239,8 +239,8 @@ describe('colocated translations', () => {
     const valid = Buffer.byteLength(
       JSON.stringify({ home_hello: 'Hello {name}' })
     )
-    // Um diretório responde ao stat e falha na leitura: o erro do teto prova
-    // que a conferência veio antes de abrir o arquivo.
+    // A folder answers the stat and fails on the read: the limit error proves
+    // that the check came before opening the file.
     const unreadable = path.join(options.root, 'src/routes/Home/i18n/es.json')
     await rm(unreadable)
     await mkdir(path.join(unreadable, 'entry'), { recursive: true })

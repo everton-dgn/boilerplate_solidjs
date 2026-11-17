@@ -1,3 +1,3 @@
 export function UserLabel() {
-  return <span>Usuário</span>
+  return <span>User</span>
 }

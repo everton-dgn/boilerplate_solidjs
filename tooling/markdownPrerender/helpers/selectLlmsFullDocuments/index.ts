@@ -39,7 +39,7 @@ function classify({
   }
   if (url.origin !== origin) return { reason: 'external link' }
   if (ownPaths.has(path)) return undefined
-  // A query pertence à página renderizada na requisição, não ao arquivo.
+  // The query belongs to the page rendered on the request, not to the file.
   if (url.search) return { reason: 'URL with query, served on request' }
   if (!path.endsWith('.md')) return { reason: 'HTML page without Markdown' }
   if (!inventory.has(path)) return { reason: 'Markdown generated on request' }
@@ -48,10 +48,9 @@ function classify({
   return { document: { url: url.href, path } }
 }
 
-// Cada documento entra uma vez, na posição do primeiro link; fragmentos
-// apontam para o mesmo documento. Links que não levam a um `.md` estático
-// aprovado do idioma base ficam declarados como não incluídos, sem nenhuma
-// requisição.
+// Each document enters once, at the position of the first link; fragments point
+// to the same document. Links that do not lead to an approved static `.md` of the
+// base locale are declared as not included, without any request.
 export function selectLlmsFullDocuments({
   links,
   siteUrl,

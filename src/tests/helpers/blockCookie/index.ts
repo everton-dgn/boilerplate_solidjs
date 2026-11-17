@@ -2,8 +2,8 @@ function blocked(): never {
   throw new Error('blocked')
 }
 
-// afterEach roda antes de onTestFinished, então o teste restaura o acesso antes
-// do próprio teardown; o registro abaixo é só a rede de segurança.
+// afterEach runs before onTestFinished, so the test restores the access before
+// its own teardown; the registration below is only the safety net.
 export function blockCookie(): () => void {
   const original = Object.getOwnPropertyDescriptor(document, 'cookie')
   let isActive = true

@@ -6,7 +6,7 @@ const filtered: RouteDefinition = {
   matchFilters: { slug: /^ok$/u }
 }
 
-describe('rota efetiva do sitemap', () => {
+describe('effective sitemap route', () => {
   const matchRoute = matchSitemapRoute([
     {
       path: '/blog/:slug?',
@@ -17,17 +17,17 @@ describe('rota efetiva do sitemap', () => {
     { path: '/blog/static', page: true }
   ])
 
-  it('preserva a identidade original de parâmetro opcional', () => {
+  it('keeps the original identity of an optional parameter', () => {
     expect(matchRoute('/blog')).toBe('/blog/:slug?')
     expect(matchRoute('/blog/ok')).toBe('/blog/:slug?')
   })
 
-  it('aplica filtros e precedência da rota estática', () => {
+  it('applies filters and the precedence of the static route', () => {
     expect(matchRoute('/blog/rejeitado')).toBeUndefined()
     expect(matchRoute('/blog/static')).toBe('/blog/static')
   })
 
-  it('aceita Unicode e prefixo localizado', () => {
+  it('accepts Unicode and a localized prefix', () => {
     expect(matchRoute('/caf%C3%A9/post')).toBe('/café/:slug')
     expect(matchRoute('/pt/caf%C3%A9/post')).toBe('/café/:slug')
     expect(matchRoute('/pt/blog/ok')).toBe('/blog/:slug?')

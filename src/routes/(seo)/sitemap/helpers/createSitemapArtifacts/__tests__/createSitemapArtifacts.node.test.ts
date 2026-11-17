@@ -46,7 +46,7 @@ const STATED_SIZE = 10
 const UNSAFE_INTEGER = Number.MAX_SAFE_INTEGER + 1
 const FRACTION = 1.5
 const BUILD_ID_LIMIT = 64
-const SCHEMA_FAILURE = /^Invalid |^Manifesto incoerente$/u
+const SCHEMA_FAILURE = /^Invalid |^Inconsistent manifest$/u
 const IDENTITIES = JSON.stringify({ urls: ['https://a.test/en'], entries: [] })
 const directories: string[] = []
 
@@ -100,7 +100,7 @@ async function writeManifest(contents: string): Promise<string> {
   return directory
 }
 
-// O stat declara um tamanho, e a leitura entrega o que o arquivo tem depois.
+// The stat declares a size, and the read delivers what the file holds afterwards.
 async function useChangingFile(chunks: readonly number[]) {
   const directory = await artifactDirectory()
   const file = path.join(directory, SITEMAP_MANIFEST_FILE)
@@ -119,7 +119,7 @@ async function useChangingFile(chunks: readonly number[]) {
   return { handle, read }
 }
 
-describe('leitura limitada dos artefatos do sitemap', () => {
+describe('bounded read of the sitemap artifacts', () => {
   beforeEach(() => {
     vi.stubEnv('PUBLICATION_BUILD_ID', BUILD_ID)
   })
@@ -134,7 +134,7 @@ describe('leitura limitada dos artefatos do sitemap', () => {
     )
   })
 
-  it('devolve manifesto e identidades válidos, uma vez por instância', async () => {
+  it('returns a valid manifest and identities, once per instance', async () => {
     const directory = await writeManifest(JSON.stringify(arrayManifest()))
     await writeFile(path.join(directory, SITEMAP_IDENTITIES_FILE), IDENTITIES)
     const artifacts = createSitemapArtifacts()
@@ -145,21 +145,21 @@ describe('leitura limitada dos artefatos do sitemap', () => {
     expect(open).toHaveBeenCalledTimes(['manifest', 'identities'].length)
   })
 
-  it('recusa manifesto acima do teto sem ler o conteúdo', async () => {
+  it('refuses a manifest above the limit without reading the content', async () => {
     const directory = await writeManifest('')
     await truncate(
       path.join(directory, SITEMAP_MANIFEST_FILE),
       SITEMAP_MANIFEST_MAX_BYTES + 1
     )
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
-      'Artefato acima do limite'
+      'Artifact over the limit'
     )
   })
 
-  it('não aloca além do stat quando o arquivo cresce durante a leitura', async () => {
+  it('does not allocate beyond the stat when the file grows during the read', async () => {
     const { handle, read } = await useChangingFile([STATED_SIZE, 1])
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
-      'Artefato alterado na leitura'
+      'Artifact changed on read'
     )
     expect(read.mock.calls[0]?.[0]).toHaveLength(STATED_SIZE + 1)
     expect(read).toHaveBeenLastCalledWith(
@@ -171,15 +171,15 @@ describe('leitura limitada dos artefatos do sitemap', () => {
     expect(handle.fd).toBe(-1)
   })
 
-  it('recusa arquivo que encolhe durante a leitura', async () => {
+  it('refuses a file that shrinks during the read', async () => {
     const { handle } = await useChangingFile([STATED_SIZE - 1])
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
-      'Artefato alterado na leitura'
+      'Artifact changed on read'
     )
     expect(handle.fd).toBe(-1)
   })
 
-  it('recusa link simbólico no lugar do manifesto', async () => {
+  it('refuses a symbolic link in place of the manifest', async () => {
     const directory = await artifactDirectory()
     const target = path.join(directory, 'target.json')
     await writeFile(target, JSON.stringify(manifest()))
@@ -190,13 +190,13 @@ describe('leitura limitada dos artefatos do sitemap', () => {
   })
 
   it.each([
-    { name: 'JSON inválido', contents: '{', failure: /JSON/u },
+    { name: 'invalid JSON', contents: '{', failure: /JSON/u },
     {
-      name: 'UTF-8 inválido',
+      name: 'invalid UTF-8',
       contents: Buffer.from('7bff7d', 'hex'),
       failure: /encoded data was not valid/u
     }
-  ])('recusa manifesto com $name', async ({ contents, failure }) => {
+  ])('refuses a manifest with $name', async ({ contents, failure }) => {
     const directory = await artifactDirectory()
     await writeFile(path.join(directory, SITEMAP_MANIFEST_FILE), contents)
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
@@ -205,32 +205,32 @@ describe('leitura limitada dos artefatos do sitemap', () => {
   })
 
   it.each([
-    { name: 'contagem insegura', edit: { pagePartCount: UNSAFE_INTEGER } },
-    { name: 'contagem negativa', edit: { pagePartCount: -1 } },
-    { name: 'contagem fracionária', edit: { pagePartCount: FRACTION } },
+    { name: 'unsafe count', edit: { pagePartCount: UNSAFE_INTEGER } },
+    { name: 'negative count', edit: { pagePartCount: -1 } },
+    { name: 'fractional count', edit: { pagePartCount: FRACTION } },
     {
-      name: 'mais partes que o índice aceita',
+      name: 'more parts than the index accepts',
       edit: { pagePartCount: SITEMAP_URL_LIMIT + 1 }
     },
-    { name: 'orçamento zero', edit: { byteBudget: 0 } },
+    { name: 'zero budget', edit: { byteBudget: 0 } },
     {
-      name: 'orçamento acima do protocolo',
+      name: 'budget above the protocol',
       edit: { byteBudget: SITEMAP_BYTE_LIMIT + 1 }
     },
-    { name: 'partes faltando', edit: { partBytes: [PART_BYTES] } },
-    { name: 'parte vazia', edit: { partBytes: [PART_BYTES, 0] } },
+    { name: 'missing parts', edit: { partBytes: [PART_BYTES] } },
+    { name: 'empty part', edit: { partBytes: [PART_BYTES, 0] } },
     {
-      name: 'parte acima do orçamento',
+      name: 'part above the budget',
       edit: { partBytes: [PART_BYTES, BYTE_BUDGET + 1] }
     },
     {
-      name: 'raiz estática com fonte em array',
+      name: 'static root with an array source',
       edit: { hasArraySources: true }
     },
-    { name: 'raiz dinâmica sem fontes', edit: { isRootStatic: false } },
-    { name: 'build ausente', edit: { buildId: '' } },
-    { name: 'build longo', edit: { buildId: 'x'.repeat(BUILD_ID_LIMIT + 1) } }
-  ])('recusa manifesto com $name', async ({ edit }) => {
+    { name: 'dynamic root without sources', edit: { isRootStatic: false } },
+    { name: 'missing build', edit: { buildId: '' } },
+    { name: 'long build', edit: { buildId: 'x'.repeat(BUILD_ID_LIMIT + 1) } }
+  ])('refuses a manifest with $name', async ({ edit }) => {
     await writeManifest(JSON.stringify(manifest(edit)))
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
       SCHEMA_FAILURE
@@ -238,16 +238,16 @@ describe('leitura limitada dos artefatos do sitemap', () => {
   })
 
   it.each([
-    { name: 'caminho arbitrário', edit: { file: '../../secret.json' } },
-    { name: 'outro nome', edit: { file: 'other.json' } },
+    { name: 'arbitrary path', edit: { file: '../../secret.json' } },
+    { name: 'another name', edit: { file: 'other.json' } },
     {
-      name: 'tamanho acima do orçamento',
+      name: 'size above the budget',
       edit: { bytes: SITEMAP_IDENTITIES_MAX_BYTES + 1 }
     },
-    { name: 'tamanho inseguro', edit: { bytes: UNSAFE_INTEGER } },
-    { name: 'tamanho zero', edit: { bytes: 0 } },
-    { name: 'hash malformado', edit: { sha256: 'x' } }
-  ])('recusa identidades com $name sem abri-las', async ({ edit }) => {
+    { name: 'unsafe size', edit: { bytes: UNSAFE_INTEGER } },
+    { name: 'zero size', edit: { bytes: 0 } },
+    { name: 'malformed hash', edit: { sha256: 'x' } }
+  ])('refuses identities with $name without opening them', async ({ edit }) => {
     await writeManifest(JSON.stringify(arrayManifest(edit)))
     await expect(createSitemapArtifacts().readIdentities()).rejects.toThrow(
       SCHEMA_FAILURE
@@ -255,37 +255,37 @@ describe('leitura limitada dos artefatos do sitemap', () => {
     expect(open).toHaveBeenCalledOnce()
   })
 
-  it('recusa fonte em array sem referência às identidades', async () => {
+  it('refuses an array source without a reference to the identities', async () => {
     await writeManifest(
       JSON.stringify({ ...arrayManifest(), identities: null })
     )
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
-      'Manifesto incoerente'
+      'Inconsistent manifest'
     )
   })
 
-  it('recusa identidades maiores que o declarado antes de carregá-las', async () => {
+  it('refuses identities larger than declared before loading them', async () => {
     const directory = await writeManifest(JSON.stringify(arrayManifest()))
     const file = path.join(directory, SITEMAP_IDENTITIES_FILE)
     await writeFile(file, IDENTITIES)
     await truncate(file, SITEMAP_IDENTITIES_MAX_BYTES + 1)
     await expect(createSitemapArtifacts().readIdentities()).rejects.toThrow(
-      'Artefato acima do limite'
+      'Artifact over the limit'
     )
   })
 
-  it('recusa identidades menores, trocadas ou corrompidas', async () => {
+  it('refuses smaller, swapped or corrupted identities', async () => {
     const corrupted = 'not json'
     const cases = [
       {
         contents: IDENTITIES.slice(1),
         edit: {},
-        failure: 'Identidades de outra geração'
+        failure: 'Identities from another generation'
       },
       {
         contents: IDENTITIES.replace('/en', '/pt'),
         edit: {},
-        failure: 'Identidades de outra geração'
+        failure: 'Identities from another generation'
       },
       {
         contents: corrupted,
@@ -305,10 +305,10 @@ describe('leitura limitada dos artefatos do sitemap', () => {
     }
   })
 
-  it('compara o build com o valor do bundle, nunca com o do manifesto', async () => {
+  it('compares the build with the value of the bundle, never with the one of the manifest', async () => {
     await writeManifest(JSON.stringify(manifest({ buildId: 'other-build' })))
     await expect(createSitemapArtifacts().readManifest()).rejects.toThrow(
-      'Manifesto de outro build'
+      'Manifest from another build'
     )
     vi.stubEnv('PUBLICATION_BUILD_ID', 'other-build')
     await expect(
@@ -316,7 +316,7 @@ describe('leitura limitada dos artefatos do sitemap', () => {
     ).resolves.toMatchObject({ buildId: 'other-build' })
   })
 
-  it('não guarda a falha: um pedido seguinte volta a ler', async () => {
+  it('does not keep the failure: a later request reads again', async () => {
     const directory = await writeManifest('{')
     const artifacts = createSitemapArtifacts()
     await expect(artifacts.readManifest()).rejects.toThrow('JSON')

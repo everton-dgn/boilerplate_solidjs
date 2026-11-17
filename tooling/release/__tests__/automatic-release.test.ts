@@ -89,7 +89,7 @@ describe(
         await f.patch({ hasWrongTag: true })
         await assert.rejects(f.run('publish'), /another commit/u)
       } finally {
-        // As fixtures contêm só dados sintéticos e ficam no diretório temporário do sistema.
+        // The fixtures carry only synthetic data and stay in the temporary folder of the system.
         assert.ok(f.directory.startsWith(tmpdir()))
       }
     })
@@ -131,7 +131,7 @@ describe(
           false
         )
       } finally {
-        // As fixtures contêm só dados sintéticos e ficam no diretório temporário do sistema.
+        // The fixtures carry only synthetic data and stay in the temporary folder of the system.
         assert.ok(f.directory.startsWith(tmpdir()))
       }
     })

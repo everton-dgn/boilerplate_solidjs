@@ -2,14 +2,16 @@ import { expect, test } from '@playwright/test'
 
 test.use({ locale: 'pt-BR' })
 
-test.describe('cores no HTML inicial', () => {
+test.describe('colors in the initial HTML', () => {
   test.use({ javaScriptEnabled: false })
 
   for (const colorScheme of ['light', 'dark'] as const) {
-    test.describe(`sistema ${colorScheme}`, () => {
+    test.describe(`${colorScheme} system`, () => {
       test.use({ colorScheme })
 
-      test(`CSS inicial segue o sistema ${colorScheme}`, async ({ page }) => {
+      test(`initial CSS follows the ${colorScheme} system`, async ({
+        page
+      }) => {
         await page.goto('/')
         await expect(page.locator('html')).not.toHaveClass(/light|dark/u)
         await expect(page.locator('body')).toHaveCSS(
@@ -27,7 +29,7 @@ test.describe('cores no HTML inicial', () => {
     test.describe(`cookie ${theme}`, () => {
       test.use({ colorScheme: theme === 'light' ? 'dark' : 'light' })
 
-      test(`SSR aplica cookie ${theme} contra o sistema antes da hidratação`, async ({
+      test(`SSR applies the ${theme} cookie against the system before the hydration`, async ({
         page,
         context,
         baseURL
@@ -52,7 +54,7 @@ test.describe('cores no HTML inicial', () => {
   }
 })
 
-test('escolha explícita altera as cores computadas e prevalece sobre o sistema', async ({
+test('an explicit choice changes the computed colors and wins over the system', async ({
   page
 }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
@@ -71,7 +73,9 @@ test('escolha explícita altera as cores computadas e prevalece sobre o sistema'
   )
 })
 
-test('preserva foco visível no menu em alto contraste', async ({ page }) => {
+test('keeps the visible focus in the menu in high contrast', async ({
+  page
+}) => {
   await page.emulateMedia({ forcedColors: 'active' })
   await page.goto('/')
   await page.getByRole('button', { name: 'Selecionar tema' }).click()

@@ -35,8 +35,8 @@ async function scanBuildIds({
 
 test.use({ javaScriptEnabled: false })
 
-// O preview recusa caminhos com segmento iniciado por ponto, mas o CDN da
-// Vercel serve o que estiver no estático; só o artefato prova a ausência.
+// The preview refuses paths with a segment that starts with a dot, but the Vercel
+// CDN serves whatever is in the static output; only the artifact proves the absence.
 test('keeps the Vite metadata out of the published static output', async () => {
   const published = await readdir(STATIC_OUTPUT, { recursive: true })
   expect(

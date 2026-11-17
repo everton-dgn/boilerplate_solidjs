@@ -21,14 +21,14 @@ const EXPECTED_HEADERS = {
   'cross-origin-resource-policy': 'same-origin'
 }
 
-// applySecurityHeaders lê o nonce do evento da requisição.
+// applySecurityHeaders reads the nonce from the request event.
 function applyInRequest(response: Response): Response {
   const event: RequestEvent = createRequestEvent(new Request(TEST_ORIGIN))
   event.nonce = NONCE
   return provideRequestEvent(event, () => applySecurityHeaders(response))
 }
 
-// Diretivas da CSP por nome, sem depender da ordem.
+// CSP directives by name, without depending on the order.
 function directives(response: Response): Record<string, string> {
   const policy = response.headers.get('content-security-policy') ?? ''
   return Object.fromEntries(
@@ -39,21 +39,21 @@ function directives(response: Response): Record<string, string> {
   )
 }
 
-describe('cabeçalhos de segurança da resposta', () => {
+describe('response security headers', () => {
   beforeEach(() => {
-    // A CSP só sai nos builds de produção; o Vitest roda com DEV.
+    // The CSP only goes out in production builds; Vitest runs with DEV.
     vi.stubEnv('DEV', false)
   })
 
-  it('grava os cabeçalhos de segurança', () => {
-    const response = applyInRequest(new Response('conteúdo'))
+  it('writes the security headers', () => {
+    const response = applyInRequest(new Response('content'))
 
     expect(Object.fromEntries(response.headers)).toMatchObject(EXPECTED_HEADERS)
   })
 
-  it('monta a CSP com o nonce e strict-dynamic, sem unsafe-inline em scripts e estilos', () => {
+  it('builds the CSP with the nonce and strict-dynamic, without unsafe-inline in scripts and styles', () => {
     const response = applyInRequest(
-      new Response('<main>conteúdo</main>', { headers: HTML_HEADERS })
+      new Response('<main>content</main>', { headers: HTML_HEADERS })
     )
 
     expect(directives(response)).toStrictEqual({
@@ -67,21 +67,21 @@ describe('cabeçalhos de segurança da resposta', () => {
     })
   })
 
-  it('bloqueia todos os scripts quando o nonce de scripts está desativado', () => {
+  it('blocks every script when the script nonce is disabled', () => {
     const event: RequestEvent = createRequestEvent(new Request(TEST_ORIGIN))
     event.nonce = { script: false, style: false }
 
     const response = provideRequestEvent(event, () =>
       applySecurityHeaders(
-        new Response('<main>conteúdo</main>', { headers: HTML_HEADERS })
+        new Response('<main>content</main>', { headers: HTML_HEADERS })
       )
     )
 
     expect(directives(response)['script-src']).toBe("'none'")
   })
 
-  // sitemap.xml, robots.txt e llms.txt têm s-maxage: um nonce na CSP ficaria
-  // guardado no cache compartilhado.
+  // sitemap.xml, robots.txt and llms.txt have s-maxage: a nonce in the CSP would
+  // stay in the shared cache.
   it.each([
     'text/plain; charset=utf-8',
     'application/xml; charset=utf-8',
@@ -89,18 +89,18 @@ describe('cabeçalhos de segurança da resposta', () => {
     'application/json',
     'text/html-sandboxed',
     'application/json; profile=text/html'
-  ])('bloqueia scripts em resposta %s mesmo com nonce', contentType => {
+  ])('blocks scripts in a %s response even with a nonce', contentType => {
     const response = applyInRequest(
-      new Response('conteúdo', { headers: { 'content-type': contentType } })
+      new Response('content', { headers: { 'content-type': contentType } })
     )
 
     expect(directives(response)['script-src']).toBe("'none'")
     expect(response.headers.get('content-security-policy')).not.toContain(NONCE)
   })
 
-  it('reconhece o content-type HTML sem diferenciar maiúsculas', () => {
+  it('recognizes the HTML content-type case-insensitively', () => {
     const response = applyInRequest(
-      new Response('<main>conteúdo</main>', {
+      new Response('<main>content</main>', {
         headers: { 'content-type': 'Text/HTML; charset=UTF-8' }
       })
     )
@@ -110,18 +110,18 @@ describe('cabeçalhos de segurança da resposta', () => {
     )
   })
 
-  it('omite a CSP em desenvolvimento e mantém os demais cabeçalhos', () => {
+  it('leaves out the CSP in development and keeps the other headers', () => {
     vi.stubEnv('DEV', true)
 
-    const response = applyInRequest(new Response('conteúdo'))
+    const response = applyInRequest(new Response('content'))
 
     expect(response.headers.has('content-security-policy')).toBe(false)
     expect(Object.fromEntries(response.headers)).toMatchObject(EXPECTED_HEADERS)
   })
 
-  // Response.redirect() chega com headers imutáveis e sem corpo. Sem
-  // documento, o redirect não executa scripts.
-  it('grava os cabeçalhos e a CSP numa cópia de um redirect', () => {
+  // Response.redirect() arrives with immutable headers and without a body.
+  // Without a document, the redirect runs no scripts.
+  it('writes the headers and the CSP on a copy of a redirect', () => {
     const response = applyInRequest(
       Response.redirect(new URL('/destino', TEST_ORIGIN), HTTP_FOUND)
     )
@@ -138,7 +138,7 @@ describe('cabeçalhos de segurança da resposta', () => {
     expect(directives(response)['script-src']).toBe("'none'")
   })
 
-  it('preserva o status do redirect quando o adaptador Node materializa o corpo', async () => {
+  it('keeps the redirect status when the Node adapter builds the body', async () => {
     const require = createRequire(import.meta.url)
     const adapterPath = require.resolve('srvx/node', {
       paths: [require.resolve('nitro')]
@@ -170,14 +170,14 @@ describe('cabeçalhos de segurança da resposta', () => {
   })
 })
 
-describe('cabeçalhos de segurança', () => {
+describe('security headers', () => {
   beforeEach(() => {
-    // A CSP só sai nos builds de produção; o Vitest roda com DEV.
+    // The CSP only goes out in production builds; Vitest runs with DEV.
     vi.stubEnv('DEV', false)
   })
 
-  it('adiciona os cabeçalhos de segurança à resposta', async () => {
-    const response = new Response('conteúdo')
+  it('adds the security headers to the response', async () => {
+    const response = new Response('content')
     const next = vi.fn<() => Promise<Response>>().mockResolvedValue(response)
 
     await expect(securityHeaders(new Request(TEST_ORIGIN), next)).resolves.toBe(
@@ -190,14 +190,14 @@ describe('cabeçalhos de segurança', () => {
     expect(next).toHaveBeenCalledExactlyOnceWith()
   })
 
-  // O render lê o nonce do evento; ele precisa existir quando next() roda.
-  it('cria o nonce antes do render e o usa na CSP', async () => {
+  // The render reads the nonce from the event; it must exist when next() runs.
+  it('creates the nonce before the render and uses it in the CSP', async () => {
     const event: RequestEvent = createRequestEvent(new Request(TEST_ORIGIN))
     let seen: unknown
     const next = vi.fn<() => Promise<Response>>().mockImplementation(() => {
       seen = event.nonce
       return Promise.resolve(
-        new Response('<main>página</main>', {
+        new Response('<main>page</main>', {
           headers: { 'content-type': 'text/html; charset=utf-8' }
         })
       )

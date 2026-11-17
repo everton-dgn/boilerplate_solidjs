@@ -4,8 +4,8 @@ import { walkStaticRoutes } from '@/helpers/walkStaticRoutes/index.ts'
 import type { StaticRoute } from '@/helpers/walkStaticRoutes/types.ts'
 import { localizeHref } from '@/i18n/urls/index.ts'
 
-// Rotas com parâmetro ficam fora: o build não conhece seus valores e elas
-// continuam convertidas na requisição.
+// Routes with a parameter stay out: the build does not know their values, and
+// they are still converted on the request.
 export function collectStaticMarkdownPages(
   routes: readonly StaticRoute[]
 ): string[] {

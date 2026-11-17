@@ -1,7 +1,7 @@
 import { hasMarkdownOptIn, isMarkdownRoute, markdownPath } from '../index.ts'
 
-describe('markdown derivado do HTML', () => {
-  it('exige opt-in na folha e SEO indexável', () => {
+describe('markdown derived from the HTML', () => {
+  it('requires the opt-in on the leaf and an indexable SEO', () => {
     expect(isMarkdownRoute([{ markdown: true }, {}])).toBe(false)
     expect(
       isMarkdownRoute([{ seo: { noindex: true } }, { markdown: true }])
@@ -17,7 +17,7 @@ describe('markdown derivado do HTML', () => {
     )
   })
 
-  it('publica páginas dinâmicas pela mesma regra de SEO', () => {
+  it('publishes dynamic pages through the same SEO rule', () => {
     expect(isMarkdownRoute([{ markdown: 'dynamic' }])).toBe(true)
     expect(
       isMarkdownRoute([{ markdown: 'dynamic', seo: { noindex: true } }])
@@ -25,7 +25,7 @@ describe('markdown derivado do HTML', () => {
     expect(isMarkdownRoute([{ markdown: false }])).toBe(false)
   })
 
-  it('lê o opt-in da folha sem resolver o SEO', () => {
+  it('reads the opt-in of the leaf without resolving the SEO', () => {
     expect(hasMarkdownOptIn([{ markdown: true, seo: { noindex: true } }])).toBe(
       true
     )
@@ -48,7 +48,7 @@ describe('markdown derivado do HTML', () => {
     ['/pt/index/index', '/pt/index/index/index.md'],
     ['/es/about', '/es/about.md'],
     ['/pt/blog/article', '/pt/blog/article.md']
-  ])('mapeia %s para %s', (path, expected) => {
+  ])('maps %s to %s', (path, expected) => {
     expect(markdownPath(path)).toBe(expected)
   })
 })

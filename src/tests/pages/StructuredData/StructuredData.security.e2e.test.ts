@@ -11,16 +11,16 @@ const QUESTION = v.object({ acceptedAnswer: ANSWER })
 const FAQ = v.object({ mainEntity: v.array(QUESTION) })
 
 for (const javaScriptEnabled of [false, true]) {
-  test.describe(`JSON-LD inicial com JavaScript ${javaScriptEnabled ? 'ativado' : 'desativado'}`, () => {
+  test.describe(`initial JSON-LD with JavaScript ${javaScriptEnabled ? 'enabled' : 'disabled'}`, () => {
     test.use({ javaScriptEnabled, locale: 'pt-BR' })
 
-    test('preserva HTML malicioso como dados no grafo base e no JSON da página', async ({
+    test('keeps malicious HTML as data in the base graph and in the JSON of the page', async ({
       page,
       cspViolations
     }) => {
       await page.goto('/structured-data')
       await expect(
-        page.getByRole('heading', { name: 'Perguntas frequentes' })
+        page.getByRole('heading', { name: 'Frequently asked questions' })
       ).toBeVisible()
       const scripts = page.locator(`head ${JSON_LD}`)
       await expect(scripts).toHaveCount(EXPECTED_SCRIPTS)

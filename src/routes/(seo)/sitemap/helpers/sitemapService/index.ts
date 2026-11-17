@@ -43,7 +43,7 @@ function validateBudget(byteBudget: number): void {
     byteBudget < 1 ||
     byteBudget > SITEMAP_BYTE_LIMIT
   ) {
-    throw new Error('Orçamento inválido')
+    throw new Error('Invalid budget')
   }
 }
 
@@ -113,8 +113,8 @@ async function respondSource({
 }: PartResponseOptions): Promise<Response> {
   const { sources, source: sourceId, part } = options
   if (sources.length === 0) return errorResponse(HTTP_NOT_FOUND)
-  // Um ID maior que a URL do índice nunca é publicado; recusar aqui evita
-  // ocupar vaga e chegar à fonte.
+  // An ID longer than the URL of the index is never published; refusing here
+  // avoids taking a slot and reaching the source.
   if (part.length > SITEMAP_LOC_LIMIT || !SOURCE_ID_PATTERN.test(part)) {
     return errorResponse(HTTP_NOT_FOUND)
   }
@@ -150,7 +150,7 @@ export async function buildSitemapIndexResponse(
     validateBudget(byteBudget)
     const catalog = createCatalog({ options, byteBudget })
     const { partCount, isFileRoot } = await catalog.readSummary()
-    if (isFileRoot) throw new Error('Raiz estática fora da camada de arquivos')
+    if (isFileRoot) throw new Error('Static root outside the file layer')
     const hasArraySources = await catalog.readHasArraySources()
     if (partCount === 0 && !hasArraySources && sources.length === 0) {
       return errorResponse(HTTP_NOT_FOUND)
@@ -198,8 +198,8 @@ export async function buildSitemapPartResponse(
   }
 }
 
-// Resposta do prerender: o build grava as partes e monta os artefatos da função
-// a partir daqui, sem consultar fontes dinâmicas.
+// Prerender response: the build writes the parts and builds the function
+// artifacts from here, without reading dynamic sources.
 export async function buildSitemapInventoryResponse(
   options: InventoryOptions
 ): Promise<Response> {

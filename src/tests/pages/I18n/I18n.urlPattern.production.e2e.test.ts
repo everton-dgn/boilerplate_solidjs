@@ -30,15 +30,15 @@ async function loadHome(page: Page): Promise<LoadedPage> {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'SolidJS Boilerplate para aplicações web'
   )
-  // A cópia encerra a coleta no mesmo ponto nas duas páginas.
+  // The copy ends the collection at the same point on both pages.
   return {
     scripts: new Set(scripts),
     urlPattern: await readUrlPatternKind(page)
   }
 }
 
-// O target do build inclui navegadores sem a API (docs/i18n.md); o Chromium
-// simula esse caminho removendo o global.
+// The build target includes browsers without the API (docs/i18n.md); Chromium
+// simulates that path by removing the global.
 test('loads the URLPattern polyfill only without the native API and keeps the localized navigation', async ({
   browser,
   page,

@@ -4,7 +4,7 @@ function withVary(vary: string | undefined): Response {
   return new Response(null, vary === undefined ? {} : { headers: { vary } })
 }
 
-describe('acréscimo de campos ao Vary', () => {
+describe('adding fields to Vary', () => {
   it.each([
     [undefined, 'Accept', 'Accept'],
     ['', 'Accept', 'Accept'],
@@ -17,7 +17,7 @@ describe('acréscimo de campos ao Vary', () => {
     ['*', 'Accept', '*'],
     ['Cookie, *', 'Accept', 'Cookie, *'],
     ['Accept-Language', 'Language', 'Accept-Language, Language']
-  ])('com Vary %j e campo %s resulta em %j', (vary, field, expected) => {
+  ])('with Vary %j and field %s results in %j', (vary, field, expected) => {
     const response = withVary(vary)
 
     expect(appendVary({ response, field })).toBe(response)

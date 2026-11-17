@@ -63,7 +63,7 @@ function source(): SitemapPartitionSource {
   }
 }
 
-describe('validação do registro e dos limites', () => {
+describe('registry and limit validation', () => {
   beforeEach(() => {
     vi.stubEnv('DEV', false)
     vi.spyOn(console, 'error').mockReturnValue()
@@ -74,7 +74,7 @@ describe('validação do registro e dos limites', () => {
     vi.restoreAllMocks()
   })
 
-  it('aplica o teto de bytes independentemente do limite de registros da fonte', async () => {
+  it('applies the byte limit regardless of the record limit of the source', async () => {
     const entries = [{ path: '/blog/a' }]
     const xml = buildSitemap({ entries, siteUrl })
     const bytes = new TextEncoder().encode(xml).byteLength
@@ -123,7 +123,7 @@ describe('validação do registro e dos limites', () => {
     { id: 'pages', routePath: '/blog/:slug' },
     { id: 'array', routePath: '/blog/:slug' },
     { id: 'blog', routePath: '/absent/:slug' }
-  ])('recusa registro inválido $id', async invalid => {
+  ])('refuses the invalid registry $id', async invalid => {
     const response = await buildSitemapIndexResponse({
       manifest,
       sources: [{ ...source(), ...invalid }],
@@ -135,7 +135,7 @@ describe('validação do registro e dos limites', () => {
     expect(response.headers.get('cache-control')).toBe('no-store')
   })
 
-  it('recusa IDs duplicados e duas fontes da mesma rota', async () => {
+  it('refuses duplicated IDs and two sources of the same route', async () => {
     const duplicate = await buildSitemapIndexResponse({
       manifest,
       sources: [source(), source()],
@@ -154,7 +154,7 @@ describe('validação do registro e dos limites', () => {
     expect(sameRoute.status).toBe(HTTP_SERVICE_UNAVAILABLE)
   })
 
-  it('recusa fonte particionada na mesma rota de uma fonte em array', async () => {
+  it('refuses a partitioned source on the same route as an array source', async () => {
     const response = await buildSitemapIndexResponse({
       manifest: { ...manifest, sourceRoutes: ['/blog/:slug'] },
       sources: [source()],
@@ -165,7 +165,7 @@ describe('validação do registro e dos limites', () => {
     expect(response.status).toBe(HTTP_SERVICE_UNAVAILABLE)
   })
 
-  it('recusa partições duplicadas, reservadas e índice excessivo', async () => {
+  it('refuses duplicated and reserved partitions and an oversized index', async () => {
     for (const ids of [
       ['a', 'a'],
       ['bad/id'],
@@ -182,7 +182,7 @@ describe('validação do registro e dos limites', () => {
     }
   })
 
-  it('recusa duplicata pela URL localizada, schema inválido e loc longo', async () => {
+  it('refuses a duplicate by the localized URL, an invalid schema and a long loc', async () => {
     const malformed: SitemapEntry = { path: '/blog/a' }
     Reflect.set(malformed, 'path', INVALID_PATH_VALUE)
     const cases: readonly SitemapEntry[][] = [
@@ -209,7 +209,7 @@ describe('validação do registro e dos limites', () => {
     }
   })
 
-  it('aceita loc no limite e recusa um caractere acima, inclusive no índice', async () => {
+  it('accepts a loc at the limit and refuses one character above, in the index too', async () => {
     const base = `${siteUrl}/pt/blog/`
     const exactPath = `/blog/${'x'.repeat(SITEMAP_LOC_LIMIT - base.length)}`
     const accepted = await buildSitemapPartResponse({
@@ -269,7 +269,7 @@ describe('validação do registro e dos limites', () => {
   })
 })
 
-describe('compatibilidade e ciclo de vida das fontes', () => {
+describe('source compatibility and lifecycle', () => {
   beforeEach(() => {
     vi.stubEnv('DEV', false)
     vi.spyOn(console, 'error').mockReturnValue()
@@ -280,7 +280,7 @@ describe('compatibilidade e ciclo de vida das fontes', () => {
     vi.restoreAllMocks()
   })
 
-  it('preserva a primeira entrada da fonte em array e rejeita rota errada', async () => {
+  it('keeps the first entry of the array source and rejects a wrong route', async () => {
     const routeManifest = {
       ...manifest,
       sources: [() => [{ path: '/blog/a' }, { path: '/pt/blog/a' }]],
@@ -308,7 +308,7 @@ describe('compatibilidade e ciclo de vida das fontes', () => {
     expect(wrong.status).toBe(HTTP_SERVICE_UNAVAILABLE)
   })
 
-  it('head preserva status e cabeçalhos sem corpo; parte vazia é 404', async () => {
+  it('head keeps the status and the headers without a body; an empty part is 404', async () => {
     const options = {
       manifest,
       sources: [source()],
@@ -334,7 +334,7 @@ describe('compatibilidade e ciclo de vida das fontes', () => {
     expect(empty.status).toBe(HTTP_NOT_FOUND)
   })
 
-  it('não inicia fonte quando sinal já foi abortado', async () => {
+  it('does not start a source when the signal was already aborted', async () => {
     const readPartition = vi.fn<SitemapPartitionSource['readPartition']>(() =>
       Promise.resolve([])
     )
@@ -352,7 +352,7 @@ describe('compatibilidade e ciclo de vida das fontes', () => {
     expect(readPartition).not.toHaveBeenCalled()
   })
 
-  it('compila o registro uma vez por contexto imutável', async () => {
+  it('compiles the registry once per immutable context', async () => {
     let reads = 0
     const context = {
       ...manifest,
@@ -380,7 +380,7 @@ describe('compatibilidade e ciclo de vida das fontes', () => {
   })
 })
 
-describe('prazo e cancelamento das fontes', () => {
+describe('source deadline and cancellation', () => {
   beforeEach(() => {
     vi.stubEnv('DEV', false)
     vi.spyOn(console, 'error').mockReturnValue()
@@ -391,7 +391,7 @@ describe('prazo e cancelamento das fontes', () => {
     vi.restoreAllMocks()
   })
 
-  it('compartilha o prazo entre leitura em array e lista de partições', async () => {
+  it('shares the deadline between the array read and the partition list', async () => {
     vi.useFakeTimers()
     const arrayRead = Promise.withResolvers<SitemapEntry[]>()
     const partitions = Promise.withResolvers<string[]>()
@@ -428,11 +428,11 @@ describe('prazo e cancelamento das fontes', () => {
     await vi.advanceTimersByTimeAsync(1)
     const response = await pending
     expect(response.status).toBe(HTTP_SERVICE_UNAVAILABLE)
-    partitions.reject(new Error('Rejeição depois do prazo compartilhado'))
+    partitions.reject(new Error('Rejection after the shared deadline'))
     await vi.advanceTimersByTimeAsync(0)
   })
 
-  it('encerra a espera na desconexão e aborta o sinal repassado', async () => {
+  it('ends the wait on disconnection and aborts the forwarded signal', async () => {
     const request = new AbortController()
     const received = Promise.withResolvers<AbortSignal>()
     const selected = {
@@ -461,7 +461,7 @@ describe('prazo e cancelamento das fontes', () => {
     expect(sourceSignal.aborted).toBe(true)
   })
 
-  it('absorve rejeição tardia e exceção síncrona sem deixar promise solta', async () => {
+  it('absorbs a late rejection and a sync exception without leaving a loose promise', async () => {
     vi.useFakeTimers()
     const work = Promise.withResolvers<SitemapEntry[]>()
     const selected = { ...source(), readPartition: () => work.promise }
@@ -478,12 +478,12 @@ describe('prazo e cancelamento das fontes', () => {
     await vi.advanceTimersByTimeAsync(SITEMAP_SOURCES_TIMEOUT_MS)
     const timedOut = await pending
     expect(timedOut.status).toBe(HTTP_SERVICE_UNAVAILABLE)
-    work.reject(new Error('Tardia'))
+    work.reject(new Error('Late'))
     await vi.advanceTimersByTimeAsync(0)
     const thrown = {
       ...source(),
       listPartitions: () => {
-        throw new Error('Síncrona')
+        throw new Error('Synchronous')
       }
     }
     const response = await buildSitemapIndexResponse({
@@ -496,7 +496,7 @@ describe('prazo e cancelamento das fontes', () => {
     expect(response.status).toBe(HTTP_SERVICE_UNAVAILABLE)
   })
 
-  it('usa prazo total para várias fontes e não chama a seguinte após abort', async () => {
+  it('uses a total deadline for several sources and does not call the next one after an abort', async () => {
     vi.useFakeTimers()
     const next = vi.fn<() => Promise<string[]>>(() => Promise.resolve(['b']))
     const first = {

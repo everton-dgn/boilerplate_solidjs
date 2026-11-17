@@ -14,7 +14,7 @@ function Redirected(props: RedirectedProps) {
 
 export const route = {
   info: {
-    seo: { title: 'Redirect depois do shell', noindex: true },
+    seo: { title: 'Redirect after the shell', noindex: true },
     llms: { optional: true }
   }
 } satisfies RouteDefinition
@@ -23,8 +23,8 @@ export default function LateRedirect() {
   const [params] = useSearchParams()
   return (
     <main>
-      <h1>Redirect depois do shell</h1>
-      <Loading fallback={<p>Carregando...</p>}>
+      <h1>Redirect after the shell</h1>
+      <Loading fallback={<p>Loading...</p>}>
         <Redirected id={String(params.id)} />
       </Loading>
     </main>

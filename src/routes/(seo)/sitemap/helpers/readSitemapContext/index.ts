@@ -21,9 +21,9 @@ function createContext(): SitemapContext {
     : readRoutes()
 }
 
-// Todos os handlers precisam da mesma identidade para reutilizar a preparação
-// estática. Em produção, o percurso das rotas só acontece quando o pedido
-// precisa de fontes dinâmicas, que continuam consultadas por requisição.
+// Every handler needs the same identity to reuse the static preparation. In
+// production, the route walk only happens when the request needs dynamic sources,
+// which are still read per request.
 export const readSitemapContext = memoizeOnce({
   isEnabled: import.meta.env.PROD,
   render: createContext

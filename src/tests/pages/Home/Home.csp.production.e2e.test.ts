@@ -6,8 +6,8 @@ import { expect, test } from '@/tests/helpers/pageWatchers/index.ts'
 test.use({ locale: 'pt-BR' })
 
 const HTTP_OK = 200
-// Script inline do tema, HydrationScript e entrada do cliente; os scripts de
-// dados do runtime vêm além deles.
+// Inline theme script, HydrationScript and the client entry; the data scripts of
+// the runtime come on top of them.
 const DOCUMENT_SCRIPTS = 3
 const NONCE_FORMAT = /^[A-Za-z0-9+/]{22}==$/u
 const SCRIPT_SRC = /^script-src 'nonce-(?<nonce>[^']+)' 'strict-dynamic'$/u
@@ -20,8 +20,8 @@ function directives(policy: string): string[] {
   return policy.split('; ')
 }
 
-// Lê o documento bruto: depois que a CSP vale, o Chromium esconde o atributo
-// nonce do DOM, então a conferência dos scripts é feita no HTML recebido.
+// Reads the raw document: once the CSP applies, Chromium hides the nonce
+// attribute from the DOM, so the scripts are checked in the received HTML.
 async function readCspDocument(
   request: APIRequestContext
 ): Promise<CspDocument> {
@@ -32,12 +32,12 @@ async function readCspDocument(
     directive.startsWith('script-src ')
   )
   const nonce = SCRIPT_SRC.exec(scriptSrc ?? '')?.groups?.nonce
-  if (!nonce) throw new Error('A CSP da Home não trouxe o nonce dos scripts')
+  if (!nonce) throw new Error('The Home CSP did not carry the script nonce')
   return { nonce, html: await response.text() }
 }
 
-test.describe('CSP com nonce na entrada de produção', () => {
-  test('grava o nonce da CSP em todos os scripts e modulepreload do HTML', async ({
+test.describe('CSP with a nonce on the production entry', () => {
+  test('writes the CSP nonce on every script and modulepreload of the HTML', async ({
     request
   }) => {
     const { nonce, html } = await readCspDocument(request)
@@ -49,13 +49,13 @@ test.describe('CSP com nonce na entrada de produção', () => {
     for (const tag of [...scripts, ...preloads]) {
       expect(tag).toContain(`nonce="${nonce}"`)
     }
-    // O caminho literal do Document vira o asset com hash no build.
+    // The literal path of Document becomes the hashed asset in the build.
     expect(html).toMatch(/<script type="module" src="\/assets\/[^"]+\.js"/u)
-    // Handlers em atributos on*= não aceitam nonce e seriam bloqueados.
+    // Handlers in on*= attributes do not accept a nonce and would be blocked.
     expect(html).not.toMatch(/<[a-z][^>]*\son[a-z]+=/iu)
   })
 
-  test('troca o nonce a cada requisição', async ({ request }) => {
+  test('changes the nonce on each request', async ({ request }) => {
     const first = await readCspDocument(request)
     const second = await readCspDocument(request)
 
@@ -64,7 +64,7 @@ test.describe('CSP com nonce na entrada de produção', () => {
     expect(second.nonce).not.toBe(first.nonce)
   })
 
-  test('mantém as demais diretivas, sem unsafe-inline em scripts e estilos', async ({
+  test('keeps the other directives, without unsafe-inline in scripts and styles', async ({
     request
   }) => {
     const response = await request.get('/')
@@ -87,7 +87,7 @@ test.describe('CSP com nonce na entrada de produção', () => {
     ])
   })
 
-  test('hidrata a Home sem violação de CSP', async ({
+  test('hydrates the Home without a CSP violation', async ({
     page,
     pageErrors,
     cspViolations
@@ -95,7 +95,7 @@ test.describe('CSP com nonce na entrada de produção', () => {
     const response = await page.goto('/')
     expect(response?.status()).toBe(HTTP_OK)
     await expect.poll(async () => hydrationFinished(page)).toBe(true)
-    // O menu de tema só abre com o JavaScript hidratado.
+    // The theme menu only opens with hydrated JavaScript.
     await page.getByRole('button', { name: 'Selecionar tema' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
 
@@ -103,11 +103,11 @@ test.describe('CSP com nonce na entrada de produção', () => {
     expect(pageErrors).toStrictEqual([])
   })
 
-  // Sem 'unsafe-inline' no style-src, um atributo style no HTML é bloqueado. O
-  // tema do cookie chega ao <html> só pela classe, e o color-scheme vem das
-  // regras .light/.dark de colors.css.
+  // Without 'unsafe-inline' in style-src, a style attribute in the HTML is blocked.
+  // The cookie theme reaches <html> only through the class, and color-scheme comes
+  // from the .light/.dark rules of colors.css.
   for (const theme of ['dark', 'light'] as const) {
-    test(`aplica o tema ${theme} do cookie no SSR sem violação de CSP`, async ({
+    test(`applies the ${theme} theme of the cookie in the SSR without a CSP violation`, async ({
       page,
       context,
       baseURL,
@@ -118,7 +118,7 @@ test.describe('CSP com nonce na entrada de produção', () => {
       await context.addCookies([
         { name: THEME_KEY, value: theme, url: baseURL }
       ])
-      // Com o sistema no tema oposto, a classe só pode vir do cookie.
+      // With the system on the opposite theme, the class can only come from the cookie.
       await page.emulateMedia({
         colorScheme: theme === 'dark' ? 'light' : 'dark'
       })

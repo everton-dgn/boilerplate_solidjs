@@ -22,7 +22,7 @@ function words(value: string): string {
 
 function jobBlock(id: string): string {
   const start = LINES.indexOf(`  ${id}:`)
-  assert.ok(start !== NOT_FOUND, `Job ausente: ${id}`)
+  assert.ok(start !== NOT_FOUND, `Missing job: ${id}`)
   const end = LINES.findIndex(
     (line, index) => index > start && /^ {2}\S/u.test(line)
   )
@@ -40,7 +40,7 @@ async function importsOf(file: string): Promise<string[]> {
   )
 }
 
-// Percorre os imports relativos a partir da entrada e devolve os externos.
+// Walks the relative imports from the entry and returns the external ones.
 async function externalImports(entry: string): Promise<string[]> {
   const pending = [path.join(RELEASE_DIRECTORY, entry)]
   const visited = new Set<string>()
@@ -129,8 +129,8 @@ describe('release jobs with write permissions', () => {
   })
 })
 
-// O GitHub cancela a release pendente do mesmo grupo: um run inelegível que
-// entrasse no grupo publish substituiria a release elegível em espera.
+// GitHub cancels the pending release of the same group: an ineligible run that
+// entered the publish group would replace the eligible release on hold.
 describe('release eligibility', () => {
   it('is the same in the concurrency group and in the plan job', () => {
     const group =
