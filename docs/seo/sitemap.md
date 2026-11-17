@@ -1,135 +1,134 @@
-# Sitemap e fontes de conteúdo
+# Sitemap and content sources
 
-[Voltar ao guia principal](../seo.md)
+[Back to the main guide](../seo.md)
 
-## Sitemap e rotas dinâmicas
+## Sitemap and dynamic routes
 
-No sitemap, uma rota com parâmetro entra pelas entradas de `route.info.sitemap`:
-uma função, síncrona ou assíncrona, que devolve uma lista de
-`{ path, lastmod? }` com caminhos absolutos do site, enumerados a partir da
-fonte de dados. O módulo da rota entra no bundle do cliente, então banco e SDK
-ficam numa server function chamada pela fonte, conforme o
-[contrato de erros no servidor](../server-errors.md). A fonte recebe um
-`AbortSignal` que aborta no prazo das fontes, na desconexão do cliente e ao fim
-da leitura, inclusive quando outra fonte falha; repasse-o à leitura para
-cancelá-la, em vez de só deixar de esperá-la. Uma fonte que ignore o sinal
-continua rodando e mantém sua vaga ocupada até a Promise assentar, mesmo depois
-de a resposta encerrar por timeout. A fonte roda a cada request que chega à
-função. A resposta permite cache compartilhado por uma hora; o uso efetivo do
-cache depende do host e precisa ser medido. A fonte é ignorada sob `noindex`,
-próprio ou herdado; numa página sem parâmetro ela não tem efeito. Como no
-llms.txt, o filtro considera a configuração efetiva da página, incluindo a rota
-de índice filha, que compartilha a URL do layout: o índice com `noindex: true`
-retira a fonte do layout, uma fonte declarada pelo índice substitui a do layout,
-e o índice sem fonte herda a do layout, publicada conforme o `noindex` efetivo
-do índice. A fonte fica presa à URL de quem a declara; uma fonte que enumere
-páginas de outra filha deve ficar nessa filha. As entradas são validadas na
-fronteira: caminho que não começa com `/`, com host, esquema, query, fragmento
-ou espaço falha; barras finais e repetidas são normalizadas; entradas que
-resultam na mesma URL publicada mantêm a primeira ocorrência (a página estática
-antes da fonte). A comparação usa a URL localizada que vai para o XML, então
-`/a/../b` e `/b`, `/café` e `/caf%C3%A9` ou `/pt/blog/x` e `/blog/x` contam como
-a mesma página. `lastmod` fora do W3C Datetime é omitido. Falha de qualquer
-fonte, entrada inválida, prazo estourado ou sitemap acima dos limites do
-protocolo (de URLs e de bytes, em `sitemap/constants.ts`) respondem 503 sem
-corpo e com `no-store`. Abort e timeout esperados do controlador são
-silenciosos; as exceções reais registram a linha fixa `[sitemap]` descrita em
-[erros no servidor](../server-errors/logging.md#log-de-falhas). O crawler tenta
-de novo, e o CDN não guarda um sitemap parcial por uma hora. A resposta de
-sucesso traz `stale-if-error=86400`: depois que a cópia em cache expira, se a
-função responder com erro, o CDN da Vercel serve a última cópia boa por até um
-dia, sem guardar o erro. A documentação da Vercel cita como exemplos o 500,
-falha de rede e de DNS; que o 503 desta rota também acione a cópia antiga é uma
-hipótese ainda não medida. Títulos carregados em runtime ainda podem usar
-`useHead`, mas essas alterações não são lidas pelo gerador.
+In the sitemap, a route with a parameter enters through the entries of
+`route.info.sitemap`: a function, synchronous or async, that returns a list of
+`{ path, lastmod? }` with absolute site paths, enumerated from the data source.
+The route module goes into the client bundle, so the database and the SDK stay
+in a server function called by the source, according to the
+[server error contract](../server-errors.md). The source receives an
+`AbortSignal` that aborts at the deadline of the sources, when the client
+disconnects and at the end of the read, including when another source fails;
+pass it to the read to cancel it, instead of only no longer waiting for it. A
+source that ignores the signal keeps running and keeps its slot taken until the
+Promise settles, even after the response ends by timeout. The source runs on
+every request that reaches the function. The response allows a shared cache for
+one hour; whether the cache is used depends on the host and needs to be
+measured. The source is ignored under `noindex`, its own or inherited; on a page
+without a parameter it has no effect. As in llms.txt, the filter looks at the
+effective setting of the page, including the child index route, which shares the
+URL of the layout: an index with `noindex: true` removes the source of the
+layout, a source declared by the index replaces the one of the layout, and an
+index without a source inherits the one of the layout, published according to
+the effective `noindex` of the index. The source is tied to the URL of the route
+that declares it; a source that enumerates pages of another child must stay in
+that child. The entries are validated at the boundary: a path that does not
+start with `/`, or that has a host, scheme, query, fragment or space, fails;
+trailing and repeated slashes are normalized; entries that result in the same
+published URL keep the first occurrence (the static page before the source). The
+comparison uses the localized URL that goes into the XML, so `/a/../b` and `/b`,
+`/café` and `/caf%C3%A9` or `/pt/blog/x` and `/blog/x` count as the same page. A
+`lastmod` outside W3C Datetime is left out. A failure of any source, an invalid
+entry, an exceeded deadline or a sitemap over the protocol limits (of URLs and
+of bytes, in `sitemap/constants.ts`) answer 503 without a body and with
+`no-store`. The expected abort and timeout of the controller are silent; real
+exceptions log the fixed `[sitemap]` line described in
+[server errors](../server-errors/logging.md#failure-log). The crawler tries
+again, and the CDN does not keep a partial sitemap for an hour. The successful
+response carries `stale-if-error=86400`: after the cached copy expires, if the
+function answers with an error, the Vercel CDN serves the last good copy for up
+to a day, without storing the error. The Vercel documentation gives the 500 and
+network and DNS failures as examples; that the 503 of this route also triggers
+the old copy is a hypothesis not yet measured. Titles loaded at run time can
+still use `useHead`, but the generator does not read those changes.
 
-Cada página gera uma URL por idioma, com alternates e `x-default`. Os idiomas da
-mesma página ficam juntos numa parte. O inventário estático é dividido
-automaticamente pela contagem de URLs e pelos bytes UTF-8 do XML completo,
-incluindo alternates e escapes. Veja a
-[integração dos índices com i18n](../i18n.md#índices-de-seo).
+Each page produces one URL per locale, with alternates and `x-default`. The
+locales of the same page stay together in one part. The static inventory is
+split automatically by the URL count and by the UTF-8 bytes of the whole XML,
+including alternates and escapes. See the
+[integration of the indexes with i18n](../i18n.md#seo-indexes).
 
-Inventários pequenos preservam `/sitemap.xml` como `urlset`. Com várias partes
-ou uma fonte particionada, essa entrada publica um `sitemapindex`, e o
-`robots.txt` continua apontando para ela. Cada arquivo respeita 50.000 URLs e
-52.428.800 bytes sem compressão. O orçamento operacional inicial é menor, 4 MiB
-por resposta, configurável em `src/routes/(seo)/sitemap/constants.ts` dentro do
-teto do protocolo. As URLs localizadas também precisam caber em 2048 caracteres.
-Um grupo de idiomas que sozinho ultrapasse o orçamento falha, assim como um
-índice excessivo; não há índices aninhados nem publicação parcial com status de
-sucesso.
+Small inventories keep `/sitemap.xml` as a `urlset`. With several parts or a
+partitioned source, that entry publishes a `sitemapindex`, and `robots.txt`
+still points to it. Each file stays within 50,000 URLs and 52,428,800
+uncompressed bytes. The initial operating budget is smaller, 4 MiB per response,
+configurable in `src/routes/(seo)/sitemap/constants.ts` within the protocol
+limit. The localized URLs also need to fit in 2048 characters. A locale group
+that goes over the budget on its own fails, as does an oversized index; there
+are no nested indexes and no partial publication with a success status.
 
-O contrato de `route.info.sitemap`, chamado aqui de fonte em array, continua
-adequado a listas pequenas. Ele devolve um array inteiro, portanto o consumidor
-não consegue impedir a alocação que a fonte faz antes de retornar. Ao
-ultrapassar os limites, migre a fonte para o registro particionado descrito
-abaixo.
+The `route.info.sitemap` contract, called an array source here, is still fine
+for small lists. It returns a whole array, so the consumer cannot prevent the
+allocation that the source makes before returning. When going over the limits,
+move the source to the partitioned registry described below.
 
-Entradas de fontes em array que repetem páginas estáticas indexáveis são
-descartadas, preservando os metadados da página estática, inclusive se a fonte
-declarar outra rota. Essa entrada não é publicada pela fonte; as entradas
-restantes precisam pertencer à rota que a declara. O índice consulta as fontes
-em array uma vez e omite `array.xml` quando não sobra nenhuma entrada própria.
-Se estáticos e fontes em array couberem separadamente, mas a soma exceder a
-contagem ou os bytes, `/sitemap.xml` publica um índice com as partes válidas.
-Uma parte `array.xml` que sozinha excede os limites continua causando falha
-explícita.
+Entries of array sources that repeat indexable static pages are dropped, keeping
+the metadata of the static page, even if the source declares another route. That
+entry is not published by the source; the remaining entries must belong to the
+route that declares it. The index reads the array sources once and leaves out
+`array.xml` when no entry of its own is left. If the static pages and the array
+sources fit separately, but the sum goes over the count or the bytes,
+`/sitemap.xml` publishes an index with the valid parts. An `array.xml` part that
+goes over the limits on its own still fails explicitly.
 
-Os quatro handlers compartilham os módulos em `src/routes/(seo)/sitemap/`. Essa
-pasta organiza o serviço e não declara uma rota. Em produção, eles reutilizam o
-mesmo manifesto e matcher por instância, inclusive ao consultar uma parte depois
-do índice. Em desenvolvimento, o contexto é refeito a cada chamada. Os
-resultados das fontes dinâmicas não entram nesse cache.
+The four handlers share the modules in `src/routes/(seo)/sitemap/`. That folder
+organizes the service and does not declare a route. In production, they reuse
+the same manifest and matcher per instance, including when reading a part after
+the index. In development, the context is rebuilt on every call. The results of
+the dynamic sources do not go into that cache.
 
-### Fontes particionadas
+### Partitioned sources
 
-Catálogos grandes usam `src/infra/server/sitemapSources/`, marcado como
-`server-only`, separado dos metadados que entram no cliente. Cada
-`SitemapPartitionSource` declara um `id`, o `routePath` da página dinâmica,
-`listPartitions({ limit, signal })` e `readPartition({ id, limit, signal })`. A
-aplicação derivada implementa as consultas ao banco ou serviço; o boilerplate
-entrega o contrato, o serviço HTTP e uma fonte de teste.
+Large catalogs use `src/infra/server/sitemapSources/`, marked as `server-only`,
+separate from the metadata that goes into the client. Each
+`SitemapPartitionSource` declares an `id`, the `routePath` of the dynamic page,
+`listPartitions({ limit, signal })` and `readPartition({ id, limit, signal })`.
+The derived application implements the queries to the database or service; the
+boilerplate delivers the contract, the HTTP service and a test source.
 
-`listPartitions` devolve os IDs públicos para o índice e aplica o limite na
-consulta antes de materializar a lista. `readPartition` lê somente a parte
-solicitada e respeita o limite e o cancelamento. O limite de leitura inclui uma
-posição adicional para detectar uma parte excessiva; se essa posição for
-preenchida, a publicação falha em vez de truncar a parte. Fazer uma consulta
-global e depois recortar o array dentro desse callback mantém o custo do
-catálogo inteiro. Use uma consulta limitada na origem dos dados.
+`listPartitions` returns the public IDs for the index and applies the limit in
+the query before building the list. `readPartition` reads only the requested
+part and respects the limit and the cancellation. The read limit includes one
+extra position to detect an oversized part; if that position is filled, the
+publication fails instead of truncating the part. Running a global query and
+then slicing the array inside that callback keeps the cost of the whole catalog.
+Use a limited query at the data source.
 
-`limit` limita a contagem de registros, não os bytes do XML. Uma parte abaixo
-dessa contagem ainda pode ultrapassar o orçamento por causa do comprimento das
-URLs, dos escapes e dos alternates por idioma. Dimensione as partições na fonte
-para respeitar os dois limites. O servidor verifica o tamanho exato e responde
-503 com `no-store` se a parte exceder o orçamento, sem truncá-la.
+`limit` limits the record count, not the XML bytes. A part under that count can
+still go over the budget because of the length of the URLs, the escapes and the
+alternates per locale. Size the partitions at the source to stay within both
+limits. The server checks the exact size and answers 503 with `no-store` if the
+part goes over the budget, without truncating it.
 
-IDs precisam ser estáveis e públicos, sem tokens nem cursores privados. Faixas
-imutáveis de IDs são uma opção; posição numa lista ou categoria editável não
-garantem estabilidade. A fonte deve manter suas partes disjuntas. Duplicatas na
-mesma resposta, IDs inválidos e entradas pertencentes a outra rota são
-recusados. A propriedade da URL usa o roteador real, inclusive a prioridade de
-páginas estáticas, e respeita `noindex` efetivo. Não registre duas fontes para a
-mesma rota nem combine a fonte em array e a particionada nessa rota.
+IDs must be stable and public, without tokens or private cursors. Immutable ID
+ranges are one option; a position in a list or an editable category does not
+guarantee stability. The source must keep its parts disjoint. Duplicates in the
+same response, invalid IDs and entries that belong to another route are refused.
+URL ownership uses the real router, including the priority of static pages, and
+respects the effective `noindex`. Do not register two sources for the same route
+or combine the array source and the partitioned one on that route.
 
-As respostas têm consistência eventual. Por exemplo, o crawler lê o índice às
-10h, uma parte é removida às 10h01 e ele consulta essa parte às 10h02: quando a
-requisição chega à origem, recebe 404 com `no-store`. Uma cópia ainda válida no
-CDN pode responder com o conteúdo anterior. Uma parte nova aparece quando o
-índice e o crawler forem atualizados. Uma entrada transferida entre partes pode
-aparecer duas vezes ou ficar temporariamente ausente nas leituras feitas em
-momentos diferentes. Esse comportamento também se aplica a deploy e rollback.
+The responses are eventually consistent. For example, the crawler reads the
+index at 10:00, a part is removed at 10:01 and it reads that part at 10:02: when
+the request reaches the origin, it gets a 404 with `no-store`. A copy still
+valid in the CDN can answer with the previous content. A new part appears when
+the index and the crawler are updated. An entry moved between parts can appear
+twice or be missing for a while in reads made at different times. This behavior
+also applies to a deploy and a rollback.
 
-Cada resposta é validada e publicada inteira. Fonte vazia ou parte removida
-responde 404 com `no-store`; falha, timeout, schema inválido ou excesso responde
-503 sem corpo e com `no-store`. GET e HEAD preservam o mesmo status e os
-metadados. Cache de processo ou CDN não garante retenção de gerações antigas nem
-coordenação entre instâncias. Se o produto exigir que todo índice continue
-consultável após atualizações, será necessário acrescentar publicação versionada
-e retenção em armazenamento compartilhado, com política e custo próprios.
+Each response is validated and published whole. An empty source or a removed
+part answers 404 with `no-store`; a failure, timeout, invalid schema or excess
+answers 503 without a body and with `no-store`. GET and HEAD keep the same
+status and metadata. A process or CDN cache does not guarantee the retention of
+old generations or coordination between instances. If the product requires every
+index to stay readable after updates, versioned publication and retention in
+shared storage will have to be added, with their own policy and cost.
 
-A travessia do manifesto é iterativa, para não depender do limite de recursão do
-JavaScript; o teste de `walkStaticRoutes` cobre 10 mil layouts aninhados e 10
-mil rotas irmãs. O coletor do sitemap lê caminhos, `noindex`, `type` e as datas
-de artigo, sem resolver título ou descrição. O coletor do `llms.txt` resolve
-também os metadados das páginas.
+The walk through the manifest is iterative, so it does not depend on the
+JavaScript recursion limit; the `walkStaticRoutes` test covers 10,000 nested
+layouts and 10,000 sibling routes. The sitemap collector reads paths, `noindex`,
+`type` and the article dates, without resolving the title or the description.
+The `llms.txt` collector also resolves the page metadata.
