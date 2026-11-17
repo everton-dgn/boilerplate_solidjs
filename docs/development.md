@@ -64,7 +64,7 @@ use the native integration between Solid and Nitro/srvx.
 The client entry publishes the test marker with `onHydrationEnd`, inside the
 root pass of `hydrate()`. It follows the end of the phase, error recovery
 included. The contract and the parser, preload and streaming scenarios are in
-[tests of the complete application](testing.md#tests-of-the-complete-application).
+[full application tests](testing.md#full-application-tests).
 
 To generate the Vercel artifact:
 
