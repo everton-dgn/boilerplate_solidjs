@@ -218,7 +218,7 @@ for (const { phase, javaScriptEnabled } of SCENARIOS) {
 
 for (const phase of ['ssr', 'stream', 'action']) {
   for (const failure of ['http', 'throw', 'result', 'public', 'success']) {
-    test(`confidencialidade: ${phase}, ${failure}`, async ({
+    test(`confidentiality: ${phase}, ${failure}`, async ({
       page,
       request,
       pageErrors
