@@ -8,7 +8,8 @@ const subjects: Record<string, readonly string[]> = {
     'lint',
     'patched-dependencies',
     'playwright',
-    'test-filename'
+    'test-filename',
+    'tsrs-version'
   ],
   'src/__tests__': ['App', 'PageFileSystemRouter'],
   'src/constants/__tests__': ['cache'],

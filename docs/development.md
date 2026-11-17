@@ -139,7 +139,7 @@ up in the HTML of the next request.
 | `vp run build`                | Nitro build for Vercel in `.vercel/output/`                                       |
 | `vp run start`                | Preview the build through Vite                                                    |
 | `vp run i18n:generate`        | Validate catalogs and generate messages and types                                 |
-| `vp run typecheck:node`       | Types of the tooling in the Node environment                                      |
+| `vp run typecheck:node`       | Types of the tooling in the Node environment, with tsrs                           |
 | `vp run lint`                 | CSS, lint and types with the Vite+ cache                                          |
 | `vp run lint:css`             | Check the CSS rules                                                               |
 | `vp run format`               | Format code with Oxfmt                                                            |
@@ -206,19 +206,19 @@ configuration limits `loadEnv` to the `HOST` and `PORT` prefixes, so it does not
 record the whole environment.
 
 The automatic tracking records the files the type-aware lint reads, the types in
-`node_modules` included, but does not see the reads of the native `tsc`. That is
-why `typecheck-node` declares the inputs explicitly, including sources,
-declarations, TypeScript configs, `package.json`, `bun.lock` and `patches/**`.
-From `src/` only the `.ts`, `.tsx` and `.json` files enter, which `tsc` reads;
-CSS, images and fonts come in through module declarations and do not invalidate
-the check. The lockfile represents the dependencies that
-`vp install --frozen-lockfile` installs, but keeps only the path of each patch;
-that is why the content of `patches/` enters separately, also in the inputs of
-`lint-project` and `check-project`. When creating a task that reads installed
-types, include `patches/**`. Knip combines the automatic tracking with explicit
-inputs for sources, tools and dependencies, the discovery of new routes
-included. When creating a cached task, check with two runs that a change in a
-file it reads invalidates the result.
+`node_modules` included. `typecheck-node` declares its inputs explicitly,
+including sources, declarations, TypeScript configs, `package.json`, `bun.lock`
+and `patches/**`: the tracking of the `tsrs` reads was only checked on macOS,
+and CI reuses the task cache on Linux. From `src/` only the `.ts`, `.tsx` and
+`.json` files enter, which `tsrs` reads; CSS, images and fonts come in through
+module declarations and do not invalidate the check. The lockfile represents the
+dependencies that `vp install --frozen-lockfile` installs, but keeps only the
+path of each patch; that is why the content of `patches/` enters separately,
+also in the inputs of `lint-project` and `check-project`. When creating a task
+that reads installed types, include `patches/**`. Knip combines the automatic
+tracking with explicit inputs for sources, tools and dependencies, the discovery
+of new routes included. When creating a cached task, check with two runs that a
+change in a file it reads invalidates the result.
 
 The cache keeps `typeAware` and `typeCheck` on and tells in the output when it
 replays an earlier result. To run everything again, use `vp run --no-cache lint`
@@ -453,17 +453,31 @@ the next jobs after a failure.
   already patched copy of a version installed before; check in the installed
   package that the patch is gone, or reinstall `node_modules` from scratch,
   before running that control.
-- `vite-plus`, `vite`, `vitest` and the `@vitest/*` packages come from the
-  catalog in `workspaces.catalog` of `package.json`; `vite` resolves to the
-  Vite+ core. Update the versions in that catalog and keep the `@vitest/*`
-  packages at the exact version of the Vitest bundled in Vite+. CI reads the
+- `vite-plus`, `vite`, `vitest`, `tsrs` and the `@vitest/*` packages come from
+  the catalog in `workspaces.catalog` of `package.json`; `vite` resolves to the
+  Vite+ core. Update Vite+ with `vp migrate`, which aligns `vite-plus`, `vite`
+  and `vitest`; keep the `@vitest/*` packages at the exact version of the Vitest
+  bundled in Vite+. `vp migrate` does not touch `tsrs`: set it to the version
+  that `vite-plus` depends on
+  (`npm view vite-plus@<version> dependencies.tsrs`). The
+  `tooling/__tests__/tsrs-version.test.ts` test fails when the catalog diverges
+  from that version or when `bun.lock` resolves a second copy. CI reads the
   Vite+ version from that catalog.
 - Commits must follow Conventional Commits.
-- The lint is type-aware and runs with `typeCheck: true`: the types of the
-  application, the `test-d.ts` tests included, are checked by `vp run lint` and
-  `vp run check:ci`, without a separate `tsc`.
+- The lint is type-aware and runs with `typeCheck: true` through `tsrs-lint`,
+  the backend that Vite+ installs with `tsrs`: the types of the application, the
+  `test-d.ts` tests included, are checked by `vp run lint` and
+  `vp run check:ci`, without a separate type check. That check only reports the
+  files the lint reads: the ones in `ignorePatterns`, such as the generated
+  `src/@types/routes.d.ts`, and diagnostics without a file stay out.
 - CI, the pre-push and `vp run validate` combine `check:ci` with
-  `typecheck:node`, which checks the tooling without the DOM types.
+  `typecheck:node`, which runs `tsrs --project tsconfig.node.json` and checks
+  the tooling without the DOM types.
+- The project does not install the `typescript` package: `tsrs` is the compiler
+  of the command line and of the lint. An editor that needs a TypeScript 7 SDK
+  can point to `node_modules/tsrs/tsdk`, as the
+  [tsrs editor guide](https://github.com/oxc-project/tsrs/blob/main/docs/LSP.md#editor-setup)
+  describes.
 - Use the Node and Bun versions defined in `package.json`. `bun.lock` is the
   only lockfile of the project.
 
@@ -482,3 +496,4 @@ the next jobs after a failure.
 - Commitlint: https://commitlint.js.org
 - Lefthook: https://github.com/evilmartians/lefthook
 - TypeScript: https://www.typescriptlang.org/docs
+- tsrs: https://github.com/oxc-project/tsrs

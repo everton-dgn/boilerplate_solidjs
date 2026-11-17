@@ -262,14 +262,15 @@ export default defineConfig(({ mode }) => {
           cache: { env: ['NODE_ENV'], input: PROJECT_CHECK_INPUTS }
         },
         // The application types come from vp check, with typeCheck in the lint.
-        // The automatic tracking does not see the reads of the native tsc, so the
-        // inputs stay explicit. From src only the extensions that tsc reads enter;
-        // CSS, images and fonts come through module declarations. bun.lock stands
-        // for the installed types, but only keeps the path of the patches, so their
-        // content enters separately. With noEmit, tsc only writes .tsbuildinfo in
-        // .tsbuild/, which is its own cache, so nothing needs to be restored.
+        // The inputs stay explicit: the automatic tracking of the tsrs reads was
+        // only checked on macOS, and CI reuses this cache on Linux. From src only
+        // the extensions that tsrs reads enter; CSS, images and fonts come through
+        // module declarations. bun.lock stands for the installed types, but only
+        // keeps the path of the patches, so their content enters separately. With
+        // noEmit, tsrs only writes .tsbuildinfo in .tsbuild/, which is its own
+        // cache, so nothing needs to be restored.
         'typecheck-node': {
-          command: 'tsc --project tsconfig.node.json',
+          command: 'tsrs --project tsconfig.node.json',
           cache: {
             input: [
               'tsconfig.json',
