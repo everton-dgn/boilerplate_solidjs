@@ -1,54 +1,55 @@
-# SEO e índices do site
+# SEO and site indexes
 
-[Voltar ao README](../README.md)
+[Back to the README](../README.md)
 
-## Metadados de rota
+## Route metadata
 
-`VITE_SITE_URL` no `.env` é obrigatória e define a URL pública do site, validada
-em `env.ts`. `createSeo({ route: true })`, chamado uma vez no callback raiz do
-`Router` em `App.tsx`, usa `useHead` do `@solidjs/web` para publicar
-`canonical`, `og:url`, `og:type`, a imagem social absoluta (Open Graph e
-Twitter, com dimensões e texto alternativo) e um
-`<script type="application/ld+json">` para a rota atual, inclusive na navegação
-no cliente. As tags sociais que não variam por rota (`og:locale`,
-`og:site_name`, `twitter:card`, `twitter:site` e `twitter:creator`) também saem
-do `createSeo`, para acompanhar a regra de `noindex` abaixo; em `Document.tsx`
-ficam só `author` e um `<title>` com `SITE.title`. Esse título é a exceção: o
-runtime substitui no lugar o primeiro `<title>` do shell pelo que o `createSeo`
-publica com `useHead`, e o documento sai com um único `<title>`, conferido nos
-E2E de SEO. Não repita no `Document.tsx` outra tag que o `createSeo` publica,
-porque o crawler lê a primeira ocorrência.
+`VITE_SITE_URL` in `.env` is required and sets the public URL of the site,
+validated in `env.ts`. `createSeo({ route: true })`, called once in the root
+callback of the `Router` in `App.tsx`, uses `useHead` from `@solidjs/web` to
+publish `canonical`, `og:url`, `og:type`, the absolute social image (Open Graph
+and Twitter, with dimensions and alternative text) and a
+`<script type="application/ld+json">` for the current route, client navigation
+included. The social tags that do not vary per route (`og:locale`,
+`og:site_name`, `twitter:card`, `twitter:site` and `twitter:creator`) also come
+from `createSeo`, to follow the `noindex` rule below; `Document.tsx` keeps only
+`author` and a `<title>` with `SITE.title`. That title is the exception: the
+runtime replaces, in place, the first `<title>` of the shell with the one that
+`createSeo` publishes with `useHead`, and the document goes out with a single
+`<title>`, checked in the SEO E2E tests. Do not repeat in `Document.tsx` another
+tag that `createSeo` publishes, because the crawler reads the first occurrence.
 
-Cada página mantém seus metadados em `seo.ts`, ao lado de `index.tsx`, e importa
-o objeto `seo` para `route.info.seo`. O contrato aceita `title`, `description`,
-`noindex`, `type`, `image` e `article`. Isso não muda sua estratégia de
-renderização nem torna a página estática: são metadados, disponíveis também em
-rotas com parâmetros. Na chamada com `route: true`, `createSeo` lê a cadeia de
-rotas ativas com `useRouteMatches` e publica esses campos no título, na
-descrição, no Open Graph, no Twitter e no JSON-LD usando `useHead`. A rota filha
-sobrescreve os campos que declara e herda os demais do layout; `image` é
-mesclada atributo a atributo (`path`, `width`, `height`, `alt`). Ao trocar o
-`path`, declare também `width` e `height` do novo arquivo: dimensões omitidas
-são herdadas da imagem anterior e publicadas em `og:image:width` e
-`og:image:height`, e a prévia nas redes pode sair cortada. Sem definição na
-cadeia, título, descrição e imagem vêm de `SITE`, `type` é `website` e `noindex`
-é `false`. A home declara um título próprio que identifica o boilerplate e seu
-uso para aplicações web com SSR. Página indexável publica `robots` com
-`index, follow, max-image-preview:large`: os dois primeiros já são o padrão do
-crawler e o terceiro libera a prévia grande da imagem no Google Discover.
-Escolha do projeto: com `noindex: true`, a chamada de rota publica só
-`robots: noindex`, título e descrição. Canonical, Open Graph, Twitter (inclusive
-`og:locale`, `og:site_name` e `twitter:card`) e JSON-LD ficam de fora, inclusive
-na página 404. Neste boilerplate esses metadados só têm consumidor em páginas
-indexáveis; a canonical da 404 apontava para a URL inexistente digitada, e o
-JSON-LD declarava um `WebPage` nela. Uma filha pode sobrescrever `noindex` com
-`false` explicitamente. Limite conhecido: página `noindex` feita para
-compartilhamento (convite, resultado, campanha) ainda não tem suporte e deixa de
-fornecer metadados explícitos para a prévia social. Quando esse caso surgir,
-acrescente um campo em `route.info.seo` que devolva Open Graph e Twitter sem
-canonical nem JSON-LD.
+Each page keeps its metadata in `seo.ts`, next to `index.tsx`, and imports the
+`seo` object into `route.info.seo`. The contract accepts `title`, `description`,
+`noindex`, `type`, `image` and `article`. This does not change its rendering
+strategy or make the page static: they are metadata, also available on routes
+with parameters. In the call with `route: true`, `createSeo` reads the chain of
+active routes with `useRouteMatches` and publishes those fields in the title,
+the description, Open Graph, Twitter and the JSON-LD using `useHead`. The child
+route overrides the fields it declares and inherits the others from the layout;
+`image` is merged attribute by attribute (`path`, `width`, `height`, `alt`).
+When changing `path`, also declare the `width` and `height` of the new file:
+omitted dimensions are inherited from the previous image and published in
+`og:image:width` and `og:image:height`, and the preview on social networks may
+come out cropped. Without a definition in the chain, the title, description and
+image come from `SITE`, `type` is `website` and `noindex` is `false`. The home
+page declares its own title that identifies the boilerplate and its use for web
+applications with SSR. An indexable page publishes `robots` with
+`index, follow, max-image-preview:large`: the first two are already the crawler
+default, and the third allows the large image preview in Google Discover. A
+choice of the project: with `noindex: true`, the route call publishes only
+`robots: noindex`, the title and the description. Canonical, Open Graph, Twitter
+(`og:locale`, `og:site_name` and `twitter:card` included) and JSON-LD stay out,
+the 404 page included. In this boilerplate those metadata only have a consumer
+on indexable pages; the canonical of the 404 pointed to the nonexistent URL that
+was typed, and the JSON-LD declared a `WebPage` on it. A child can override
+`noindex` with `false` explicitly. Known limit: a `noindex` page made for
+sharing (an invitation, a result, a campaign) is not supported yet and no longer
+provides explicit metadata for the social preview. When that case comes up, add
+a field in `route.info.seo` that returns Open Graph and Twitter without the
+canonical or the JSON-LD.
 
-Por exemplo, uma página pode declarar seus metadados em `seo.ts`:
+For example, a page can declare its metadata in `seo.ts`:
 
 ```ts
 import { m } from '@paraglide/messages.js'
@@ -65,75 +66,79 @@ export const seo = {
 } satisfies SeoRouteInfo
 ```
 
-Em `index.tsx`, importe `seo` e use `info: { seo }` na definição da rota, junto
-dos demais controles que a página declarar. Getters preservam o idioma da
-requisição; não copie os textos traduzidos para valores no topo do módulo. Os
-catálogos ficam em `i18n/{pt,en,es}.json` ao lado desses arquivos. Os dados que
-o componente renderiza ficam em `index.tsx`, numa constante não exportada com
-getters (as páginas que usam `SiteArticle` a tipam com `satisfies SitePage`), ou
-em chamadas de `m` no próprio JSX. O manifesto de rotas importa o `route` de
-cada página no bundle inicial, e tudo o que `seo.ts` importa entra junto. Por
-isso os getters de `seo` chamam as mensagens diretamente, sem ler o objeto da
-página, e o corpo fica só no módulo da rota, baixado na navegação. Uma página
-que ainda exporte `content` de `seo.ts` deve movê-lo para `index.tsx` e trocar
-as leituras de `seo` pelas mensagens. A regra de lint `project/seo-module` acusa
-um `seo.ts` que exporte outra coisa além de `seo` ou que importe como valor um
-módulo local, por caminho relativo, por alias da árvore `src/routes`, por
-`import()` ou por `import.meta.glob`, e o teste de i18n em produção confere que
-cada corpo fica só no módulo da rota. É dado de UI: o Markdown não o lê, porque
-sai do HTML renderizado.
+In `index.tsx`, import `seo` and use `info: { seo }` in the route definition,
+together with the other controls the page declares. Getters keep the locale of
+the request; do not copy the translated texts into values at the top of the
+module. The catalogs are in `i18n/{pt,en,es}.json` next to those files. The data
+that the component renders stays in `index.tsx`, in a non-exported constant with
+getters (the pages that use `SiteArticle` type it with `satisfies SitePage`), or
+in calls to `m` in the JSX itself. The route manifest imports the `route` of
+each page in the initial bundle, and everything that `seo.ts` imports goes with
+it. That is why the `seo` getters call the messages directly, without reading
+the page object, and the body stays only in the route module, downloaded on
+navigation. A page that still exports `content` from `seo.ts` should move it to
+`index.tsx` and replace the reads of `seo` with the messages. The
+`project/seo-module` lint rule reports a `seo.ts` that exports something other
+than `seo` or that imports a local module as a value, through a relative path,
+through an alias of the `src/routes` tree, through `import()` or through
+`import.meta.glob`, and the production i18n test checks that each body stays
+only in the route module. It is UI data: the Markdown does not read it, because
+it comes from the rendered HTML.
 
-`type` aceita `website` e `article`. Ele define `og:type` e o nó da página no
-JSON-LD: `WebPage` por padrão, ou `Article` com `headline`, `author` (nó
-`Person` com nome, URL e perfis de `SITE.author`, os perfis em `sameAs`),
-`publisher` e, quando a rota declara `article: { datePublished, dateModified }`
-em ISO 8601, essas datas no nó e nas metas `article:published_time` e
-`article:modified_time`. Fora de `article`, as datas são ignoradas. O JSON-LD,
-montado pelo helper local `buildStructuredData` de `createSeo`, publica sempre
-um nó `WebSite`, o nó da página com URL canônica, descrição, idioma e imagem, e
-um nó `Organization` com nome, descrição, URL, logo (`SITE.logo`, ao menos
-112x112 pixels) e perfis oficiais (`SITE.socialLinks`, em `sameAs`).
-`WebSite.publisher` e `Article.publisher` apontam para esse nó pelo `@id`
-`<VITE_SITE_URL>/#organization`. O grafo é tipado com `schema-dts`, então
-propriedade inválida falha no typecheck; as dimensões da imagem ficam só no Open
-Graph. O idioma da página vem de `SITE.locale`, que também alimenta o `lang` do
-`Document.tsx` e o `og:locale` (com sublinhado). `og:locale:alternate` lista os
-outros idiomas, e `WebSite.inLanguage` declara os três idiomas disponíveis. O
-grafo e os dados próprios da página usam `JSON.stringify` e chegam ao `useHead`
-com `type: 'application/ld+json'`. O Solid escapa `<` no HTML do servidor e nas
-atualizações de head do streaming; no cliente, insere o conteúdo como texto.
-Esse contrato depende do tipo JSON e do uso de `useHead`: não interpole o JSON
-diretamente em HTML. As regressões de `createSeo` e `StructuredData` verificam o
-primeiro chunk antes da resolução dos dados, conteúdo malicioso preservado como
-JSON e ausência de elementos injetados ou execução de código no navegador, antes
-e depois da hidratação. Os handles do Twitter saem de `SITE.twitter`
-(`twitter:site`, a conta do site) e de `SITE.author.twitter` (`twitter:creator`,
-a conta do autor). O LinkedIn não tem meta tag própria: ele lê o Open Graph para
-a prévia, e o perfil entra só no `sameAs`. Páginas indexáveis publicam
-`hreflang` para os três idiomas e `x-default` apontando para inglês. Canonical e
-URL da página no JSON-LD incluem o idioma; a identidade da organização permanece
-na raiz do site. O fallback de erro publica título e descrição traduzidos com
-`noindex`, mesmo quando a falha acontece antes do Router.
+`type` accepts `website` and `article`. It sets `og:type` and the page node in
+the JSON-LD: `WebPage` by default, or `Article` with `headline`, `author` (a
+`Person` node with the name, URL and profiles of `SITE.author`, the profiles in
+`sameAs`), `publisher` and, when the route declares
+`article: { datePublished, dateModified }` in ISO 8601, those dates in the node
+and in the `article:published_time` and `article:modified_time` metas. Outside
+`article`, the dates are ignored. The JSON-LD, built by the local
+`buildStructuredData` helper of `createSeo`, always publishes a `WebSite` node,
+the page node with the canonical URL, description, locale and image, and an
+`Organization` node with the name, description, URL, logo (`SITE.logo`, at least
+112x112 pixels) and official profiles (`SITE.socialLinks`, in `sameAs`).
+`WebSite.publisher` and `Article.publisher` point to that node through the `@id`
+`<VITE_SITE_URL>/#organization`. The graph is typed with `schema-dts`, so an
+invalid property fails the type check; the image dimensions stay only in Open
+Graph. The locale of the page comes from `SITE.locale`, which also feeds the
+`lang` of `Document.tsx` and `og:locale` (with an underscore).
+`og:locale:alternate` lists the other locales, and `WebSite.inLanguage` declares
+the three available locales. The graph and the page's own data use
+`JSON.stringify` and reach `useHead` with `type: 'application/ld+json'`. Solid
+escapes `<` in the server HTML and in the head updates of the streaming; on the
+client, it inserts the content as text. This contract depends on the JSON type
+and on the use of `useHead`: do not interpolate the JSON directly into HTML. The
+`createSeo` and `StructuredData` regression tests check the first chunk before
+the data resolves, malicious content kept as JSON, and the absence of injected
+elements or code execution in the browser, before and after hydration. The
+Twitter handles come from `SITE.twitter` (`twitter:site`, the account of the
+site) and from `SITE.author.twitter` (`twitter:creator`, the account of the
+author). LinkedIn has no meta tag of its own: it reads Open Graph for the
+preview, and the profile goes only into `sameAs`. Indexable pages publish
+`hreflang` for the three locales and `x-default` pointing to English. The
+canonical and the page URL in the JSON-LD include the locale; the identity of
+the organization stays at the site root. The error fallback publishes a
+translated title and description with `noindex`, even when the failure happens
+before the Router.
 
-## Dados estruturados por página
+## Structured data per page
 
-Esse grafo base é fixo de propósito. Tipos que dependem da página (`Product`,
-`FAQPage`, `BreadcrumbList`, `Event`) entram pela primitive
-`createSeo({ structuredData: () => data })`, chamada no corpo do componente da
-rota. Ela publica um segundo `<script type="application/ld+json">` com
-`@context`. Os dados podem ser um nó ou uma lista (vira `@graph`) e são tipados
-com `schema-dts`, os tipos do schema.org mantidos pelo Google, então propriedade
-inválida falha no typecheck. A primitive acompanha as mudanças do accessor,
-remove o script ao descartar seu escopo e convive com outras instâncias na mesma
-página. Retornar `undefined` suspende a publicação; quando o accessor voltar a
-fornecer dados, o script reaparece. Para ligar o nó ao grafo base, use o `@id`
-da página (a URL canônica), do site (`<VITE_SITE_URL>/#website`) ou da
-organização (`<VITE_SITE_URL>/#organization`). A chamada com `structuredData`
-não consulta o router nem `noindex`: uma rota fora do índice que a utiliza
-publica o JSON-LD mesmo assim. Os dois formatos de chamada são exclusivos nos
-tipos: use `route: true` uma vez no App e `structuredData` em cada componente
-que precisa publicar dados próprios. As chamadas das páginas não registram o SEO
-global.
+That base graph is fixed on purpose. Types that depend on the page (`Product`,
+`FAQPage`, `BreadcrumbList`, `Event`) come in through the
+`createSeo({ structuredData: () => data })` primitive, called in the body of the
+route component. It publishes a second `<script type="application/ld+json">`
+with `@context`. The data can be a node or a list (it becomes `@graph`) and is
+typed with `schema-dts`, the schema.org types maintained by Google, so an
+invalid property fails the type check. The primitive follows the changes of the
+accessor, removes the script when its scope is disposed and coexists with other
+instances on the same page. Returning `undefined` suspends the publication; when
+the accessor provides data again, the script comes back. To link the node to the
+base graph, use the `@id` of the page (the canonical URL), of the site
+(`<VITE_SITE_URL>/#website`) or of the organization
+(`<VITE_SITE_URL>/#organization`). The call with `structuredData` does not read
+the router or `noindex`: a route outside the index that uses it publishes the
+JSON-LD anyway. The two call forms are exclusive in the types: use `route: true`
+once in the App and `structuredData` in each component that needs to publish its
+own data. The page calls do not register the global SEO.
 
 ```tsx
 import { createSeo } from '@/primitives/createSeo/index.ts'
@@ -145,8 +150,8 @@ export default function FaqPage() {
       mainEntity: [
         {
           '@type': 'Question',
-          name: 'O que é o boilerplate?',
-          acceptedAnswer: { '@type': 'Answer', text: 'Uma base SolidJS.' }
+          name: 'What is the boilerplate?',
+          acceptedAnswer: { '@type': 'Answer', text: 'A SolidJS base.' }
         }
       ]
     })
@@ -154,14 +159,14 @@ export default function FaqPage() {
 
   return (
     <main>
-      <h1>Perguntas frequentes</h1>
+      <h1>Frequently asked questions</h1>
     </main>
   )
 }
 ```
 
-Uma página do tipo `article`, com imagem própria e seção no `llms.txt`, declara
-o tipo e a imagem em `seo.ts`, com o texto alternativo também num getter:
+An `article` page, with its own image and a section in `llms.txt`, declares the
+type and the image in `seo.ts`, with the alternative text in a getter too:
 
 ```ts
 import { m } from '@paraglide/messages.js'
@@ -177,7 +182,7 @@ export const seo = {
   },
   type: 'article',
   image: {
-    path: '/images/equipe.png',
+    path: '/images/team.png',
     width: 1200,
     height: 800,
     get alt() {
@@ -187,7 +192,7 @@ export const seo = {
 } satisfies SeoRouteInfo
 ```
 
-A rota importa esse objeto e declara a seção ao lado dele:
+The route imports that object and declares the section next to it:
 
 ```tsx
 import type { RouteDefinition } from '@solidjs/router'
@@ -195,44 +200,44 @@ import type { RouteDefinition } from '@solidjs/router'
 import { seo } from './seo.ts'
 
 export const route = {
-  info: { seo, llms: { section: 'Empresa' } }
+  info: { seo, llms: { section: 'Company' } }
 } satisfies RouteDefinition
 ```
 
-## Seleção para llms.txt
+## Selection for llms.txt
 
-Veja [seleção para llms.txt](seo/indexes.md#seleção-para-llmstxt).
+See [selection for llms.txt](seo/indexes.md#selection-for-llmstxt).
 
-## Sitemap e rotas dinâmicas
+## Sitemap and dynamic routes
 
-Veja [sitemap e rotas dinâmicas](seo/sitemap.md#sitemap-e-rotas-dinâmicas).
+See [sitemap and dynamic routes](seo/sitemap.md#sitemap-and-dynamic-routes).
 
-### Artefatos estáticos e capacidade da origem
+### Static artifacts and origin capacity
 
-Veja
-[artefatos estáticos e capacidade da origem](seo/publication.md#artefatos-estáticos-e-capacidade-da-origem).
+See
+[static artifacts and origin capacity](seo/publication.md#static-artifacts-and-origin-capacity).
 
-### Fontes particionadas
+### Partitioned sources
 
-Veja [fontes particionadas](seo/sitemap.md#fontes-particionadas).
+See [partitioned sources](seo/sitemap.md#partitioned-sources).
 
-### Capacidade e medição
+### Capacity and measurement
 
-Veja [capacidade e medição](seo/publication.md#capacidade-e-medição).
+See [capacity and measurement](seo/publication.md#capacity-and-measurement).
 
-## Endpoints e cache
+## Endpoints and cache
 
-Veja [endpoints e cache](seo/indexes.md#endpoints-e-cache).
+See [endpoints and cache](seo/indexes.md#endpoints-and-cache).
 
-## Leitura por agentes
+## Reading by agents
 
-Veja [leitura por agentes](seo/markdown.md#leitura-por-agentes).
+See [reading by agents](seo/markdown.md#reading-by-agents).
 
-### Agregado llms-full.txt
+### llms-full.txt aggregate
 
-Veja [agregado llms-full.txt](seo/markdown.md#agregado-llms-fulltxt).
+See [llms-full.txt aggregate](seo/markdown.md#llms-fulltxt-aggregate).
 
-### Artefatos e roteamento da plataforma
+### Platform artifacts and routing
 
-Veja
-[artefatos e roteamento da plataforma](seo/markdown.md#artefatos-e-roteamento-da-plataforma).
+See
+[platform artifacts and routing](seo/markdown.md#platform-artifacts-and-routing).

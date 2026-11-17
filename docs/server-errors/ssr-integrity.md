@@ -1,132 +1,137 @@
-# Integridade do SSR na publicação de Markdown
+# SSR integrity in the Markdown publication
 
-[Voltar ao guia principal](../server-errors.md)
+[Back to the main guide](../server-errors.md)
 
-## Integridade do SSR para Markdown
+## SSR integrity for Markdown
 
-A entrada cria o estado com `createRenderIntegrity()`, de
-[renderIntegrity](../../src/infra/server/renderIntegrity/index.ts), e o grava em
-`event.locals.ssrRenderState` antes de chamar `renderToStream`. O estado é
-somente leitura: o hook de `configureServerErrors` marca `hasErrors` por
-`markRenderFailure` quando recebe uma falha com `kind: "render"`, e
-`onCompleteAll` marca `hasCompleted` pela função `complete` da mesma fábrica. Um
-estado criado fora dela não é marcado. Sinais de controle também marcam: um
-`redirect()` ou `respond()` lançado no render e capturado por um `<Errored>`
-aninhado vira fallback com HTML 200. Desde o
-[solidjs/solid#4130](https://github.com/solidjs/solid/pull/4130), o hook recebe
-cada erro uma vez por tipo em cada requisição. Uma falha de server function
-contida por um boundary chega primeiro como `server-function` e depois como
-`render`, e só o segundo aviso marca o estado. O callback sozinho não comprova
-integridade: ele também pode ocorrer após falha de fragmento. O adaptador exige
-conclusão e ausência estrita de erros observados pelo render depois de aguardar
-o SSR, antes de publicar HTML convertido. Estado ausente ou inválido resulta em
-erro público 500 sem cache. Redirects e respostas que não são páginas elegíveis
-preservam seu fluxo anterior. As páginas estáticas passam por esse mesmo
-adaptador no prerender do build, e uma recusa ali interrompe o build.
+The entry creates the state with `createRenderIntegrity()`, from
+[renderIntegrity](../../src/infra/server/renderIntegrity/index.ts), and stores
+it in `event.locals.ssrRenderState` before calling `renderToStream`. The state
+is read-only: the `configureServerErrors` hook sets `hasErrors` through
+`markRenderFailure` when it receives a failure with `kind: "render"`, and
+`onCompleteAll` sets `hasCompleted` through the `complete` function of the same
+factory. A state created outside it is not marked. Control signals mark it too:
+a `redirect()` or `respond()` thrown in the render and caught by a nested
+`<Errored>` becomes a fallback with a 200 HTML response. Since
+[solidjs/solid#4130](https://github.com/solidjs/solid/pull/4130), the hook
+receives each error once per kind in each request. A server function failure
+contained by a boundary arrives first as `server-function` and then as `render`,
+and only the second notice marks the state. The callback alone does not prove
+integrity: it can also happen after a fragment failure. The adapter requires
+completion and a strict absence of errors seen by the render after waiting for
+the SSR, before publishing converted HTML. A missing or invalid state results in
+a public 500 error without cache. Redirects and responses that are not eligible
+pages keep their previous flow. The static pages go through this same adapter in
+the build prerender, and a refusal there stops the build.
 
-Como o hook é a fonte desse sinal, ele fica instalado também em desenvolvimento,
-onde marca o estado sem trocar o erro, como descrito em
-[Log de falhas](logging.md#log-de-falhas). A entrada continua sem um `onError`
-local: ele teria precedência sobre o hook global, desviaria a sanitização e o
-log e deixaria o estado sem marcação, e o Markdown publicaria com
-`hasErrors: false`. O registro do hook chama `observeRenderFailures()`; até lá a
-fábrica cria o estado com `hasErrors` indefinido, e o Markdown recusa a página.
-Sem o `serverFunctions.serverSetup` do Vite, que carrega o registro, todo `.md`
-responde 500 e o prerender interrompe o build.
+Because the hook is the source of this signal, it is also installed in
+development, where it marks the state without replacing the error, as described
+in [Failure log](logging.md#failure-log). The entry still has no local
+`onError`: it would take precedence over the global hook, bypass the
+sanitization and the log, and leave the state unmarked, and the Markdown would
+publish with `hasErrors: false`. The hook registration calls
+`observeRenderFailures()`; until then the factory creates the state with an
+undefined `hasErrors`, and the Markdown refuses the page. Without the Vite
+`serverFunctions.serverSetup`, which loads the registration, every `.md` answers
+500 and the prerender stops the build.
 
-O hook encontra o estado pelo evento que o runtime associa à falha. As falhas do
-serializador, o `onCleanup` que lança e o fallback de `<Errored>` chegam sem o
-evento, e o runtime o lê do `AsyncLocalStorage`. Uma falha informada fora desse
-contexto não marcaria o estado, e o Markdown publicaria o HTML. Os testes de
-serialização cobrem esses três casos com o contexto presente.
+The hook finds the state through the event that the runtime associates with the
+failure. Serializer failures, an `onCleanup` that throws and the `<Errored>`
+fallback arrive without the event, and the runtime reads it from
+`AsyncLocalStorage`. A failure reported outside that context would not mark the
+state, and the Markdown would publish the HTML. The serialization tests cover
+these three cases with the context present.
 
-O serializador padrão informa falhas de parse e de emissão ao hook, inclusive
-sem um hook local. Antes do primeiro envio, a primeira falha marca `hasErrors`,
-passa pela política de `configureServerErrors` e encerra o render sem chamar
-`onCompleteAll`. Falhas síncronas também seguem esse caminho, sem relançar a
-exceção para o chamador. O descarte libera o owner e as fontes assíncronas
-pendentes.
+The default serializer reports parse and emit failures to the hook, even without
+a local hook. Before the first send, the first failure sets `hasErrors`, goes
+through the `configureServerErrors` policy and ends the render without calling
+`onCompleteAll`. Synchronous failures follow this path too, without rethrowing
+the exception to the caller. The disposal releases the owner and the pending
+async sources.
 
-Há uma exceção antes do primeiro envio. Quando falha a serialização do erro de
-um `<Errored>`, ou do motivo de uma rejeição que um `<Errored>` capturou, o
-runtime grava no lugar um `Error` só com a mensagem e o render continua. A falha
-ainda chega ao hook e marca `hasErrors`, então o Markdown recusa a página. Esse
-erro já passou pelo hook, e em produção a mensagem é a pública. Uma rejeição sem
-`<Errored>` que a capture continua encerrando o render.
+There is one exception before the first send. When the serialization of the
+error of an `<Errored>` fails, or of the reason of a rejection that an
+`<Errored>` caught, the runtime writes in its place an `Error` with only the
+message, and the render goes on. The failure still reaches the hook and sets
+`hasErrors`, so the Markdown refuses the page. That error already went through
+the hook, and in production the message is the public one. A rejection without
+an `<Errored>` to catch it still ends the render.
 
-No HTML em streaming, uma falha ocorrida enquanto o shell é montado impede que
-ele seja enviado, e a resposta é um 500. Depois do shell, os bytes já enviados
-não podem ser recolhidos: a falha chega ao hook, o render continua e o cliente
-recebe a chave rejeitada com um erro que só nomeia a chave e a falha de
-serialização. Na hidratação, a leitura dessa chave cai no `<Errored>` mais
-próximo; a mensagem original fica no servidor. Markdown aguarda o render, então
-toda falha ocorre antes do envio, e a publicação é recusada com erro público 500
-e `cache-control: private, no-store`. Uma falha de serialização não depende do
-timeout do adaptador para encerrar a resposta.
+In streamed HTML, a failure while the shell is being built prevents it from
+being sent, and the response is a 500. After the shell, the bytes already sent
+cannot be taken back: the failure reaches the hook, the render goes on and the
+client receives the rejected key with an error that only names the key and the
+serialization failure. During hydration, reading that key falls into the nearest
+`<Errored>`; the original message stays on the server. Markdown waits for the
+render, so every failure happens before the send, and the publication is refused
+with a public 500 error and `cache-control: private, no-store`. A serialization
+failure does not depend on the adapter timeout to end the response.
 
-Serializadores personalizados mantêm o comportamento do runtime: as falhas que
-eles informam chegam ao hook, mas não encerram o render. Erros suprimidos
-internamente não são observáveis. Qualquer adoção exige validar a relação entre
-conteúdo, conclusão e falhas.
+Custom serializers keep the runtime behavior: the failures they report reach the
+hook, but do not end the render. Errors suppressed internally are not
+observable. Any adoption requires validating the relation between content,
+completion and failures.
 
-O runtime publicado encerra o render também quando o serializador padrão falha
-de forma síncrona, durante a escrita de um valor, antes do primeiro envio, nos
-runtimes padrão e de desenvolvimento
-([solidjs/solid#4709](https://github.com/solidjs/solid/issues/4709)). A falha
-que chega depois da escrita, como na rejeição de um valor assíncrono, já
-encerrava o render
-([solidjs/solid#4647](https://github.com/solidjs/solid/issues/4647)). Antes do
-#4709, numa falha síncrona o runtime só informava o hook e concluía o render
-pelo fluxo normal, inclusive chamando `onCompleteAll`: o Markdown recusaria esse
-resultado pela falha registrada, mas uma falha durante a montagem do shell
-enviaria o HTML com status 200. Um patch Bun de `@solidjs/web` cobria esse caso
-até o pacote publicado passar sem ele nas regressões de
-`markdownContent.serialization.node.test.ts`, que falham no runtime anterior sem
-o patch. Falhas na fase de serialização chegam ao log como
-`SerovalSerializationError`; a mensagem e a causa continuam descartadas.
+The published runtime also ends the render when the default serializer fails
+synchronously, while writing a value, before the first send, in the default and
+development runtimes
+([solidjs/solid#4709](https://github.com/solidjs/solid/issues/4709)). A failure
+that comes after the write, such as in the rejection of an async value, already
+ended the render
+([solidjs/solid#4647](https://github.com/solidjs/solid/issues/4647)). Before
+#4709, on a synchronous failure the runtime only reported the hook and completed
+the render through the normal flow, `onCompleteAll` included: the Markdown would
+refuse that result because of the recorded failure, but a failure while building
+the shell would send the HTML with status 200. A Bun patch of `@solidjs/web`
+covered that case until the published package passed without it in the
+regression tests of `markdownContent.serialization.node.test.ts`, which fail on
+the earlier runtime without the patch. Failures in the serialization phase reach
+the log as `SerovalSerializationError`; the message and the cause are still
+dropped.
 
-Um render abandonado dentro da primeira escrita também não derruba o processo. O
-`pipe` grava o shell e chama `buffer.flush()` na linha seguinte. Com um shell de
-16.384 caracteres ou mais, essa primeira escrita já chega ao destino, que pode
-abandonar o render ali mesmo: o `createSSRResponse` faz isso quando a página
-declarou `Location`, e o mesmo acontece quando a escrita lança ou quando o sinal
-do render é abortado dentro dela. O `abandon` troca o buffer por um objeto com
-`flush` vazio
-([solidjs/solid#4745](https://github.com/solidjs/solid/issues/4745)), e o render
-abandonado termina do mesmo jeito que com um shell menor. Sem esse `flush`, a
-chamada seguinte lançaria `TypeError` numa microtask que ninguém aguarda, e a
-rejeição sem tratamento encerraria o processo do Node; o patch Bun também cobria
-esse caso. A regressão fica em `renderIntegrity.redirect.node.test.ts`.
+A render abandoned inside its first write does not bring the process down
+either. `pipe` writes the shell and calls `buffer.flush()` on the next line.
+With a shell of 16,384 characters or more, that first write already reaches the
+destination, which may abandon the render right there: `createSSRResponse` does
+this when the page declared `Location`, and the same happens when the write
+throws or when the render signal is aborted inside it. `abandon` replaces the
+buffer with an object that has an empty `flush`
+([solidjs/solid#4745](https://github.com/solidjs/solid/issues/4745)), and the
+abandoned render ends the same way as with a smaller shell. Without that
+`flush`, the next call would throw a `TypeError` in a microtask that nobody
+awaits, and the unhandled rejection would end the Node process; the Bun patch
+covered that case too. The regression test is in
+`renderIntegrity.redirect.node.test.ts`.
 
-O [solidjs/solid#4193](https://github.com/solidjs/solid/issues/4193) relatou
-três lacunas. O [solidjs/solid#4206](https://github.com/solidjs/solid/pull/4206)
-levou as falhas do serializador ao hook global, passou a conter o `onCleanup`
-que lança no descarte da conclusão normal e fez o core rodar todos os cleanups
-mesmo depois de um que lança. O
-[solidjs/solid#4229](https://github.com/solidjs/solid/pull/4229) fez o render
-concluir na falha síncrona, e o
-[solidjs/solid#4246](https://github.com/solidjs/solid/pull/4246) encerra cada
-escrita no primeiro valor que falha. O #4647 encerra o render na falha
-assíncrona antes do envio e rejeita no cliente a chave que falha depois dele, e
-o #4709 fecha o caso síncrono. Ao atualizar o Solid, rode de novo as regressões
-de erro reutilizado entre requisições, falha de server function que escapa de
-Loading, recuperação local, serialização, cleanup que lança e cancelamento. A
-issue ou o PR fechado não substitui a verificação dos artefatos instalados. O
-sinal composto de timeout e desconexão chega ao `renderToStream`; o teste Node
-do adaptador verifica o descarte de uma raiz SSR pendente no cancelamento.
+[solidjs/solid#4193](https://github.com/solidjs/solid/issues/4193) reported
+three gaps. [solidjs/solid#4206](https://github.com/solidjs/solid/pull/4206)
+took the serializer failures to the global hook, started containing an
+`onCleanup` that throws in the disposal of the normal completion and made the
+core run every cleanup even after one that throws.
+[solidjs/solid#4229](https://github.com/solidjs/solid/pull/4229) made the render
+complete on a synchronous failure, and
+[solidjs/solid#4246](https://github.com/solidjs/solid/pull/4246) ends each write
+at the first value that fails. #4647 ends the render on an async failure before
+the send and rejects on the client the key that fails after it, and #4709 closes
+the synchronous case. When upgrading Solid, run again the regression tests for
+an error reused across requests, a server function failure that escapes Loading,
+local recovery, serialization, a cleanup that throws and cancellation. A closed
+issue or PR does not replace checking the installed artifacts. The combined
+timeout and disconnection signal reaches `renderToStream`; the Node test of the
+adapter checks the disposal of a pending SSR root on cancellation.
 
-No abandono por cancelamento, o thenable de `renderToStream` rejeita com
-`signal.reason`, inclusive para consumidores registrados depois do aborto, sem
-chamar `onCompleteAll`
-([solidjs/solid#4646](https://github.com/solidjs/solid/issues/4646)). Antes
-dessa correção, o runtime descartava a raiz e mantinha a espera pendente, e o
-patch cobria a rejeição. A proteção de publicação não confunde essa rejeição com
-término do backend: `protectServerOperation` registra as Promises no contexto
-assíncrono da publicação, e a vaga permanece ocupada até elas assentarem.
-Operações comuns, fora desse contexto, preservam o comportamento anterior.
-`containFailures` reconhece essa rejeição pela identidade com `signal.reason`,
-então o motivo precisa chegar sem embrulho; caso contrário, o cancelamento volta
-ao log `[middleware]`. As regressões ficam em
+On abandonment by cancellation, the `renderToStream` thenable rejects with
+`signal.reason`, including for consumers registered after the abort, without
+calling `onCompleteAll`
+([solidjs/solid#4646](https://github.com/solidjs/solid/issues/4646)). Before
+that fix, the runtime disposed the root and kept the wait pending, and the patch
+covered the rejection. The publication protection does not mistake that
+rejection for the end of the backend: `protectServerOperation` registers the
+Promises in the async context of the publication, and the slot stays taken until
+they settle. Common operations, outside that context, keep the previous
+behavior. `containFailures` recognizes that rejection by identity with
+`signal.reason`, so the reason has to arrive unwrapped; otherwise, the
+cancellation goes back to the `[middleware]` log. The regression tests are in
 `markdownContent.abort.node.test.ts`, `containFailures.abort.node.test.ts`,
-`publicationScope.node.test.ts` e no cenário HTTP de desconexão de
-`PublicationLoad`. Ao atualizar o Solid, confira também esse contrato.
+`publicationScope.node.test.ts` and the HTTP disconnection scenario of
+`PublicationLoad`. When upgrading Solid, check this contract too.

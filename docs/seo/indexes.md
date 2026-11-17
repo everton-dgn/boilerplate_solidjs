@@ -1,80 +1,82 @@
-# Índices editoriais, endpoints e cache
+# Editorial indexes, endpoints and cache
 
-[Voltar ao guia principal](../seo.md)
+[Back to the main guide](../seo.md)
 
-## Seleção para llms.txt
+## Selection for llms.txt
 
-O `llms.txt` coleta os mesmos metadados pelo manifesto, sem renderizar páginas
-nem executar preloads, e publica só as páginas que declaram `route.info.llms`. O
-arquivo é um índice curado para modelos de linguagem. O formato não define um
-teto de tamanho. Este projeto publica o índice como arquivo no build e aplica um
-orçamento operacional de 1 MiB em `tooling/markdownPrerender/constants.ts`.
-Excedê-lo interrompe o build, sem truncar o conteúdo. Em sites grandes, meça os
-textos reais, selecione as páginas que explicam o produto e agrupe-as.
-`llms: true` inclui a página; sem seção herdada, ela entra na seção padrão
-`Pages`. `{ section: 'Guias' }` cria ou reutiliza uma seção com esse nome, na
-ordem em que aparece no manifesto; `{ optional: true }` move a página para a
-seção `Optional`, que o formato reserva ao conteúdo que o modelo pode pular, e
-uma seção declarada com esse nome se funde a ela. A configuração é herdada pela
-cadeia de rotas: um layout com `llms: { section: 'Docs' }` inclui suas filhas
-nessa seção, uma filha pode sair com `llms: false` ou sobrescrever só o campo
-que declara, e `llms: true` numa filha reativa a inclusão preservando seção e
-marcação opcional herdadas. `noindex: true` exclui a página do sitemap e do
-llms.txt, mesmo com a flag. O filtro considera a configuração efetiva da página,
-incluindo herança e a rota de índice filha. O resolvedor fica colocalizado em
-`src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. O índice sai no idioma
-base. Rotas com parâmetro ficam fora mesmo com `llms`, e as fontes de
-`route.info.sitemap` não alimentam esse índice. A publicação de Markdown é
-controlada separadamente por `route.info.markdown`; quando a folha declara
-`markdown: true` ou `'dynamic'`, o link do índice aponta para o `.md`
-(`/en/about.md`), e nas demais, para o HTML.
+`llms.txt` collects the same metadata from the manifest, without rendering pages
+or running preloads, and publishes only the pages that declare
+`route.info.llms`. The file is a curated index for language models. The format
+sets no size limit. This project publishes the index as a file in the build and
+applies an operating budget of 1 MiB in
+`tooling/markdownPrerender/constants.ts`. Going over it stops the build, without
+truncating the content. On large sites, measure the real texts, select the pages
+that explain the product and group them. `llms: true` includes the page; without
+an inherited section, it goes to the default `Pages` section.
+`{ section: 'Guides' }` creates or reuses a section with that name, in the order
+in which it appears in the manifest; `{ optional: true }` moves the page to the
+`Optional` section, which the format reserves for content the model may skip,
+and a section declared with that name merges into it. The setting is inherited
+along the route chain: a layout with `llms: { section: 'Docs' }` includes its
+children in that section, a child can leave with `llms: false` or override only
+the field it declares, and `llms: true` in a child turns the inclusion back on,
+keeping the inherited section and optional mark. `noindex: true` excludes the
+page from the sitemap and from llms.txt, even with the flag. The filter looks at
+the effective setting of the page, including inheritance and the child index
+route. The resolver is colocated in
+`src/routes/(seo)/llms.txt/helpers/resolveRouteLlms/`. The index is in the base
+locale. Routes with a parameter stay out even with `llms`, and the sources of
+`route.info.sitemap` do not feed this index. Markdown publication is controlled
+separately by `route.info.markdown`; when the leaf declares `markdown: true` or
+`'dynamic'`, the index link points to the `.md` (`/en/about.md`), and for the
+others, to the HTML.
 
-## Endpoints e cache
+## Endpoints and cache
 
-`sitemap.xml/`, `robots.txt/` e `llms.txt/` são rotas de API (`index.ts`): o
-sitemap lista as páginas estáticas do manifesto de rotas, sem o fallback 404 e
-sem `noindex`, com `<lastmod>` nas páginas `article` (a mesma data do JSON-LD,
-`dateModified` ou `datePublished`), mais as entradas das fontes de
-`route.info.sitemap`, e o llms.txt publica, em Markdown, as notas de
-`llms.txt/constants.ts` (fatos que o agente precisa saber antes de abrir os
-links: idioma, o que o site oferece, o que não existe) e, em seguida, título e
-descrição das páginas selecionadas por `route.info.llms`, agrupadas por seção.
-Os casos de uso de `LLMS_USE_CASES` abrem a seção `When to use`, com links e
-descrições que orientam a leitura da home e da página sobre o projeto. Reescreva
-as notas e os casos de uso em cada projeto derivado. O `Document.tsx` anuncia
-esse arquivo em todas as páginas com
-`<link rel="describedby" href="/llms.txt">`, a descoberta recomendada pela spec
-do llms.txt; agentes não são redirecionados. O robots publica os grupos de
-`robots.txt/constants.ts`: `*` com `Allow: /` e `Disallow` do endpoint das
-server functions (`/_server` por padrão, lido do
-`virtual:solid-server-function-handler` do plugin), robôs de treinamento de IA
-com `Disallow: /`, e o link do sitemap. Buscadores e agentes que leem páginas a
-pedido do usuário continuam liberados, porque são o público do llms.txt.
-`Disallow` é um pedido que robôs mal comportados ignoram e não remove URL do
-índice; para isso, use `noindex` em `route.info.seo`. Em produção o processo
-guarda em memória a resposta do robots. O llms.txt e as partes estáticas do
-sitemap são arquivos do build, e o sitemap dinâmico reutiliza o manifesto. As
-fontes dinâmicas são consultadas conforme o endpoint: o índice lista partes e
-cada parte lê seu próprio lote. O llms.txt é montado dentro do contexto
-Paraglide do idioma base (`baseLocale` do runtime), inclusive a descrição do
-site e os metadados das páginas, para que o contexto de outro idioma não mude o
-texto. A nota sobre o idioma do índice deriva do mesmo `baseLocale`, com o nome
-do idioma em inglês, o idioma das notas. A lista de idiomas da mesma nota sai de
-`locales`, com o idioma base primeiro, o nome em inglês e o caminho de cada
-idioma: ela acompanha `project.inlang/settings.json` sem edição manual.
-Respostas de sucesso do robots e do sitemap dinâmico saem com
-`public, max-age=0, s-maxage=3600, stale-if-error=86400` em produção (o CDN
-reutiliza por uma hora; a Vercel só cacheia resposta de função com `s-maxage` e
-consome `s-maxage` e `stale-if-error` sem repassá-los ao navegador) e com
-`no-store` em desenvolvimento. Com `stale-if-error`, um erro da função depois
-que a cópia expira pode aproveitar uma cópia anterior, conforme o contrato da
-hospedagem. Os arquivos estáticos usam a política de cache da plataforma; não
-recebem a CSP nem o cache do middleware. As URLs absolutas dos três arquivos
-partem da origem de `VITE_SITE_URL`; um site servido em um subcaminho não é
-suportado por essa geração. A página 404 declara `robots: noindex`. A imagem
-social fica em `public/images/og.png`, com cache imutável de um ano configurado
-no `publicAssets` de `/images/` no `vite.config.ts`. Como esse cache não
-revalida, publique uma imagem nova com outro nome (por exemplo,
-`og-2026-10.png`) e atualize `SITE.image.path`: sobrescrever `og.png` deixa
-navegadores e caches intermediários com a versão antiga por até um ano. O logo
-do JSON-LD reutiliza `public/favicon/apple-touch-icon.png`.
+`sitemap.xml/`, `robots.txt/` and `llms.txt/` are API routes (`index.ts`): the
+sitemap lists the static pages of the route manifest, without the 404 fallback
+and without `noindex`, with `<lastmod>` on the `article` pages (the same date as
+the JSON-LD, `dateModified` or `datePublished`), plus the entries of the
+`route.info.sitemap` sources, and llms.txt publishes, in Markdown, the notes in
+`llms.txt/constants.ts` (facts the agent needs to know before opening the links:
+locale, what the site offers, what does not exist) and then the title and
+description of the pages selected by `route.info.llms`, grouped by section. The
+use cases of `LLMS_USE_CASES` open the `When to use` section, with links and
+descriptions that guide the reading of the home page and of the page about the
+project. Rewrite the notes and the use cases in each derived project.
+`Document.tsx` announces this file on every page with
+`<link rel="describedby" href="/llms.txt">`, the discovery that the llms.txt
+spec recommends; agents are not redirected. robots publishes the groups of
+`robots.txt/constants.ts`: `*` with `Allow: /` and a `Disallow` of the server
+function endpoint (`/_server` by default, read from the plugin's
+`virtual:solid-server-function-handler`), AI training robots with `Disallow: /`,
+and the link to the sitemap. Search engines and agents that read pages at the
+user's request stay allowed, because they are the audience of llms.txt.
+`Disallow` is a request that badly behaved robots ignore, and it does not remove
+a URL from the index; for that, use `noindex` in `route.info.seo`. In production
+the process keeps the robots response in memory. llms.txt and the static parts
+of the sitemap are build files, and the dynamic sitemap reuses the manifest. The
+dynamic sources are read per endpoint: the index lists the parts, and each part
+reads its own batch. llms.txt is built inside the Paraglide context of the base
+locale (the runtime `baseLocale`), the site description and the page metadata
+included, so that the context of another locale does not change the text. The
+note about the locale of the index derives from the same `baseLocale`, with the
+locale name in English, the language of the notes. The list of locales in the
+same note comes from `locales`, with the base locale first, the English name and
+the path of each locale: it follows `project.inlang/settings.json` without
+manual edits. Successful responses of robots and of the dynamic sitemap go out
+with `public, max-age=0, s-maxage=3600, stale-if-error=86400` in production (the
+CDN reuses them for one hour; Vercel only caches a function response with
+`s-maxage` and consumes `s-maxage` and `stale-if-error` without passing them to
+the browser) and with `no-store` in development. With `stale-if-error`, a
+function error after the copy expires can reuse an earlier copy, according to
+the hosting contract. The static files use the cache policy of the platform;
+they do not get the CSP or the cache of the middleware. The absolute URLs of the
+three files start from the origin of `VITE_SITE_URL`; a site served under a
+subpath is not supported by this generation. The 404 page declares
+`robots: noindex`. The social image is `public/images/og.png`, with an immutable
+one-year cache set in the `publicAssets` of `/images/` in `vite.config.ts`.
+Because that cache does not revalidate, publish a new image under another name
+(for example, `og-2026-10.png`) and update `SITE.image.path`: overwriting
+`og.png` leaves browsers and intermediate caches with the old version for up to
+a year. The JSON-LD logo reuses `public/favicon/apple-touch-icon.png`.

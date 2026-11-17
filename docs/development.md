@@ -1,470 +1,473 @@
-# Desenvolvimento e entrega
+# Development and delivery
 
-[Voltar ao README](../README.md)
+[Back to the README](../README.md)
 
-## Pré-requisitos
+## Prerequisites
 
-As versões exatas vivem no `package.json`:
+The exact versions live in `package.json`:
 
-- Vite+: instale o CLI global conforme o
-  [guia oficial](https://viteplus.dev/guide/). Ele seleciona o Node e o
-  gerenciador de pacotes declarados no projeto.
-- Node: o runtime do Vitest, dos testes de tooling fora de `tooling/release/` e
-  do SSR de produção. `devEngines.runtime` fixa a versão exata, dentro da linha
-  declarada em `engines.node`.
-- Bun: o instalador e runtime de desenvolvimento, build, Knip, lint de CSS e
-  automação de release, fixado em `packageManager`. O Vite+ seleciona essa
-  versão para a instalação e para o comando `bun`.
-- Chromium do Playwright: usado pelos testes de navegador e E2E. Não é baixado
-  no `vp install`; instale com `vp run test:browser:install` e repita o comando
-  depois de atualizar o Playwright, que fixa uma revisão do navegador por
-  versão.
+- Vite+: install the global CLI as the
+  [official guide](https://viteplus.dev/guide/) explains. It selects the Node
+  and the package manager declared in the project.
+- Node: the runtime of Vitest, of the tooling tests outside `tooling/release/`
+  and of the production SSR. `devEngines.runtime` pins the exact version, inside
+  the line declared in `engines.node`.
+- Bun: the installer and the runtime of development, build, Knip, CSS lint and
+  release automation, pinned in `packageManager`. Vite+ selects that version for
+  the installation and for the `bun` command.
+- Playwright's Chromium: used by the browser and E2E tests. It is not downloaded
+  by `vp install`; install it with `vp run test:browser:install` and run the
+  command again after updating Playwright, which pins one browser revision per
+  version.
 
-No CI, os testes usam o Chrome já instalado no runner.
+In CI, the tests use the Chrome already installed on the runner.
 
-Ao subir a linha do Node, confirme que a Vercel aceita o runtime de destino e
-altere `engines` e `devEngines` no mesmo commit.
+When raising the Node line, confirm that Vercel accepts the target runtime and
+change `engines` and `devEngines` in the same commit.
 
-## Ambiente e preview
+## Environment and preview
 
-Para clonar e iniciar o projeto, siga os
-[primeiros passos](../README.md#primeiros-passos).
+To clone and start the project, follow
+[getting started](../README.md#getting-started).
 
-Para conferir o build de produção localmente, incluindo SSR e server functions:
+To check the production build locally, SSR and server functions included:
 
 ```bash
 vp run build && vp run start
 ```
 
-O preview usa o Vite+ com a integração do Nitro. O `.env` versionado contém os
-valores locais de `HOST` e `PORT`, usados tanto pelo dev quanto pelo preview, e
-`VITE_SITE_URL`, a URL pública obrigatória dos metadados de SEO. Ele também é
-carregado durante o build; variáveis já definidas no ambiente têm prioridade.
-Para escolher outra porta ou interface no preview, use
-`vp run start --port 3001` ou `vp run start --host 0.0.0.0`. No servidor de
-desenvolvimento a flag `--port` não muda a porta; use `PORT=3001 vp run dev`.
+The preview uses Vite+ with the Nitro integration. The versioned `.env` holds
+the local values of `HOST` and `PORT`, used by both dev and preview, and
+`VITE_SITE_URL`, the public URL the SEO metadata requires. It is also loaded
+during the build; variables already set in the environment take priority. To
+choose another port or interface in the preview, use `vp run start --port 3001`
+or `vp run start --host 0.0.0.0`. On the development server the `--port` flag
+does not change the port; use `PORT=3001 vp run dev`.
 
-`vp run start` é um alias do preview local. Em produção, configure as variáveis
-na plataforma de hospedagem; o comando `preview` é destinado à conferência
-local.
+`vp run start` is an alias of the local preview. In production, set the
+variables on the hosting platform; the `preview` command is meant for local
+checks.
 
-## Build e deploy
+## Build and deploy
 
-O Nitro usa `preset: 'vercel'` no `vite.config.ts` e gera a função SSR e os
-estáticos em `.vercel/output/`. A entrada SSR do build é o handler nativo do
-plugin do Solid, que lê o nonce de `event.nonce` após a cadeia de middleware.
-Ele renderiza pelas entradas autorais `src/entry-server.tsx` e
-`src/entry-client.tsx`, que o plugin exige em par. A de servidor cria o estado
-de integridade do render e o conclui pelo `onCompleteAll`, que a entrada gerada
-não passa ao `renderToStream`; a de cliente confere o idioma e instala a
-detecção de página desatualizada e a guarda de histórico antes da hidratação. As
-requisições de server functions usam a integração nativa entre Solid e
-Nitro/srvx.
+Nitro uses `preset: 'vercel'` in `vite.config.ts` and generates the SSR function
+and the static files in `.vercel/output/`. The SSR entry of the build is the
+native handler of the Solid plugin, which reads the nonce from `event.nonce`
+after the middleware chain. It renders through the authored entries
+`src/entry-server.tsx` and `src/entry-client.tsx`, which the plugin requires as
+a pair. The server one creates the render integrity state and completes it
+through `onCompleteAll`, which the generated entry does not pass to
+`renderToStream`; the client one checks the locale and installs the outdated
+page detection and the history guard before hydration. Server function requests
+use the native integration between Solid and Nitro/srvx.
 
-A entrada do cliente publica o marcador de testes com `onHydrationEnd`, dentro
-da passagem raiz de `hydrate()`. Ele acompanha o fim da fase, inclusive quando
-há recuperação de erro. O contrato e os cenários de parser, preload e streaming
-estão em
-[testes da aplicação completa](testing.md#testes-da-aplicação-completa).
+The client entry publishes the test marker with `onHydrationEnd`, inside the
+root pass of `hydrate()`. It follows the end of the phase, error recovery
+included. The contract and the parser, preload and streaming scenarios are in
+[full application tests](testing.md#full-application-tests).
 
-Para gerar o artefato da Vercel:
+To generate the Vercel artifact:
 
 ```bash
 vp run build
 ```
 
-Esse comando gera `.vercel/output/`, incluindo estáticos e a função SSR com
-runtime Node. O manifesto do Vite não chega ao artefato, e o manifesto das
-server functions fica na saída do SSR, fora do diretório estático publicado
-([segurança](security.md)). O build executa em Bun, e o Nitro escolhe o runtime
-Node da função pelo `engines.node` do `package.json`. Gerar o artefato
-localmente não publica a aplicação.
+That command generates `.vercel/output/`, static files and the SSR function with
+the Node runtime included. The Vite manifest does not reach the artifact, and
+the server function manifest stays in the SSR output, outside the published
+static folder ([security](security.md)). The build runs in Bun, and Nitro
+chooses the Node runtime of the function from the `engines.node` of
+`package.json`. Generating the artifact locally does not publish the
+application.
 
-### Runtime do SSR
+### SSR runtime
 
-O SSR de produção permanece em Node porque respostas de `fetch()` no Bun
-declarado no projeto permitem alterar os headers. `Response.redirect()` já
-preserva o corpo nulo, mas a proteção do servidor também depende da
-imutabilidade dos headers de respostas de rede. Com `engines.node` definido e
-sem `engines.bun`, o Nitro gera a função em Node mesmo quando o build executa em
-Bun. Não acrescente `engines.bun` ao `package.json` junto com `bunVersion` no
-`vercel.json`: com `engines.node` definido, só os dois juntos trocam a função
-para Bun. Antes de migrar o SSR, preserve os contratos de
-[erros de servidor](server-errors.md) e rode os testes da fronteira no runtime
-de destino, além dos E2E completos.
+The production SSR stays on Node because, in the Bun the project declares, the
+`fetch()` responses allow changing the headers. `Response.redirect()` already
+keeps the null body, but the protection of the server also depends on the
+immutability of the headers of network responses. With `engines.node` set and no
+`engines.bun`, Nitro generates the function on Node even when the build runs in
+Bun. Do not add `engines.bun` to `package.json` together with `bunVersion` in
+`vercel.json`: with `engines.node` set, only the two together switch the
+function to Bun. Before migrating the SSR, keep the contracts of
+[server errors](server-errors.md) and run the boundary tests on the target
+runtime, plus the complete E2E suites.
 
-### Publicação
+### Publication
 
-O deploy de produção sai do job `deploy` do
-[workflow do CI](../.github/workflows/ci.yml), só em push na `main`, e publica
-com `vercel deploy --prebuilt --prod` o mesmo build que o E2E de produção
-testou, sem recompilar. O fluxo completo, as credenciais cadastradas no GitHub e
-a configuração do projeto remoto estão na
-[integração com a Vercel](../tooling/release/README.md#integração-com-a-vercel).
-O `vercel.json` desativa os deploys pela integração Git
-(`git.deploymentEnabled: false`) e guarda só o `Content-Type` dos `.md` gerados
-no build. O cache imutável de `/images/` (uma imagem trocada precisa de nome
-novo, como explica o [guia de SEO](seo.md)) e os cabeçalhos `nosniff` e
-`Cross-Origin-Resource-Policy` dos estáticos vêm dos `publicAssets` e das
-`routeRules` do Nitro no `vite.config.ts`, como descreve o guia de
-[segurança](security.md); os demais cabeçalhos de segurança saem do middleware.
-A configuração da Vercel e o fluxo de releases automáticas estão no
-[guia de releases](../tooling/release/README.md).
+The production deploy comes from the `deploy` job of the
+[CI workflow](../.github/workflows/ci.yml), only on a push to `main`, and
+publishes with `vercel deploy --prebuilt --prod` the same build the production
+E2E tested, without rebuilding. The complete flow, the credentials registered on
+GitHub and the configuration of the remote project are in the
+[Vercel integration](../tooling/release/README.md#vercel-integration). The
+`vercel.json` turns off the deploys through the Git integration
+(`git.deploymentEnabled: false`) and keeps only the `Content-Type` of the `.md`
+files generated in the build. The immutable cache of `/images/` (a replaced
+image needs a new name, as the [SEO guide](seo.md) explains) and the `nosniff`
+and `Cross-Origin-Resource-Policy` headers of the static files come from the
+Nitro `publicAssets` and `routeRules` in `vite.config.ts`, as the
+[security](security.md) guide describes; the other security headers come from
+the middleware. The Vercel configuration and the automatic release flow are in
+the [release guide](../tooling/release/README.md).
 
-O Nitro é definido no [package.json](../package.json). Ao atualizá-lo, valide o
-build Vercel, o preview local e os E2E. Os diretórios gerados `.output/`,
-`.nitro/` e `.vercel/` são ignorados pelo Git.
+Nitro is set in [package.json](../package.json). When updating it, validate the
+Vercel build, the local preview and the E2E tests. The generated folders
+`.output/`, `.nitro/` and `.vercel/` are ignored by Git.
 
-## Estilos no primeiro carregamento em desenvolvimento
+## Styles on the first load in development
 
-O worker SSR do Nitro é isolado e busca a CSS das rotas lazy numa ponte HTTP do
-servidor de desenvolvimento. O plugin do Solid descobre a URL dessa ponte depois
-que o servidor começa a escutar, mesmo quando o Nitro importa o manifest antes,
-e limpa o cache da ponte no worker depois de cada edição. Sem isso, o primeiro
-HTML sai sem estilos até o JavaScript carregar, ou traz estilos antigos que só
-são trocados na hidratação.
+The SSR worker of Nitro is isolated and fetches the CSS of the lazy routes from
+an HTTP bridge of the development server. The Solid plugin finds the URL of that
+bridge after the server starts listening, even when Nitro imports the manifest
+earlier, and clears the bridge cache in the worker after each edit. Without
+that, the first HTML comes out without styles until the JavaScript loads, or
+brings old styles that are only replaced on hydration.
 
-Os E2E rodam no build de produção e não cobrem esse caminho. Ao atualizar o
-plugin do Solid ou o Nitro, confira com `vp run dev` que o primeiro HTML de uma
-página, pedido logo depois de o servidor subir, traz os
-`<style data-vite-dev-id>` das rotas, e que uma edição num CSS de rota aparece
-no HTML da requisição seguinte.
+The E2E tests run on the production build and do not cover that path. When
+updating the Solid plugin or Nitro, check with `vp run dev` that the first HTML
+of a page, requested right after the server starts, brings the
+`<style data-vite-dev-id>` of the routes, and that an edit to a route CSS shows
+up in the HTML of the next request.
 
 ## Scripts
 
-| Comando                       | Descrição                                                                         |
+| Command                       | Description                                                                       |
 | ----------------------------- | --------------------------------------------------------------------------------- |
-| `vp run dev`                  | Servidor de desenvolvimento com HMR                                               |
-| `vp run dev:phone`            | Expor o servidor de desenvolvimento na rede local                                 |
-| `vp run build`                | Build Nitro para Vercel em `.vercel/output/`                                      |
-| `vp run start`                | Pré-visualizar o build pelo Vite                                                  |
-| `vp run i18n:generate`        | Validar catálogos e gerar mensagens e tipos                                       |
-| `vp run typecheck:node`       | Tipos das ferramentas no ambiente Node                                            |
-| `vp run lint`                 | CSS, lint e tipos com cache do Vite+                                              |
-| `vp run lint:css`             | Verificar as regras de CSS                                                        |
-| `vp run format`               | Formatar código com Oxfmt                                                         |
-| `vp run check:ci`             | CSS, formatação, lint e tipos da aplicação                                        |
-| `vp run check:fix`            | Formatação + lint corrigindo o que for possível                                   |
-| `vp run test`                 | Todos os projetos de teste da aplicação                                           |
-| `vp run test:tooling`         | Testes de tooling em Node, exceto release                                         |
-| `vp run test:release`         | Testar a automação de release com Bun                                             |
-| `vp run test:ui`              | Vitest UI com cobertura; use a URL impressa (traz o token)                        |
-| `vp run test:ci`              | Rodar Vitest com cobertura e parar na primeira falha                              |
-| `vp run test:coverage`        | Rodar Vitest com cobertura                                                        |
-| `vp run test:unit`            | Só os projetos `node` e `dom` (happy-dom)                                         |
-| `vp run test:watch`           | Testes em modo de observação                                                      |
-| `vp run test:shuffle`         | Testes em ordem aleatória, para achar dependência de ordem                        |
-| `vp run test:browser`         | Só o projeto `browser` (Chromium headless)                                        |
-| `vp run test:browser:install` | Baixar o Chromium do Playwright                                                   |
-| `vp run test:e2e`             | Testar a aplicação com fixtures E2E                                               |
-| `vp run test:e2e:production`  | Testar as rotas reais de produção                                                 |
-| `vp run test:e2e:ui`          | Abrir a interface interativa dos E2E                                              |
-| `vp run test:e2e:codegen`     | Abrir o gerador de testes do Playwright                                           |
-| `vp run deps:update`          | Selecionar atualizações de dependências                                           |
-| `vp run bun:update`           | Atualizar o Bun fixado e reinstalar dependências                                  |
-| `vp run detect:duplicates`    | Procurar código duplicado em `src`                                                |
-| `vp run dead-code`            | Verificar código sem uso com Knip                                                 |
-| `vp run dead-code:fix`        | Aplicar as correções do Knip e formatar com `vp fmt`                              |
-| `vp run scan:secrets`         | Procurar segredos com Kingfisher (requer instalação)                              |
+| `vp run dev`                  | Development server with HMR                                                       |
+| `vp run dev:phone`            | Expose the development server on the local network                                |
+| `vp run build`                | Nitro build for Vercel in `.vercel/output/`                                       |
+| `vp run start`                | Preview the build through Vite                                                    |
+| `vp run i18n:generate`        | Validate catalogs and generate messages and types                                 |
+| `vp run typecheck:node`       | Types of the tooling in the Node environment                                      |
+| `vp run lint`                 | CSS, lint and types with the Vite+ cache                                          |
+| `vp run lint:css`             | Check the CSS rules                                                               |
+| `vp run format`               | Format code with Oxfmt                                                            |
+| `vp run check:ci`             | CSS, formatting, lint and types of the application                                |
+| `vp run check:fix`            | Formatting + lint, fixing what it can                                             |
+| `vp run test`                 | Every test project of the application                                             |
+| `vp run test:tooling`         | Tooling tests on Node, release excluded                                           |
+| `vp run test:release`         | Test the release automation with Bun                                              |
+| `vp run test:ui`              | Vitest UI with coverage; use the printed URL (it carries the token)               |
+| `vp run test:ci`              | Run Vitest with coverage and stop at the first failure                            |
+| `vp run test:coverage`        | Run Vitest with coverage                                                          |
+| `vp run test:unit`            | Only the `node` and `dom` (happy-dom) projects                                    |
+| `vp run test:watch`           | Tests in watch mode                                                               |
+| `vp run test:shuffle`         | Tests in random order, to find order dependencies                                 |
+| `vp run test:browser`         | Only the `browser` project (headless Chromium)                                    |
+| `vp run test:browser:install` | Download Playwright's Chromium                                                    |
+| `vp run test:e2e`             | Test the application with E2E fixtures                                            |
+| `vp run test:e2e:production`  | Test the real production routes                                                   |
+| `vp run test:e2e:ui`          | Open the interactive E2E interface                                                |
+| `vp run test:e2e:codegen`     | Open the Playwright test generator                                                |
+| `vp run deps:update`          | Select dependency updates                                                         |
+| `vp run bun:update`           | Update the pinned Bun and reinstall dependencies                                  |
+| `vp run detect:duplicates`    | Look for duplicated code in `src`                                                 |
+| `vp run dead-code`            | Check unused code with Knip                                                       |
+| `vp run dead-code:fix`        | Apply the Knip fixes and format with `vp fmt`                                     |
+| `vp run scan:secrets`         | Look for secrets with Kingfisher (requires installation)                          |
 | `vp run validate`             | check:ci + typecheck:node + dead-code + test:coverage + tooling + release + build |
-| `vp run commitlint`           | Validar mensagem de commit                                                        |
+| `vp run commitlint`           | Validate a commit message                                                         |
 
-## Execução e cache
+## Execution and cache
 
-O Knip executa em Bun pelo binário `knip-bun`, inclusive em `dead-code:fix`. Com
-Node, o carregamento deste `vite.config.ts` pelo Jiti falha ao avaliar as
-factories de `lazyPlugins`. O carregador nativo do Bun aceita a configuração.
+Knip runs in Bun through the `knip-bun` binary, `dead-code:fix` included. With
+Node, loading this `vite.config.ts` through Jiti fails when evaluating the
+`lazyPlugins` factories. The native Bun loader accepts the configuration.
 
-Os scripts chamam o binário local `vp` (Vite+). `vp <comando>` executa um
-comando embutido; `vp run <script>` executa um script do `package.json` ou uma
-tarefa do `vite.config.ts`. Os dois podem divergir, então confira o
-`package.json` antes de rodar direto.
+The scripts call the local `vp` (Vite+) binary. `vp <command>` runs a built-in
+command; `vp run <script>` runs a `package.json` script or a `vite.config.ts`
+task. The two can differ, so check `package.json` before running one directly.
 
-Para selecionar atualizações, use `vp run deps:update`, que executa
-`vp update --interactive --latest`; `vp outdated` apenas lista as versões
-disponíveis. Os dois comandos comparam cada pacote só com a dist-tag `latest` e
-omitem versões publicadas apenas em outra tag, como as RCs do Solid na `next`.
-Para esses pacotes, consulte as tags com `bun info <pacote> dist-tags`, por
-exemplo `bun info solid-js dist-tags`, e atualize a versão fixada no
-`package.json` à mão.
+To select updates, use `vp run deps:update`, which runs
+`vp update --interactive --latest`; `vp outdated` only lists the available
+versions. Both commands compare each package only with the `latest` dist-tag and
+leave out versions published only under another tag, such as the Solid RCs under
+`next`. For those packages, check the tags with `bun info <package> dist-tags`,
+for example `bun info solid-js dist-tags`, and update the pinned version in
+`package.json` by hand.
 
-`vp run lint`, `vp run lint:css`, `vp run check:ci` e `vp run dead-code` usam as
-tarefas com cache `lint-project`, `lint-css`, `check-project` e
-`dead-code-project` do `vite.config.ts`. `lint-project` e `check-project`
-declaram `dependsOn: ['lint-css']`: o lint de CSS roda antes, com cache e
-entradas próprias, e uma mudança só em TypeScript não o executa de novo. As duas
-tarefas compartilham as entradas da constante `PROJECT_CHECK_INPUTS`.
-`check-project` roda `vp check --continue-on-error`: uma falha de formatação não
-interrompe o lint nem a checagem de tipos, a saída reúne os três resultados e o
-comando termina com erro se qualquer um deles falhar. `vp run typecheck:node`
-usa a tarefa `typecheck-node`; `vp run test:tooling` usa a tarefa
-`test-tooling`, sem cache, porque os testes dependem de diretórios temporários
-que o cache não rastreia. O Vite+ reaproveita resultados bem-sucedidos quando os
-arquivos lidos, as listagens de diretórios, os argumentos e as variáveis de
-ambiente selecionadas continuam iguais. As tarefas de lint incluem `NODE_ENV` na
-chave do cache; `PATH` e `NODE_OPTIONS` chegam ao processo sem invalidar o
-resultado. O Vite também registra as variáveis que carrega. A configuração do
-servidor limita `loadEnv` aos prefixos `HOST` e `PORT`, para não registrar todo
-o ambiente.
+`vp run lint`, `vp run lint:css`, `vp run check:ci` and `vp run dead-code` use
+the cached tasks `lint-project`, `lint-css`, `check-project` and
+`dead-code-project` of `vite.config.ts`. `lint-project` and `check-project`
+declare `dependsOn: ['lint-css']`: the CSS lint runs first, with its own cache
+and inputs, and a TypeScript-only change does not run it again. The two tasks
+share the inputs of the `PROJECT_CHECK_INPUTS` constant. `check-project` runs
+`vp check --continue-on-error`: a formatting failure does not stop the lint or
+the type check, the output gathers the three results and the command ends with
+an error if any of them fails. `vp run typecheck:node` uses the `typecheck-node`
+task; `vp run test:tooling` uses the `test-tooling` task, without cache, because
+the tests depend on temporary folders the cache does not track. Vite+ reuses
+successful results when the files read, the folder listings, the arguments and
+the selected environment variables stay the same. The lint tasks include
+`NODE_ENV` in the cache key; `PATH` and `NODE_OPTIONS` reach the process without
+invalidating the result. Vite also records the variables it loads. The server
+configuration limits `loadEnv` to the `HOST` and `PORT` prefixes, so it does not
+record the whole environment.
 
-O rastreamento automático registra os arquivos que o lint type-aware lê,
-inclusive os tipos em `node_modules`, mas não vê as leituras do `tsc` nativo.
-Por isso `typecheck-node` declara as entradas explicitamente, incluindo fontes,
-declarações, configurações do TypeScript, `package.json`, `bun.lock` e
-`patches/**`. De `src/` entram só os arquivos `.ts`, `.tsx` e `.json`, que o
-`tsc` lê; CSS, imagens e fontes chegam por declarações de módulo e não invalidam
-a checagem. O lockfile representa as dependências que
-`vp install --frozen-lockfile` instala, mas guarda só o caminho de cada patch;
-por isso o conteúdo de `patches/` entra à parte, também nas entradas de
-`lint-project` e `check-project`. Ao criar uma tarefa que leia tipos instalados,
-inclua `patches/**`. O Knip combina rastreamento automático com entradas
-explícitas de fontes, ferramentas e dependências, incluindo a descoberta de
-novas rotas. Ao criar uma tarefa com cache, confira com duas execuções que uma
-mudança num arquivo lido invalida o resultado.
+The automatic tracking records the files the type-aware lint reads, the types in
+`node_modules` included, but does not see the reads of the native `tsc`. That is
+why `typecheck-node` declares the inputs explicitly, including sources,
+declarations, TypeScript configs, `package.json`, `bun.lock` and `patches/**`.
+From `src/` only the `.ts`, `.tsx` and `.json` files enter, which `tsc` reads;
+CSS, images and fonts come in through module declarations and do not invalidate
+the check. The lockfile represents the dependencies that
+`vp install --frozen-lockfile` installs, but keeps only the path of each patch;
+that is why the content of `patches/` enters separately, also in the inputs of
+`lint-project` and `check-project`. When creating a task that reads installed
+types, include `patches/**`. Knip combines the automatic tracking with explicit
+inputs for sources, tools and dependencies, the discovery of new routes
+included. When creating a cached task, check with two runs that a change in a
+file it reads invalidates the result.
 
-O cache mantém `typeAware` e `typeCheck` ativos e identifica na saída quando
-reproduz um resultado anterior. Para executar tudo novamente, use
-`vp run --no-cache lint` ou `vp run --no-cache check:ci`. Para ignorar o cache
-das outras tarefas, use `vp run --no-cache typecheck:node`,
-`vp run --no-cache lint:css` ou `vp run --no-cache dead-code`. `check:fix`,
-build e as suítes do Vitest mantêm seus comandos próprios.
+The cache keeps `typeAware` and `typeCheck` on and tells in the output when it
+replays an earlier result. To run everything again, use `vp run --no-cache lint`
+or `vp run --no-cache check:ci`. To skip the cache of the other tasks, use
+`vp run --no-cache typecheck:node`, `vp run --no-cache lint:css` or
+`vp run --no-cache dead-code`. `check:fix`, the build and the Vitest suites keep
+their own commands.
 
-Antes de ignorar o cache, veja o que ele faria: `vp run --dry-run check:ci`
-lista cada comando da execução e indica se ele acertaria o cache, sem rodar nada
-nem gravar no cache. Com `--json`, o mesmo plano sai num documento para scripts.
-Para descobrir por que uma tarefa perdeu o cache, rode-a com `-v`, que lista as
-mudanças por trás de cada perda, inclusive os arquivos de entrada alterados;
-`-vv` acrescenta as entradas inalteradas e as saídas que um acerto restaura. O
-plano não substitui a conferência de invalidação descrita acima.
+Before skipping the cache, see what it would do: `vp run --dry-run check:ci`
+lists each command of the run and tells whether it would hit the cache, without
+running anything or writing to the cache. With `--json`, the same plan comes out
+as a document for scripts. To find out why a task missed the cache, run it with
+`-v`, which lists the changes behind each miss, the changed input files
+included; `-vv` adds the unchanged inputs and the outputs a hit restores. The
+plan does not replace the invalidation check described above.
 
-## Runtimes e CI
+## Runtimes and CI
 
-No CI e na automação de release, o `setup-vp` fornece o Node e o Bun declarados
-no projeto e reaproveita o cache de pacotes. `vp install --frozen-lockfile`
-instala com Bun sem permitir mudanças no lockfile. Os scripts `dev` e `build`
-chamam o CLI local do Vite+ explicitamente com Bun, porque o `vp` global e os
-filhos de `vp run` podem selecionar Node novamente. Use `vp run dev` e
-`vp run build` para executar esses scripts. A automação de release e seus testes
-(`vp run test:release`) rodam em Bun. Node continua nos testes da aplicação, nos
-demais testes de tooling e no SSR de produção: o `RuleTester` do Oxlint recusa
-Bun, e a suíte Vitest apresentou incompatibilidades no carregamento de módulos
-do Solid. O job `Quality` restaura `node_modules/.vite/task-cache`,
-`node_modules/.vitest-cache` e `.tsbuild`, com uma chave por execução e um
-prefixo de restauração restrito ao sistema operacional, arquitetura, Node, Bun e
-lockfile. Vite Task, Vitest e TypeScript conferem suas entradas antes de
-reaproveitar os dados. Depois dos testes com cobertura, o cache é enviado ao
-GitHub, inclusive quando uma verificação anterior falha. Vite Task só guarda
-resultados bem-sucedidos e Vitest guarda transformações, então uma falha não
-vira um resultado de teste reaproveitado. O workflow aguarda o upload antes de
-encerrar; falhas de cache não dispensam nem reprovam as verificações. Uma
-execução sem cache faz as mesmas verificações. A reutilização do Vite Task entre
-runners é experimental: confira os hits nos logs e compare o tempo economizado
-com o custo de transferir o cache.
+In CI and in the release automation, `setup-vp` provides the Node and the Bun
+declared in the project and reuses the package cache.
+`vp install --frozen-lockfile` installs with Bun without allowing changes to the
+lockfile. The `dev` and `build` scripts call the local Vite+ CLI explicitly with
+Bun, because the global `vp` and the children of `vp run` can select Node again.
+Use `vp run dev` and `vp run build` to run those scripts. The release automation
+and its tests (`vp run test:release`) run in Bun. Node stays in the application
+tests, in the other tooling tests and in the production SSR: the Oxlint
+`RuleTester` refuses Bun, and the Vitest suite showed incompatibilities when
+loading the Solid modules. The `Quality` job restores
+`node_modules/.vite/task-cache`, `node_modules/.vitest-cache` and `.tsbuild`,
+with one key per run and a restore prefix restricted to the operating system,
+architecture, Node, Bun and lockfile. Vite Task, Vitest and TypeScript check
+their inputs before reusing the data. After the tests with coverage, the cache
+is uploaded to GitHub, even when an earlier check fails. Vite Task only keeps
+successful results and Vitest keeps transformations, so a failure does not
+become a reused test result. The workflow waits for the upload before ending;
+cache failures neither waive nor fail the checks. A run without cache does the
+same checks. Reusing Vite Task between runners is experimental: check the hits
+in the logs and compare the time saved with the cost of transferring the cache.
 
-No CI, só `Quality` envia o cache de pacotes, e apenas quando a chave do
-lockfile não existe e o job termina com sucesso. A ação `setup-project` só
-restaura por padrão (`cache-save: 'false'`), e `Quality` é o único job que passa
-`cache-save: 'true'`. `Quality`, `Tooling` e os dois E2E também passam
-`cache-toolchain: 'true'`: o `setup-vp` guarda Vite+, Node e Bun no cache do
-Actions, e só `Quality` envia esse cache. O projeto trata como confiável o
-escopo de cache da `main`: na `main` só se restauram caches gravados pela
-própria `main`, porque o GitHub grava os caches de um PR no ref de merge, que a
-`main` não lê. Por isso `E2E (production)`, que recebe o `VERCEL_TOKEN` só no
-push da `main` e gera o artefato do deploy, restaura pacotes e toolchain como os
-demais E2E. `Reuse proof`, o deploy e a automação de release não passam
-`cache-toolchain` e preparam a toolchain sem esse cache. `Reuse proof` e deploy
-passam também `install-dependencies: false`: a ação prepara Vite+, Node e Bun do
-`package.json`, sem cache de pacotes nem `vp install`. O deploy só executa
-`vp dlx` sobre o artefato testado. Com `cache: false`, o `setup-vp` não restaura
-nem salva o cache, e `cache-save` e `cache-dependency-path` não têm efeito. A
-automação de release usa a mesma ação: o job de plano, sem permissão de escrita,
-instala as dependências e restaura o cache de pacotes da `main` sem enviá-lo; os
-jobs com escrita passam `install-dependencies: false` e não instalam nem
-importam pacotes, conforme o
-[guia de release](../tooling/release/README.md#ativação-no-github).
+In CI, only `Quality` uploads the package cache, and only when the lockfile key
+does not exist and the job ends successfully. The `setup-project` action only
+restores by default (`cache-save: 'false'`), and `Quality` is the only job that
+passes `cache-save: 'true'`. `Quality`, `Tooling` and the two E2E jobs also pass
+`cache-toolchain: 'true'`: `setup-vp` keeps Vite+, Node and Bun in the Actions
+cache, and only `Quality` uploads that cache. The project trusts the cache scope
+of `main`: on `main` only caches written by `main` itself are restored, because
+GitHub writes the caches of a PR to the merge ref, which `main` does not read.
+That is why `E2E (production)`, which receives the `VERCEL_TOKEN` only on the
+push to `main` and generates the deploy artifact, restores packages and
+toolchain like the other E2E jobs. `Reuse proof`, the deploy and the release
+automation do not pass `cache-toolchain` and prepare the toolchain without that
+cache. `Reuse proof` and the deploy also pass `install-dependencies: false`: the
+action prepares Vite+, Node and Bun from `package.json`, without a package cache
+or `vp install`. The deploy only runs `vp dlx` on the tested artifact. With
+`cache: false`, `setup-vp` neither restores nor saves the cache, and
+`cache-save` and `cache-dependency-path` have no effect. The release automation
+uses the same action: the plan job, without write permission, installs the
+dependencies and restores the package cache of `main` without uploading it; the
+jobs with write permission pass `install-dependencies: false` and neither
+install nor import packages, according to the
+[release guide](../tooling/release/README.md#enabling-on-github).
 
-A tarefa `lint-css` combina os arquivos lidos automaticamente com entradas
-explícitas para CSS, ferramentas de CSS, `package.json`, `bun.lock` e
-`bunfig.toml`. Assim, a invalidação do lint de CSS não depende do rastreamento
-de leituras do runtime em cada sistema operacional. `lint-project` e
-`check-project` declaram fontes, declarações, configurações do TypeScript e os
-arquivos de dependências. O Bun usa o linker isolado definido em `bunfig.toml`;
-somente os pacotes de `trustedDependencies` podem executar os scripts de
-instalação autorizados. Os comandos documentados usam `vp`, e o Vite mantém seu
-carregamento de variáveis por modo. `env = false` no `bunfig.toml` também evita
-que `bun run` antecipe a leitura do `.env` antes de iniciar essas ferramentas. O
-`bunfig.toml` do projeto não define `minimumReleaseAge`, cujo padrão no Bun é
-desligado: uma quarentena de versões configurada no bunfig global do
-desenvolvedor continua valendo, e o bunfig local só a anularia se repetisse a
-chave. Com essa quarentena, versões publicadas há menos tempo que o limite ficam
-fora das atualizações.
+The `lint-css` task combines the files read automatically with explicit inputs
+for CSS, CSS tooling, `package.json`, `bun.lock` and `bunfig.toml`. That way,
+the invalidation of the CSS lint does not depend on the tracking of runtime
+reads on each operating system. `lint-project` and `check-project` declare
+sources, declarations, TypeScript configs and the dependency files. Bun uses the
+isolated linker defined in `bunfig.toml`; only the packages of
+`trustedDependencies` can run the authorized install scripts. The documented
+commands use `vp`, and Vite keeps its per-mode variable loading. `env = false`
+in `bunfig.toml` also stops `bun run` from reading `.env` early, before those
+tools start. The `bunfig.toml` of the project does not define
+`minimumReleaseAge`, which is off by default in Bun: a version quarantine
+configured in the global bunfig of the developer still applies, and the local
+bunfig would only override it by repeating the key. With that quarantine,
+versions published more recently than the limit stay out of the updates.
 
-O CI distribui as verificações entre quatro runners independentes: `Quality`,
-`Tooling`, E2E com fixtures e E2E de produção. No push da `main`, os três
-primeiros podem ser dispensados pela prova descrita abaixo. `Quality` executa
-formatação, lint, tipos, código sem uso (Knip) e cobertura, além dos testes de
-release em Bun quando houver mudanças relevantes. Em PRs, também valida com o
-commitlint do projeto as mensagens de todos os commits entre a base e o head.
-`Tooling` executa os demais testes de tooling em Node após a instalação, sem
-aguardar os checks de `Quality` nem compartilhar CPU com a cobertura. Os quatro
-jobs rodam em paralelo, cada um com seu checkout, portas e artefatos de build
-isolados; no push da `main`, os três reutilizáveis começam depois do
-`Reuse proof`, e o E2E de produção não espera por ele. A ação local
-`setup-project` concentra a preparação da toolchain: os jobs de validação também
-instalam as dependências, e o deploy não. Esse paralelismo reduz a espera, mas
-repete a preparação nos runners e pode aumentar o consumo de minutos do GitHub
-Actions. O build de produção aprovado nos E2E é transferido ao deploy na mesma
-execução do CI. O PR compila duas aplicações, uma com fixtures e outra com as
-rotas reais, e os testes de tooling compilam suas próprias fixtures menores. No
-push da `main` com a prova aprovada, só a aplicação de produção é compilada.
+CI spreads the checks over four independent runners: `Quality`, `Tooling`, E2E
+with fixtures and production E2E. On the push to `main`, the first three can be
+waived by the proof described below. `Quality` runs formatting, lint, types,
+unused code (Knip) and coverage, plus the release tests in Bun when there are
+relevant changes. On PRs, it also checks with the commitlint of the project the
+messages of every commit between the base and the head. `Tooling` runs the other
+tooling tests on Node after the installation, without waiting for the `Quality`
+checks or sharing CPU with the coverage. The four jobs run in parallel, each one
+with its own checkout, ports and build artifacts; on the push to `main`, the
+three reusable ones start after `Reuse proof`, and the production E2E does not
+wait for it. The local `setup-project` action holds the toolchain preparation:
+the validation jobs also install the dependencies, and the deploy does not. That
+parallelism cuts the wait, but repeats the preparation on the runners and can
+increase the GitHub Actions minutes used. The production build approved in the
+E2E tests is handed to the deploy in the same CI run. The PR builds two
+applications, one with fixtures and another with the real routes, and the
+tooling tests build their own smaller fixtures. On the push to `main` with the
+proof approved, only the production application is built.
 
-`CI required` aguarda todos os jobs e exige sucesso de `Quality`, `Tooling`,
-`E2E (fixtures)` e `E2E (production)`; falhas, cancelamentos e jobs pulados
-impedem sua aprovação. O resultado do `Reuse proof` não é exigido como job: ele
-fica pulado em todo PR e, no push da `main`, só autoriza aceitar como `skipped`
-os jobs que a prova aprovada dispensou. O deploy depende desse resultado. A
-release reaproveita o CI aprovado da `main` e confere apenas o commit de versão
-e changelog, conforme o [guia de release](../tooling/release/README.md). O
-filtro de release condiciona somente um passo de `Quality`, mantendo o job e o
-agregador obrigatórios. Os testes da aplicação e os demais testes de tooling
-rodam em toda execução do CI, exceto quando a prova descrita abaixo os dispensa;
-o cache do Vitest guarda transformações de módulos. Em `CI=true`, o Vitest usa
-no máximo dois workers e o runner Node dos testes de tooling, no máximo três.
+`CI required` waits for every job and requires success from `Quality`,
+`Tooling`, `E2E (fixtures)` and `E2E (production)`; failures, cancellations and
+skipped jobs block its approval. The result of `Reuse proof` is not required as
+a job: it is skipped on every PR and, on the push to `main`, only allows
+accepting as `skipped` the jobs that the approved proof waived. The deploy
+depends on that result. The release reuses the approved CI of `main` and only
+checks the version and changelog commit, according to the
+[release guide](../tooling/release/README.md). The release filter only gates one
+step of `Quality`, keeping the job and the aggregator required. The application
+tests and the other tooling tests run in every CI run, except when the proof
+described below waives them; the Vitest cache keeps module transformations. With
+`CI=true`, Vitest uses at most two workers and the Node runner of the tooling
+tests, at most three.
 
-### Reutilização da validação do PR na main
+### Reusing the PR validation on main
 
-O push da `main` é um merge commit criado pelo GitHub a partir de um PR
-atualizado com a base, exigido pela proteção da branch. Quando o run desse PR já
-testou a mesma árvore, o job `Reuse proof` dispensa `Quality`, `Tooling` e
-`E2E (fixtures)`. `E2E (production)`, o build do artefato e o deploy executam
-sempre, sem depender da prova.
+The push to `main` is a merge commit created by GitHub from a PR updated with
+the base, which the branch protection requires. When the run of that PR already
+tested the same tree, the `Reuse proof` job waives `Quality`, `Tooling` and
+`E2E (fixtures)`. `E2E (production)`, the artifact build and the deploy always
+run, without depending on the proof.
 
-No PR, o `Quality` publica o artifact `ci-reuse-evidence-<tentativa>` com o SHA
-do merge sintético que o checkout testou. No push,
-`tooling/ciReuse/prove-reuse.ts` roda no Node declarado no projeto, sem instalar
-dependências, e aprova a reutilização somente quando todas estas condições
-valem:
+On the PR, `Quality` publishes the `ci-reuse-evidence-<attempt>` artifact with
+the SHA of the synthetic merge the checkout tested. On the push,
+`tooling/ciReuse/prove-reuse.ts` runs on the Node declared in the project,
+without installing dependencies, and approves the reuse only when all of these
+conditions hold:
 
-- o commit da `main` tem exatamente dois parents e não altera `.github/` nem
-  `tooling/ciReuse/`, inclusive por renomeação para fora dessas pastas. Assim, o
-  run do PR usou o mesmo workflow da `main` e executou os testes do verificador;
-  o PR não executa a prova, que só roda no push da `main`;
-- há um único PR integrado com esse merge commit, do próprio repositório, com
-  base `main` e com base e head iguais aos parents;
-- há um único run `pull_request` de `ci.yml` para o head, concluído com sucesso,
-  do mesmo repositório e branch;
-- na tentativa desse run, `Quality`, `Tooling` e `E2E (fixtures)` existem, são
-  da mesma tentativa e terminaram com sucesso. Re-run parcial que não repita os
-  três jobs não serve como prova;
-- a evidência da mesma tentativa pertence ao run e ao head, e o commit sintético
-  que ela aponta, consultado na API do GitHub, tem os mesmos parents e a mesma
-  árvore do merge da `main`. Um run anterior a uma mudança de base, ou de outro
-  PR com o mesmo head e outra base, testou outros parents e reprova nesta
-  conferência.
+- the `main` commit has exactly two parents and does not change `.github/` or
+  `tooling/ciReuse/`, a rename out of those folders included. That way, the run
+  of the PR used the same workflow as `main` and ran the tests of the verifier;
+  the PR does not run the proof, which only runs on the push to `main`;
+- there is a single PR merged with that merge commit, from the repository
+  itself, with base `main` and with base and head equal to the parents;
+- there is a single `pull_request` run of `ci.yml` for the head, completed
+  successfully, from the same repository and branch;
+- in the attempt of that run, `Quality`, `Tooling` and `E2E (fixtures)` exist,
+  belong to the same attempt and ended successfully. A partial re-run that does
+  not repeat the three jobs does not count as proof;
+- the evidence of the same attempt belongs to the run and to the head, and the
+  synthetic commit it points to, looked up in the GitHub API, has the same
+  parents and the same tree as the merge on `main`. A run from before a base
+  change, or from another PR with the same head and another base, tested other
+  parents and fails this check.
 
-Qualquer ausência, ambiguidade, timeout, erro de API, PR anterior à evidência ou
-evidência de outra versão resulta em CI completo. O gate aceita `skipped`
-somente com a prova aprovada no mesmo run. Checks sintetizados pela release não
-contam como prova.
+Any absence, ambiguity, timeout, API error, PR older than the evidence or
+evidence of another version results in a full CI. The gate accepts `skipped`
+only with the proof approved in the same run. Checks synthesized by the release
+do not count as proof.
 
-`Quality` também roda quando o merge altera `bun.lock`, `package.json` ou
-`bunfig.toml`, ou quando a `main` não tem as entradas de cache de pacotes e de
-validação para o lockfile e a toolchain atuais. Ele é o único job que grava
-esses caches. A prova monta a chave de pacotes no formato documentado no README
-do `setup-vp`; se esse formato mudar, a consulta deixa de encontrá-la e o
-`Quality` passa a rodar na `main` em todo merge, sem perder validação. A chave
-de pacotes e o prefixo de restauração da validação só mudam nesses casos; com o
-`Quality` dispensado, os PRs continuam restaurando a última entrada de validação
-da `main` com o mesmo prefixo, que envelhece conforme a árvore muda e pode
-reduzir os acertos do Vite Task e do Vitest até a próxima mudança de lockfile.
+`Quality` also runs when the merge changes `bun.lock`, `package.json` or
+`bunfig.toml`, or when `main` does not have the package cache and validation
+entries for the current lockfile and toolchain. It is the only job that writes
+those caches. The proof builds the package key in the format documented in the
+`setup-vp` README; if that format changes, the lookup stops finding it and
+`Quality` starts running on `main` on every merge, without losing validation.
+The package key and the restore prefix of the validation only change in those
+cases; with `Quality` waived, the PRs keep restoring the last validation entry
+of `main` with the same prefix, which ages as the tree changes and can lower the
+Vite Task and Vitest hits until the next lockfile change.
 
-O verificador e o workflow continuam sendo código revisado da `main`: um merge
-que altere `.github/` ou `tooling/ciReuse/` sempre executa o CI completo. A
-reutilização também dispensa a segunda execução que, às vezes, reprovava na
-`main` um teste instável que tinha passado no PR com a mesma árvore. Para
-repetir toda a validação de um commit, dispare o workflow manualmente
-(`workflow_dispatch`). Esse modo não publica na Vercel e usa outro grupo de
-concorrência, para não substituir um push pendente.
+The verifier and the workflow are still reviewed code of `main`: a merge that
+changes `.github/` or `tooling/ciReuse/` always runs the full CI. The reuse also
+removes the second run that sometimes failed, on `main`, a flaky test that had
+passed on the PR with the same tree. To repeat the whole validation of a commit,
+trigger the workflow by hand (`workflow_dispatch`). That mode does not publish
+to Vercel and uses another concurrency group, so it does not replace a pending
+push.
 
-### Como medir uma otimização da CI
+### How to measure a CI optimization
 
-Separe consumo de runner e tempo de espera. O primeiro é a soma das durações dos
-jobs, calculadas entre `started_at` e `completed_at`, dividida por 60; jobs
-`skipped` não entram nessa soma. O tempo de espera vai da criação do run até a
-conclusão do último job. Jobs paralelos contam separadamente no consumo, mas
-seus tempos não devem ser somados para calcular a espera. Ao calcular o consumo
-diário, inclua tentativas refeitas e jobs que falharam ou foram cancelados
-depois de começar; considerar só o último run verde subestima o uso de runners.
+Separate runner usage from waiting time. The first is the sum of the job
+durations, computed between `started_at` and `completed_at`, divided by 60;
+`skipped` jobs do not enter that sum. The waiting time goes from the creation of
+the run to the end of the last job. Parallel jobs count separately in the usage,
+but their times must not be added up to compute the wait. When computing the
+daily usage, include re-run attempts and jobs that failed or were canceled after
+starting; counting only the last green run underestimates the runner usage.
 
-Para atribuir um ganho à mudança, compare base e candidato no mesmo runner, com
-instalações congeladas e a mesma suíte, intercalando as execuções de cada lado.
+To attribute a gain to the change, compare base and candidate on the same
+runner, with frozen installs and the same suite, alternating the runs of each
+side.
 
-Para conferir o reaproveitamento após um merge, verifique o run de origem
-registrado por `Reuse proof`, os jobs dispensados e os resultados de
-`CI required` e `E2E (production)`. Confira também que o passo
-`Deploy tested production artifact` realmente executou: o status global verde,
-sozinho, não comprova a publicação, e um job de deploy que recusou um commit
-antigo pela guarda de freshness não publicou esse commit. Um run sem publicação
-não conta como economia do fluxo completo.
+To check the reuse after a merge, check the source run recorded by
+`Reuse proof`, the waived jobs and the results of `CI required` and
+`E2E (production)`. Also check that the `Deploy tested production artifact` step
+really ran: the global green status, alone, does not prove the publication, and
+a deploy job that refused an old commit through the freshness guard did not
+publish that commit. A run without publication does not count as savings of the
+complete flow.
 
-Uma mudança no próprio workflow força o CI completo e inclui o custo da prova.
-Meça esse caminho separadamente dos merges elegíveis ao reaproveitamento. Ao
-projetar minutos por dia, informe a janela e a frequência observadas; não some a
-economia de um job mais rápido com a economia de dispensar esse mesmo job na
-mesma execução.
+A change to the workflow itself forces the full CI and includes the cost of the
+proof. Measure that path separately from the merges eligible for reuse. When
+projecting minutes per day, report the observed window and frequency; do not add
+the savings of a faster job to the savings of waiving that same job in the same
+run.
 
-## Hooks de Git
+## Git hooks
 
-Instalados pelo Lefthook no `vp install`, autorizado em `trustedDependencies` do
-`package.json`:
+Installed by Lefthook in `vp install`, authorized in the `trustedDependencies`
+of `package.json`:
 
-| Hook         | O que roda                                                                                                                                                                    |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pre-commit` | `check:fix` nos arquivos staged (com re-stage) + `scan:secrets --staged` quando Kingfisher está disponível                                                                    |
-| `commit-msg` | `commitlint` (header até 100 caracteres; linha em branco antes do rodapé; aviso para linhas do corpo e rodapé acima de 100)                                                   |
-| `pre-push`   | `check:ci`, `typecheck:node` e `test:ci` em sequência; depois, `test:tooling`, `test:release` e `dead-code` (Knip) em paralelo; a primeira falha interrompe os jobs seguintes |
+| Hook         | What runs                                                                                                                                                             |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pre-commit` | `check:fix` on the staged files (with re-stage) + `scan:secrets --staged` when Kingfisher is available                                                                |
+| `commit-msg` | `commitlint` (header up to 100 characters; blank line before the footer; warning for body and footer lines over 100)                                                  |
+| `pre-push`   | `check:ci`, `typecheck:node` and `test:ci` in sequence; then `test:tooling`, `test:release` and `dead-code` (Knip) in parallel; the first failure stops the next jobs |
 
-O `pre-commit` é pulado durante `merge` e `rebase`. Em CI o Lefthook não instala
-os hooks; o job `Quality` repete o commitlint nos commits de cada PR. O
-`pre-push` usa `piped: true`, porque sem ele o Lefthook continua os jobs
-seguintes depois de uma falha.
+`pre-commit` is skipped during `merge` and `rebase`. In CI, Lefthook does not
+install the hooks; the `Quality` job repeats the commitlint on the commits of
+each PR. `pre-push` uses `piped: true`, because without it Lefthook goes on with
+the next jobs after a failure.
 
-## Convenções de manutenção
+## Maintenance conventions
 
-- As versões de dependências são fixadas sem `^` (`install.exact` no
-  `bunfig.toml`) para evitar quebras silenciosas. Consulte os arquivos de
-  dependências para saber quais estão instaladas.
-- O override de `@solidjs/compiler` mantém o compilador nativo alinhado ao
-  runtime do Solid, e o de `@solidjs/signals` prende o núcleo reativo à mesma
-  versão do `solid-js`, que o declara com `^`. Atualize os dois junto com
-  `solid-js` e `@solidjs/web`, respeitando a compatibilidade do plugin do Vite.
-- O plugin do Solid compila com o compilador nativo e não instala Babel. Para
-  usar `compiler: 'babel'`, declare `@babel/core` e `@solidjs/babel-plugin` como
-  devDependencies, com o plugin Babel na versão do runtime do Solid; a opção
-  `babel` do plugin, com o compilador nativo, exige só `@babel/core`.
-- Os patches Bun ficam em `patches/`, declarados em `patchedDependencies`. A
-  chave inclui a versão do pacote, então atualizar um pacote com patch exige
-  regenerá-lo com `bun patch` ou provar que a versão nova dispensa a correção. O
-  teste `tooling/__tests__/patched-dependencies.test.ts` falha quando a chave
-  não corresponde a uma versão resolvida no `bun.lock`. A prova roda as
-  regressões do patch sem ele: elas devem falhar na versão anterior e passar na
-  nova. O linker isolado reaproveita em `node_modules/.bun` a cópia já corrigida
-  de uma versão instalada antes; confira no pacote instalado que o patch saiu,
-  ou reinstale `node_modules` do zero, antes de rodar esse controle.
-- `vite-plus`, `vite`, `vitest` e os pacotes `@vitest/*` vêm do catálogo em
-  `workspaces.catalog` do `package.json`; `vite` resolve para o core do Vite+.
-  Atualize as versões nesse catálogo e mantenha os `@vitest/*` na versão exata
-  do Vitest embutido no Vite+. O CI lê a versão do Vite+ desse catálogo.
-- Commits devem seguir Conventional Commits.
-- O lint é type-aware e roda com `typeCheck: true`: os tipos da aplicação,
-  inclusive os testes `test-d.ts`, são verificados pelo `vp run lint` e pelo
-  `vp run check:ci`, sem um `tsc` separado.
-- O CI, o pre-push e `vp run validate` combinam `check:ci` com `typecheck:node`,
-  que verifica as ferramentas sem os tipos do DOM.
-- Use as versões de Node e Bun definidas em `package.json`. O `bun.lock` é o
-  único lockfile do projeto.
+- Dependency versions are pinned without `^` (`install.exact` in `bunfig.toml`)
+  to avoid silent breakage. Check the dependency files to see which ones are
+  installed.
+- The `@solidjs/compiler` override keeps the native compiler aligned with the
+  Solid runtime, and the `@solidjs/signals` one pins the reactive core to the
+  same version as `solid-js`, which declares it with `^`. Update both together
+  with `solid-js` and `@solidjs/web`, respecting the compatibility of the Vite
+  plugin.
+- The Solid plugin compiles with the native compiler and does not install Babel.
+  To use `compiler: 'babel'`, declare `@babel/core` and `@solidjs/babel-plugin`
+  as devDependencies, with the Babel plugin at the version of the Solid runtime;
+  the `babel` option of the plugin, with the native compiler, requires only
+  `@babel/core`.
+- The Bun patches live in `patches/`, declared in `patchedDependencies`. The key
+  includes the version of the package, so updating a patched package requires
+  regenerating it with `bun patch` or proving that the new version no longer
+  needs the fix. The `tooling/__tests__/patched-dependencies.test.ts` test fails
+  when the key does not match a version resolved in `bun.lock`. The proof runs
+  the regressions of the patch without it: they must fail on the old version and
+  pass on the new one. The isolated linker reuses in `node_modules/.bun` the
+  already patched copy of a version installed before; check in the installed
+  package that the patch is gone, or reinstall `node_modules` from scratch,
+  before running that control.
+- `vite-plus`, `vite`, `vitest` and the `@vitest/*` packages come from the
+  catalog in `workspaces.catalog` of `package.json`; `vite` resolves to the
+  Vite+ core. Update the versions in that catalog and keep the `@vitest/*`
+  packages at the exact version of the Vitest bundled in Vite+. CI reads the
+  Vite+ version from that catalog.
+- Commits must follow Conventional Commits.
+- The lint is type-aware and runs with `typeCheck: true`: the types of the
+  application, the `test-d.ts` tests included, are checked by `vp run lint` and
+  `vp run check:ci`, without a separate `tsc`.
+- CI, the pre-push and `vp run validate` combine `check:ci` with
+  `typecheck:node`, which checks the tooling without the DOM types.
+- Use the Node and Bun versions defined in `package.json`. `bun.lock` is the
+  only lockfile of the project.
 
-## Referências externas
+## External references
 
 - SolidJS: https://v2.solidjs.com
 - Solid Router: https://v2.solidjs.com/routing/solid-router

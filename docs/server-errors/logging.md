@@ -1,95 +1,98 @@
-# Registro de falhas no servidor
+# Server failure logging
 
-[Voltar ao guia principal](../server-errors.md)
+[Back to the main guide](../server-errors.md)
 
-## Log de falhas
+## Failure log
 
-`logServerFailure({ source, error })` tenta registrar uma string de várias
-linhas em um único argumento de `console.error`:
+`logServerFailure({ source, error })` tries to log a multiline string in a
+single argument of `console.error`:
 
-1. A mensagem fixa da origem, como
-   `[middleware] Unexpected failure; private details omitted`. O texto segue
-   igual byte a byte, porque o E2E conta as linhas que o contêm.
-2. Só quando `error instanceof Error`, o nome da classe, lido uma única vez de
-   `Object.getPrototypeOf(error).constructor.name` e gravado apenas se for uma
-   string com um identificador simples de até 64 caracteres. Outros valores não
-   são convertidos para texto. Nem `error.name` nem uma propriedade própria
-   `constructor` são usados.
-3. Até 10 frames do stack, um por linha.
+1. The fixed message of the source, such as
+   `[middleware] Unexpected failure; private details omitted`. The text stays
+   the same byte for byte, because the E2E tests count the lines that contain
+   it.
+2. Only when `error instanceof Error`, the class name, read once from
+   `Object.getPrototypeOf(error).constructor.name` and written only if it is a
+   string with a simple identifier of up to 64 characters. Other values are not
+   converted to text. Neither `error.name` nor an own `constructor` property is
+   used.
+3. Up to 10 stack frames, one per line.
 
-Os frames só são lidos quando `error.stack` começa pelo cabeçalho que o V8 monta
-com o `name` e a mensagem atuais: `<nome>: <message>` seguido de quebra de
-linha, ou só o nome quando a mensagem é vazia. O nome do cabeçalho precisa ser o
-`error.name` atual inteiro, um identificador simples de até 64 caracteres, ou,
-num erro interno do Node, esse nome seguido do `code`, como em
-`TypeError [ERR_INVALID_ARG_TYPE]`. Um `name` ou `code` com quebra de linha, que
-deixaria linhas do cabeçalho com forma de frame, também deixa o log sem frames.
-O cabeçalho inteiro é descartado, inclusive as linhas de uma mensagem com
-quebras. Um stack sobrescrito, ou um `name` ou uma mensagem trocados depois da
-primeira leitura do stack, deixa o log sem frames, porque não há como saber onde
-o cabeçalho termina.
+The frames are read only when `error.stack` starts with the header that V8
+builds from the current `name` and message: `<name>: <message>` followed by a
+line break, or only the name when the message is empty. The name of the header
+has to be the whole current `error.name`, a simple identifier of up to 64
+characters, or, for an internal Node error, that name followed by the `code`, as
+in `TypeError [ERR_INVALID_ARG_TYPE]`. A `name` or `code` with a line break,
+which would leave header lines shaped like a frame, also leaves the log without
+frames. The whole header is dropped, including the lines of a message with line
+breaks. An overwritten stack, or a `name` or a message changed after the first
+read of the stack, leaves the log without frames, because there is no way to
+know where the header ends.
 
-Depois do cabeçalho, só passam linhas `    at <função> (<local>)` ou
-`    at <local>`, com o local em `file://`, `node:` ou caminho absoluto, sem
-espaços, parênteses nem caracteres de controle ou de formatação (categoria
-Unicode `C`, como o ESC das sequências de terminal e o U+202E, que inverte a
-direção do texto), e terminado em `:linha:coluna`. Um frame real em `file://`
-traz esses caracteres codificados. A função admite os prefixos `async` e `new`,
-`<anonymous>` e o alias `[as nome]`; a forma sem função admite só o prefixo
-`async`, das funções anônimas assíncronas. Por causa dos parênteses, um frame
-que aponte para um arquivo fonte em pasta de grupo de rotas, como
-`src/routes/(seo)/`, é descartado. As demais linhas, como
-`async Promise.all (index 0)`, frames de `eval` e URLs HTTP, são descartadas sem
-interromper a leitura. A leitura para em 50 linhas, e uma linha acima de 1024
-caracteres é descartada antes das expressões regulares, que são ancoradas e sem
-repetições aninhadas.
+After the header, only lines `    at <function> (<location>)` or
+`    at <location>` pass, with the location in `file://`, `node:` or an absolute
+path, without spaces, parentheses or control or format characters (Unicode
+category `C`, such as the ESC of terminal sequences and U+202E, which reverses
+the text direction), and ending in `:line:column`. A real frame in `file://`
+carries those characters encoded. The function accepts the `async` and `new`
+prefixes, `<anonymous>` and the `[as name]` alias; the form without a function
+accepts only the `async` prefix, of anonymous async functions. Because of the
+parentheses, a frame that points to a source file in a route group folder, such
+as `src/routes/(seo)/`, is dropped. The other lines, such as
+`async Promise.all (index 0)`, `eval` frames and HTTP URLs, are dropped without
+stopping the read. The read stops at 50 lines, and a line over 1024 characters
+is dropped before the regular expressions, which are anchored and have no nested
+repetition.
 
-Ficam fora do log a mensagem, o `cause`, as propriedades próprias, `error.name`
-e qualquer dado de um valor que não seja `Error`. Uma falha na inspeção, como um
-getter que lança ou um Proxy hostil, deixa só a linha fixa. Se montar ou gravar
-a linha falhar, o logger tenta uma única vez registrar apenas a mensagem fixa,
-sem inspecionar o erro novamente. A falha dessa segunda tentativa é descartada.
-O logger é síncrono e não propaga falhas de inspeção, montagem ou acesso ao
-destino. Os consumidores mantêm a resposta pública mesmo sem log disponível. Se
-o destino escrever e depois lançar, a mensagem fixa pode aparecer duas vezes.
+The log leaves out the message, the `cause`, the own properties, `error.name`
+and any data of a value that is not an `Error`. A failure during the inspection,
+such as a getter that throws or a hostile Proxy, leaves only the fixed line. If
+building or writing the line fails, the logger tries once to log only the fixed
+message, without inspecting the error again. A failure of that second attempt is
+dropped. The logger is synchronous and does not propagate failures of
+inspection, building or access to the destination. The consumers keep the public
+response even without a log. If the destination writes and then throws, the
+fixed message can appear twice.
 
-No servidor de desenvolvimento, o hook de `configureServerErrors` devolve
-`undefined`, e o runtime envia ao navegador o erro que recebeu. Três chamadores
-passam `shouldPrintOriginal: true`, e o logger imprime o erro original numa
-segunda chamada de `console.error`, depois da linha filtrada:
+On the development server, the `configureServerErrors` hook returns `undefined`,
+and the runtime sends the browser the error it received. Three callers pass
+`shouldPrintOriginal: true`, and the logger prints the original error in a
+second `console.error` call, after the filtered line:
 
-- O hook de `configureServerErrors`. Com o hook instalado, o runtime deixa de
-  imprimir essas falhas, e sem esse pedido a mensagem só chegaria ao navegador.
-- O `protectServerOperation`, que atende o wrapper e o `requestJson`. Ele troca
-  a falha pelo erro público antes do runtime, e o hook recebe só esse erro, sem
-  registrar log.
-- O sitemap, que responde 503 sem passar pelo runtime.
+- The `configureServerErrors` hook. With the hook installed, the runtime stops
+  printing these failures, and without this request the message would only reach
+  the browser.
+- `protectServerOperation`, which serves the wrapper and `requestJson`. It
+  replaces the failure with the public error before the runtime, and the hook
+  receives only that error, without logging.
+- The sitemap, which answers 503 without going through the runtime.
 
-Dentro de uma publicação (Markdown, sitemap, índices), o
-`protectServerOperation` não registra a rejeição que é o próprio motivo do sinal
-abortado da publicação, como a leitura de uma fonte cancelada pelo prazo ou pela
-desconexão do cliente. A operação continua terminando no erro público. Qualquer
-outro erro, mesmo com o sinal já abortado, é falha real e gera a linha
-`[server-operation]`.
+Inside a publication (Markdown, sitemap, indexes), `protectServerOperation` does
+not log the rejection that is the reason the publication signal was aborted,
+such as the read of a source cancelled by the deadline or by the client
+disconnecting. The operation still ends in the public error. Any other error,
+even with the signal already aborted, is a real failure and produces the
+`[server-operation]` line.
 
-As origens `[middleware]` e `[error-page]` não fazem o pedido, porque em
-desenvolvimento a contenção relança a exceção antes de registrar. Os
-diagnósticos de desenvolvimento do Solid também imprimem a mensagem, como o de
-um erro contido por `<Errored>`. O logger confere `import.meta.env.DEV` por
-conta própria e ignora o pedido em produção. Uma falha ao formatar o erro
-original é descartada.
+The `[middleware]` and `[error-page]` sources do not make the request, because
+in development the containment rethrows the exception before logging. Solid's
+development diagnostics also print the message, such as the one for an error
+contained by `<Errored>`. The logger checks `import.meta.env.DEV` on its own and
+ignores the request in production. A failure to format the original error is
+dropped.
 
-Limites conhecidos:
+Known limits:
 
-- Um stack forjado que imite o cabeçalho e a gramática passa pelo filtro. O
-  mesmo vale para uma mensagem ou um `name` trocados por um prefixo do valor
-  original depois da primeira leitura do stack, e para um getter de `name` que
-  devolva um valor na formatação do V8 e outro, simples, na conferência. Esses
-  casos exigem código que altere o erro no próprio processo; um `name` ou `code`
-  recebido apenas como dado não entra no log.
-- O alias `[as nome]` de um frame mostra a propriedade usada na chamada, que
-  pode ter sido escolhida em tempo de execução.
-- Outro `Error.prepareStackTrace`, como o do module runner do Vite que o Vitest
-  instala, pode montar o cabeçalho sem o código dos erros do Node ou como
-  `Error: ` quando a mensagem é vazia; no segundo caso o log sai sem frames.
-  Frames com caminho relativo ou com espaços também são descartados.
+- A forged stack that imitates the header and the grammar passes the filter. The
+  same goes for a message or a `name` replaced by a prefix of the original value
+  after the first read of the stack, and for a `name` getter that returns one
+  value in the V8 formatting and another, simple one, in the check. These cases
+  need code that changes the error in the same process; a `name` or `code`
+  received only as data does not reach the log.
+- The `[as name]` alias of a frame shows the property used in the call, which
+  may have been chosen at run time.
+- Another `Error.prepareStackTrace`, such as the one of the Vite module runner
+  that Vitest installs, may build the header without the code of Node errors or
+  as `Error: ` when the message is empty; in the second case the log has no
+  frames. Frames with a relative path or with spaces are dropped too.

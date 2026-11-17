@@ -1,78 +1,79 @@
-# Validação e recuperação de erros
+# Error validation and recovery
 
-[Voltar ao guia principal](../server-errors.md)
+[Back to the main guide](../server-errors.md)
 
-## Validação e recuperação
+## Validation and recovery
 
-O [E2E de backend](../../src/tests/pages/BackendError/BackendError.e2e.test.ts)
-roda no build de produção: cinco cenários (HTTP 500, exceção após leitura,
-`Error` dentro do resultado, erro público e sucesso) em SSR inicial, streaming e
-chamada HTTP; uma recarga por cenário de navegação, incluindo SSR sem
-JavaScript; um teste de isolamento do bundle; três sinais de controle em server
-functions chamadas no SSR (um `redirect()` lançado, um envelope devolvido e um
-envelope lançado); e a regressão de `content-type` descrita abaixo, com um
-envelope devolvido e outro lançado por `query()`. O envelope lançado chega ao
-hook como controle, mas o router lança o valor dele no render e o documento vira
-500, com ou sem o hook. No streaming, os casos de confidencialidade usam um id
-terminado em `:gated`: o backend sintético segura `/data` até o teste ver o
-fallback e liberar o gate, sem depender do atraso fixo do backend.
+The [backend E2E](../../src/tests/pages/BackendError/BackendError.e2e.test.ts)
+runs on the production build: five scenarios (HTTP 500, an exception after the
+read, an `Error` inside the result, a public error and success) in the initial
+SSR, streaming and an HTTP call; one reload per navigation scenario, SSR without
+JavaScript included; a test of the bundle isolation; three control signals in
+server functions called in the SSR (a thrown `redirect()`, a returned envelope
+and a thrown envelope); and the `content-type` regression described below, with
+an envelope returned and another thrown by `query()`. The thrown envelope
+reaches the hook as a control, but the router throws its value in the render and
+the document becomes a 500, with or without the hook. In streaming, the
+confidentiality cases use an id ending in `:gated`: the synthetic backend holds
+`/data` until the test sees the fallback and releases the gate, without relying
+on the fixed delay of the backend.
 
-Quando uma `query()` lida no SSR devolve ou lança um envelope de `respond()`, o
-`handleResponse` do router copia para a resposta da página só os headers que não
-descrevem o corpo; `content-type`, `content-disposition`, `etag` e similares
-ficam de fora, e o documento continua HTML
+When a `query()` read in the SSR returns or throws an envelope of `respond()`,
+the `handleResponse` of the router copies to the page response only the headers
+that do not describe the body; `content-type`, `content-disposition`, `etag` and
+similar stay out, and the document is still HTML
 ([solidjs/solid-router#633](https://github.com/solidjs/solid-router/issues/633)).
-O E2E cobre os dois casos como regressão. Os demais headers do envelope, como
-`set-cookie` ou um header próprio, ainda são copiados; lidos depois do envio do
-início da resposta, são descartados com o aviso `[LATE_HEADER_WRITE]`. Headers
-da página pertencem ao render, não a um envelope de dados.
+The E2E tests cover both cases as a regression. The other headers of the
+envelope, such as `set-cookie` or a custom header, are still copied; read after
+the start of the response was sent, they are dropped with the
+`[LATE_HEADER_WRITE]` warning. Page headers belong to the render, not to a data
+envelope.
 
-O
-[E2E de erros fora de server functions](../../src/tests/pages/OutsideError/OutsideError.e2e.test.ts)
-cobre throw no render com e sem boundary local, throw no render depois do shell
-e rejeições assíncronas no SSR, como filho direto de `<Loading>` e dentro de
-elemento, além de exceções de middleware antes e depois de `next()`. Cada caso
-lê o documento bruto fora do navegador e confere o fallback no navegador. Nos
-casos de streaming, a falha só acontece depois que o teste observa o shell e
-libera um gate no backend sintético, sem temporizador. Controles positivos
-conferem que a fixture recebeu o marcador (header `x-fixture-marker` e contagem
-do backend), que o erro lançado carregava esse marcador (header
-`x-fixture-thrown` sem streaming e registro no backend sintético nos casos com
-gate e de middleware) e que o gate foi usado. Os casos de middleware rodam em
-série e exigem, por requisição, uma nova linha com a mensagem fixa
-`[middleware]`.
+The
+[E2E of errors outside server functions](../../src/tests/pages/OutsideError/OutsideError.e2e.test.ts)
+covers a throw in the render with and without a local boundary, a throw in the
+render after the shell and async rejections in the SSR, as a direct child of
+`<Loading>` and inside an element, plus middleware exceptions before and after
+`next()`. Each case reads the raw document outside the browser and checks the
+fallback in the browser. In the streaming cases, the failure only happens after
+the test sees the shell and releases a gate in the synthetic backend, without a
+timer. Positive controls check that the fixture received the marker (the
+`x-fixture-marker` header and the count of the backend), that the thrown error
+carried that marker (the `x-fixture-thrown` header without streaming, and a
+record in the synthetic backend in the gated and middleware cases) and that the
+gate was used. The middleware cases run in series and require, per request, a
+new line with the fixed `[middleware]` message.
 
-O `webServer` do Playwright grava a saída do preview em
-`test-results/server-<modo>.log`. O
-[teardown global](../../tooling/testing/server-log-teardown.ts) confere que o
-arquivo registrou o endereço do preview e recusa qualquer marcador privado.
+The Playwright `webServer` writes the preview output to
+`test-results/server-<mode>.log`. The
+[global teardown](../../tooling/testing/server-log-teardown.ts) checks that the
+file recorded the preview address and refuses any private marker.
 
-Os marcadores sintéticos nascem no backend após o build. Os testes verificam o
-corpo completo, headers, DOM e erros do navegador. O teste de assets procura
-código e endereço exclusivos do servidor. Os testes Node cobrem HTML 500, JSON
-inválido, schema inválido, falha de rede e cancelamento do corpo, além dos
-contratos do wrapper.
+The synthetic markers are created in the backend after the build. The tests
+check the whole body, the headers, the DOM and the browser errors. The asset
+test looks for code and an address that only the server has. The Node tests
+cover the HTML 500, invalid JSON, an invalid schema, a network failure and the
+cancellation of the body, plus the contracts of the wrapper.
 
-A captura HTTP usa `route.fetch()` e entrega a resposta ao browser com
-`route.fulfill()`, pois o decoder cancela o stream ao receber a exceção. Essa
-captura aguarda o corpo completo e não mede cancelamento ou latência. O
-streaming do documento SSR não é interceptado.
+The HTTP capture uses `route.fetch()` and hands the response to the browser with
+`route.fulfill()`, because the decoder cancels the stream when it receives the
+exception. That capture waits for the whole body and does not measure
+cancellation or latency. The streaming of the SSR document is not intercepted.
 
-Os testes toleram em `pageerror` só a mensagem pública no idioma da página e,
-nos casos que passam por uma fonte assíncrona ou por streaming, a mensagem
-genérica do runtime; cada caso declara as mensagens admitidas, que dependem da
-ordem entre a hidratação e a chegada do fragmento rejeitado. O status do
-streaming pode permanecer 200 após o envio inicial; os testes conferem
-confidencialidade independentemente dele. Fontes adiadas aninhadas e trabalho
-assíncrono fora do retorno aguardado exigem integração e testes próprios.
+The tests tolerate in `pageerror` only the public message in the locale of the
+page and, in the cases that go through an async source or through streaming, the
+generic message of the runtime; each case declares the accepted messages, which
+depend on the order between the hydration and the arrival of the rejected
+fragment. The streaming status can stay 200 after the initial send; the tests
+check confidentiality regardless of it. Nested deferred sources and async work
+outside the awaited return require their own integration and tests.
 
-O link global "Recarregar página" preserva a URL e faz uma navegação de
-documento, independente da hidratação. Ações iniciadas depois do carregamento
-precisam ser repetidas. Para retry local com query, invalide a chave antes de
-`reset()`: `revalidate(getData.key); reset()`. Confirme uma nova chamada ao
-backend.
+The global "Reload page" link keeps the URL and does a document navigation,
+regardless of the hydration. Actions started after the load have to be repeated.
+For a local retry with a query, invalidate the key before `reset()`:
+`revalidate(getData.key); reset()`. Confirm a new call to the backend.
 
-Após alterar essa fronteira, execute:
+After changing that boundary, run:
 
 ```bash
 vp run test:tooling
@@ -81,186 +82,195 @@ vp run test:e2e src/tests/pages/BackendError src/tests/pages/OutsideError src/te
 vp run check:ci
 ```
 
-O [CI](../../.github/workflows/ci.yml) executa `test:tooling` e a suíte E2E
-completa; `vp run validate` e o `pre-push` rodam `test:tooling` localmente, o
-que inclui as duas políticas. Os testes da política verificam as regras no
-parser real e seu registro no lint completo, com casos recusados e permitidos
-para cada exceção. Consulte os resultados de cada execução nos logs da validação
-local e do CI.
+The [CI](../../.github/workflows/ci.yml) runs `test:tooling` and the whole E2E
+suite; `vp run validate` and `pre-push` run `test:tooling` locally, which
+includes both policies. The policy tests check the rules in the real parser and
+their registration in the whole lint, with refused and allowed cases for each
+exception. See the results of each run in the logs of the local validation and
+of the CI.
 
-### Página desatualizada após um deploy
+### Outdated page after a deploy
 
-Uma aba aberta antes de um deploy continua com o JS do build anterior até
-carregar um documento. Ela pode chamar uma server function que o build novo não
-tem. O servidor responde 404 com o header `X-Server-Function-Unknown`, sem
-executar a função, e o client rejeita com `unknownFunction: true`. A recuperação
-está descrita no fim desta seção. Essa recusa sai antes do `wrapInvocation` e do
-hook de `configureServerErrors`, sem corpo em produção e sem linha
-`[server-error]`.
+A tab opened before a deploy keeps the JS of the previous build until it loads a
+document. It can call a server function that the new build does not have. The
+server answers 404 with the `X-Server-Function-Unknown` header, without running
+the function, and the client rejects with `unknownFunction: true`. The recovery
+is described at the end of this section. That refusal happens before
+`wrapInvocation` and the `configureServerErrors` hook, without a body in
+production and without a `[server-error]` line.
 
-O plugin do Solid também carimba as chamadas de produção que não usam GET com o
-header `X-Server-Function-Build`, e o `configureServerFunctionsServer` que ele
-gera recebe o mesmo id em `buildId`. Uma chamada carimbada por outro build, cuja
-função manteve o id no deploy, recebe 409 sem executar a função, com
-`X-Server-Function-Unknown`, o id do servidor em `X-Server-Function-Build` e
-`Cache-Control: no-store`. O client rejeita com `unknownFunction: true`, como no
-404, e a recuperação é a mesma; a recusa também sai antes do `wrapInvocation` e
-do hook, sem corpo em produção. O carimbo é composto com o `prepareRequest` que
-o app passar a `configureServerFunctionsClient`, importado de
-`@solidjs/web/server-functions/client`. Uma chamada sem o header continua
-aceita: o id é público no bundle, e a checagem só detecta um client de outro
-build. As chamadas de `query()` usam GET e saem sem o carimbo. A exceção é
-quando os argumentos passam do limite de URL do runtime: o client envia a
-leitura por POST, com o carimbo, e ela passa pela checagem. Em desenvolvimento
-não há id nem checagem.
+The Solid plugin also stamps the production calls that do not use GET with the
+`X-Server-Function-Build` header, and the `configureServerFunctionsServer` that
+it generates receives the same id in `buildId`. A call stamped by another build,
+whose function kept its id in the deploy, gets a 409 without running the
+function, with `X-Server-Function-Unknown`, the server id in
+`X-Server-Function-Build` and `Cache-Control: no-store`. The client rejects with
+`unknownFunction: true`, as with the 404, and the recovery is the same; the
+refusal also happens before `wrapInvocation` and the hook, without a body in
+production. The stamp is combined with the `prepareRequest` that the app passes
+to `configureServerFunctionsClient`, imported from
+`@solidjs/web/server-functions/client`. A call without the header is still
+accepted: the id is public in the bundle, and the check only detects a client of
+another build. `query()` calls use GET and go out without the stamp. The
+exception is when the arguments go over the URL limit of the runtime: the client
+sends the read by POST, with the stamp, and it goes through the check. In
+development there is no id and no check.
 
-Com o Nitro, o client e o servidor saem do mesmo build, e o servidor recebe o id
-que o plugin guarda em memória. O plugin também grava o id e as server functions
-que o client alcança em `.vite/solid-server-functions.json`, mas na saída do
-SSR, e apaga o `manifest.json` do Vite que ele mesmo liga, então nenhum dos dois
-fica no diretório estático publicado. O `BuildOutput` compara o id do client com
-o do servidor.
+With Nitro, the client and the server come from the same build, and the server
+receives the id that the plugin keeps in memory. The plugin also writes the id
+and the server functions that the client reaches to
+`.vite/solid-server-functions.json`, but in the SSR output, and deletes the Vite
+`manifest.json` that it turns on itself, so neither stays in the published
+static folder. `BuildOutput` compares the id of the client with the one of the
+server.
 
-A aba também pode pedir um chunk ou uma folha CSS com o hash do build anterior,
-que o deploy novo não publica. A recuperação segue uma regra: a página só
-recarrega sozinha quando o usuário já pediu para sair dela ou quando o fallback
-do `Errored` raiz já a tirou da tela. Nos demais casos, a página fica como está
-e o `OutdatedPageNotice` oferece a recarga. O runtime não informa se uma página
-tem algo não salvo, então a recarga automática fica nos pontos em que não perde
-nada que a navegação ou a página de erro já não perderiam.
+The tab can also request a chunk or a CSS stylesheet with the hash of the
+previous build, which the new deploy does not publish. The recovery follows a
+rule: the page only reloads by itself when the user has already asked to leave
+it or when the fallback of the root `Errored` has already taken it off the
+screen. In the other cases, the page stays as it is and `OutdatedPageNotice`
+offers the reload. The runtime does not report whether a page has something
+unsaved, so the automatic reload happens only where it loses nothing that the
+navigation or the error page would not already lose.
 
-| Situação                                                                               | Comportamento                                                         |
-| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Hover ou foco num link, com chunk ausente ou leitura recusada no preload               | Marca a página, sem recarga e sem aviso.                              |
-| Navegação que muda o caminho sem idioma, com a página marcada                          | Navegação de documento para o destino, preservando `replace`.         |
-| A mesma navegação, com alterações registradas em `registerUnsavedChanges`              | Segue no client; o guard da própria página decide.                    |
-| Query, hash, voltar, avançar ou navegação sem conexão                                  | Segue no client.                                                      |
-| Clique sem preload, com o JS ou o CSS do destino ausente                               | O `Errored` raiz recarrega uma vez, já no destino.                    |
-| Leitura do render ou `lazy()` recusados sem `Errored` local                            | O `Errored` raiz recarrega uma vez.                                   |
-| Leitura do render ou `lazy()` recusados dentro de um `Errored` local                   | O fallback local fica, e o aviso oferece a recarga.                   |
-| Envio recusado com 404 ou 409 rotulado                                                 | A rejeição volta a quem chamou, e o aviso de envio oferece a recarga. |
-| Leitura fora do render (polling, `GET` direto, reconexão de `live()`)                  | Marca a página, sem aviso.                                            |
-| No `Errored` raiz: recusa repetida em 30 segundos, sem `sessionStorage` ou sem conexão | A página de erro aparece, com a recarga manual.                       |
+| Situation                                                                                                   | Behavior                                                                            |
+| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Hover or focus on a link, with a missing chunk or a read refused in the preload                             | Marks the page, without a reload and without a notice.                              |
+| Navigation that changes the path without the locale, with the page marked                                   | Document navigation to the target, keeping `replace`.                               |
+| The same navigation, with changes registered in `registerUnsavedChanges`                                    | Stays on the client; the guard of the page itself decides.                          |
+| Query, hash, back, forward or navigation without a connection                                               | Stays on the client.                                                                |
+| Click without a preload, with the JS or the CSS of the target missing                                       | The root `Errored` reloads once, already on the target.                             |
+| Render read or `lazy()` refused without a local `Errored`                                                   | The root `Errored` reloads once.                                                    |
+| Render read or `lazy()` refused inside a local `Errored`                                                    | The local fallback stays, and the notice offers the reload.                         |
+| Submission refused with a labeled 404 or 409                                                                | The rejection goes back to the caller, and the submission notice offers the reload. |
+| Read outside the render (polling, direct `GET`, `live()` reconnection)                                      | Marks the page, without a notice.                                                   |
+| In the root `Errored`: repeated refusal within 30 seconds, without `sessionStorage` or without a connection | The error page appears, with the manual reload.                                     |
 
-A recuperação usa três peças:
+The recovery uses three pieces:
 
-- Detecção: `installOutdatedPageDetection`, instalado pelo `entry-client`, marca
-  a página como desatualizada quando o helper de preload do Vite dispara
-  `vite:preloadError` e quando uma server function responde 404 ou 409 com
-  `X-Server-Function-Unknown`. Uma recusa fora de computação rastreada e sem
-  `GET` conta como envio e dispara o aviso de envio. O módulo também registra o
-  hook de `configureClientErrors`: quando um boundary mostra fallback para uma
-  falha de chunk registrada ou para um erro com `unknownFunction: true`, o hook
-  dispara o aviso de fallback. O evento de preload sai também no preload por
-  intenção do `intentPreload()`, antes do clique, e só existe no build. O
-  listener não chama `preventDefault()`: o import resolveria `undefined`, e o
-  `lazy` da rota guardaria esse módulo vazio até a recarga.
-- Próxima navegação: com a página marcada, `createOutdatedPageGuard`, chamado ao
-  lado do guard de idioma, troca por navegação de documento a próxima navegação
-  que muda o caminho sem idioma, preservando `replace`. Query e hash seguem no
-  client, e sem conexão a navegação continua no client. Voltar e avançar entre
-  entradas do mesmo documento também seguem no client: os chunks dessas páginas
-  já carregaram, e uma leitura recusada ali segue as regras da tabela. O router
-  chama os listeners de `useBeforeLeave` na ordem de inscrição, e o guard de
-  versão é inscrito no layout do `Router`, antes de qualquer rota. Como ele
-  chama `preventDefault()` e troca de documento na hora, um guard de página que
-  confere `!e.defaultPrevented`, como o exemplo do router, nunca chegaria a
-  perguntar. Por isso, uma página com alterações não salvas registra, além do
-  próprio `useBeforeLeave`, uma checagem com `registerUnsavedChanges`, importado
-  de `@/primitives/createOutdatedPageGuard/index.ts`, dentro de `onSettled` e
-  devolvendo a remoção como limpeza. Enquanto alguma checagem devolver `true`, o
-  guard de versão deixa a navegação no client. Se o usuário confirmar a saída
-  com `e.retry(true)`, a navegação também segue no client, e a página continua
-  marcada para a próxima.
-- `Errored` raiz: uma falha de chunk registrada pelo listener ou um erro com
-  `unknownFunction: true` recarrega a página uma vez em vez de mostrar o
-  `ErrorFallback`, com a tela vazia até o documento novo chegar. Quando o erro
-  chega à raiz, a árvore já saiu da tela, então a recarga não perde nada que a
-  página de erro já não perderia. É também o caminho do clique que chega antes
-  da resposta 404 do preload. A recarga roda no `onSettled`, num `setTimeout`,
-  depois de o router gravar a URL do destino. Se o documento não for trocado em
-  10 segundos, por exemplo porque um `beforeunload` da página cancelou a
-  recarga, o `ErrorFallback` aparece no lugar da tela vazia. O prazo cobre o
-  servidor ainda frio logo depois do deploy. O fallback lê o erro sem rastrear,
-  para que um segundo erro não o reconstrua e troque a recarga pendente pela
-  página de erro. A trava `outdated-page-reload` no `sessionStorage` dura 30
-  segundos: se a falha voltar dentro dela, o build servido também falhou e a
-  página de erro aparece. Sem `sessionStorage` ou sem conexão, a página de erro
-  aparece direto.
+- Detection: `installOutdatedPageDetection`, installed by `entry-client`, marks
+  the page as outdated when the Vite preload helper fires `vite:preloadError`
+  and when a server function answers 404 or 409 with
+  `X-Server-Function-Unknown`. A refusal outside tracked computation and without
+  `GET` counts as a submission and fires the submission notice. The module also
+  registers the `configureClientErrors` hook: when a boundary shows a fallback
+  for a recorded chunk failure or for an error with `unknownFunction: true`, the
+  hook fires the fallback notice. The preload event also fires in the intent
+  preload of `intentPreload()`, before the click, and only exists in the build.
+  The listener does not call `preventDefault()`: the import would resolve
+  `undefined`, and the `lazy` of the route would keep that empty module until
+  the reload.
+- Next navigation: with the page marked, `createOutdatedPageGuard`, called next
+  to the locale guard, turns the next navigation that changes the path without
+  the locale into a document navigation, keeping `replace`. Query and hash stay
+  on the client, and without a connection the navigation stays on the client.
+  Back and forward between entries of the same document also stay on the client:
+  the chunks of those pages already loaded, and a refused read there follows the
+  rules of the table. The router calls the `useBeforeLeave` listeners in
+  subscription order, and the version guard is subscribed in the `Router`
+  layout, before any route. Since it calls `preventDefault()` and switches
+  documents right away, a page guard that checks `!e.defaultPrevented`, like the
+  router example, would never get to ask. That is why a page with unsaved
+  changes registers, besides its own `useBeforeLeave`, a check with
+  `registerUnsavedChanges`, imported from
+  `@/primitives/createOutdatedPageGuard/index.ts`, inside `onSettled`, returning
+  the removal as the cleanup. While any check returns `true`, the version guard
+  leaves the navigation on the client. If the user confirms leaving with
+  `e.retry(true)`, the navigation also stays on the client, and the page stays
+  marked for the next one.
+- Root `Errored`: a chunk failure recorded by the listener or an error with
+  `unknownFunction: true` reloads the page once instead of showing
+  `ErrorFallback`, with an empty screen until the new document arrives. When the
+  error reaches the root, the tree has already left the screen, so the reload
+  loses nothing that the error page would not already lose. It is also the path
+  of a click that comes before the 404 response of the preload. The reload runs
+  in `onSettled`, in a `setTimeout`, after the router writes the target URL. If
+  the document is not replaced within 10 seconds, for example because a
+  `beforeunload` of the page cancelled the reload, `ErrorFallback` appears in
+  place of the empty screen. The deadline covers a server still cold right after
+  the deploy. The fallback reads the error without tracking, so that a second
+  error does not rebuild it and swap the pending reload for the error page. The
+  `outdated-page-reload` lock in `sessionStorage` lasts 30 seconds: if the
+  failure comes back within it, the served build also failed and the error page
+  appears. Without `sessionStorage` or without a connection, the error page
+  appears right away.
 
-Uma leitura ou um `lazy()` recusados dentro de um `Errored` local não recarregam
-a página. O limite local existe para manter o resto da tela funcionando, e uma
-recarga apagaria o que estiver digitado ao lado dele. Tentar de novo também não
-resolve, porque o id não existe no build novo. O `OutdatedPageNotice` mostra
-"Parte da página não carregou" com o botão "Recarregar página", e a próxima
-navegação já sai por documento. Um fallback local pode trocar o próprio "Tentar
-de novo" por uma ação de recarga conferindo `isVersionError(error())`.
+A read or a `lazy()` refused inside a local `Errored` does not reload the page.
+The local boundary exists to keep the rest of the screen working, and a reload
+would erase what is typed next to it. Trying again does not solve it either,
+because the id does not exist in the new build. `OutdatedPageNotice` shows "Part
+of this page did not load" with the "Reload page" button, and the next
+navigation already goes through a document. A local fallback can replace its own
+"Try again" with a reload action by checking `isVersionError(error())`.
 
-Um envio recusado não se repete sozinho: o `ctx.retry` repetiria a mesma chamada
-e receberia a mesma recusa, 409 pelo carimbo ou 404 pelo id ausente. A rejeição
-com `unknownFunction: true` volta a quem chamou, e o `OutdatedPageNotice` pede
-para recarregar e enviar de novo, avisando que o que não foi salvo pode se
-perder. Como o 404 e o 409 saem antes de ler os argumentos e de executar a
-função, reenviar depois da recarga não duplica o efeito dessa tentativa. Uma
-falha de rede, um timeout ou um 5xx sem o rótulo não marcam a página: o
-resultado é desconhecido, e o projeto confere o estado no backend ou usa uma
-chave de idempotência antes de repetir. Guardar o formulário para depois da
-recarga fica com o projeto, por exemplo com um rascunho salvo automaticamente.
+A refused submission is not repeated by itself: `ctx.retry` would repeat the
+same call and get the same refusal, 409 for the stamp or 404 for the missing id.
+The rejection with `unknownFunction: true` goes back to the caller, and
+`OutdatedPageNotice` asks to reload and submit again, warning that what was not
+saved can be lost. Since the 404 and the 409 happen before reading the arguments
+and running the function, submitting again after the reload does not duplicate
+the effect of that attempt. A network failure, a timeout or a 5xx without the
+label do not mark the page: the result is unknown, and the project checks the
+state in the backend or uses an idempotency key before repeating. Keeping the
+form for after the reload is up to the project, for example with an
+automatically saved draft.
 
-Limites conhecidos:
+Known limits:
 
-- O client guarda um único `responseHandler`. Com `serverFunctions.components`,
-  o `installServerComponents` ocupa a mesma vaga e vence quem configurar por
-  último; os dois precisam ser compostos à mão.
-- O hook de `configureClientErrors` também é único e é a vaga natural de um
-  monitor de erros. Um monitor instalado depois substitui o hook em silêncio, e
-  o aviso de fallback deixa de aparecer para os erros de versão. Um `onError`
-  passado a `render` ou `hydrate` tem o mesmo efeito, porque o runtime prefere o
-  hook da raiz ao ambiente. Nos dois casos, o monitor precisa ser composto
-  dentro de `installOutdatedPageDetection`.
-- O handler separa envio de leitura pelo ponto de chamada: fora de computação
-  rastreada e sem `GET`. Uma leitura direta feita depois de um `await`, dentro
-  de `untrack` ou num preload de rota conta como envio e mostra o aviso de
-  envio. Leituras usam `query()` ou `GET()`.
-- `registerUnsavedChanges` só protege a página que se registra. Uma página que
-  tem só o `useBeforeLeave` perde o rascunho na troca por documento quando a aba
-  está marcada, a menos que também tenha um `beforeunload`.
-- A navegação de documento também descarta o estado global em memória, como
-  stores e conexões. Estado que precisa sobreviver precisa estar persistido.
-- Uma falha de rede no import também marca a aba, e a próxima navegação sai por
-  documento.
-- A falha de um `lazy()` dentro da página, sem `Errored` local, também chega ao
-  `Errored` raiz e recarrega a página atual, com o que ainda não foi salvo.
-- Uma leitura `GET` cujo id sobreviveu ao deploy executa no servidor novo sem
-  carimbo e sem detecção. Quando os argumentos ou a saída de uma leitura mudam,
-  a função precisa aceitar também o formato do deploy anterior, ou mudar de
-  nome, para que a aba antiga receba o 404.
-- A recarga entrega o build que o host servir, que pode ser um rollback ou uma
-  instância de outro build. O aviso diz que a página pode estar desatualizada,
-  sem prometer que a recarga resolve.
-- Um asset ausente em `/assets/`, como o chunk de outro build, responde 404 com
-  `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` e
-  `Cross-Origin-Resource-Policy: same-origin`, sem a página SSR. O Nitro
-  registra em `publicAssets` o caminho `/assets`, que é o `assetsDir` do Vite,
-  com `fallthrough: false`. No preview e no preset `node-server`, o Nitro
-  responde ao miss de GET e HEAD com o 404 `no-store` de diretório público
-  exclusivo, e o h3 preserva esse cabeçalho quando a route rule de `/assets/**`
-  aplica o cache imutável ao erro. Na Vercel, o preset grava a rota 404
-  `no-store` logo depois de `filesystem`, e o miss não chega à função. A route
-  rule leva nosniff e CORP, com os valores de `SECURITY_HEADERS`, ao miss e aos
-  acertos servidos pela Vercel ou pelo `node-server`; no `vp run start`, o
-  acerto sai do servidor estático do srvx sem esses cabeçalhos e sem
-  `Cache-Control`, como antes. O teste `BuildOutput.assets.production` confere
-  as rotas do `.vercel/output/config.json` e o 404 no preview, e falha se uma
-  atualização do Nitro mudar esse comportamento. Ele cobre a configuração
-  gerada, não o CDN: a precedência do `no-store` sobre o cache da rota de
-  `/assets` segue a ordem das rotas. O autor de
-  [nitrojs/nitro#4474](https://github.com/nitrojs/nitro/pull/4474) conferiu essa
-  ordem num deploy próprio na Vercel; o deploy deste repositório ainda não foi
-  conferido. No `vp run start`, o miss só vale para GET e HEAD em
-  `/assets/<arquivo>`, e continuam no SSR, com o cache da route rule, `/assets`,
-  `/assets/`, caminhos com segmento vazio e outros métodos. Na Vercel, só
-  `/assets` sem barra chega à função: a rota 404 `no-store` depois de
-  `filesystem` cobre o resto, com qualquer método. Nenhuma URL gerada pelo Vite
-  tem esses formatos. O 404 do miss não leva a CSP, o HSTS nem as políticas de
-  frame, que só valem nas respostas do middleware.
+- The client keeps a single `responseHandler`. With
+  `serverFunctions.components`, `installServerComponents` takes the same slot,
+  and the last one to configure wins; the two have to be composed by hand.
+- The `configureClientErrors` hook is also single and is the natural slot of an
+  error monitor. A monitor installed later replaces the hook silently, and the
+  fallback notice stops showing for version errors. An `onError` passed to
+  `render` or `hydrate` has the same effect, because the runtime prefers the
+  root hook to the environment. In both cases, the monitor has to be composed
+  inside `installOutdatedPageDetection`.
+- The handler tells a submission from a read by the call site: outside tracked
+  computation and without `GET`. A direct read made after an `await`, inside
+  `untrack` or in a route preload counts as a submission and shows the
+  submission notice. Reads use `query()` or `GET()`.
+- `registerUnsavedChanges` only protects the page that registers. A page that
+  has only `useBeforeLeave` loses the draft in the switch to a document when the
+  tab is marked, unless it also has a `beforeunload`.
+- A document navigation also drops the global state in memory, such as stores
+  and connections. State that needs to survive has to be persisted.
+- A network failure in the import also marks the tab, and the next navigation
+  goes through a document.
+- The failure of a `lazy()` inside the page, without a local `Errored`, also
+  reaches the root `Errored` and reloads the current page, with what was not
+  saved yet.
+- A `GET` read whose id survived the deploy runs on the new server without a
+  stamp and without detection. When the arguments or the output of a read
+  change, the function has to accept the format of the previous deploy too, or
+  change its name, so that the old tab gets the 404.
+- The reload delivers the build that the host serves, which can be a rollback or
+  an instance of another build. The notice says that the page may be outdated,
+  without promising that the reload solves it.
+- A missing asset in `/assets/`, such as the chunk of another build, answers 404
+  with `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` and
+  `Cross-Origin-Resource-Policy: same-origin`, without the SSR page. Nitro
+  registers in `publicAssets` the `/assets` path, which is the Vite `assetsDir`,
+  with `fallthrough: false`. In the preview and in the `node-server` preset,
+  Nitro answers a GET or HEAD miss with the `no-store` 404 of an exclusive
+  public folder, and h3 keeps that header when the route rule of `/assets/**`
+  applies the immutable cache to the error. On Vercel, the preset writes the
+  `no-store` 404 route right after `filesystem`, and the miss does not reach the
+  function. The route rule carries nosniff and CORP, with the values of
+  `SECURITY_HEADERS`, to the miss and to the hits served by Vercel or by
+  `node-server`; in `vp run start`, the hit comes from the srvx static server
+  without those headers and without `Cache-Control`, as before. The
+  `BuildOutput.assets.production` test checks the routes of
+  `.vercel/output/config.json` and the 404 in the preview, and fails if a Nitro
+  upgrade changes this behavior. It covers the generated configuration, not the
+  CDN: the precedence of `no-store` over the cache of the `/assets` route
+  follows the order of the routes. The author of
+  [nitrojs/nitro#4474](https://github.com/nitrojs/nitro/pull/4474) checked that
+  order in their own deploy on Vercel; the deploy of this repository has not
+  been checked yet. In `vp run start`, the miss only applies to GET and HEAD on
+  `/assets/<file>`, and `/assets`, `/assets/`, paths with an empty segment and
+  other methods stay in the SSR, with the cache of the route rule. On Vercel,
+  only `/assets` without a slash reaches the function: the `no-store` 404 route
+  after `filesystem` covers the rest, with any method. No URL generated by Vite
+  has those forms. The 404 of the miss does not carry the CSP, the HSTS or the
+  frame policies, which only apply to the responses of the middleware.
