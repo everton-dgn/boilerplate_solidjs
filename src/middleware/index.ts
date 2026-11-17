@@ -9,8 +9,8 @@ import { restrictPageMethods } from './restrictPageMethods/index.ts'
 import { securityHeaders } from './securityHeaders/index.ts'
 import type { Middleware } from './types.ts'
 
-// API recebe o nonce e os cabeçalhos antes da negociação das páginas. A
-// restrição de métodos vem depois da API, que pode tratar POST numa página.
+// API gets the nonce and the headers before the page negotiation. The method
+// restriction comes after the API, which can handle POST on a page.
 const requestMiddleware: Middleware[] = [
   securityHeaders,
   createAPIHandler(routes),
@@ -19,12 +19,12 @@ const requestMiddleware: Middleware[] = [
 
 export function createMiddleware(extra: Middleware[] = []): StartMiddleware {
   const run = containFailures([...extra, ...requestMiddleware])
-  // A contenção da aplicação roda dentro do contexto de idioma, inclusive
-  // ao renderizar o fallback. A externa contém falhas da própria resolução.
+  // The application containment runs inside the locale context, including when it
+  // renders the fallback. The outer one contains failures of the resolution itself.
   const localized: Middleware = (request, next) =>
     localizeRequest({ request, next: () => run(request, next) })
   const contained = containFailures([localized])
-  // A cadeia do projeto recebe Request; o plugin recebe o evento.
+  // The project chain receives a Request; the plugin receives the event.
   return (event, next) => {
     let hasEnteredLocalizedChain = false
     const markdown: Middleware = (_request, render) =>

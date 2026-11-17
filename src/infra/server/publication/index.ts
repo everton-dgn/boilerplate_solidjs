@@ -21,9 +21,9 @@ type PublicationController = {
   getMetrics: () => PublicationMetrics
 }
 
-// Quatro vagas locais ao processo limitam a sobreposição; duas por classe
-// deixam espaço para as duas cargas. A reserva de 16 MiB é um orçamento inicial
-// de saída, a calibrar com o piloto HTTP serial e a capacidade real do backend.
+// Four slots local to the process bound the overlap; two per class leave room for
+// both loads. The 16 MiB reserve is an initial output budget, to calibrate with
+// the serial HTTP pilot and the real capacity of the backend.
 const DEFAULT_RESERVED_BYTES = 16_777_216
 
 const DEFAULT_LIMITS: PublicationLimits = {
@@ -215,7 +215,7 @@ export function createPublicationController(
       try {
         await response.body?.cancel()
       } catch {
-        // Erros de cancelamento não tornam o corpo utilizável de novo.
+        // Cancellation errors do not make the body usable again.
       } finally {
         releaseOutput()
       }

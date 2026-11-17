@@ -5,7 +5,7 @@ import { localizeHref } from '@/i18n/urls/index.ts'
 
 import type { LlmsPage } from './types.ts'
 
-// As notas são em inglês, então os idiomas também são nomeados em inglês.
+// The notes are in English, so the locales are named in English too.
 const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' })
 
 function languageName(locale: Locale): string {
@@ -49,8 +49,8 @@ export const LLMS_USE_CASES: readonly LlmsPage[] = [
   }
 ]
 
-// O build gera o arquivo só quando o índice cita uma página com Markdown
-// estático; o mesmo critério decide este link.
+// The build generates the file only when the index cites a page with static
+// Markdown; the same criterion decides this link.
 export const LLMS_FULL_PAGE: LlmsPage = {
   path: LLMS_FULL_PATH,
   title: 'Full Markdown of the static pages',

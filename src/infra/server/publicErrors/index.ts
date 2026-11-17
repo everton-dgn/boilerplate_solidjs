@@ -5,8 +5,8 @@ import { markSafeError } from '@solidjs/web'
 
 const errors = new WeakSet<object>()
 
-// O hook de erros é síncrono e não pode lançar: se o idioma não resolver, a
-// mensagem sai no idioma base.
+// The error hook is synchronous and cannot throw: if the locale does not resolve,
+// the message is in the base locale.
 export function publicErrorMessage(locale?: Locale): string {
   try {
     return m.publicErrors_message({}, { locale })
@@ -22,7 +22,7 @@ export function createPublicError(): Error {
 }
 
 export function isPublicError(value: unknown): boolean {
-  // Serve apenas para evitar logs duplicados. O wrapper sempre cria outro
-  // erro, mesmo se este objeto tiver sido alterado depois de sua criação.
+  // Only prevents duplicated logs. The wrapper always creates another error, even
+  // if this object was changed after its creation.
   return typeof value === 'object' && value !== null && errors.has(value)
 }

@@ -11,10 +11,11 @@ import { MARKDOWN_PRERENDER_PATH } from '../../constants.ts'
 import { collectStaticMarkdownPages } from '../collectStaticMarkdownPages/index.ts'
 import { uncachedResponse } from '../uncachedResponse/index.ts'
 
-// Uma página com opt-in estático que o matcher resolve para outra rota ou para
-// fora das páginas seria omitida sem aviso; o build recusa essas divergências.
-// O noindex herdado continua excluindo a página sem erro. O idioma de cada
-// arquivo vem da URL, para o llms-full.txt não depender do formato do índice.
+// A page with the static opt-in that the matcher resolves to another route or
+// outside the pages would be left out without a warning; the build refuses those
+// mismatches. An inherited noindex still excludes the page without an error. The
+// locale of each file comes from the URL, so llms-full.txt does not depend on the
+// format of the index.
 export function listStaticMarkdown(): Response {
   const paths: string[] = []
   const baseLocalePaths: string[] = []
@@ -45,8 +46,8 @@ export function listStaticMarkdown(): Response {
   )
 }
 
-// O header identifica a chamada do Nitro durante o build. Em produção o arquivo
-// já existe; um cliente não pode provocar a reconstrução do inventário por header.
+// The header identifies the Nitro call during the build. In production the file
+// already exists; a client cannot trigger rebuilding the inventory through a header.
 export function isStaticListing(request: Request): boolean {
   return (
     readPublicationPhase() !== 'artifact' &&

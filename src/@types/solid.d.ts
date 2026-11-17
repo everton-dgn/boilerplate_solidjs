@@ -8,7 +8,7 @@ type SsrRenderState = {
 declare module '@solidjs/web' {
   interface RequestEventLocals {
     ssrRenderState?: SsrRenderState
-    // Base de página validada pelo middleware; ausente em RPC sem Referer seguro.
+    // Page base validated by the middleware; missing in RPC without a safe Referer.
     localizedPageBase?: string
     serverFailure?: Error
   }

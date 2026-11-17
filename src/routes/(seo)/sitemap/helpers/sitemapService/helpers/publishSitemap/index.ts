@@ -15,8 +15,8 @@ type PublishOptions = {
   run: (context: PublicationContext) => Promise<Response>
 }
 
-// A vaga fica presa até `run` assentar. O sinal das fontes continua abortando ao
-// fim da leitura, para quem ainda tiver trabalho pendente depois da resposta.
+// The slot stays taken until `run` settles. The source signal still aborts at the
+// end of the read, for whoever still has pending work after the response.
 export async function publishSitemap({
   options,
   byteBudget,
@@ -31,7 +31,7 @@ export async function publishSitemap({
     maxOutputBytes: byteBudget,
     run: async context => {
       const finished = new AbortController()
-      // O scanner de rotas lê este arquivo como TSX, sem genérico em arrow.
+      // The route scanner reads this file as TSX, without a generic in an arrow.
       function readSource<T>({ key, run: read }: SourceOptions<T>): Promise<T> {
         return context.readSource({
           key,

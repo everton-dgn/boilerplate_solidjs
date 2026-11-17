@@ -13,7 +13,7 @@ const loadedLocale = navigation
   : undefined
 const locale = extractLocaleFromUrl(location.href)
 
-// O histórico pode mudar de idioma enquanto o bundle carrega, antes do guard.
+// The history can change locale while the bundle loads, before the guard.
 if (
   loadedLocale !== undefined &&
   locale !== undefined &&
@@ -23,7 +23,7 @@ if (
 } else {
   const disposeOutdatedPageDetection = installOutdatedPageDetection()
   const disposeLocaleHistoryGuard = installLocaleHistoryGuard()
-  // O Vite guarda um único dispose por módulo.
+  // Vite keeps a single dispose per module.
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {
       disposeOutdatedPageDetection()
@@ -37,7 +37,7 @@ if (
         <App />
       </Document>
     )
-    // A entrada async pode estacionar hydrate() até o fim do shell.
+    // The async entry can park hydrate() until the end of the shell.
     onHydrationEnd(() => {
       document.documentElement.dataset.hydrationEnded = ''
     })

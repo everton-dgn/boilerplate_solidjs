@@ -1,4 +1,4 @@
-/* oxlint-disable import/no-nodejs-modules -- Lê arquivos ao lado do bundle da função, sem alcance do cliente. */
+/* oxlint-disable import/no-nodejs-modules -- Reads files next to the function bundle, out of reach of the client. */
 import { createHash } from 'node:crypto'
 import { constants } from 'node:fs'
 import { open } from 'node:fs/promises'
@@ -27,7 +27,7 @@ import { sitemapEntrySchema } from '../sitemapEntrySchema/index.ts'
 type BoundedReadOptions = { file: string; maxBytes: number }
 
 const BUILD_ID_MAX_LENGTH = 64
-// No Windows, O_NOFOLLOW não existe e não altera os flags.
+// On Windows, O_NOFOLLOW does not exist and does not change the flags.
 const READ_FLAGS = constants.O_RDONLY | constants.O_NOFOLLOW
 const decoder = new TextDecoder('utf-8', { fatal: true })
 const Sha256Schema = v.pipe(v.string(), v.regex(/^[a-f0-9]{64}$/u))
@@ -56,8 +56,8 @@ const IdentitiesSchema = v.object({
   entries: v.array(sitemapEntrySchema)
 })
 
-// Sem cache de falha: um artefato ausente continua pequeno e explícito a cada
-// pedido, e a instância se recupera se a leitura voltar a funcionar.
+// No failure cache: a missing artifact stays small and explicit on every request,
+// and the instance recovers if the read works again.
 function readOnce<T>(read: () => Promise<T>): () => Promise<T> {
   let pending: Promise<T> | undefined
   const start = async (): Promise<T> => {
@@ -74,11 +74,11 @@ function readOnce<T>(read: () => Promise<T>): () => Promise<T> {
   }
 }
 
-// Mesmo critério do Nitro para localizar arquivos ao lado do bundle da função.
+// Same criterion as Nitro to find files next to the function bundle.
 function artifactPath(file: string): string {
   const main: unknown = Reflect.get(globalThis, '__nitro_main__')
   if (typeof main !== 'string') {
-    throw new TypeError('Diretório da função desconhecido')
+    throw new TypeError('Unknown function folder')
   }
   return nodePath.join(
     nodePath.dirname(fileURLToPath(main)),
@@ -87,8 +87,8 @@ function artifactPath(file: string): string {
   )
 }
 
-// O buffer nasce do tamanho conferido, com um byte a mais para notar crescimento:
-// o limite vale mesmo se o arquivo mudar entre o stat e a leitura.
+// The buffer starts at the checked size, with one extra byte to notice growth:
+// the limit holds even if the file changes between the stat and the read.
 async function readBounded({
   file,
   maxBytes
@@ -97,25 +97,25 @@ async function readBounded({
   try {
     const stats = await handle.stat()
     if (!stats.isFile() || stats.size > maxBytes) {
-      throw new Error('Artefato acima do limite')
+      throw new Error('Artifact over the limit')
     }
     const bytes = new Uint8Array(stats.size + 1)
     let total = 0
     let read = await handle.read(bytes, 0, bytes.byteLength, null)
     while (read.bytesRead > 0) {
       total += read.bytesRead
-      if (total > stats.size) throw new Error('Artefato alterado na leitura')
+      if (total > stats.size) throw new Error('Artifact changed on read')
       read = await handle.read(bytes, total, bytes.byteLength - total, null)
     }
-    if (total !== stats.size) throw new Error('Artefato alterado na leitura')
+    if (total !== stats.size) throw new Error('Artifact changed on read')
     return bytes.subarray(0, total)
   } finally {
     await handle.close()
   }
 }
 
-// O hash das identidades só prova que elas combinam com o manifesto. O vínculo
-// com este bundle vem do identificador gravado no SSR antes do prerender.
+// The hash of the identities only proves that they match the manifest. The link
+// to this bundle comes from the identifier written in the SSR before the prerender.
 function assertManifest(manifest: SitemapArtifactManifest): void {
   const {
     buildId,
@@ -133,10 +133,10 @@ function assertManifest(manifest: SitemapArtifactManifest): void {
     isRootStatic ===
       (!hasArraySources && !hasPartitionSources && pagePartCount > 0) &&
     hasArraySources === (identities !== null)
-  if (!isCoherent) throw new Error('Manifesto incoerente')
+  if (!isCoherent) throw new Error('Inconsistent manifest')
   const expected = import.meta.env.PUBLICATION_BUILD_ID
   if (!expected || buildId !== expected) {
-    throw new Error('Manifesto de outro build')
+    throw new Error('Manifest from another build')
   }
 }
 
@@ -152,14 +152,14 @@ export function createSitemapArtifacts(): SitemapArtifacts {
   })
   const readIdentities = readOnce(async (): Promise<SitemapIdentities> => {
     const { identities } = await readManifest()
-    if (!identities) throw new Error('Manifesto sem identidades')
+    if (!identities) throw new Error('Manifest without identities')
     const bytes = await readBounded({
       file: artifactPath(identities.file),
       maxBytes: identities.bytes
     })
     const hash = createHash('sha256').update(bytes).digest('hex')
     if (bytes.byteLength !== identities.bytes || hash !== identities.sha256) {
-      throw new Error('Identidades de outra geração')
+      throw new Error('Identities from another generation')
     }
     const { urls, entries } = v.parse(
       IdentitiesSchema,

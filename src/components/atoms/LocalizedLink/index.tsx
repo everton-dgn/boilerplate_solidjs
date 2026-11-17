@@ -11,7 +11,7 @@ type LocalizedLinkProps = Omit<
 > & {
   href: string | TypedPath
   locale?: Locale
-  /** Use false para preservar URLs de endpoints e arquivos estáticos e navegar fora da SPA. */
+  /** Use false to keep the URLs of endpoints and static files and navigate outside the SPA. */
   shouldLocalize?: boolean
 }
 

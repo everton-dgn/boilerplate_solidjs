@@ -32,8 +32,8 @@ export function buildStructuredData({
     description: seo.description,
     inLanguage: SITE.locale,
     isPartOf: { '@id': siteId },
-    // Dimensões ficam só no Open Graph: o schema-dts tipa `width` e `height`
-    // como `Distance` ou `QuantitativeValue`, e o Google não as consome aqui.
+    // Dimensions stay only in Open Graph: schema-dts types `width` and `height`
+    // as `Distance` or `QuantitativeValue`, and Google does not read them here.
     image: { '@type': 'ImageObject', url: image, caption: seo.image.alt }
   } satisfies Omit<PageNode, '@type'>
   const page: PageNode =

@@ -50,10 +50,10 @@ export function Dialog(props: DialogProps) {
   })
 
   const handleClose = () => {
-    // close é assíncrono: uma notificação antiga não pode fechar a reabertura.
+    // close is async: an old notification must not close the reopening.
     if (isDisposed || element?.open || !props.open) return
     props.onOpenChange(false)
-    // Aguarda o signal antes de reabrir caso o consumidor recuse o fechamento.
+    // Waits for the signal before reopening in case the consumer refuses to close.
     queueMicrotask(() => synchronize(untrack(() => props.open)))
   }
 

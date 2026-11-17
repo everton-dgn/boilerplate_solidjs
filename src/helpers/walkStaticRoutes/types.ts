@@ -26,8 +26,8 @@ export type WalkStaticRoutesOptions<State> = {
   routes: readonly StaticRoute[]
   initialState: State
   visit: (options: VisitStaticRouteOptions<State>) => State
-  // Por padrão, ramos com parâmetro são pulados inteiros. Com `true`, eles
-  // são visitados e marcados como `isDynamic`.
+  // By default, branches with a parameter are skipped whole. With `true`, they
+  // are visited and marked as `isDynamic`.
   shouldVisitDynamic?: boolean
 }
 

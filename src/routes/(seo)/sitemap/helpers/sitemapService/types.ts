@@ -30,9 +30,9 @@ export type PagePartsOptions = {
   byteBudget: number
 }
 
-// Fronteira entre a geração direta (desenvolvimento e prerender) e o manifesto
-// pronto de produção. A identidade exata fica atrás de `readIdentities` para só
-// existir em memória quando há fonte em array.
+// Boundary between the direct generation (development and prerender) and the
+// ready production manifest. The exact identity stays behind `readIdentities` so
+// it only exists in memory when there is an array source.
 export type PageCatalog = {
   readSummary: () => Promise<PageSummary>
   readHasArraySources: () => Promise<boolean>

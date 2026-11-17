@@ -5,7 +5,7 @@ type AppliedTheme = {
   color: string
 }
 
-// O Document serializa esta função no script de pré-hidratação; mantenha o corpo autocontido.
+// Document serializes this function in the pre-hydration script; keep the body self-contained.
 export function applyTheme({ theme, color }: AppliedTheme): void {
   const root = document.documentElement
   root.classList.toggle('dark', theme === 'dark')

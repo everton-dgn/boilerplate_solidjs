@@ -18,7 +18,7 @@ export function readTheme(
 
 export function saveTheme(theme: Theme): boolean {
   try {
-    // oxlint-disable-next-line unicorn/no-document-cookie -- O Solid serializa o cookie; a releitura síncrona detecta escritas bloqueadas.
+    // oxlint-disable-next-line unicorn/no-document-cookie -- Solid serializes the cookie; the synchronous read-back detects blocked writes.
     document.cookie = serializeCookie(THEME_COOKIE_NAME, theme, {
       path: '/',
       maxAge: THEME_COOKIE_MAX_AGE,

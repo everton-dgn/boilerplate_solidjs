@@ -17,7 +17,7 @@ export default function Document(props: ParentProps) {
   const cookieHeader = isServer
     ? (event?.request.headers.get('cookie') ?? null)
     : undefined
-  // O navegador oculta o nonce após validar o script; no cliente não há evento de requisição.
+  // The browser hides the nonce after validating the script; the client has no request event.
   const scriptNonce =
     typeof event?.nonce === 'string' ? event.nonce : event?.nonce?.script
   const nonce = scriptNonce === false ? undefined : scriptNonce
@@ -70,8 +70,8 @@ export default function Document(props: ParentProps) {
           sizes="180x180"
         />
         <HydrationScript />
-        {/* Com entries autorais o plugin não injeta a entrada do cliente: ele
-        troca este caminho literal pelo asset com hash no build. */}
+        {/* With authored entries the plugin does not inject the client entry: it
+        replaces this literal path with the hashed asset in the build. */}
         <script type="module" src="/src/entry-client.tsx" async nonce={nonce} />
       </head>
       <body>{props.children}</body>
