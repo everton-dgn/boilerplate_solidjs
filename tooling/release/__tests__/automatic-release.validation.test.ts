@@ -5,8 +5,8 @@ import { HEAD, SHA_LENGTH } from './constants.ts'
 import { fixture, mutations } from './fixtures.ts'
 import type { Artifact } from './types.ts'
 
-// O Bun imprime trechos do código ao redor do throw no stderr; só a linha da
-// mensagem do erro prova qual verificação recusou o artifact.
+// Bun prints snippets of the code around the throw to stderr; only the line of
+// the error message proves which check refused the artifact.
 function thrown(message: string): RegExp {
   const escaped = message.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`)
   return new RegExp(`^(?:error|[A-Z]\\w*Error): [^\\n]*${escaped}`, 'mu')

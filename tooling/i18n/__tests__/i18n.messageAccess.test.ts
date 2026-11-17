@@ -9,7 +9,7 @@ import { lintFixture } from '../../testing/lintFixture/index.ts'
 const DIAGNOSTIC = v.object({ filename: v.string(), code: v.string() })
 const DIAGNOSTICS = v.object({ diagnostics: v.array(DIAGNOSTIC) })
 
-test('o lint reconhece o alias do Paraglide e exige referências estáticas às mensagens', context => {
+test('the lint recognizes the Paraglide alias and requires static references to the messages', context => {
   const fixtures = {
     dynamic:
       'import { m } from "@paraglide/messages.js"; export const read = key => m[key]()',

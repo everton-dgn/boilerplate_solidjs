@@ -10,7 +10,7 @@ const cssModulesImport = defineRule({
     type: 'suggestion',
     schema: [],
     messages: {
-      useS: 'Importe CSS Modules como S: import S from "./styles.module.css".'
+      useS: 'Import CSS Modules as S: import S from "./styles.module.css".'
     }
   },
   create(context) {

@@ -19,7 +19,7 @@ describe('probe', () => {
 })
 `
 
-// A análise de tipos precisa de um projeto TypeScript com os tipos do Node.
+// The type analysis needs a TypeScript project with the Node types.
 const PROBE_TSCONFIG = JSON.stringify({
   compilerOptions: {
     module: 'nodenext',
@@ -39,7 +39,7 @@ const override = lint.overrides?.find(
     entry.files.includes(TOOLING_TESTS) &&
     entry.rules?.['typescript/no-floating-promises'] !== undefined
 )
-// A fixture liga só a análise de tipos e o override real dos testes de tooling.
+// The fixture turns on only the type analysis and the real override of the tooling tests.
 const PROMISE_LINT_CONFIG = `export default ${JSON.stringify({
   lint: {
     categories: { correctness: 'off' },
@@ -49,8 +49,8 @@ const PROMISE_LINT_CONFIG = `export default ${JSON.stringify({
   }
 })}`
 
-it('aceita describe e it do node:test e acusa a Promise de teste esquecida', context => {
-  assert.ok(override, 'O override dos testes de tooling não foi encontrado.')
+it('accepts describe and it from node:test and flags the forgotten test Promise', context => {
+  assert.ok(override, 'The override of the tooling tests was not found.')
   const result = lintFixture({
     context,
     config: PROMISE_LINT_CONFIG,

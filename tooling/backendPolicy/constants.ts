@@ -1,9 +1,9 @@
 export const RELATIVE_IMPORT_RESTRICTION = {
   regex: String.raw`^(\.\./){4,}`,
   message:
-    'Imports relativos podem subir no máximo três níveis. Use o alias @/ para caminhos mais distantes.'
+    'Relative imports can go up at most three levels. Use the @/ alias for farther paths.'
 }
 
-// Caminho do módulo que cria o estado de integridade do render, pelo alias ou
-// relativo, com ou sem o index.ts.
+// Path of the module that creates the render integrity state, through the alias
+// or relative, with or without index.ts.
 export const RENDER_INTEGRITY_MODULE = String.raw`(?:^|/)renderIntegrity(?:/index(?:\.ts)?)?$`

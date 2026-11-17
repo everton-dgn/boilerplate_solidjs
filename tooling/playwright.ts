@@ -15,15 +15,15 @@ const SHOULD_BUILD = env.TEST_PREBUILT !== 'true'
 if (!SHOULD_BUILD && !PRODUCTION_ROUTES) {
   throw new Error('TEST_PREBUILT requires production routes')
 }
-// Só o build do modo e2e mantém o manifesto do Vite no estático. Sem a guarda,
-// TEST_PREBUILT serviria as rotas de fixture à suíte de produção.
+// Only the e2e mode build keeps the Vite manifest in the static output. Without
+// the guard, TEST_PREBUILT would serve the fixture routes to the production suite.
 const PREBUILT_GUARD =
   "if [ -e .vercel/output/static/.vite ]; then echo 'TEST_PREBUILT found an e2e build; run vp run build first' >&2; exit 1; fi && "
 const BUILD_COMMAND = SHOULD_BUILD
   ? `vp run build --mode ${BUILD_MODE} && `
   : PREBUILT_GUARD
-// Resolver as variáveis públicas no mesmo modo do build mantém os testes e o
-// servidor coerentes sobre a URL pública; variáveis já definidas prevalecem.
+// Resolving the public variables in the same mode as the build keeps the tests
+// and the server consistent about the public URL; variables already set win.
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 Object.assign(env, loadEnv(BUILD_MODE, ROOT, 'VITE_'))
 
@@ -33,8 +33,8 @@ if (!BASE_URL) {
   throw new Error('.env.test must define BASE_URL_TEST')
 }
 
-// BASE_URL_TEST é a única fonte de host e porta: o loadEnvFile preserva HOST ou
-// PORT já exportadas no shell, que subiriam o preview em outro endereço.
+// BASE_URL_TEST is the only source of host and port: loadEnvFile keeps HOST or
+// PORT already exported in the shell, which would start the preview at another address.
 const { hostname: HOST, port: PORT } = new URL(BASE_URL)
 
 if (!PORT) {
@@ -51,8 +51,8 @@ const SECONDARY_URL = new URL(BASE_URL)
 SECONDARY_URL.port = String(SECONDARY_PORT)
 const CI_WORKERS = 2
 const DEFAULT_WORKERS = env.CI ? CI_WORKERS : undefined
-// Só a saída do preview vai para o arquivo, sem o ruído do build. O teardown
-// global lê o arquivo depois da suíte e recusa marcadores privados.
+// Only the preview output goes to the file, without the build noise. The global
+// teardown reads the file after the suite and refuses private markers.
 const SERVER_LOG = `test-results/server-${BUILD_MODE}.log`
 env.SERVER_LOG_FILE = fileURLToPath(
   new URL(`../${SERVER_LOG}`, import.meta.url)
@@ -64,9 +64,9 @@ if (PUBLICATION_LOAD) {
     new URL(`../${SECONDARY_LOG}`, import.meta.url)
   )
 }
-// O arquivo que conta linhas fixas do log roda como teardown do chromium, em
-// ordem e sem outros testes em paralelo, para que cada contagem seja exata. O
-// teardown roda mesmo quando um teste do chromium falha.
+// The file that counts fixed log lines runs as the chromium teardown, in order
+// and without other tests in parallel, so that each count is exact. The teardown
+// runs even when a chromium test fails.
 const SERVER_LOG_TESTS = '**/OutsideError.e2e.test.ts'
 const MARKDOWN_TESTS = '**/Markdown/*.e2e.test.ts'
 const PUBLICATION_LOAD_TESTS = '**/PublicationLoad.e2e.test.ts'
@@ -118,7 +118,7 @@ const config = defineConfig({
           ? '../playwright-report/production'
           : '../playwright-report/e2e',
         open: 'never',
-        // O CI só envia o relatório quando o job falha.
+        // The CI only uploads the report when the job fails.
         onlyFailures: Boolean(env.CI)
       }
     ]
@@ -126,8 +126,8 @@ const config = defineConfig({
   use: {
     ...devices['Desktop Chrome'],
     channel: env.CI ? 'chrome' : undefined,
-    // Não ative bypassCSP: ele desliga a CSP e anula as suítes que conferem
-    // violações (Home.csp e FragmentCss).
+    // Do not turn on bypassCSP: it disables the CSP and voids the suites that
+    // check violations (Home.csp and FragmentCss).
     baseURL: BASE_URL,
     locale: 'en-US',
     screenshot: 'only-on-failure',

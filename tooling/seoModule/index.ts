@@ -29,23 +29,23 @@ function isImportMetaGlob({
   )
 }
 
-// O manifesto de rotas importa o `route` de cada página no bundle inicial, e
-// tudo o que o `seo.ts` importa ou exporta vai junto. Por isso ele só exporta
-// `seo` e não importa módulos locais como valor: o corpo da página, que traz os
-// textos nos três idiomas, fica em `index.tsx`.
+// The route manifest imports the `route` of each page in the initial bundle, and
+// everything that `seo.ts` imports or exports goes along. That is why it only
+// exports `seo` and does not import local modules as values: the page body, which
+// carries the text in the three locales, stays in `index.tsx`.
 export const seoModule = defineRule({
   meta: {
     type: 'problem',
     schema: [],
     messages: {
       onlySeo:
-        'O seo.ts exporta só o objeto seo. O corpo da página fica no index.tsx, porque o seo.ts entra no bundle inicial pelo route (AGENTS.md, Módulos de página).',
+        'seo.ts only exports the seo object. The page body stays in index.tsx, because seo.ts enters the initial bundle through the route (AGENTS.md, Page modules).',
       localImport:
-        'O seo.ts não importa módulos locais como valor: o que ele importa entra no bundle inicial junto com o route. Mantenha o corpo da página no index.tsx (AGENTS.md, Módulos de página).',
+        'seo.ts does not import local modules as values: what it imports enters the initial bundle along with the route. Keep the page body in index.tsx (AGENTS.md, Page modules).',
       computedImport:
-        'O seo.ts não usa import() com caminho calculado: a regra não consegue conferir se o destino é local. Mantenha o corpo da página no index.tsx (AGENTS.md, Módulos de página).',
+        'seo.ts does not use import() with a computed path: the rule cannot check whether the target is local. Keep the page body in index.tsx (AGENTS.md, Page modules).',
       globImport:
-        'O seo.ts não usa import.meta.glob: o Vite o converte em imports dos módulos que o padrão casa. Mantenha o corpo da página no index.tsx (AGENTS.md, Módulos de página).'
+        'seo.ts does not use import.meta.glob: Vite turns it into imports of the modules that the pattern matches. Keep the page body in index.tsx (AGENTS.md, Page modules).'
     }
   },
   create(context) {
@@ -55,8 +55,8 @@ export const seoModule = defineRule({
       .join('/')
     if (!SEO_MODULE.test(relative)) return {}
 
-    // Um alias para a árvore de rotas puxa o módulo da página do mesmo jeito
-    // que o caminho relativo.
+    // An alias to the route tree pulls the page module the same way as the
+    // relative path.
     const reportLocalImport = (node: ValueImport) => {
       const specifier = readStaticSpecifier(node)
       if (specifier === undefined) {

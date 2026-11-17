@@ -6,10 +6,10 @@ import { it } from 'node:test'
 
 import { digestBytes, digestFile, readRouteBytes } from '../index.ts'
 
-// Maior que um bloco de leitura, para exercitar a leitura incremental.
+// Larger than one read block, to exercise the incremental read.
 const LARGE_BYTES = 200_000
 
-it('calcula no arquivo o mesmo digest dos bytes aprovados', async context => {
+it('computes in the file the same digest as the approved bytes', async context => {
   const dir = await mkdtemp(path.join(tmpdir(), 'artifact-digest-'))
   context.after(() => rm(dir, { recursive: true, force: true }))
   const bytes = new TextEncoder().encode('é'.repeat(LARGE_BYTES))
@@ -24,7 +24,7 @@ it('calcula no arquivo o mesmo digest dos bytes aprovados', async context => {
   })
 })
 
-it('usa os bytes da rota em vez do texto decodificado', () => {
+it('uses the bytes of the route instead of the decoded text', () => {
   const data = new Uint8Array(Buffer.from('23ff', 'hex')).buffer
   assert.deepEqual(
     readRouteBytes({ route: '/a.md', data, contents: '#�' }),

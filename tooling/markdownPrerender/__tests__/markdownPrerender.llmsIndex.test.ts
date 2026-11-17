@@ -6,8 +6,8 @@ import { readLlmsIndex } from '../helpers/readLlmsIndex/index.ts'
 
 const SITE_URL = 'https://example.com/'
 
-describe('leitura do índice llms.txt', () => {
-  it('lê título, descrição e todos os links no formato do buildLlmsText', () => {
+describe('reading the llms.txt index', () => {
+  it('reads the title, the description and every link in the buildLlmsText format', () => {
     const text = buildLlmsText({
       title: 'Site [beta]',
       description: 'A `site` with \\ backslash',
@@ -60,7 +60,7 @@ describe('leitura do índice llms.txt', () => {
     })
   })
 
-  it('falha sem título e aceita um índice sem links', () => {
+  it('fails without a title and accepts an index without links', () => {
     assert.throws(() => readLlmsIndex('no title'), /llms\.txt has no title/u)
     assert.deepEqual(readLlmsIndex('# Site\n'), {
       title: 'Site',

@@ -11,7 +11,7 @@ import { createPorts } from '../createPorts/index.ts'
 const POLL_MS = 20
 const MAX_POLLS = 250
 const PORT_CALLS = 4
-// Bem abaixo do timeout de 20 s de cada comando: só o sinal explica o fim.
+// Well below the 20 s timeout of each command: only the signal explains the end.
 const ABORT_LIMIT_MS = 5000
 const FAKE_COMMAND = `#!/bin/sh
 echo $$ >> "$FAKE_PIDS"
@@ -46,12 +46,12 @@ async function waitFor(condition: () => Promise<boolean>): Promise<void> {
     if (await condition()) return
     await delay(POLL_MS)
   }
-  assert.fail('Condição não atingida no prazo.')
+  assert.fail('Condition not met in time.')
 }
 
-test('o sinal da prova encerra os subprocessos em andamento', async context => {
+test('the proof signal ends the running subprocesses', async context => {
   const directory = await mkdtemp(path.join(tmpdir(), 'ci-reuse-ports-'))
-  // Sandbox criado pelo próprio teste: a remoção direta é o descarte correto.
+  // Sandbox created by the test itself: direct removal is the right disposal.
   context.after(() => rm(directory, { recursive: true, force: true }))
   for (const name of ['gh', 'git']) {
     await writeFile(path.join(directory, name), FAKE_COMMAND, { mode: 0o755 })
@@ -60,7 +60,7 @@ test('o sinal da prova encerra os subprocessos em andamento', async context => {
   const previous = { PATH: env.PATH, FAKE_PIDS: env.FAKE_PIDS }
   context.after(() => {
     for (const [name, value] of Object.entries(previous)) {
-      // Atribuir undefined ao env grava o texto "undefined".
+      // Assigning undefined to env writes the text "undefined".
       if (value === undefined) Reflect.deleteProperty(env, name)
       else env[name] = value
     }

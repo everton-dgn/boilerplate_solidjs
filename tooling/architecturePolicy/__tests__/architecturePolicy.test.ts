@@ -9,7 +9,7 @@ import architecturePolicy from '../index.ts'
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')
 
-test('a política distingue dependências permitidas e inversões de camada', () => {
+test('the policy tells allowed dependencies from layer inversions', () => {
   const rule = architecturePolicy.rules['layer-imports']
   assert.ok(rule)
   new RuleTester({ cwd: ROOT }).run('layer-imports', rule, {
@@ -197,7 +197,7 @@ test('a política distingue dependências permitidas e inversões de camada', ()
   })
 })
 
-test('as pastas colocalizadas das entradas pertencem à camada de entrada', () => {
+test('the colocated folders of the entries belong to the entry layer', () => {
   const rule = architecturePolicy.rules['layer-imports']
   assert.ok(rule)
   new RuleTester({ cwd: ROOT }).run('layer-imports', rule, {
@@ -232,7 +232,7 @@ test('as pastas colocalizadas das entradas pertencem à camada de entrada', () =
   })
 })
 
-test('i18n e módulos gerados pertencem à camada base', () => {
+test('i18n and generated modules belong to the base layer', () => {
   const rule = architecturePolicy.rules['layer-imports']
   assert.ok(rule)
   new RuleTester({ cwd: ROOT }).run('layer-imports', rule, {
@@ -259,7 +259,7 @@ test('i18n e módulos gerados pertencem à camada base', () => {
   })
 })
 
-test('o lint completo ativa a regra sem perder as restrições de backend', context => {
+test('the full lint turns the rule on without losing the backend restrictions', context => {
   const result = lintFixture({
     context,
     sources: {

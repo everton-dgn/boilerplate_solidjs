@@ -27,7 +27,7 @@ const execute = promisify(execFile)
 const ROOT = path.resolve(import.meta.dirname, '../../..')
 const COMMITLINT = path.join(ROOT, 'node_modules/.bin/commitlint')
 
-// O commitlint lê a mensagem do stdin e usa a configuração do projeto.
+// commitlint reads the message from stdin and uses the project configuration.
 async function isValidCommitMessage(message: string): Promise<boolean> {
   const pending = execute(COMMITLINT, { cwd: ROOT })
   pending.child.stdin?.end(message)
@@ -35,8 +35,8 @@ async function isValidCommitMessage(message: string): Promise<boolean> {
     await pending
     return true
   } catch (error) {
-    // Só uma saída diferente de zero reprova a mensagem; sem o binário, o
-    // erro precisa falhar o teste.
+    // Only a non-zero exit fails the message; without the binary, the error must
+    // fail the test.
     if (
       error instanceof Error &&
       'code' in error &&

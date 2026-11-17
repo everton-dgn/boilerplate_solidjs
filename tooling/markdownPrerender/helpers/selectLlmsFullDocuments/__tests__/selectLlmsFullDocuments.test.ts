@@ -9,7 +9,7 @@ function links(hrefs: string[]) {
   return hrefs.map(href => ({ label: 'Page', href, summary: '' }))
 }
 
-it('inclui cada .md estático uma vez, na ordem do primeiro link', () => {
+it('includes each static .md once, in the order of the first link', () => {
   const result = selectLlmsFullDocuments({
     links: links([
       'https://example.com/en/index.md',
@@ -33,7 +33,7 @@ it('inclui cada .md estático uma vez, na ordem do primeiro link', () => {
   })
 })
 
-it('declara os links fora da cobertura sem requisições e ignora os próprios índices', () => {
+it('declares the links outside the coverage without requests and ignores the indexes themselves', () => {
   const result = selectLlmsFullDocuments({
     links: links([
       'https://example.com/llms-full.txt',
@@ -72,7 +72,7 @@ it('declara os links fora da cobertura sem requisições e ignora os próprios �
   })
 })
 
-it('declara um .md estático de outro idioma em vez de incluí-lo', () => {
+it('declares a static .md of another locale instead of including it', () => {
   const result = selectLlmsFullDocuments({
     links: links([
       'https://example.com/pt/sobre.md',

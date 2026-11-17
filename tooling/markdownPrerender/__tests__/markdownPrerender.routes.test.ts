@@ -35,7 +35,7 @@ type Listing = { handlers: Handlers; paths: string[] }
 const NOT_FOUND = -1
 const VERCEL_CONFIG_VERSION = 3
 const SITE_URL = 'https://example.com/'
-// A regra do Link e a proteção de diretórios ocupam o início da fase inicial.
+// The Link rule and the folder protection take the start of the initial phase.
 const ADDED_ROUTES = 2
 const BUILD_ID = 'build-under-test'
 const EMPTY_INVENTORY = JSON.stringify({
@@ -63,8 +63,8 @@ const ConfigSchema = v.looseObject({
   overrides: v.optional(OverridesSchema)
 })
 
-// Estes cenários só chegam ao `config.json`: não gravam arquivos públicos nem
-// passam pelo fim do prerender, que a suíte principal cobre.
+// These scenarios only reach `config.json`: they neither write public files nor
+// go through the end of the prerender, which the main suite covers.
 async function setup(): Promise<Setup> {
   const dir = await mkdtemp(path.join(tmpdir(), 'markdown-routes-'))
   after(() => rm(dir, { recursive: true, force: true }))
@@ -131,7 +131,7 @@ function isDescribedby(route: Route): boolean {
   return route.headers?.link === LLMS_DESCRIBEDBY_LINK
 }
 
-it('encaminha páginas com index.md ao SSR antes do filesystem da Vercel', async () => {
+it('forwards pages with index.md to the SSR before the Vercel filesystem', async () => {
   const { handlers, finish } = await setup()
   prerenderList({
     handlers,
@@ -173,7 +173,7 @@ it('encaminha páginas com index.md ao SSR antes do filesystem da Vercel', async
       pathname
     )
   }
-  // Antes do filesystem, só a regra de cabeçalho do Link alcança os `.md`.
+  // Before the filesystem, only the Link header rule reaches the `.md` files.
   const headerRoutes = routes
     .slice(0, filesystem)
     .filter(
@@ -185,7 +185,7 @@ it('encaminha páginas com index.md ao SSR antes do filesystem da Vercel', async
   assert.ok(headerRoutes[0] && isDescribedby(headerRoutes[0]))
 })
 
-it('protege a raiz sem aceitar duas barras', async () => {
+it('protects the root without accepting two slashes', async () => {
   const { handlers, finish } = await setup()
   prerenderList({ handlers, paths: ['/index.md'] })
   const { routes } = await finish()
@@ -197,7 +197,7 @@ it('protege a raiz sem aceitar duas barras', async () => {
   assert.equal(pattern.test('/index.md'), false)
 })
 
-it('protege índices aninhados sem tratar o caminho como expressão regular', async () => {
+it('protects nested indexes without treating the path as a regular expression', async () => {
   const { handlers, finish } = await setup()
   prerenderList({ handlers, paths: ['/pt/v1.0/index/index.md'] })
   const { routes } = await finish()
@@ -210,7 +210,7 @@ it('protege índices aninhados sem tratar o caminho como expressão regular', as
   assert.equal(pattern.test('/pt/v1.0/index/index.md'), false)
 })
 
-it('preserva a codificação das URLs ao proteger diretórios', async () => {
+it('keeps the URL encoding when protecting folders', async () => {
   for (const pathname of ['/pt/caf%C3%A9', '/pt/my%20page', '/pt/50%25']) {
     const { handlers, finish } = await setup()
     prerenderList({ handlers, paths: [`${pathname}/index.md`] })
@@ -224,7 +224,7 @@ it('preserva a codificação das URLs ao proteger diretórios', async () => {
   }
 })
 
-it('preserva cabeçalhos, redirects e rewrites anteriores ao filesystem', async () => {
+it('keeps headers, redirects and rewrites before the filesystem', async () => {
   const filesystemIndex = 3
   const { handlers, config, finish } = await setup()
   config.routes = [
@@ -254,7 +254,7 @@ it('preserva cabeçalhos, redirects e rewrites anteriores ao filesystem', async 
   assert.deepEqual(config.routes, existing)
 })
 
-it('recusa um artefato sem fase de filesystem em vez de inventar um destino', async () => {
+it('refuses an artifact without a filesystem phase instead of making up a target', async () => {
   const { handlers, config, finish } = await setup()
   config.routes = [
     { src: '^/pt$', headers: { 'x-page': 'home' }, continue: true }
@@ -265,7 +265,7 @@ it('recusa um artefato sem fase de filesystem em vez de inventar um destino', as
   })
 })
 
-it('mantém a proteção na fase inicial quando há uma fase de erro', async () => {
+it('keeps the protection in the initial phase when there is an error phase', async () => {
   const firstPhase = 2
   const { handlers, config, finish } = await setup()
   config.routes = [
@@ -284,7 +284,7 @@ it('mantém a proteção na fase inicial quando há uma fase de erro', async () 
   assert.deepEqual(routes.slice(firstPhase + 1), existing.slice(1))
 })
 
-it('preserva capturas e condições da rota nativa sem copiar a fase de erro', async () => {
+it('keeps the captures and conditions of the native route without copying the error phase', async () => {
   const { handlers, config, finish } = await setup()
   const native = {
     src: '/(?<section>pt)/(.*)',
@@ -313,7 +313,7 @@ it('preserva capturas e condições da rota nativa sem copiar a fase de erro', a
   assert.equal(new RegExp(guard.src, 'u').test('/pt/docs/index.md'), false)
 })
 
-it('preserva o artefato quando não há index.md, só com o Link dos .md', async () => {
+it('keeps the artifact when there is no index.md, only with the Link of the .md files', async () => {
   const { handlers, config, finish } = await setup()
   config.framework = { version: 'test' }
   prerenderList({ handlers, paths: ['/pt/about.md'] })
@@ -327,7 +327,7 @@ it('preserva o artefato quando não há index.md, só com o Link dos .md', async
   })
 })
 
-it('anexa o Link a toda URL .md antes do filesystem, sem tocar em páginas', async () => {
+it('attaches the Link to every .md URL before the filesystem, without touching pages', async () => {
   const { handlers, finish } = await setup()
   prerenderList({ handlers, paths: ['/pt/about.md'] })
   const { routes } = await finish()
@@ -343,7 +343,7 @@ it('anexa o Link a toda URL .md antes do filesystem, sem tocar em páginas', asy
   }
 })
 
-it('não altera o artefato quando não há Markdown estático nem agregado', async () => {
+it('does not change the artifact when there is neither static Markdown nor an aggregate', async () => {
   const { handlers, config, finish } = await setup()
   prerenderList({ handlers, paths: [] })
   assert.deepEqual(await finish(), config)

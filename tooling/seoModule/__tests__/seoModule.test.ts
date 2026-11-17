@@ -18,12 +18,12 @@ const SEO = [
   '} satisfies SeoRouteInfo'
 ].join('\n')
 
-test('o plugin project registra a regra e o lint a ativa como erro', () => {
+test('the project plugin registers the rule and the lint turns it on as an error', () => {
   assert.equal(plugin.rules['seo-module'], seoModule)
   assert.equal(lint.rules?.['project/seo-module'], 'error')
 })
 
-test('a regra deixa o seo.ts só com seo e sem import local como valor', () => {
+test('the rule keeps seo.ts with only seo and without a local import as a value', () => {
   new RuleTester({ cwd: ROOT }).run('seo-module', seoModule, {
     valid: [
       { filename: SEO_FILE, code: SEO },
@@ -51,12 +51,12 @@ test('a regra deixa o seo.ts só com seo e sem import local como valor', () => {
     invalid: [
       {
         filename: SEO_FILE,
-        code: `${SEO}\nexport const content = { title: 'Sobre' }`,
+        code: `${SEO}\nexport const content = { title: 'About' }`,
         errors: [{ messageId: 'onlySeo' }]
       },
       {
         filename: SEO_FILE,
-        code: "export const content = { title: 'Sobre' }",
+        code: "export const content = { title: 'About' }",
         errors: [{ messageId: 'onlySeo' }]
       },
       {

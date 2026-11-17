@@ -23,7 +23,7 @@ function isDescribedby(route: Route): boolean {
   return route.headers?.link === LLMS_DESCRIBEDBY_LINK
 }
 
-it('aceita zero opt-in sem gerar o agregado nem regras', async () => {
+it('accepts zero opt-in without generating the aggregate or rules', async () => {
   const target = await setup()
   await publish({ setup: target, files: {}, llms: llmsIndex(['/en']) })
   const published = await readdir(target.publicDir)
@@ -34,7 +34,7 @@ it('aceita zero opt-in sem gerar o agregado nem regras', async () => {
   })
 })
 
-it('recusa um agregado residual mesmo sem páginas selecionadas', async () => {
+it('refuses a leftover aggregate even without selected pages', async () => {
   const target = await setup()
   const aggregate = path.join(target.publicDir, 'llms-full.txt')
   await writeFile(aggregate, 'stale-public-artifact')
@@ -45,7 +45,7 @@ it('recusa um agregado residual mesmo sem páginas selecionadas', async () => {
   assert.equal(await readFile(aggregate, 'utf8'), 'stale-public-artifact')
 })
 
-it('falha quando o llms.txt não passa pelo prerender', async () => {
+it('fails when llms.txt does not go through the prerender', async () => {
   const { handlers } = await setup()
   prerenderList({ handlers, paths: [] })
   await assert.rejects(async () => handlers['prerender:done']?.(written([])), {
@@ -53,7 +53,7 @@ it('falha quando o llms.txt não passa pelo prerender', async () => {
   })
 })
 
-it('exige que o anúncio do llms-full.txt coincida com os documentos selecionados', async () => {
+it('requires the llms-full.txt announcement to match the selected documents', async () => {
   const full = new URL(LLMS_FULL_PATH, SITE_URL).href
   await assert.rejects(
     publish({
@@ -77,7 +77,7 @@ it('exige que o anúncio do llms-full.txt coincida com os documentos selecionado
   )
 })
 
-it('publica o llms-full.txt com Link e tipo Markdown no artefato da Vercel', async () => {
+it('publishes llms-full.txt with Link and the Markdown type in the Vercel artifact', async () => {
   const target = await setup()
   const full = new URL(LLMS_FULL_PATH, SITE_URL).href
   await publish({
@@ -115,7 +115,7 @@ it('publica o llms-full.txt com Link e tipo Markdown no artefato da Vercel', asy
       ''
     ].join('\n')
   )
-  // O diretório temporário da montagem não sobra ao lado da saída estática.
+  // The temporary assembly folder is not left next to the static output.
   assert.deepEqual(await readdir(target.outputDir), ['static'])
   const { routes, overrides } = await target.finish()
   const describedby = routes.find(route => isDescribedby(route))
@@ -126,7 +126,7 @@ it('publica o llms-full.txt com Link e tipo Markdown no artefato da Vercel', asy
   assert.deepEqual(overrides?.['llms-full.txt'], { contentType: MARKDOWN_TYPE })
 })
 
-it('deixa fora do agregado o .md estático de outro idioma citado pelo índice', async () => {
+it('leaves out of the aggregate the static .md of another locale cited by the index', async () => {
   const target = await setup()
   const { handlers, publicDir } = target
   const files = { '/en/about.md': '# About', '/pt/sobre.md': '# Sobre' }

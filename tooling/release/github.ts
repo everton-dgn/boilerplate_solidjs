@@ -46,7 +46,7 @@ const execute = promisify(execFile)
 const MAX_OUTPUT_BYTES = 16_777_216
 const RELEASE_FILE_COUNT = 2
 
-// Branches de release criadas pela automação: release/vX.Y.Z-<12 hex do SHA>.
+// Release branches created by the automation: release/vX.Y.Z-<12 hex of the SHA>.
 function isReleaseBranch(ref: string): boolean {
   return /^release\/v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-[a-f\d]{12}$/u.test(
     ref
@@ -61,7 +61,7 @@ async function request<T>({
 }: ApiRequest): Promise<T> {
   const args = ['api', path, '--method', method, '--include']
   if (payload !== undefined) args.push('--input', '-')
-  // oxlint-disable-next-line promise/avoid-new -- Faz a ponte entre o stdin do execFile e o callback de conclusão.
+  // oxlint-disable-next-line promise/avoid-new -- Bridges the stdin of execFile and the completion callback.
   const output = await new Promise<string>((resolve, reject) => {
     const child = execFile(
       'gh',
@@ -72,13 +72,13 @@ async function request<T>({
           resolve(stdout)
           return
         }
-        // O status HTTP vem no stdout mesmo quando o gh falha; só o 404 esperado
-        // vira ausência, nunca uma falha de autenticação ou de rede.
+        // The HTTP status comes in stdout even when gh fails; only the expected 404
+        // becomes an absence, never an authentication or network failure.
         if (canBeMissing && /^HTTP\/\S+ 404\b/mu.test(stdout)) {
           resolve('')
           return
         }
-        // Erros da API podem conter dados da requisição; não ecoe payloads nem tokens.
+        // API errors can contain request data; do not echo payloads or tokens.
         reject(
           new Error(
             `GitHub API ${method} ${path} failed. Check workflow permissions and repository rules.`
@@ -94,7 +94,7 @@ async function request<T>({
   if (output && separator < 0) {
     throw new Error('Missing GitHub HTTP response headers.')
   }
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Quem chama valida os campos usados; só optionalApi recebe a ausência.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- The caller validates the used fields; only optionalApi receives the absence.
   return (output ? JSON.parse(output.slice(separator)) : undefined) as T
 }
 
@@ -103,9 +103,9 @@ export async function command({ file, args }: CommandOptions): Promise<string> {
   return result.stdout.trim()
 }
 
-// O checkout não guarda o token (persist-credentials: false). Fetch e push se
-// autenticam pelo helper do gh com o GH_TOKEN do passo, o que vale também para
-// repositório privado.
+// The checkout does not keep the token (persist-credentials: false). Fetch and push
+// authenticate through the gh helper with the GH_TOKEN of the step, which also
+// works for a private repository.
 export function git(...args: string[]): Promise<string> {
   return command({
     file: 'git',

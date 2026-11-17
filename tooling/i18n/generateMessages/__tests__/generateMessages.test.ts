@@ -22,10 +22,10 @@ type ProjectOptions = { parent: string; messages: Messages }
 const execute = promisify(execFile)
 const GENERATE = path.resolve(import.meta.dirname, '../../generate.ts')
 const MESSAGES = { home_title: 'Title {name}', home_body: 'Body' }
-// Cada teste sobe processos bun e o compilador do Paraglide. O limite global
-// de 60 s pega travamentos, mas com a máquina carregada esses testes chegaram
-// a passar dele sem falha de lógica; isolados levam de 5 a 20 s.
-// Por teste: o timeout de um describe não vence o --test-timeout global.
+// Each test starts bun processes and the Paraglide compiler. The global limit of
+// 60 s catches hangs, but with a loaded machine these tests went past it without
+// a logic failure; in isolation they take 5 to 20 s.
+// Per test: the timeout of a describe does not beat the global --test-timeout.
 const SUBPROCESS = { timeout: 180_000 }
 
 async function sandbox(context: TestContext): Promise<string> {
@@ -42,7 +42,7 @@ async function project({ parent, messages }: ProjectOptions): Promise<string> {
   return root
 }
 
-// Conteúdo de paraglide por caminho relativo.
+// Content of paraglide by relative path.
 async function output(root: string): Promise<Map<string, string>> {
   const directory = path.join(root, 'paraglide')
   const files = new Map<string, string>()

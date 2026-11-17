@@ -10,7 +10,7 @@ import { javascriptRules } from '../javascript.ts'
 type RuleEntry = LintRules[string]
 type Severities = Record<string, number>
 
-// Desligada em todos os presets do plugin; o projeto a liga por escolha.
+// Off in every preset of the plugin; the project turns it on by choice.
 const PROJECT_ONLY_RULES = ['solid/action-yield-after-await']
 const SEVERITY: Severities = { off: 0, allow: 0, warn: 1, error: 2, deny: 2 }
 
@@ -32,9 +32,9 @@ function enabledSolidRules(rules: LintRules): Severities {
 const presetRules = enabledSolidRules(v2Strict.rules)
 const projectRules = enabledSolidRules(environmentRules)
 
-// O projeto lista as regras uma a uma: uma regra nova do plugin só entra
-// quando alguém a acrescenta, e este teste aponta a diferença na atualização.
-it('mantém as regras solid/* iguais às do preset v2-strict', () => {
+// The project lists the rules one by one: a new plugin rule only enters when
+// someone adds it, and this test points out the difference on an update.
+it('keeps the solid/* rules equal to the ones of the v2-strict preset', () => {
   const sharedRules = Object.fromEntries(
     Object.entries(projectRules).filter(
       ([name]) => !PROJECT_ONLY_RULES.includes(name)
@@ -44,17 +44,17 @@ it('mantém as regras solid/* iguais às do preset v2-strict', () => {
   assert.deepEqual(sharedRules, presetRules)
 })
 
-it('liga só no projeto as regras que o preset deixa desligadas', () => {
+it('turns on in the project only the rules that the preset leaves off', () => {
   for (const name of PROJECT_ONLY_RULES) {
-    assert.ok(name in projectRules, `${name} deveria estar ligada`)
+    assert.ok(name in projectRules, `${name} should be on`)
     assert.ok(
       !(name in presetRules),
-      `${name} agora vem ligada no preset; tire-a das exceções`
+      `${name} now comes on in the preset; remove it from the exceptions`
     )
   }
 })
 
-it('deixa a no-unassigned-vars do core desligada em favor da do Solid', () => {
+it('leaves the core no-unassigned-vars off in favor of the Solid one', () => {
   assert.equal(v2Strict.rules['no-unassigned-vars'], 0)
   assert.equal(javascriptRules['eslint/no-unassigned-vars'], undefined)
 })

@@ -1,7 +1,7 @@
-// Teto do llms-full.txt. Acima dele o build falha, sem truncar o arquivo.
+// Limit of llms-full.txt. Above it the build fails, without truncating the file.
 export const LLMS_FULL_MAX_BYTES = 10_485_760
-// Teto operacional do índice editorial: acima dele a aplicação precisa selecionar
-// o que anuncia. O build falha, sem truncar nem dividir o arquivo.
+// Operating limit of the editorial index: above it the application must select
+// what it announces. The build fails, without truncating or splitting the file.
 export const LLMS_MAX_BYTES = 1_048_576
 export const LLMS_PATH = '/llms.txt'
 

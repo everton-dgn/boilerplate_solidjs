@@ -7,8 +7,8 @@ type WriteAllOptions = {
   signal?: AbortSignal
 }
 
-// `FileHandle.write` pode gravar menos bytes do que recebeu; o laço continua do
-// ponto em que parou e recusa uma gravação sem progresso.
+// `FileHandle.write` can write fewer bytes than it received; the loop continues
+// from where it stopped and refuses a write without progress.
 export async function writeAll({
   output,
   bytes,

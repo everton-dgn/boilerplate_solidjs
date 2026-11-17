@@ -2,15 +2,15 @@ import type { PrerenderRoute } from 'nitro/types'
 
 import { readRouteBytes } from '../artifactDigest/index.ts'
 
-// Um envelope completo é HTML servido no lugar do Markdown. Um bloco de código
-// ou uma citação de tags no meio do texto não abre e fecha o corpo inteiro.
+// A full envelope is HTML served in place of the Markdown. A code block or a
+// quote of tags in the middle of the text does not open and close the whole body.
 const HTML_DOCUMENT_START = /^\s*(?:<!doctype\s+html\b|<html[\s>])/iu
 const HTML_DOCUMENT_END = /<\/html>\s*$/iu
 const MARKDOWN_TYPE = 'text/markdown'
 const UTF8_CHARSET = 'charset=utf-8'
 
-// O Nitro infere `text/markdown` sem charset quando a resposta não declara
-// tipo, como num redirect sem corpo; o adaptador sempre envia o charset.
+// Nitro infers `text/markdown` without a charset when the response declares no
+// type, as in a redirect without a body; the adapter always sends the charset.
 function isMarkdownUtf8(contentType: string | undefined): boolean {
   const [type, ...parameters] = (contentType ?? '')
     .split(';')
@@ -18,8 +18,8 @@ function isMarkdownUtf8(contentType: string | undefined): boolean {
   return type === MARKDOWN_TYPE && parameters.includes(UTF8_CHARSET)
 }
 
-// Devolve o problema do artefato gravado para uma URL `.md`, ou undefined
-// quando ele é Markdown publicável.
+// Returns the problem of the artifact written for a `.md` URL, or undefined when
+// it is publishable Markdown.
 export function inspectMarkdownArtifact(
   route: PrerenderRoute
 ): string | undefined {

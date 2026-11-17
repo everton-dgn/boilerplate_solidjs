@@ -54,7 +54,7 @@ const EMPTY_INVENTORY = JSON.stringify({
   hasPartitionSources: false,
   identities: null
 })
-// Rotas de prerender que o Nitro grava no diretório público depois do hook.
+// Prerender routes that Nitro writes in the public folder after the hook.
 const WRITTEN_ROUTES = new Set(['/llms.txt', MARKDOWN_PRERENDER_PATH])
 const HeaderSchema = v.record(v.string(), v.string())
 const OverridesSchema = v.record(v.string(), v.looseObject({}))
@@ -137,7 +137,7 @@ export async function setup(): Promise<Setup> {
   }
 }
 
-// Sem idioma explícito, todos os arquivos contam como do idioma base.
+// Without an explicit locale, every file counts as the base locale.
 export function manifest({
   paths,
   baseLocalePaths = paths,
@@ -164,7 +164,7 @@ export function prerenderList({ handlers, ...listing }: Listing): void {
   })
 }
 
-// O Nitro grava a URL `.md` com o mesmo nome de arquivo da rota decodificada.
+// Nitro writes the `.md` URL with the same file name as the decoded route.
 export function written(routes: string[]): PrerenderResult {
   return {
     prerenderedRoutes: routes.map(route => ({ route, fileName: route })),
@@ -189,8 +189,8 @@ export function llmsIndex(links: string[]): string {
   ].join('\n')
 }
 
-// Simula o prerender completo: lista, `.md` gravados no diretório estático e
-// llms.txt lido pelo hook.
+// Simulates the full prerender: list, `.md` files written in the static folder
+// and llms.txt read by the hook.
 export async function publish({
   setup: target,
   files,

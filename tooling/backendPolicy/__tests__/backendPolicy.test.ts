@@ -20,7 +20,7 @@ type ErrorQuery = {
   matches: (code: string) => boolean
 }
 
-// Só as regras de backend, sem o restante do lint do projeto.
+// Only the backend rules, without the rest of the project lint.
 const BACKEND_LINT_CONFIG = `export default ${JSON.stringify({
   lint: {
     categories: { correctness: 'off' },
@@ -44,7 +44,7 @@ function matchesFilename({ actual, expected }: FilenameMatch): boolean {
   return actual === expected || actual.endsWith(`/${expected}`)
 }
 
-test('compara caminhos relativos, absolutos e URLs dos diagnósticos', () => {
+test('compares relative and absolute paths and URLs of the diagnostics', () => {
   const expected = 'src/helpers/fetch.ts'
   for (const actual of [
     expected,
@@ -81,7 +81,7 @@ function hasError({ diagnostics, filename, matches }: ErrorQuery): boolean {
   )
 }
 
-test('a regra exige imports estáticos do pacote Solid e seus subcaminhos', () => {
+test('the rule requires static imports of the Solid package and its subpaths', () => {
   const rule = backendPlugin.rules['static-solid-imports']
   assert.ok(rule)
   new RuleTester({ cwd: ROOT }).run('static-solid-imports', rule, {
@@ -109,7 +109,7 @@ test('a regra exige imports estáticos do pacote Solid e seus subcaminhos', () =
   })
 })
 
-test('a regra exige import estático do estado de integridade do render', () => {
+test('the rule requires a static import of the render integrity state', () => {
   const rule = backendPlugin.rules['static-render-integrity-imports']
   assert.ok(rule)
   new RuleTester({ cwd: ROOT }).run('static-render-integrity-imports', rule, {
@@ -133,7 +133,7 @@ test('a regra exige import estático do estado de integridade do render', () => 
   })
 })
 
-test('a política rejeita desvios de acesso no parser real do Oxlint', context => {
+test('the policy rejects access detours in the real Oxlint parser', context => {
   const cases = {
     'fetch.ts': 'fetch("/private")',
     'alias.ts': 'const request = fetch; request("/private")',
@@ -197,7 +197,7 @@ test('a política rejeita desvios de acesso no parser real do Oxlint', context =
         filename: 'src/infra/server/logServerFailure/index.ts',
         matches: actual => actual === code
       }),
-      `proteção do log central: ${code}`
+      `central log protection: ${code}`
     )
   }
   for (const filename of Object.keys(sources)) {
@@ -213,7 +213,7 @@ test('a política rejeita desvios de acesso no parser real do Oxlint', context =
   }
 })
 
-test('o lint completo aplica as novas regras com exceções restritas', context => {
+test('the full lint applies the new rules with narrow exceptions', context => {
   const sources = {
     'src/tests/fixtures/error.ts': 'console.error(new Error("PRIVATE"))',
     'src/helpers/warn.ts': 'console.warn("PRIVATE")',
@@ -242,7 +242,7 @@ test('o lint completo aplica as novas regras com exceções restritas', context 
   }
 })
 
-test('a política preserva APIs públicas, testes e logging do tooling', context => {
+test('the policy keeps public APIs, tests and the tooling logging', context => {
   const valid = lintFixture({
     context,
     config: BACKEND_LINT_CONFIG,
@@ -280,7 +280,7 @@ test('a política preserva APIs públicas, testes e logging do tooling', context
   assert.equal(valid.status, 0, valid.stdout + valid.stderr)
 })
 
-test('só o módulo de registro instala o hook de erros do servidor', context => {
+test('only the registration module installs the server error hook', context => {
   const sources = {
     'src/helpers/hook.ts':
       'import { configureServerErrors } from "@solidjs/web"; configureServerErrors({})',
@@ -310,7 +310,7 @@ test('só o módulo de registro instala o hook de erros do servidor', context =>
   }
 })
 
-test('só o registro do hook declara as falhas de render observadas', context => {
+test('only the hook registration declares the render failures observed', context => {
   const restricted = {
     'src/helpers/observer.ts':
       'import { observeRenderFailures } from "@/infra/server/renderIntegrity/index.ts"; observeRenderFailures()',
@@ -357,7 +357,7 @@ test('só o registro do hook declara as falhas de render observadas', context =>
   assert.equal(allowed.status, 0, allowed.stdout + allowed.stderr)
 })
 
-test('a política cobre todas as extensões de código sem ampliar privilégios', context => {
+test('the policy covers every code extension without widening privileges', context => {
   const cases = {
     fetch: {
       source: 'fetch("/private")',
@@ -407,8 +407,8 @@ test('a política cobre todas as extensões de código sem ampliar privilégios'
     'cjs'
   ]) {
     for (const [name, fixture] of Object.entries(cases)) {
-      // CommonJS não admite imports estáticos; os casos de acesso global e
-      // import dinâmico continuam exercitando essa extensão.
+      // CommonJS does not allow static imports; the global access and dynamic
+      // import cases still exercise this extension.
       if (
         extension !== 'cjs' ||
         !['safe', 'config', 'hook', 'transport', 'observer'].includes(name)

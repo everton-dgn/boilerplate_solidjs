@@ -28,9 +28,9 @@ const EVIDENCE_PREFIX = 'ci-reuse-evidence-'
 const PAGE_SIZE = 100
 const MERGE_PARENT_COUNT = 2
 const REUSED_JOBS = ['Quality', 'Tooling', 'E2E (fixtures)']
-// O verificador não pode aprovar a própria mudança nem a do workflow que o executa.
+// The verifier cannot approve its own change nor the one of the workflow that runs it.
 const FULL_CI_PREFIXES = ['.github/', 'tooling/ciReuse/']
-// Lockfile e toolchain geram chaves novas de cache, que só o Quality grava.
+// Lockfile and toolchain generate new cache keys, which only Quality writes.
 const QUALITY_FILES = new Set(['bun.lock', 'package.json', 'bunfig.toml'])
 
 function reject(reason: string): never {
@@ -46,10 +46,10 @@ async function readMerge({ sha, ports }: Context): Promise<Merge> {
   const [commit, ...parents] = line.split(' ')
   const [base = '', head = ''] = parents
   if (commit !== sha || parents.length !== MERGE_PARENT_COUNT) {
-    reject('O commit da main não é um merge de dois parents.')
+    reject('The main commit is not a merge of two parents.')
   }
   if (!SHA_PATTERN.test(base) || !SHA_PATTERN.test(head)) {
-    reject('Parents inválidos no merge da main.')
+    reject('Invalid parents in the main merge.')
   }
   const tree = await ports.git(['rev-parse', `${sha}^{tree}`])
   return { base, head, tree }
@@ -81,7 +81,7 @@ async function findPullRequest({
     pr => pr.merged_at !== null && pr.merge_commit_sha === sha
   )
   if (merged.length !== 1 || !merged[0]) {
-    reject('O merge não corresponde a exatamente um PR integrado.')
+    reject('The merge does not match exactly one merged PR.')
   }
   const [pr] = merged
   if (
@@ -89,10 +89,10 @@ async function findPullRequest({
     pr.base.repo?.full_name !== repository ||
     pr.head.repo?.full_name !== repository
   ) {
-    reject('O PR não é do mesmo repositório com base na main.')
+    reject('The PR is not from the same repository with main as its base.')
   }
   if (pr.base.sha !== merge.base || pr.head.sha !== merge.head) {
-    reject('Base ou head do PR diferem dos parents do merge.')
+    reject('The base or head of the PR differs from the parents of the merge.')
   }
   return pr
 }
@@ -107,7 +107,7 @@ async function findRun({
     `repos/${repository}/actions/workflows/ci.yml/runs?head_sha=${merge.head}&event=pull_request&per_page=${PAGE_SIZE}`
   )
   if (runs.total_count !== 1 || runs.workflow_runs.length !== 1) {
-    reject('O head do PR não tem exatamente um run de CI.')
+    reject('The PR head does not have exactly one CI run.')
   }
   const [run] = runs.workflow_runs
   if (
@@ -123,7 +123,7 @@ async function findRun({
     !Number.isInteger(run.run_attempt) ||
     run.run_attempt < 1
   ) {
-    reject('O run do PR não é um CI aprovado deste repositório.')
+    reject('The PR run is not a passing CI of this repository.')
   }
   return run
 }
@@ -133,7 +133,7 @@ async function assertJobs({ repository, run, ports }: RunContext) {
     `repos/${repository}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=${PAGE_SIZE}`
   )
   if (jobs.total_count !== jobs.jobs.length) {
-    reject('A lista de jobs do run veio incompleta.')
+    reject('The job list of the run came back incomplete.')
   }
   for (const name of REUSED_JOBS) {
     const matches = jobs.jobs.filter(job => job.name === name)
@@ -145,7 +145,7 @@ async function assertJobs({ repository, run, ports }: RunContext) {
       job.status !== 'completed' ||
       job.conclusion !== 'success'
     ) {
-      reject(`O job ${name} não passou na tentativa verificada.`)
+      reject(`The ${name} job did not pass in the checked attempt.`)
     }
   }
 }
@@ -163,7 +163,7 @@ async function findEvidence({
   const matches = list.artifacts.filter(artifact => artifact.name === name)
   const [artifact] = matches
   if (matches.length !== 1 || !artifact) {
-    reject('O run do PR não tem a evidência da árvore testada.')
+    reject('The PR run does not have the evidence of the tested tree.')
   }
   const source = artifact.workflow_run
   if (
@@ -173,24 +173,25 @@ async function findEvidence({
     source.repository_id !== run.repository.id ||
     source.head_repository_id !== run.repository.id
   ) {
-    reject('A evidência não pertence ao run verificado.')
+    reject('The evidence does not belong to the checked run.')
   }
   return artifact.id
 }
 
-// A API do artifact já fixa run, tentativa e head, e assertTestedCommit confere
-// árvore e parents; a evidência só aponta o commit testado.
+// The artifact API already pins the run, the attempt and the head, and
+// assertTestedCommit checks the tree and the parents; the evidence only points to
+// the tested commit.
 function assertEvidence(evidence: unknown): string {
   if (typeof evidence !== 'object' || evidence === null) {
-    reject('Evidência ilegível.')
+    reject('Unreadable evidence.')
   }
   const fields = new Map<string, unknown>(Object.entries(evidence))
   if (fields.get('version') !== EVIDENCE_VERSION) {
-    reject('A evidência vem de outra versão do workflow.')
+    reject('The evidence comes from another version of the workflow.')
   }
   const tested = fields.get('tested_sha')
   if (typeof tested !== 'string' || !SHA_PATTERN.test(tested)) {
-    reject('A evidência não traz o SHA testado.')
+    reject('The evidence does not carry the tested SHA.')
   }
   return tested
 }
@@ -209,14 +210,14 @@ async function assertTestedCommit({
     commit.tree.sha !== merge.tree ||
     parents !== `${merge.base} ${merge.head}`
   ) {
-    reject('O commit testado no PR difere do merge da main.')
+    reject('The commit tested in the PR differs from the main merge.')
   }
 }
 
 async function verify(options: DecideReuseOptions): Promise<Decision> {
   const { repository, sha, ports, runner } = options
   if (!REPOSITORY_PATTERN.test(repository) || !SHA_PATTERN.test(sha)) {
-    return full('Repositório ou SHA inválido.')
+    return full('Invalid repository or SHA.')
   }
   const context = { repository, sha, ports }
   const merge = await readMerge(context)
@@ -224,7 +225,7 @@ async function verify(options: DecideReuseOptions): Promise<Decision> {
   const critical = files.find(file =>
     FULL_CI_PREFIXES.some(prefix => file.startsWith(prefix))
   )
-  if (critical) return full(`O merge altera ${critical}.`)
+  if (critical) return full(`The merge changes ${critical}.`)
   const pr = await findPullRequest({ ...context, merge })
   const run = await findRun({ ...context, merge, pr })
   const runContext = { ...context, merge, pr, run }
@@ -238,7 +239,7 @@ async function verify(options: DecideReuseOptions): Promise<Decision> {
   return {
     shouldReuse: true,
     shouldRunQuality,
-    reason: `Árvore ${merge.tree} validada pelo PR #${pr.number}${shouldRunQuality ? '; Quality roda para o cache da main' : ''}.`,
+    reason: `Tree ${merge.tree} validated by PR #${pr.number}${shouldRunQuality ? '; Quality runs for the main cache' : ''}.`,
     sourceRunUrl: `https://github.com/${repository}/actions/runs/${run.id}/attempts/${run.run_attempt}`
   }
 }
@@ -249,6 +250,6 @@ export async function decideReuse(
   try {
     return await verify(options)
   } catch (error) {
-    return full(error instanceof Error ? error.message : 'Falha inesperada.')
+    return full(error instanceof Error ? error.message : 'Unexpected failure.')
   }
 }
