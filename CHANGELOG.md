@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.15.4 - 2026-11-17
+
+### Fixed
+
+- update Solid to 2.0.0 (b3c5647)
+
 ## 1.15.3 - 2026-11-17
 
 ### Fixed
