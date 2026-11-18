@@ -3,14 +3,14 @@ name: skill-solidjs
 description: "SolidJS 2 / Solid 2.0 (solid-js, @solidjs/web): create, review and debug TSX, createSignal, stores, effects, Loading, action, SSR, hydration. Tests: skill-solidjs-testing. Out of scope: Solid 1, SolidStart."
 metadata:
   compatibility: "SolidJS 2 with @solidjs/web. Check the exports and types of the installed package."
-  skill-version: "1.9.0"
+  skill-version: "1.10.0"
   verification-date: "2026-09-29"
   base-commit: "ee49b3eee5f457a637075c4a3bbdcee013808fc3"
 ---
 
 # SolidJS 2
 
-The evidence base is in the frontmatter ([manifest of the verified revision](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/solid/package.json)); the references call it the "verified base" and call the previous base of the skill (commit `9a29b1a`) the "previous base". The runtime caveats apply to that base: check the installed exports and types before applying them to another version and, when the package ships the `skills/` folder, also read the official skill in `node_modules/solid-js/skills/solid-2.0/SKILL.md`. Solid 1 documentation and code in `next` can describe APIs missing from the package. The verification inventory is in the [README](README.md#verification-history).
+The evidence base is in the frontmatter ([manifest of the verified revision](https://github.com/solidjs/solid/blob/ee49b3eee5f457a637075c4a3bbdcee013808fc3/packages/solid/package.json)); the references call it the "verified base" and call the previous base of the skill (commit `9a29b1a`) the "previous base". The runtime caveats apply to that base: check the installed exports and types before applying them to another version and, when the package ships the `skills/` folder, also read the official skill in `node_modules/solid-js/skills/solid-2.0/SKILL.md`. Solid 1 documentation and code in `next` can describe APIs missing from the package. The verification inventory is in the [README](README.md#verification-history). On 2026-11-17 the delta from that base to the stable `solid-js` 2.0.0 ([`a8186e6`](https://github.com/solidjs/solid/tree/a8186e6738b3a6a3341c561f66e9325432d6759b)) was checked against the installed packages; the passages it changed name 2.0.0.
 
 ## Mistakes the model tends to introduce
 
@@ -21,7 +21,7 @@ The evidence base is in the frontmatter ([manifest of the verified revision](htt
 - Components and structural callbacks do not rerun like React renders. Read props in the JSX or in a compute, without destructuring in the setup. A value prop uses `value={count()}`; a dynamic handler decides inside the callback, as in `onClick={e => (active() ? a : b)(e)}`.
 - The apply of `createEffect` has no owner: return a cleanup instead of using `onCleanup` there. Primitives stay in the setup; a ref callback and `onSettled` do not allow creating them. Nested roots are disposed with the parent.
 - Async sources are memos/stores read under `Loading`; capture dependencies before `await`. `refresh` receives the original source. `Loading.on` is a list of dependencies and rearms on every change it reads, without comparing values: `on={id()}`. A `Show` by status does not protect a memo that throws; the reader needs `Errored`.
-- Actions are generators. After `await`, do an empty `yield` before writing or creating another wait. An `async` helper yielded with `yield` leaves the transaction at its first `await`: a write or `refresh` after that can publish in the middle of the action or keep it from settling. Return the result and do the writes and `yield refresh(source)` in the generator, or delegate to a generator with `yield*`. Optimistic state reverts on settle, even on success; a plain write in the same tick as the action can be held. Packages newer than the verified base export `onFlush(() => ...)` to take a write out of that hold: call it in a handler or an effect callback; in the component body it warns, use `onSettled`. Read the reference before implementing confirmation or overlapping submissions.
+- Actions are generators. After `await`, do an empty `yield` before writing or creating another wait. An `async` helper yielded with `yield` leaves the transaction at its first `await`: a write or `refresh` after that can publish in the middle of the action or keep it from settling. Return the result and do the writes and `yield refresh(source)` in the generator, or delegate to a generator with `yield*`. Optimistic state reverts on settle, even on success; a plain write in the same tick as the action can be held. `onFlush(() => ...)` (2.0.0) takes a write out of that hold: call it in a handler or an effect callback; in the component body it warns, use `onSettled`. Read the reference before implementing confirmation or overlapping submissions.
 - Known Solid 1 APIs changed: `Suspense → Loading`, `ErrorBoundary → Errored`, `onMount → onSettled`, `mergeProps → merge`, `splitProps → omit`. `createResource`, `batch` and a store setter by path are not the API of this base. The context is the provider itself: `<Context value={value}>`, without `.Provider`.
 
 ## Read according to the task

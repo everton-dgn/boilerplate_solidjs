@@ -47,8 +47,8 @@ Rules backed by the installed code:
 
 - `query(fn, name)` returns a function with `key` and `keyFor(...args)`; `revalidate(getTodos.key)` invalidates every entry, `revalidate(getTodos.keyFor(id))` only one.
 - The `formAction` of the router has `url`, `with(...args)`, `onSubmit(hook)` and `onSettled(hook)`. `.onSubmit` runs inside the optimistic transaction; write the overlay in that hook. The generator action of `solid-js` has another contract, without `.with`.
-- A programmatic call of the action can reject even after recording the error in `useSubmissions`; handle the Promise in the handler. Observing the history does not contain the rejection.
-- An action that ends without an error and without metadata revalidates every query; with `X-Revalidate`, only the declared keys; if it throws, none (reading of the code, without a runtime test). `X-Revalidate: *` is equivalent to `REVALIDATE_ALL` of `@solidjs/web`; named keys use prefix-match; an empty list matches nothing. Test the cache after the invalidation: checking only the header gives a false green.
+- A programmatic call of the action can reject even after recording the error in `useSubmissions`; handle the Promise in the handler. Observing the history does not contain the rejection. With the router 2.0.0, settled submissions are cleared on each client navigation; keep in your own state a result that must survive it.
+- A non-GET server function call made inside an action body (the router `formAction` or the core `action`) that ends without an error and without metadata revalidates every query; in 2.0.0 a call made elsewhere, such as a handler or a query fetcher, does not, unless the response carries `X-Revalidate` or a redirect. With `X-Revalidate`, only the declared keys; if it throws, none (reading of the code, without a runtime test). `X-Revalidate: *` is equivalent to `REVALIDATE_ALL` of `@solidjs/web`; named keys use prefix-match; an empty list matches nothing. Test the cache after the invalidation: checking only the header gives a false green.
 - A server function read by `query` that travels as GET needs `GET(fn)` in the server module; without it, GET answers 405 with `Allow: POST`.
 
 Pitfall: in a `<form action>` with a bound action, the arguments go serialized in the `args` parameter of the URL. Use only values suitable for that exposure and validate and authorize on the server; binding an id on the client does not prove permission.
@@ -59,7 +59,7 @@ Pitfall: in a `<form action>` with a bound action, the arguments go serialized i
 | --- | --- |
 | `<Router root={App}>` with `<Route>` | `createRouter({ routes: [...] })` and `<Router>{props => ...}</Router>`; routes as objects, children in `children` |
 | `<HashRouter>`, `<MemoryRouter>` | `createRouter({ routes, history: hashHistory() })` or `memoryHistory("/initial")` |
-| `<A href>` with `activeClass` | a plain `<a href>`; style through `[data-active]` and `[aria-current="page"]`; `noscroll` in the JSX (the only spelling typed on the verified base, like `link`, `state` and `replace`; the previous base typed `noScroll`), which the router reads |
+| `<A href>` with `activeClass` | a plain `<a href>`; style through `[data-active]` and `[aria-current="page"]`; `noscroll` in the JSX, which the router reads; in 2.0.0 the router types `noscroll`, `state` (a JSON string), `replace` and `preload` by augmenting `@solidjs/web/jsx-runtime`, so they only typecheck with the router in the program; `link` stays in the core types and `noScroll` is a type error |
 | `<Navigate>` | `useNavigate()` in the setup or a redirect in the preload |
 | `useCurrentMatches` | `useRouteMatches` |
 | `createAsync`, `createAsyncStore` | `createMemo`, `createProjection`, `createOptimistic` or `createOptimisticStore` reading the `query` |
@@ -87,4 +87,4 @@ Pitfall: in a monorepo, independent copies of `solid-js` break cross reactivity 
 
 ## Cost diagnostics
 
-`SSR_BOUNDARY_WATERFALL` on the server points to serial waits inside a `Loading` (up to the previous base, `ASYNC_WATERFALL` covered both sides; now it is client only); `HOT_SCOPE_FANOUT` on the client aggregates hot scopes by root cause. `markFlight(promise, startedAt)`, from `solid-js/attribution`, records the start of a fetch. Use and limits in [diagnostics](15-diagnostics-checklists-and-recipes.md#cost-diagnostics).
+`SSR_BOUNDARY_WATERFALL` on the server points to serial waits inside a `Loading` (up to the previous base, `ASYNC_WATERFALL` covered both sides; now it is client only); `HOT_SCOPE_FANOUT` on the client aggregates hot scopes by root cause. In 2.0.0, `OBSERVE.attribution.markFlight(promise, startedAt?)` records the start of a fetch in the core, without the recorder; `attribution.markFlight` from `solid-js/attribution` writes to the same place. `ASYNC_WATERFALL` and `SSR_BOUNDARY_WATERFALL` leave out the waits whose work started before the previous wait landed. Use and limits in [diagnostics](15-diagnostics-checklists-and-recipes.md#cost-diagnostics).

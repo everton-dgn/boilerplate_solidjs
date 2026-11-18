@@ -8,7 +8,7 @@ Choose by the [proof you need](../SKILL.md#choose-by-the-proof-you-need); config
 - There is no `reportError`; check the [halt channel](mount-dispose-diagnostics.md#reactive-halt) in the browser.
 - The plugin injects `@testing-library/jest-dom/vitest` into `setupFiles` when it is installed, unless a setup path already contains `jest-dom`. Do not register the matchers twice.
 - In the jest-dom of happy-dom and jsdom, `toHaveTextContent('n=1')` accepts `n=10`. For an exact value, use `textContent` with `toBe` or an anchored regex. In browser mode, `expect.element(...).toHaveTextContent('n=1')` compares the whole text; the partial search and the regex stay in `toMatchTextContent`.
-- A synthetic `PointerEvent` only crosses a shadow root with `composed: true`. Focus restoration after reordering a `For` was observed in happy-dom and Chromium; that does not cover every focus behavior.
+- A synthetic `PointerEvent` only crosses a shadow root with `composed: true`. Focus restoration after reordering a `For` was observed in happy-dom and Chromium on the verified base; in 2.0.0, a browser with `Element.moveBefore()` keeps the focus on a reorder, and happy-dom, which lacks it, still loses it. That does not cover every focus behavior.
 
 ## jsdom
 

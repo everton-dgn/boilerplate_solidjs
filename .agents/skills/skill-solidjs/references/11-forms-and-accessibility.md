@@ -10,7 +10,7 @@ Base: [verified revision](../SKILL.md), reverified on 2026-09-29.
 
 ## Select with late options
 
-Contract: a select with value/onChange follows the code/user on the same node. Without a handler it does not undo the selection of the user, diverging from the state. The runtime applies value right away and in a microtask, without reapplying when the options change.
+Contract: a select with value/onChange follows the code/user on the same node. Without a handler it does not undo the selection of the user, diverging from the state. In 2.0.0 the runtime reapplies the bound value when the options arrive after it, and SSR marks the matching option (changelog and `dist`, without a probe in a browser); the verified base applied it right away and in a microtask, without reapplying.
 
 Recipe:
 ```tsx
@@ -19,7 +19,7 @@ Recipe:
 </select>
 ```
 
-Pitfall: value alone leaves the first option visible when the options arrive later, even with another value in the state. Multiple/hydration not tested.
+Pitfall: on the verified base, value alone left the first option visible when the options arrived later, even with another value in the state; 2.0.0 reapplies it, so keep the `selected` recipe for older packages. Multiple/hydration not tested.
 
 ## Labels and attributes
 
@@ -53,4 +53,4 @@ Pitfall: Show removes the node when clearing the error; a new filled node may no
 
 ## Focus and form cycle
 
-Keyed keeps the identity, but moving the focused node can cause a blur. Use the [focus restoration](06-lists-control-flow-and-local-state.md#focus-when-reordering) after the flush. A form and a draft outside `Loading`/`Errored` stay editable during loading and failure; immediate messages on click follow the [action scheduling](10-actions-optimism-and-confirmation.md#operation-indicator-and-publication-on-click).
+Keyed keeps the identity, but moving the focused node can cause a blur where the browser has no `Element.moveBefore()`. Use the [focus restoration](06-lists-control-flow-and-local-state.md#focus-when-reordering) after the flush. A form and a draft outside `Loading`/`Errored` stay editable during loading and failure; immediate messages on click follow the [action scheduling](10-actions-optimism-and-confirmation.md#operation-indicator-and-publication-on-click).

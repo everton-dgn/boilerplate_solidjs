@@ -3,7 +3,7 @@ name: skill-solidjs-testing
 description: "SolidJS 2 tests in Vitest (happy-dom, jsdom, browser mode, SSR): create, review and debug tests of TSX, signals, stores, actions, async and hydration. API contracts: skill-solidjs. Out of scope: Solid 1, SolidStart."
 metadata:
   compatibility: "The Vitest and @solidjs/vite-plugin of the project; browser mode requires a provider and a browser already installed. Use with skill-solidjs. Does not install tools."
-  skill-version: "2.3.0"
+  skill-version: "2.3.1"
   verification-date: "2026-09-25"
 ---
 
