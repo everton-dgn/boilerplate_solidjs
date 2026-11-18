@@ -48,7 +48,7 @@ Pitfall: do not use the v1 options object. `null` pairs slots even with differen
 
 ## Proxy identity
 
-Contract: a store delivers a proxy distinct from the original, stable when reading/reordering, reflecting writes without changing the original. `indexOf(raw)` returns -1 and `includes(raw)` false; proxy against proxy works. A direct write on the view outside the setter is ignored without an error, keeping the store and the original.
+Contract: a store delivers a proxy distinct from the original, stable when reading/reordering, reflecting writes without changing the original. `indexOf(raw)` returns -1 and `includes(raw)` false; proxy against proxy works. A direct write on the view outside the setter is ignored, keeping the store and the original; on the stable base, dev warns `STORE_WRITE_OUTSIDE_SETTER` once per store and key, and the default build stays silent.
 
 Recipe: compare by ID or proxy: `state.items.findIndex(item => item.id === rawItem.id)`. In the draft, `delete draft.key` removes the property; `draft.key = undefined` keeps the key in Object.keys and in the in operator.
 

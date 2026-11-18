@@ -1,6 +1,5 @@
 import { m } from '@paraglide/messages.js'
-import { dynamicComponent } from '@solidjs/web'
-import { Show, useContext } from 'solid-js'
+import { dynamicComponent, Show, useContext } from 'solid-js'
 import IconComputer from '~icons/hugeicons/computer'
 import IconLoader from '~icons/hugeicons/loader-circle'
 import IconMoon from '~icons/hugeicons/moon-02'

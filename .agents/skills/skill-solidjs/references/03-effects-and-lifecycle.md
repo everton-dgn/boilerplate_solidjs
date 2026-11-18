@@ -21,7 +21,7 @@ Pitfall: a dependency read only in the apply does not resubscribe. Returning the
 
 ## Owner per phase
 
-Contract: the apply of `createEffect` has a null owner. The compute and the apply of `createRenderEffect` have an owner. `onSettled` exposes an owner, but forbids creating primitives. A memo created in the apply can work without a warning in dev, but it is born without an owner.
+Contract: the apply of `createEffect` has a null owner. The compute and the apply of `createRenderEffect` have an owner. `onSettled` exposes an owner, but forbids creating primitives. On the stable base, a memo, effect or root created directly in the apply, in its cleanup or in a ref callback throws `PRIMITIVE_IN_EFFECT_CALLBACK` in dev, and the default build creates it without an owner; re-enter a captured owner with `runWithOwner`, as in the recipe below.
 
 Recipe: capture `const owner = getOwner()` in the setup. If subscribe requires an owner and returns a canceler, return it through runWithOwner. If it returns an object, wrap `unsubscribe` in a function. If the library uses `onCleanup` internally, give each run its own root:
 
@@ -49,13 +49,13 @@ createEffect(source, value => {
 })
 ```
 
-Pitfall: an arrow without braces can turn the return into a cleanup. Dev throws on the first apply `effect callback returned an invalid cleanup value. Return a cleanup function or undefined.`. The default build keeps the value and fails on the next run with "is not a function". Without a rerun, dispose throws a synchronous TypeError without a halt. During a run without a boundary, both builds stop every root with `REACTIVITY_HALTED`; the following writes are ignored and logged. Under `createErrorBoundary`/`Errored`, the fallback receives the failure without stopping the graph. Strict tsc refuses the return, but JS, any and casts lose the protection.
+Pitfall: an arrow without braces can turn the return into a cleanup. Dev throws on the first apply `effect callback returned an invalid cleanup value. Return a cleanup function or undefined.`. The default build keeps the value and fails on the next run with "is not a function". Without a rerun, dispose throws a synchronous TypeError without a halt. During a run without a boundary, both builds stop every root with `REACTIVITY_HALTED`; the following writes are ignored and logged. Under `Errored`, the fallback receives the failure without stopping the graph. Strict tsc refuses the return, but JS, any and casts lose the protection.
 
 ## Errors per phase
 
 Contract: `{ effect, error }` in place of the apply receives in error the failures of the compute/upstream, including async rejections. A compute failure without a handler in a non-rendering effect is logged, skips the apply and keeps the system running. A failure in the apply goes to the boundary or causes a halt. The error arm does not catch apply errors indiscriminately.
 
-Recipe: handle an expected apply failure with a local try/catch. The handler receives the original error, writes state and observes the settled value: a recovery before the imperative phase can run the success path, and a held transaction defers the handler. Rethrowing escalates to the boundary/halt. Expected domain results must not expose internal details. See the [EffectBundle contract](https://v2.solidjs.com/reference/solid-js/reactivity/create-effect#effectbundle) with that phase separation.
+Recipe: handle an expected apply failure with a local try/catch. The handler receives the original error, writes state and observes the settled value: a recovery before the imperative phase can run the success path, and a held transaction defers the handler. Rethrowing escalates to the boundary/halt. Expected domain results must not expose internal details. See the [EffectBundle contract](https://docs.solidjs.com/reference/solid-js/reactivity/create-effect#effectbundle) with that phase separation.
 
 Contract: a compute failure does not clean up the last valid subscription automatically. `error(error, cleanup)` lets you release it explicitly; without calling cleanup, it waits for the next apply or disposal. A previous cleanup that throws before the new apply takes part in the same handling as that apply.
 

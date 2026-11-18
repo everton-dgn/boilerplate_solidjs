@@ -1,5 +1,5 @@
-import { dynamicComponent, httpStatus, useHead } from '@solidjs/web'
-import { createUniqueId, untrack } from 'solid-js'
+import { httpStatus, useHead } from '@solidjs/web'
+import { createUniqueId, dynamicComponent, untrack } from 'solid-js'
 
 import { LocalizedLink } from '@/components/atoms/LocalizedLink/index.tsx'
 import { PageBadge } from '@/components/atoms/PageBadge/index.tsx'

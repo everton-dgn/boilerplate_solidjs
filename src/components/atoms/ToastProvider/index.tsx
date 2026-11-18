@@ -1,6 +1,5 @@
 import { m } from '@paraglide/messages.js'
-import { dynamicComponent } from '@solidjs/web'
-import { For, type ParentProps, untrack } from 'solid-js'
+import { dynamicComponent, For, type ParentProps, untrack } from 'solid-js'
 import IconWarning from '~icons/hugeicons/alert-02'
 import IconError from '~icons/hugeicons/alert-circle'
 import IconClose from '~icons/hugeicons/cancel-01'

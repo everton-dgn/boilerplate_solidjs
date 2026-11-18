@@ -95,7 +95,7 @@ function createPageHandler(App: Root) {
 }
 ```
 
-Pitfall: createSSRResponse(stream,event) returns a Promise<Response> resolved on the first write; an empty/null render ends without a write and does not settle. Guarantee a non-empty shell or a limit in the adapter. With a string it returns a Response. That recipe does not include assets, bootstrap, manifest, RPC, routes or a production adapter. The try covers the render and the wait for the shell, not the later consumption. For an API Response/early exit without that path, use commitEventResponse. A sent shell freezes headers/status; a late redirect uses the client path with the right CSP/nonce.
+Pitfall: createSSRResponse(stream,event) returns a Promise<Response> resolved on the first write; on the stable base, an empty render resolves with an empty 200, and a render that fails or is aborted before the shell resolves with a bodyless 500 (or with the redirect already set). It never rejects, and cancelling the response body disposes the render. With a string it returns a Response. That recipe does not include assets, bootstrap, manifest, RPC, routes or a production adapter. The try covers the render and the wait for the shell, not the later consumption. For an API Response/early exit without that path, use commitEventResponse. A sent shell freezes headers/status; a late redirect uses the client path with the right CSP/nonce.
 
 ## Plugin and entries
 

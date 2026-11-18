@@ -43,9 +43,9 @@ Pitfall: keeping the children result in a non-reactive constant freezes it. Call
 
 ## Context
 
-`useContext` requires an owner: without one, it throws `NoOwnerError`, even if the context has a default. The class is not exported.
+`useContext` without an owner throws `NoOwnerError` in dev, even if the context has a default; on the stable base, the default build returns the default, or throws `ContextNotFoundError` without one. Do not rely on either: call it under an owner. The class is not exported.
 
-Contract: the context is the provider, without `.Provider`; `Context<T>` extends `ContextProviderComponent<T>`. Without a default, `useContext` returns T and throws when the provider is missing. The error has `constructor.name === 'ContextNotFoundError'`, but the class is not exported. A legitimate absence uses `createContext<T | null>(null)` and a null guard.
+Contract: the context is the provider, without `.Provider`; `Context<T>` extends `ContextProviderComponent<T>`. Without a default, `useContext` returns T and throws when the provider is missing; on the stable base, a provider with `value={undefined}` counts as missing. The error has `constructor.name === 'ContextNotFoundError'`, but the class is not exported. A legitimate absence uses `createContext<T | null>(null)` and a null guard.
 
 Recipe:
 

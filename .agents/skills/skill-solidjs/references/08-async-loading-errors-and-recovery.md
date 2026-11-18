@@ -64,7 +64,7 @@ Pitfall: `refresh(() => source())` and an arbitrary property are not targets. Th
 
 Contract: `loadingValue` publishes a provisional value before the first result, without the normal initial suspension. `[]` can hide the loading: use an explicit indicator if empty and loading differ. Stores/projections use `seedLoadingValue: true`; a structural seed alone does not decide the UX. Model `null`/`undefined` in the type and in the UI.
 
-Pitfall: on the first failure with `loadingValue`, the subscribed effect keeps the provisional value without rerunning, and pending stays false even in a new reader. `createErrorBoundary` receives the original error by identity; a new imperative read throws a `StatusError` with the original in `cause`. Compare identity in the chosen channel, not only the message. A `refresh` before any real data restores the provisional value, takes the boundary out of the fallback and resolves with the provisional value while the request is still waiting. Waiting for that refresh does not confirm real data; the first success replaces the seed. Do not generalize it to a reload after a real value.
+Pitfall: on the first failure with `loadingValue`, the subscribed effect keeps the provisional value without rerunning, and pending stays false even in a new reader. `Errored` receives the original error by identity; a new imperative read throws a `StatusError` with the original in `cause`. Compare identity in the chosen channel, not only the message. A `refresh` before any real data restores the provisional value, takes the boundary out of the fallback and resolves with the provisional value while the request is still waiting. Waiting for that refresh does not confirm real data; the first success replaces the seed. Do not generalize it to a reload after a real value.
 
 ## AsyncIterable sources
 
@@ -74,7 +74,7 @@ Pitfall: that cancels neither external transport/processing, nor is it the yield
 
 ## Keys and shared readers
 
-Contract: in the installed runtime, `Loading.on` is a list of dependencies: every change in a tracked read of `on` rearms the boundary, without comparing values. Pass `on={id()}` or `on={[query(), page()]}`, as in the JSDoc; `on={id}` does not call the accessor and is equivalent to leaving `on` out, although the `any` type accepts it. The fallback arrives with the frame of the change: a sibling that holds the same change prevents the fallback.
+Contract: in the installed runtime, `Loading.on` is a list of dependencies: every change in a tracked read of `on` rearms the boundary, without comparing values. Pass `on={id()}` or `on={[query(), page()]}`, as in the JSDoc; `on={id}` does not call the accessor and is equivalent to leaving `on` out, although the `any` type accepts it; on the stable base, dev warns `LOADING_ON_ACCESSOR`, also for `on={() => id()}`. The fallback arrives with the frame of the change: a sibling that holds the same change prevents the fallback.
 
 | Configuration | During the wait | Environment |
 | --- | --- | --- |
@@ -96,7 +96,7 @@ An inner `Loading` holds its initial read and lets the outer shell show. A pendi
 
 Contract: `ssrSource: "server"` serializes an authoritative server origin; `"hybrid"` uses that data and allows a client recomputation; `"client"` skips the origin on the server. `deferStream: true` can hold the shell until the needed data; `transparent: true` is a restricted integration option. A client source calls for Loading/a fallback or an explicit provisional value. Do not read `window` in a server origin nor pick hybrid without a need for refetch.
 
-Pitfall: the available APIs are `latest`, `isPending`, `affects`, `flush`, `refresh`, `until`, `untrack`, `createOptimistic`, `createProjection`, `action`, `onSettled`, `resolve`, `enableExternalSource` and `NotReadyError`. There is no `isSomePending`, `isRefreshing`, `batch`, `pending` or `createAsync`; aggregate `isPending`, control a Refresh operation and use an async memo/projection with `ssrSource`.
+Pitfall: the available APIs are `latest`, `isPending`, `affects`, `flush`, `refresh`, `until`, `untrack`, `createOptimistic`, `createProjection`, `action`, `onSettled`, `resolve`, `enableExternalSource` and `NotReadyError`, plus `createDeferred`, `from` and `onFlush` on the stable base. There is no `isSomePending`, `isRefreshing`, `batch`, `pending` or `createAsync`; aggregate `isPending`, control a Refresh operation and use an async memo/projection with `ssrSource`.
 
 ## Recovery and cache
 
