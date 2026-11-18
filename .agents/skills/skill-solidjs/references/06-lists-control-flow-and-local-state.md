@@ -24,7 +24,7 @@ Pitfall: do not call the default item nor the positional index as a function; do
 
 ## Focus when reordering
 
-Contract: keyed keeps the node and the local state. In 2.0.0, where the browser has `Element.moveBefore()`, the reconciler moves connected nodes with it and focus survives a reorder (changelog and `dist`, without a probe in a browser). Without it, as in happy-dom, moving the focused node loses focus, which the verified base also showed in Chromium; if another node moves, focus can stay. For those environments, restore the active element in the handler after flush.
+Contract: keyed keeps the node and the local state. On the stable base, where the browser has `Element.moveBefore()`, the reconciler moves connected nodes with it and focus survives a reorder (changelog and `dist`, without a probe in a browser). Without it, as in happy-dom, moving the focused node loses focus, which the verified base also showed in Chromium; if another node moves, focus can stay. For those environments, restore the active element in the handler after flush.
 
 Recipe:
 
@@ -73,7 +73,7 @@ Pitfall: a collapsed tail hides even content that is already ready; together rel
 
 ## Dynamic components and lazy
 
-Contract: `dynamic(() => source)` from web builds a component from a tag/component/compatible source, async included. Create it in the owning body, in a structural row callback or in a truly constant/global module; not on every read. Dynamic/DynamicProps stay deprecated. `{ static: true }` reads once without tracking and refuses a Promise; `isStatic` is advanced, for libraries. For a source that only answers with components, prefer `dynamicComponent` (2.0.0, from `solid-js`, which web re-exports): same options, without retaining the element runtime.
+Contract: `dynamic(() => source)` from web builds a component from a tag/component/compatible source, async included. Create it in the owning body, in a structural row callback or in a truly constant/global module; not on every read. Dynamic/DynamicProps stay deprecated. `{ static: true }` reads once without tracking and refuses a Promise; `isStatic` is advanced, for libraries. For a source that only answers with components, prefer `dynamicComponent` (stable base, from `solid-js`, which web re-exports): same options, without retaining the element runtime.
 
 Recipe:
 

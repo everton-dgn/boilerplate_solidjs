@@ -10,7 +10,7 @@ Base: [verified revision](../SKILL.md), reverified on 2026-09-29.
 
 ## Select with late options
 
-Contract: a select with value/onChange follows the code/user on the same node. Without a handler it does not undo the selection of the user, diverging from the state. In 2.0.0 the runtime reapplies the bound value when the options arrive after it, and SSR marks the matching option (changelog and `dist`, without a probe in a browser); the verified base applied it right away and in a microtask, without reapplying.
+Contract: a select with value/onChange follows the code/user on the same node. Without a handler it does not undo the selection of the user, diverging from the state. On the stable base, the runtime reapplies the bound value when the options arrive after it, and SSR marks the matching option (changelog and `dist`, without a probe in a browser); the verified base applied it right away and in a microtask, without reapplying.
 
 Recipe:
 ```tsx
@@ -19,7 +19,7 @@ Recipe:
 </select>
 ```
 
-Pitfall: on the verified base, value alone left the first option visible when the options arrived later, even with another value in the state; 2.0.0 reapplies it, so keep the `selected` recipe for older packages. Multiple/hydration not tested.
+Pitfall: on the verified base, value alone left the first option visible when the options arrived later, even with another value in the state; the stable base reapplies it, so keep the `selected` recipe for older packages. Multiple/hydration not tested.
 
 ## Labels and attributes
 

@@ -22,7 +22,7 @@ it('renders the initial route', async () => {
 ```
 
 - Route resolution is asynchronous even without data: wait for the initial content with `vi.waitFor`.
-- The `query` cache lives in the module and crosses tests. Another test with the same key can receive the cache without calling the mock; with the router 2.0.0, a rejected entry is not fresh, and the next read calls the fetcher again. Use distinct parameters or `revalidate(getUser.key)`; also clear the mock queue with `mockReset()`, because an unconsumed `mockResolvedValueOnce` response can leak into the next case.
+- The `query` cache lives in the module and crosses tests. Another test with the same key can receive the cache without calling the mock. With the router of the stable base, a read that settles a rejection marks the entry as not fresh, and the next read calls the fetcher again; a preload does not mark it, so within the preload window (5 s) the first read after a failed preload reuses the rejected promise without calling the fetcher, and only the read after it refetches. Use distinct parameters or `revalidate(getUser.key)`; also clear the mock queue with `mockReset()`, because an unconsumed `mockResolvedValueOnce` response can leak into the next case.
 - `query` data is read through a memo under `Loading`. Mock the I/O consumed by the query.
 - The active link receives `aria-current="page"`; links are plain `a` elements.
 

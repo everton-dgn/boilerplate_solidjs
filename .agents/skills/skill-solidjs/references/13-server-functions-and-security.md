@@ -84,7 +84,7 @@ Pitfall: a separate seroval can make the protocol incompatible without a type er
 
 ## Responses and natural address
 
-Contract: the programmatic address differs from the natural one of a form action, separating serialized/HTTP in the cache. Respond combines a value/metadata; redirect/reload signal navigation/revalidation to the adapter, without redoing every memo by textual key. In 2.0.0 `redirect` and `reload` return `T = never` and `respond(value)` returns the type of the value, so they do not change the inferred result of a server function; annotate, as in `redirect<Response>(...)`, to use the `Response`.
+Contract: the programmatic address differs from the natural one of a form action, separating serialized/HTTP in the cache. Respond combines a value/metadata; redirect/reload signal navigation/revalidation to the adapter, without redoing every memo by textual key. On the stable base, `redirect` and `reload` return `T = never` and `respond(value)` returns the type of the value, so they do not change the inferred result of a server function; annotate, as in `redirect<Response>(...)`, to use the `Response`.
 
 Contract: on the measured path with a script, a returned redirect gives 200 without Location, with X-Server-Function-Redirect in the format `<status> <absolute-url>`; the natural address gives 302. Reload gives 200 with X-Revalidate. Return/throw of respond with status 400 keep status/body, but only throw marks X-Server-Function-Error true and an RPC rejection. decodeRedirectHeaderValue accepts an absolute http(s) URL and a recognized status; javascript/data/invalid or a missing header return undefined, treated as no redirect. Do not assemble internal endpoints/headers in the UI.
 
@@ -108,7 +108,7 @@ Contract: the server onError can map a value meant for the client without additi
 
 ## Experimental server components
 
-Contract: a preview outside the 2.0 stability. Explicit adoption: a UI task does not authorize an experimental architecture/transport/deploy. A server function can return a component mounted with `dynamicComponent` (or `dynamic`). Arguments go to the server; the props of the returned component are client slots, client components placed through a `Slot`, and do not redo the query by themselves; binding slots were removed before 2.0.0. $key is the identity of the slot protocol, not a universal list key nor a replacement index. asyncArg accepts a Promise/AsyncIterable in a slot prop keeping the resolved type T, and stays experimental.
+Contract: a preview outside the 2.0 stability. Explicit adoption: a UI task does not authorize an experimental architecture/transport/deploy. A server function can return a component mounted with `dynamicComponent` (or `dynamic`). Arguments go to the server; the props of the returned component are client slots, client components placed through a `Slot`, and do not redo the query by themselves; binding slots were removed before the stable base. $key is the identity of the slot protocol, not a universal list key nor a replacement index. asyncArg accepts a Promise/AsyncIterable in a slot prop keeping the resolved type T, and stays experimental.
 
 Recipe: `serverFunctions: { components: true }`, or components "external" with a documented binding by the host. It reuses the RPC endpoint/compilation/security. The generated SSR start calls installServerComponents from @solidjs/web/frames before hydrate; an authored entry calls it once and the server receives the frames render plugin.
 

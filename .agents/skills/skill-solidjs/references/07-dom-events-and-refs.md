@@ -6,7 +6,7 @@ Contract: HTML attributes (class/for/tabindex), camelCase events. TS only accept
 
 Recipe: tell controlled from initial state apart in value/defaultValue, checked/defaultChecked, selected/defaultSelected and muted/defaultMuted. Keep the textual semantics of ARIA: aria-pressed='false' is not universally equivalent to its absence.
 
-Pitfall: indiscriminate lowercase breaks native properties. Custom elements and special properties require checking the integration and the types. Avoid the old prefixes `on:`, `oncapture:`, `use:`, `attr:`, `bool:`, `class:` or style specializations; in 2.0.0 lowercase `on*` and `on:` are plain attributes, and dev warns `LOWERCASE_EVENT_ATTRIBUTE`. Migrate by intent: attribute/property/listener/integration, without a blind textual swap.
+Pitfall: indiscriminate lowercase breaks native properties. Custom elements and special properties require checking the integration and the types. Avoid the old prefixes `on:`, `oncapture:`, `use:`, `attr:`, `bool:`, `class:` or style specializations; on the stable base, lowercase `on*` and `on:` are plain attributes, and dev warns `LOWERCASE_EVENT_ATTRIBUTE`. Migrate by intent: attribute/property/listener/integration, without a blind textual swap.
 
 ## Classes and styles
 
@@ -31,7 +31,7 @@ Recipe:
 <button onClick={event => (mode() === 'open' ? open : close)(event)} />
 ```
 
-Contract: a direct handler is read at mount, delegated (onClick) or native (onMouseEnter). A ternary outside the callback fixes the choice; in 2.0.0 dev warns `STRICT_READ_UNTRACKED` for a reactive read in the handler expression, and production stays silent. A spread of props/element reads the getter and reapplies the handler. A prop receives a value (`value={count()}`); an accessor can work as text, but a multiplication gives NaN; TS rejects it.
+Contract: a direct handler is read at mount, delegated (onClick) or native (onMouseEnter). A ternary outside the callback fixes the choice; on the stable base, dev warns `STRICT_READ_UNTRACKED` for a reactive read in the handler expression, and production stays silent. A spread of props/element reads the getter and reapplies the handler. A prop receives a value (`value={count()}`); an accessor can work as text, but a multiplication gives NaN; TS rejects it.
 
 Contract: render/hydrate roots own/clean up the delegation; the application does not clean up the document singleton. Portal propagates a delegated event through the logical tree: the button, then the logical ancestor. A native listener on the logical ancestor does not receive it; on the physical target it does.
 
@@ -47,7 +47,7 @@ Pitfall: `<section><><p /><p /></></section>` fails with `Fragments and spread c
 
 ## Ref and lifecycle
 
-Contract: in 2.0.0 a ref callback runs untracked when the element is created, like the callback of a render effect, and owns nothing: in dev a memo, effect or root there throws `PRIMITIVE_IN_EFFECT_CALLBACK` and `onCleanup` throws `CLEANUP_IN_FORBIDDEN_SCOPE`; writes, `refresh`, actions and `onFlush` are allowed (changelog, without a probe with DOM). It keeps the element/applies DOM with the disposal already registered. The setup of effects/onCleanup/resources stays in the component/factory under an owner. Clean up widgets/observers/listeners/timers, also when the element changes.
+Contract: on the stable base, a ref callback runs untracked when the element is created, like the callback of a render effect, and owns nothing: in dev a memo, effect or root there throws `PRIMITIVE_IN_EFFECT_CALLBACK` and `onCleanup` throws `CLEANUP_IN_FORBIDDEN_SCOPE`; writes, `refresh`, actions and `onFlush` are allowed (changelog, without a probe with DOM). It keeps the element/applies DOM with the disposal already registered. The setup of effects/onCleanup/resources stays in the component/factory under an owner. Clean up widgets/observers/listeners/timers, also when the element changes.
 
 Recipe:
 

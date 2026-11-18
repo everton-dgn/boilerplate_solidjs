@@ -21,7 +21,7 @@ Pitfall: a dependency read only in the apply does not resubscribe. Returning the
 
 ## Owner per phase
 
-Contract: the apply of `createEffect` has a null owner. The compute and the apply of `createRenderEffect` have an owner. `onSettled` exposes an owner, but forbids creating primitives. In 2.0.0, a memo, effect or root created directly in the apply, in its cleanup or in a ref callback throws `PRIMITIVE_IN_EFFECT_CALLBACK` in dev, and the default build creates it without an owner; re-enter a captured owner with `runWithOwner`, as in the recipe below.
+Contract: the apply of `createEffect` has a null owner. The compute and the apply of `createRenderEffect` have an owner. `onSettled` exposes an owner, but forbids creating primitives. On the stable base, a memo, effect or root created directly in the apply, in its cleanup or in a ref callback throws `PRIMITIVE_IN_EFFECT_CALLBACK` in dev, and the default build creates it without an owner; re-enter a captured owner with `runWithOwner`, as in the recipe below.
 
 Recipe: capture `const owner = getOwner()` in the setup. If subscribe requires an owner and returns a canceler, return it through runWithOwner. If it returns an object, wrap `unsubscribe` in a function. If the library uses `onCleanup` internally, give each run its own root:
 

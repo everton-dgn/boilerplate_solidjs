@@ -28,7 +28,7 @@ createRoot(() => {
 })
 ```
 
-Contract: the apply, `onSettled` and code after `createRoot` returns can write. `ownedWrite: true` only exists in `SignalOptions`, allows a write even in a memo compute and must stay restricted to infrastructure; `StoreOptions` holds `name` and `shallow` (plus `loc` in 2.0.0, written by the compiler), without that exception.
+Contract: the apply, `onSettled` and code after `createRoot` returns can write. `ownedWrite: true` only exists in `SignalOptions`, allows a write even in a memo compute and must stay restricted to infrastructure; `StoreOptions` holds `name` and `shallow` (plus `loc` on the stable base, written by the compiler), without that exception.
 
 The guard depends on the resolved engine: in the dev client, a write in the root throws; in the default build, it passes silently; on the server, it logs `SERVER_WRITE`. Mixing a core and an engine from different builds can leave `DEV` undefined with the guard on, or expose a dev core without the guard. The `test` export condition is not equivalent to the Vitest test mode; check the [runner posture](../../skill-solidjs-testing/references/vitest-config.md#posture-canary).
 
@@ -122,7 +122,7 @@ Pitfall: the first read of an async source still pending after await emits in de
 | render effect under a boundary | fallback, the sibling of the resolved source publishes | both stop publishing |
 | render effect without a boundary | halt, unhandled rejection, every root stops | both stop publishing, no halt |
 
-Contract: `Errored` is the public error boundary; in 2.0.0 its primitive `createErrorBoundary` is typed only in `solid-js/internal`, not application API. Read the inputs before the await, also when starting independent requests in parallel.
+Contract: `Errored` is the public error boundary; on the stable base, its primitive `createErrorBoundary` is typed only in `solid-js/internal`, not application API. Read the inputs before the await, also when starting independent requests in parallel.
 
 ## Ownership and disposal
 

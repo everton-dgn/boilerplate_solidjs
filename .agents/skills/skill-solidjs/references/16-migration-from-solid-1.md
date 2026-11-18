@@ -11,7 +11,7 @@ The 1.x → 2.0 correction table of the official skill (`node_modules/solid-js/s
 - The `mutate` of `createResource` has neither an export nor a row in the official table, which only swaps `loading`, `error` and `refetch`. Choose the replacement by the durability the code expected: a write through `createOptimistic` or `createOptimisticStore` inside an `action` reverts on settle, and the durable value comes from the `refresh` of the source ([overlay and durable state](10-actions-optimism-and-confirmation.md#overlay-and-durable-state)); the setter of a writable derivation, `createSignal(fn)` or `createStore(fn, seed)`, holds until the source reruns ([writable derivation](02-reactivity-and-ownership.md#writable-derivation-and-stored-function)).
 - `classList` replaced by `class` with an object or array joins in a single prop what used to be two. When going from `class="base" classList={{ active: x() }}` to `class={['base', { active: x() }]}`, check the composition and the precedence in the DOM when the same token shows up in more than one entry, without assuming which one wins; if the object comes from a signal mutated without changing the reference, that signal needs `equals: false` to rerun the binding ([classes and styles](07-dom-events-and-refs.md#classes-and-styles)).
 
-None of these names is exported by `solid-js` on the verified base, in the dev and default builds, and the replacements of the Solid 2 column exist. 2.0.0 exports `createDeferred` again, with another contract (see its row).
+None of these names is exported by `solid-js` on the verified base, in the dev and default builds, and the replacements of the Solid 2 column exist. The stable base exports `createDeferred` again, with another contract (see its row).
 
 | Solid 1 | Solid 2 | Note |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ None of these names is exported by `solid-js` on the verified base, in the dev a
 | `splitProps` | `omit` | Filters keys; it does not return the same tuple |
 | `on` | Compute of `createEffect` | Explicit dependencies in the compute; the `defer` of `on` becomes the `defer` option of the effect |
 | `batch` | Automatic batching per microtask; `flush` only to read settled state | Do not swap every `batch` for `flush` |
-| `createDeferred` | In 2.0.0, `createDeferred(fn, options?)` is an async memo that keeps the previous answer during a refetch (`isPending` reports it); to throttle the UI, batching already coalesces per microtask | It does not defer to idle time like 1.x: a different contract |
+| `createDeferred` | On the stable base, `createDeferred(fn, options?)` is an async memo that keeps the previous answer during a refetch (`isPending` reports it) | It does not defer propagation to idle time like 1.x, and microtask batching does not replace that: events in separate tasks still run the work, so debounce or throttle the input explicitly |
 | `isRefreshing` | `refresh(target)` returns a Promise; `yield refresh(target)` in an action reruns the source and waits for the settle | It does not expose the phase to a pure computation; combine it with `affects(target)` or an optimistic flag |
 | `setStore("a", 0, "b", v)`, `setStore(path, reconcile(...))` | `setStore(d => { d.a[0].b = v })` | A setter by path and with an object throw `TypeError`: `StoreSetter` only accepts a function |
 | `createEffect(fn)` | `createEffect(compute, apply)` | On the client, `createEffect(fn)` throws before the compute (`MISSING_EFFECT_FN` in dev; a `TypeError` without a code in default); `createRenderEffect(fn)` runs the compute and then fails with a `TypeError`, escalating to `REACTIVITY_HALTED` (the test must isolate/reset the engine). In the server build both run the compute once without an error: SSR and tests with `environment: 'node'` do not flag the pattern |
@@ -50,7 +50,7 @@ Pitfall: do not do a global replacement. An import can be mechanical, but lifecy
 | `sharedConfig.count` | No public equivalent | Hydration modules come preloaded and IDs live in owners; do not touch it |
 | JSX `tabIndex` | `tabindex` (lowercase) | In `<dialog>` the type is `tabindex?: never` |
 
-`enableScheduling`, `writeSignal` and `resetErrorBoundaries` must not be recreated through an alias. For `from`/observable, 2.0.0 exports `from`: use `createMemo(() => from(source))`, which accepts a callback subscription `(next, error, complete) => unsubscribe`, an Observable or an AsyncIterable and handles hydration; push values out with `createEffect`.
+`enableScheduling`, `writeSignal` and `resetErrorBoundaries` must not be recreated through an alias. For `from`/observable, the stable base exports `from`: use `createMemo(() => from(source))`, which accepts a callback subscription `(next, error, complete) => unsubscribe`, an Observable or an AsyncIterable and handles hydration; push values out with `createEffect`.
 
 ## Divergences found in the documentation itself
 
@@ -72,6 +72,6 @@ Pitfall: a closed issue does not prove a fix in the installed package; the seman
 
 ## APIs that mislead
 
-`storePath` and `markRaw` are not public exports of this base. For a raw value, check `snapshot` and its limits; `deep` does a tracked read, not the opposite. Do not import `$PROXY`, `$TRACK` or hydration fields to replace removed APIs. In 2.0.0, `sharedConfig`, `createOwner` and the boundary primitives (`createErrorBoundary`, `createLoadingBoundary`, `createRevealOrder`) are typed only in `solid-js/internal`, without a semver guarantee; libraries use `isHydrating()`, `isHydratable()` and `onHydrationEnd()`, and code that used `createOwner` hosts a scope with `createRoot()` and re-enters it with `runWithOwner()`.
+`storePath` and `markRaw` are not public exports of this base. For a raw value, check `snapshot` and its limits; `deep` does a tracked read, not the opposite. Do not import `$PROXY`, `$TRACK` or hydration fields to replace removed APIs. On the stable base, `sharedConfig`, `createOwner` and the boundary primitives (`createErrorBoundary`, `createLoadingBoundary`, `createRevealOrder`) are typed only in `solid-js/internal`, without a semver guarantee; libraries use `isHydrating()`, `isHydratable()` and `onHydrationEnd()`, and code that used `createOwner` hosts a scope with `createRoot()` and re-enters it with `runWithOwner()`.
 
 `resetErrorHalt` serves the [test harness](../../skill-solidjs-testing/references/mount-dispose-diagnostics.md#reactive-halt); it is not error recovery for the application.
